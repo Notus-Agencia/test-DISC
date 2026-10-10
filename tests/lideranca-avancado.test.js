@@ -166,8 +166,8 @@ test('você e esta pessoa: com os percentuais do líder, só o estilo dele marca
   assert.deepEqual(est[0].ajustes, DADOS.DI.voce_e_esta_pessoa.S.ajustes);
   const dif = voce.blocos.find((b) => b.tipo === 'grupos' && b.itens[0].titulo === 'Onde vocês mais diferem');
   assert.equal(dif.itens[0].itens.length, 2);
-  assert.match(dif.itens[0].itens[0], /^Marina C\. tem bem mais Dominância \(36%\) que você \(14%\)/);
-  assert.match(dif.itens[0].itens[1], /^Você tem bem mais Estabilidade \(38%\) que Marina C\. \(15%\)/);
+  assert.match(dif.itens[0].itens[0], /^A Dominância pesa bem mais no estilo de Marina C\. do que no seu:/);
+  assert.match(dif.itens[0].itens[1], /^A Estabilidade pesa bem mais no seu estilo do que no de Marina C\.:/);
   // líder sem código: estilo primário pelos percentuais; líder sem percentuais: os 4 estilos
   const semCod = LA.montar(r, { nome: 'Marina C.', lider: { nome: 'X', percentuais: { D: 20, I: 20, S: 20, C: 40 } } });
   assert.equal(semCod.capitulos.find((c) => c.id === 'voce').blocos.find((b) => b.tipo === 'estilos').itens[0].letra, 'C');

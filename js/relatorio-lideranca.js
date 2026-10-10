@@ -323,23 +323,24 @@
       'Cuidem juntos da comunicação com o resto da equipe, que pode precisar de mais proximidade.']
   };
 
-  // Diferença grande num mesmo fator ({L} = % do líder, {P} = % da pessoa).
+  // Diferença grande num mesmo fator. Sem percentuais lado a lado: no DISC eles são relativos dentro de cada pessoa
+  // (somam 100%), então a frase compara o peso do fator em cada estilo, não "quanto" cada um tem.
   var DIFERENCA = {
     D: {
-      liderMais: 'Você tem bem mais Dominância ({L}) que {nome} ({P}): o que para você é objetividade pode soar como pressão. Suavize o tom e explique o porquê.',
-      pessoaMais: '{nome} tem bem mais Dominância ({P}) que você ({L}): espere iniciativa e questionamentos diretos; não leve para o lado pessoal e deixe claros os limites de decisão.'
+      liderMais: 'A Dominância pesa bem mais no seu estilo do que no de {nome}: o que para você é objetividade pode soar como pressão. Suavize o tom e explique o porquê.',
+      pessoaMais: 'A Dominância pesa bem mais no estilo de {nome} do que no seu: espere iniciativa e questionamentos diretos; não leve para o lado pessoal e deixe claros os limites de decisão.'
     },
     I: {
-      liderMais: 'Você tem bem mais Influência ({L}) que {nome} ({P}): menos conversa e mais objetividade tendem a funcionar melhor; registre os combinados.',
-      pessoaMais: '{nome} tem bem mais Influência ({P}) que você ({L}): reserve tempo para interação e reconhecimento, mesmo que para você pareça dispensável.'
+      liderMais: 'A Influência pesa bem mais no seu estilo do que no de {nome}: menos conversa e mais objetividade tendem a funcionar melhor; registre os combinados.',
+      pessoaMais: 'A Influência pesa bem mais no estilo de {nome} do que no seu: reserve tempo para interação e reconhecimento, mesmo que para você pareça dispensável.'
     },
     S: {
-      liderMais: 'Você tem bem mais Estabilidade ({L}) que {nome} ({P}): {nome} pode querer mais velocidade e variedade do que você costuma oferecer.',
-      pessoaMais: '{nome} tem bem mais Estabilidade ({P}) que você ({L}): antecipe mudanças e mantenha um ritmo previsível; o seu pode parecer acelerado.'
+      liderMais: 'A Estabilidade pesa bem mais no seu estilo do que no de {nome}: {nome} pode querer mais velocidade e variedade do que você costuma oferecer.',
+      pessoaMais: 'A Estabilidade pesa bem mais no estilo de {nome} do que no seu: antecipe mudanças e mantenha um ritmo previsível; o seu pode parecer acelerado.'
     },
     C: {
-      liderMais: 'Você tem bem mais Conformidade ({L}) que {nome} ({P}): evite exigir o mesmo nível de detalhe em tudo; combine o que é essencial.',
-      pessoaMais: '{nome} tem bem mais Conformidade ({P}) que você ({L}): espere pedidos de dados e critérios; documente e justifique suas decisões.'
+      liderMais: 'A Conformidade pesa bem mais no seu estilo do que no de {nome}: evite exigir o mesmo nível de detalhe em tudo; combine o que é essencial.',
+      pessoaMais: 'A Conformidade pesa bem mais no estilo de {nome} do que no seu: espere pedidos de dados e critérios; documente e justifique suas decisões.'
     }
   };
 
