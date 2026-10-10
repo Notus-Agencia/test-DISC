@@ -2145,7 +2145,7 @@
   // relatorios[/gerados|/gerar[/<chave>]|/exemplo/<chave>], vendas[/<subaba>], vendas/pedido/<id>, usuarios,
   // comparativo, importar, conexoes. Âncoras do Supabase Auth (#access_token=…, #error=…) não são rotas.
   var ABAS_ROTA = ['comparativo', 'importar', 'usuarios', 'conexoes'];
-  var SUBABAS_ROTA_EMPRESA = ['colaboradores', 'organograma', 'compatibilidade', 'relatorios', 'historico'];
+  var SUBABAS_ROTA_EMPRESA = ['colaboradores', 'organograma', 'compatibilidade', 'relatorios', 'clima', 'historico'];
   var SUBABAS_ROTA_VENDAS = ['divulgar', 'resumo', 'pedidos', 'cupons', 'pacotes'];
   function parteRota(s) { return /^[A-Za-z0-9_.:-]{1,128}$/.test(String(s || '')) ? String(s) : ''; }
   function lerRota(hash) {
@@ -5830,6 +5830,7 @@
     { id: 'organograma', rotulo: 'Organograma' },
     { id: 'compatibilidade', rotulo: 'Compatibilidade' },
     { id: 'relatorios', rotulo: 'Relatórios' },
+    { id: 'clima', rotulo: 'Pesquisa de clima' },
     { id: 'historico', rotulo: 'Histórico' }
   ];
 
@@ -5896,6 +5897,8 @@
         ])
       ]));
       painel.appendChild(blocoRelatoriosModelo({ empresaId: id }, 'e:' + id, { empresa: emp.nome }));
+    } else if (sub === 'clima') {
+      painel.appendChild(blocoClima(emp, eq, colabs));
     } else if (sub === 'historico') {
       painel.appendChild(blocoHistorico2(eq, emp));
     } else {
@@ -5918,6 +5921,20 @@
       ]));
       painel.appendChild(blocoColaboradores(emp, eq, colabs, id, proc, linkTeste));
     }
+  }
+
+  // Pesquisa de Clima da Equipe (js/admin-clima.js): o painel só recebe contagens e o resultado já suprimido pelo servidor.
+  function blocoClima(emp, eq, colabs) {
+    var M = root.DISC_ADMIN_CLIMA;
+    if (!M || !root.DISC_CLIMA || !metodoApi('climaListar')) {
+      return el('section', { classe: 'caixa emp-bloco', id: 'emp-clima' }, el('p', { classe: 'texto-suave', texto: 'Pesquisa de clima indisponível neste painel.' }));
+    }
+    return M.bloco({ el: el, botao: botao, api: api, avisar: avisar, falhou: falhou, confirmar: confirmar, abrirJanela: abrirJanela, copiar: copiar,
+      formatarData: formatarData, linkWhatsApp: linkWhatsAppTexto, abrirPrevia: abrirPreviaNovaAba, href: root.location.href,
+      consultor: consultorAtual(), emp: emp, eq: eq, colabs: colabs,
+      redesenhar: function () {
+        if (estado.aba === 'empresas' && estado.emp.tela === 'pagina' && estado.emp.id === emp.id && estado.emp.subaba === 'clima') renderizarEmpresas();
+      } });
   }
 
   function blocoColaboradores(emp, eq, colabs, id, proc, linkTeste) {

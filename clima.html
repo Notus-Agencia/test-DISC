@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <!-- Política de segurança: só scripts do próprio site (nada inline) e conexão com o Supabase/Apps Script. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.supabase.co https://script.google.com https://script.googleusercontent.com; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Pesquisa de Clima da Equipe · Gestão sem Caos: perguntas sobre como você percebe o seu trabalho. Anônima e voluntária.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f2f2f2">
+  <title>Pesquisa de clima da equipe</title>
+  <link rel="icon" type="image/svg+xml" href="assets/marca/gsc-favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/marca/gsc-favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/marca/gsc-apple-touch-icon.png">
+  <link rel="preload" href="assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="assets/notus.css">
+  <link rel="stylesheet" href="assets/styles.css">
+  <link rel="stylesheet" href="assets/clima.css">
+</head>
+<body data-etapa="carregando">
+  <a class="pular" href="#app">Pular para o conteúdo</a>
+  <header class="topo vidro-cabecalho">
+    <div class="topo-interno">
+      <img class="logo-gsc topo-logo" src="assets/marca/gsc-logo.svg" alt="Gestão sem Caos" width="171" height="24">
+      <span class="topo-nome">Pesquisa de clima</span>
+      <span class="selo topo-empresa" id="topo-empresa" hidden></span>
+    </div>
+  </header>
+
+  <main id="app" class="conteudo" tabindex="-1">
+    <section class="caixa centro">
+      <div class="giro giro--grande" aria-hidden="true"></div>
+      <p class="subtitulo">Carregando a pesquisa…</p>
+    </section>
+  </main>
+
+  <div id="aviso" class="visualmente-oculto" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <noscript>
+    <div class="conteudo"><section class="caixa"><h1 class="titulo-pagina">Ative o JavaScript</h1><p class="subtitulo">Esta pesquisa precisa do JavaScript ativado no navegador para funcionar.</p></section></div>
+  </noscript>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/api-simulada.js"></script>
+  <script src="assets/vendor/supabase.js"></script>
+  <script src="js/api-supabase.js"></script>
+  <script src="js/clima.js"></script>
+  <script src="js/clima-resposta.js"></script>
+</body>
+</html>

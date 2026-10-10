@@ -1,0 +1,90 @@
+/*
+ * Pesquisa de Clima da Equipe — tela de resposta (clima.html), celular primeiro.
+ * Camada sobre assets/notus.css e assets/styles.css (topo, caixa, barra de progresso, barra Voltar/Continuar,
+ * consentimento): só a composição desta tela. Cores e fontes só pelos tokens (docs/IDENTIDADE-VISUAL.md).
+ */
+
+body[data-etapa="bloco"] .conteudo { padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
+
+.clima-mensagem .acoes { margin-top: 20px; }
+.clima-nota { margin-top: 10px; font-size: var(--t-rotulo); color: var(--suave); }
+.clima-nota a { color: var(--tinta); }
+.clima-erro { margin-top: 12px; }
+
+/* Aviso ao respondente */
+.clima-aviso .titulo-pagina { margin-top: 6px; }
+.clima-equipe { margin-top: 8px; font-size: var(--t-corpo); color: var(--medio); }
+.clima-lider {
+  margin-top: 16px; padding: 14px 16px; border-radius: 16px;
+  background: var(--nevoa); font-size: var(--t-rotulo); line-height: 1.55; color: var(--medio);
+}
+.clima-lider strong { color: var(--tinta); }
+.clima-aviso__lista { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
+.clima-aviso__lista li { font-size: var(--t-corpo); line-height: 1.55; color: var(--medio); }
+.clima-aviso__lista strong { color: var(--tinta); }
+.clima-aviso .consentimento { margin-top: 18px; }
+.clima-aviso .acoes { margin-top: 18px; }
+
+/* Bloco de perguntas */
+.clima-bloco__titulo { margin-top: 18px; font-size: var(--t-indicador); }
+.clima-bloco__topo {
+  margin-top: 10px; padding: 12px 14px; border-radius: 16px;
+  background: var(--nevoa); font-size: var(--t-rotulo); color: var(--medio);
+}
+.clima-perguntas { list-style: none; margin: 8px 0 0; padding: 0; }
+.clima-pergunta { padding: 18px 0; border-bottom: 1px solid var(--linha); }
+.clima-pergunta:last-child { border-bottom: 0; }
+.clima-pergunta__texto { font-size: var(--t-corpo); font-weight: 600; line-height: 1.45; letter-spacing: -0.01em; }
+.clima-opcoes { display: grid; gap: 8px; margin-top: 12px; }
+
+/* Opção da escala: cartão inteiro tocável, rótulo escrito. Selecionar só muda o contorno (nada pula de lugar). */
+.clima-opcao {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; min-height: 48px; margin: 0; padding: 10px 14px;
+  background: var(--branco); color: var(--tinta);
+  border: 1px solid var(--linha); border-radius: 16px;
+  font: inherit; font-size: var(--t-corpo); line-height: 1.3; text-align: left;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+}
+.clima-opcao:hover { border-color: color-mix(in srgb, var(--tinta) 22%, transparent); }
+.clima-opcao[aria-pressed="true"] {
+  border-color: var(--notus); box-shadow: inset 0 0 0 1px var(--notus);
+  background: color-mix(in srgb, var(--notus) 5%, var(--branco));
+}
+.clima-opcao .escolha-marca { position: relative; }
+.clima-opcao[aria-pressed="true"] .escolha-marca { border-color: var(--notus); }
+.clima-opcao[aria-pressed="true"] .escolha-marca::after {
+  content: ''; position: absolute; inset: 4px; border-radius: 50%; background: var(--notus);
+}
+.clima-opcao__texto { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+.clima-pular {
+  display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; padding: 0 2px;
+  background: none; border: 0; color: var(--medio);
+  font: inherit; font-size: var(--t-rotulo); text-decoration: underline; text-underline-offset: 3px;
+  cursor: pointer;
+}
+.clima-pular[aria-pressed="true"] { color: var(--notus-forte); font-weight: 600; text-decoration: none; }
+.clima-pular[aria-pressed="true"]::before { content: '✓ '; white-space: pre; }
+
+.clima-canal {
+  margin-top: 8px; padding: 12px 14px; border-radius: 16px;
+  background: var(--nevoa); font-size: var(--t-rotulo); line-height: 1.55; color: var(--medio);
+}
+.clima-canal a { color: var(--tinta); font-weight: 600; }
+
+.clima-campo-comentario { margin-top: 18px; }
+.clima-comentario { width: 100%; min-height: 112px; resize: vertical; font-size: var(--t-campo); line-height: 1.5; }
+
+/* Computador: as 5 opções lado a lado (o rótulo continua escrito). */
+@media (min-width: 720px) {
+  .clima-opcoes { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .clima-pergunta[data-item="N4"] .clima-opcoes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .clima-opcao { flex-direction: column; justify-content: center; gap: 8px; padding: 12px 8px; text-align: center; font-size: var(--t-rotulo); }
+  .clima-opcao__texto { flex: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clima-opcao { transition: none; }
+}

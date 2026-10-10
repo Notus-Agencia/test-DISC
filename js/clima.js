@@ -650,8 +650,8 @@
     return {
       titulo: 'Pesquisa de Clima da Equipe · ' + (String(o.empresa || '').trim() || 'Gestão sem Caos'),
       paragrafos: [
-        { rotulo: 'O que é', texto: 'perguntas sobre como você percebe o seu trabalho: organização das tarefas, liderança, apoio do time e liberdade para falar. Leva cerca de 5 minutos. Pesquisa para maiores de 18 anos.' },
-        { rotulo: 'Quem conduz', texto: emp + ' é a responsável pela pesquisa. A Gestão sem Caos cuida da coleta e do relatório em nome dela.' },
+        { rotulo: 'O que é:', texto: 'perguntas sobre como você percebe o seu trabalho: organização das tarefas, liderança, apoio do time e liberdade para falar. Leva cerca de 5 minutos. Pesquisa para maiores de 18 anos.' },
+        { rotulo: 'Quem conduz:', texto: emp + ' é a responsável pela pesquisa. A Gestão sem Caos cuida da coleta e do relatório em nome dela.' },
         { rotulo: 'É voluntário.', texto: 'Você pode pular perguntas ou parar no meio. Nada muda para você por isso.' },
         { rotulo: 'Não pedimos o seu nome.', texto: 'A resposta não fica ligada a você: não guardamos nome, telefone, e-mail nem endereço de internet junto com ela.' },
         { rotulo: 'A empresa só vê resultados de grupo.', texto: 'Um grupo só aparece no relatório com pelo menos 5 respostas. Detalhes e comentários, só com 10 ou mais. Ninguém da empresa vê a sua resposta nem sabe se você respondeu. Nada aparece antes do fim da pesquisa.' },

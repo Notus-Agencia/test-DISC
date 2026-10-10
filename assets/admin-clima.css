@@ -1,0 +1,48 @@
+/*
+ * Painel — subaba "Pesquisa de clima" da empresa (js/admin-clima.js). Computador primeiro (decisão do dono).
+ * Só composição; cores e fontes pelos tokens de assets/notus.css.
+ */
+
+.clima-painel .gestao-card__acoes { margin-top: 14px; flex-wrap: wrap; align-items: center; }
+.clima-rodada { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--linha); }
+.clima-rodada__cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.clima-rodada__nome { font-size: var(--t-titulo); }
+.clima-total { margin-top: 12px; font-size: var(--t-corpo); font-weight: 600; }
+.clima-sub { margin-top: 22px; font-size: var(--t-corpo); }
+
+/* Equipes da pesquisa aberta: taxa agregada e links */
+.clima-equipes { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 12px; }
+.clima-equipe { padding: 16px 18px; border-radius: 18px; background: var(--nevoa); }
+.clima-equipe__topo { display: grid; grid-template-columns: auto 1fr auto 160px; gap: 12px; align-items: center; }
+.clima-equipe__taxa { font-size: var(--t-rotulo); color: var(--medio); }
+.clima-barra { position: relative; display: block; height: 10px; border-radius: var(--raio-pilula); background: var(--trilho); overflow: hidden; }
+.clima-barra__feito { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--raio-pilula); background: var(--tinta); }
+.clima-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 10px; }
+.clima-links > .t-rotulo { width: 230px; }
+.clima-link { flex: 1; min-width: 240px; max-width: 520px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--t-nota); }
+.clima-avisos { margin: 14px 0 0; padding: 12px 16px 12px 32px; border-radius: 16px; background: var(--branco); box-shadow: inset 0 0 0 1px var(--notus); }
+.clima-avisos li + li { margin-top: 4px; }
+
+/* Resultado encerrado */
+.clima-situacoes { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.clima-situacao { display: grid; grid-template-columns: 220px 80px 1fr; gap: 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--linha); }
+.clima-situacao--outras .clima-situacao__texto,
+.clima-situacao--nao_aparece .clima-situacao__texto { color: var(--notus-forte); }
+.clima-quadro-rolagem { margin-top: 10px; overflow-x: auto; }
+.clima-quadro { width: 100%; border-collapse: collapse; font-size: var(--t-rotulo); font-variant-numeric: tabular-nums; }
+.clima-quadro th, .clima-quadro td { padding: 8px 10px; border-bottom: 1px solid var(--linha); text-align: left; vertical-align: top; }
+.clima-quadro thead th { font-weight: 600; color: var(--medio); }
+.clima-quadro--lider { margin-top: 10px; max-width: 560px; }
+.clima-cel strong { display: block; font-size: var(--t-corpo); }
+.clima-cel__faixa, .clima-cel__alinh { display: block; font-size: var(--t-eixo); color: var(--suave); }
+.clima-cel--atencao .clima-cel__faixa { color: var(--notus-forte); font-weight: 600; }
+.clima-cel--vazia { color: var(--suave); }
+.clima-temas { width: 100%; max-width: 720px; min-height: 96px; }
+.clima-comentarios { margin: 0; padding-left: 20px; max-height: 50vh; overflow: auto; display: grid; gap: 8px; }
+
+/* Janela "Nova pesquisa de clima" */
+.clima-escolhas { list-style: none; margin: 6px 0 8px; padding: 0; display: grid; gap: 8px; }
+.clima-escolha { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 10px 14px; border-radius: 14px; background: var(--nevoa); }
+.clima-conv-campo { display: flex; align-items: center; gap: 8px; flex: none; }
+.clima-conv { width: 88px; }
+.clima-canal-campos { display: grid; gap: 4px; margin: 6px 0 4px 30px; }
