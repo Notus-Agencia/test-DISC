@@ -45,6 +45,8 @@
  *              salvarPacote, resumoVendas.
  *   Aba Conexões (só Supabase/prévia; aqui também recusam): diagnosticoConexoes, testarConexao.
  *   E-mail (só Supabase/prévia; aqui também recusam): relatorioEnviarEmail, enviarLinkPorEmail, listarEnviosEmail.
+ *   Pesquisa de clima (só Supabase/prévia; aqui também recusam): climaPublica, climaEnviar, climaListar, climaCriarRodada,
+ *              climaEncerrar, climaResultado, climaComentarios, climaGerarRelatorio, climaExcluirRodada, climaApagarBrutas.
  *   Utilitários: protocoloValido, normalizarProtocolo, normalizarCodigoAvaliacao, codigoAvaliacaoDaUrl.
  */
 (function (root) {
@@ -339,6 +341,17 @@
     relatorioEnviarEmail: soSupabase,
     enviarLinkPorEmail: soSupabase,
     listarEnviosEmail: soSupabase,
+    // Pesquisa de Clima da Equipe (só no Supabase e na prévia; contrato em js/api-supabase.js).
+    climaPublica: soSupabase,
+    climaEnviar: soSupabase,
+    climaListar: soSupabase,
+    climaCriarRodada: soSupabase,
+    climaEncerrar: soSupabase,
+    climaResultado: soSupabase,
+    climaComentarios: soSupabase,
+    climaGerarRelatorio: soSupabase,
+    climaExcluirRodada: soSupabase,
+    climaApagarBrutas: soSupabase,
 
     // --- pública: página do relatório para o contratante ---
     relatorioPublico: seguro(function (relatorioToken) {
@@ -361,7 +374,9 @@
     'pacotesPublicos', 'enviarPessoal', 'resumoPessoal', 'criarPedido', 'iniciarPagamento', 'statusPedido', 'relatorioPessoal',
     'salvarParte2Pessoal', 'recuperarAcesso', 'enviarLinkPorEmail', 'confirmarRetorno',
     'listarPedidos', 'atualizarPedido', 'listarCupons', 'salvarCupom', 'excluirCupom', 'listarPacotes', 'salvarPacote', 'resumoVendas',
-    'diagnosticoConexoes', 'testarConexao'];
+    'diagnosticoConexoes', 'testarConexao',
+    'climaPublica', 'climaEnviar', 'climaListar', 'climaCriarRodada', 'climaEncerrar', 'climaResultado', 'climaComentarios',
+    'climaGerarRelatorio', 'climaExcluirRodada', 'climaApagarBrutas'];
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DISC_API;
   else root.DISC_API = DISC_API;
