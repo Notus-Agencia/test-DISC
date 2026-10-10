@@ -22,6 +22,9 @@
  * Seções (ordem): comunicacao, delegar, feedback, motivacao, precisa, evita, cobrar, estresse, reconhecer,
  *   rendeMais, esforco (só com exigido), riscos, plano, voceEEla (só com percentuais do líder).
  * gerarTexto(dados) -> texto com *negrito* e • para WhatsApp.
+ * DIFERENCA / LIMIAR_DIFERENCA: textos de "diferença grande num fator" entre líder e pessoa (reaproveitados por
+ *   js/lideranca-avancado.js no capítulo "Você e esta pessoa").
+ * Estilo = nome oficial da combinação de dois fatores (DISC_COMBINACOES.nome), como no Guia para a Liderança.
  *
  * Nome exibido sempre como "Primeiro nome + inicial" (ex.: "Ana P."). Nenhum dado
  * sensível (idade, gênero, contato, documento) é lido ou devolvido.
@@ -49,7 +52,7 @@
     feedback: 'Como dar feedback',
     motivacao: 'O que motiva e o que desmotiva',
     precisa: 'Do que esta pessoa precisa',
-    evita: 'O que ela tende a evitar',
+    evita: 'O que esta pessoa tende a evitar',
     esforco: 'Esforço de adaptação ao cargo',
     cobrar: 'Como cobrar resultado',
     estresse: 'Sinais de estresse e como agir',
@@ -320,23 +323,24 @@
       'Cuidem juntos da comunicação com o resto da equipe, que pode precisar de mais proximidade.']
   };
 
-  // Diferença grande num mesmo fator ({L} = % do líder, {P} = % da pessoa).
+  // Diferença grande num mesmo fator. Sem percentuais lado a lado: no DISC eles são relativos dentro de cada pessoa
+  // (somam 100%), então a frase compara o peso do fator em cada estilo, não "quanto" cada um tem.
   var DIFERENCA = {
     D: {
-      liderMais: 'Você tem bem mais Dominância ({L}) que {nome} ({P}): o que para você é objetividade pode soar como pressão. Suavize o tom e explique o porquê.',
-      pessoaMais: '{nome} tem bem mais Dominância ({P}) que você ({L}): espere iniciativa e questionamentos diretos; não leve para o lado pessoal e deixe claros os limites de decisão.'
+      liderMais: 'A Dominância pesa bem mais no seu estilo do que no de {nome}: o que para você é objetividade pode soar como pressão. Suavize o tom e explique o porquê.',
+      pessoaMais: 'A Dominância pesa bem mais no estilo de {nome} do que no seu: espere iniciativa e questionamentos diretos; não leve para o lado pessoal e deixe claros os limites de decisão.'
     },
     I: {
-      liderMais: 'Você tem bem mais Influência ({L}) que {nome} ({P}): menos conversa e mais objetividade tendem a funcionar melhor; registre os combinados.',
-      pessoaMais: '{nome} tem bem mais Influência ({P}) que você ({L}): reserve tempo para interação e reconhecimento, mesmo que para você pareça dispensável.'
+      liderMais: 'A Influência pesa bem mais no seu estilo do que no de {nome}: menos conversa e mais objetividade tendem a funcionar melhor; registre os combinados.',
+      pessoaMais: 'A Influência pesa bem mais no estilo de {nome} do que no seu: reserve tempo para interação e reconhecimento, mesmo que para você pareça dispensável.'
     },
     S: {
-      liderMais: 'Você tem bem mais Estabilidade ({L}) que {nome} ({P}): {nome} pode querer mais velocidade e variedade do que você costuma oferecer.',
-      pessoaMais: '{nome} tem bem mais Estabilidade ({P}) que você ({L}): antecipe mudanças e mantenha um ritmo previsível; o seu pode parecer acelerado.'
+      liderMais: 'A Estabilidade pesa bem mais no seu estilo do que no de {nome}: {nome} pode querer mais velocidade e variedade do que você costuma oferecer.',
+      pessoaMais: 'A Estabilidade pesa bem mais no estilo de {nome} do que no seu: antecipe mudanças e mantenha um ritmo previsível; o seu pode parecer acelerado.'
     },
     C: {
-      liderMais: 'Você tem bem mais Conformidade ({L}) que {nome} ({P}): evite exigir o mesmo nível de detalhe em tudo; combine o que é essencial.',
-      pessoaMais: '{nome} tem bem mais Conformidade ({P}) que você ({L}): espere pedidos de dados e critérios; documente e justifique suas decisões.'
+      liderMais: 'A Conformidade pesa bem mais no seu estilo do que no de {nome}: evite exigir o mesmo nível de detalhe em tudo; combine o que é essencial.',
+      pessoaMais: 'A Conformidade pesa bem mais no estilo de {nome} do que no seu: espere pedidos de dados e critérios; documente e justifique suas decisões.'
     }
   };
 
@@ -447,7 +451,11 @@
       (g.secoes || []).forEach(function (s, i) { if (CHAVES_GUIA[i]) guia[CHAVES_GUIA[i]] = (s.itens || []).slice(); });
       combo = (LID.combinacoes && LID.combinacoes[a.codigo]) || null;
     }
-    var estilo = a.equilibrado ? 'Perfil equilibrado' : (combo ? combo.nome : nomeFator(prim));
+    // Nome oficial da combinação (js/disc-combinacoes.js), o mesmo do painel e dos outros relatórios.
+    var CBN = dep('DISC_COMBINACOES', './disc-combinacoes.js');
+    var oficial = null;
+    if (CBN && typeof CBN.nome === 'function') { try { oficial = CBN.nome(a.codigo); } catch (e) { oficial = null; } }
+    var estilo = a.equilibrado ? 'Perfil equilibrado' : (oficial && oficial.nome ? oficial.nome : combo ? combo.nome : nomeFator(prim));
 
     // ---- Resumo (3 frases) ----
     var resumoBase = (LID && LID.porPerfil && LID.porPerfil[prim] && LID.porPerfil[prim].resumo) || '';
@@ -651,6 +659,8 @@
     TITULOS: TITULOS,
     porPerfil: porPerfil,
     AJUSTES: AJUSTES,
+    DIFERENCA: DIFERENCA,
+    LIMIAR_DIFERENCA: LIMIAR_DIFERENCA,
     nomeExibicao: nomeExibicao,
     montar: montar,
     gerarTexto: gerarTexto

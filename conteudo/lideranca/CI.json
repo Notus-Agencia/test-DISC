@@ -1,0 +1,259 @@
+{
+  "codigo": "CI",
+  "retrato": [
+    "Você está liderando alguém que combina precisão com sensibilidade para as pessoas. No dia a dia, tende a ser a pessoa que escolhe com cuidado a informação certa, explica com paciência o procedimento ao cliente, revisa a proposta antes de sair e mantém relações cordiais com colegas e fornecedores. Numa clínica, num escritório de advocacia pequeno, numa área de qualidade ou num atendimento técnico, costuma ser quem dá segurança a quem precisa entender um assunto difícil.",
+    "O ponto de atenção mais comum é a demora em se expor. Este perfil tende a querer ter tudo pronto, conferido e bem explicado antes de mostrar o trabalho ou dar uma opinião, o que pode atrasar entregas e decisões. Também costuma evitar críticas diretas para não magoar ninguém, e pode guardar discordâncias. Críticas ao próprio trabalho, especialmente em público, tendem a ser sentidas com força, mesmo que a pessoa mantenha a calma.",
+    "Para render bem, este perfil precisa de critérios claros, informação de qualidade, tempo razoável para preparar e uma liderança cordial e respeitosa, que reconheça o cuidado. Em troca, você tende a ganhar alguém que entrega com precisão, comunica com clareza e mantém boas relações com clientes e colegas. O seu papel é combinar o que é bom o suficiente, pedir versões parciais cedo e encorajar a pessoa a se posicionar."
+  ],
+  "feedback": {
+    "texto": "Este perfil costuma receber melhor o feedback específico, respeitoso e feito em particular. Tende a se cobrar muito pela qualidade e pode levar uma crítica mais a sério do que você pretendia, revisando tudo depois. Ao mesmo tempo, pode concordar na hora para evitar atrito e discordar por dentro. O caminho é reconhecer com precisão o que ficou bom, apontar o ajuste com um exemplo e o critério, perguntar o que a pessoa pensa e dar tempo para responder. Elogio funciona quando reconhece o cuidado com a informação e com as pessoas.",
+    "funciona": [
+      "Elogiar com precisão: o que ficou correto, claro ou bem cuidado, e por quê.",
+      "Apontar o ajuste com um exemplo concreto e o critério combinado.",
+      "Conversar em particular, em tom cordial e sem pressa.",
+      "Perguntar o que a pessoa pensa e aceitar que responda depois.",
+      "Valorizar quando a pessoa mostra uma versão parcial ou se posiciona cedo."
+    ],
+    "da_errado": [
+      "Corrigir na frente de colegas ou clientes: a pessoa tende a se fechar e evitar se expor.",
+      "Críticas vagas, sem exemplo e sem critério, que soam como julgamento pessoal.",
+      "Pressionar por resposta imediata sobre um assunto que pede análise.",
+      "Tomar a concordância educada como concordância real e não voltar ao assunto.",
+      "Desvalorizar o cuidado com a qualidade como se fosse perda de tempo."
+    ],
+    "frases": [
+      { "situacao": "Reconhecer o cuidado", "frase": "O paciente saiu daqui entendendo cada etapa do tratamento por causa da forma como você explicou. Isso evita retorno com dúvida e passa muita segurança. Agradeço muito." },
+      { "situacao": "Demora em mostrar", "frase": "Pode me mostrar o relatório do jeito que está? Vou olhar como rascunho, não como entrega final. Prefiro ajudar agora a ver tudo pronto e ter de refazer." },
+      { "situacao": "Ajuste específico", "frase": "A proposta está correta e bem escrita. O que precisa mudar é o resumo: o cliente decide pela primeira página. Consegue colocar o preço e o prazo logo no início?" },
+      { "situacao": "Discordância guardada", "frase": "Na reunião você concordou com o novo fluxo, mas fiquei com a impressão de que algo não fechou para você. Quero ouvir o seu ponto, mesmo que seja contrário." },
+      { "situacao": "Evitou uma crítica a um colega", "frase": "Sei que você não gosta de apontar erro de colega. O orçamento do Marcos saiu com a margem errada duas vezes. Como você acha melhor avisar, com cuidado e sem deixar passar?" },
+      { "situacao": "Encorajar a se posicionar", "frase": "Você conhece esse assunto melhor do que todo mundo na sala. Na próxima reunião com o fornecedor, quero ouvir a sua opinião primeiro. Se quiser, preparamos juntos." }
+    ]
+  },
+  "delegacao": {
+    "texto": "Este perfil gosta de tarefas com critério claro, informação completa e algum contato com pessoas, como explicar, orientar ou revisar. Rende menos quando o pedido é vago, quando o prazo não deixa tempo para conferir ou quando precisa se expor sem preparo. Delegar bem aqui é combinar objetivo, público, prazo e nível de acabamento, e pedir uma versão parcial no meio do caminho. Sem isso, a pessoa tende a refinar demais e entregar tarde.",
+    "autonomia": "Alta no método, combinada no acabamento e no prazo. Deixe a pessoa decidir como organizar e conferir o trabalho. Combine o que é suficiente para cada entrega, quem é o público e um ponto de checagem com versão parcial. Diga explicitamente o que a pessoa pode decidir sem consultar.",
+    "combinar": [
+      "Explique o objetivo, o público e o que precisa acontecer depois da entrega.",
+      "Defina o nível de acabamento: rascunho interno, versão para cliente ou material final.",
+      "Passe toda a informação disponível de uma vez e diga onde há incerteza.",
+      "Combine uma versão parcial no meio do prazo, tratada como rascunho.",
+      "Diga quem pode tirar dúvidas e o que a pessoa pode decidir sem consultar."
+    ],
+    "acompanhar": "Uma checagem na metade do prazo, olhando a versão parcial, e uma conversa semanal com pauta. Reforce que versão parcial é rascunho, para a pessoa se sentir à vontade de mostrar antes de estar perfeito.",
+    "exemplo": "Num escritório de advocacia pequeno, em vez de \"organiza as orientações para os clientes\", combine: \"Quero um guia de duas páginas explicando aos clientes os documentos para o inventário, em linguagem simples, pronto até o dia 20. Na quarta, me mostra o rascunho do jeito que estiver. Dúvidas jurídicas, fala com a doutora Ana. O formato e a linguagem você decide\".",
+    "armadilhas": [
+      "Pedidos vagos, sem público, sem objetivo e sem nível de acabamento definidos.",
+      "Não pedir versões parciais e receber algo perfeito, mas atrasado.",
+      "Criticar o rascunho como se fosse a versão final, desestimulando mostrar cedo.",
+      "Pedir que a pessoa se exponha em público sem tempo de preparo."
+    ]
+  },
+  "motivacao": {
+    "texto": "Este perfil costuma se mover pela qualidade, pela chance de ajudar as pessoas a entender e por relações de trabalho cordiais. Ver que uma explicação cuidadosa evitou um erro, que um cliente confiou mais ou que a equipe aprendeu algo tende a sustentar a energia. Pressa sem critério, críticas públicas e conflitos abertos tendem a desgastar. O reconhecimento que mais pesa é específico, sincero e feito com respeito.",
+    "autonomia": "Para este perfil, autonomia significa decidir como organizar, conferir e apresentar a informação, com tempo razoável e acesso aos dados. Dê liberdade no formato e na forma de se relacionar com clientes, e combine com clareza o objetivo e o prazo.",
+    "competencia": "A sensação de estar ficando melhor vem de dominar um assunto e conseguir explicá-lo com precisão. Ofereça cursos, materiais e a chance de orientar colegas e clientes em temas que a pessoa domina.",
+    "vinculo": "O vínculo se constrói com cordialidade, respeito e reconhecimento do cuidado. A pessoa tende a se ligar a líderes educados, coerentes e que dão retorno com respeito. Conversas tranquilas e regulares fortalecem a relação.",
+    "reconhecer": [
+      "Elogio específico sobre a precisão e a clareza de uma entrega ou explicação.",
+      "Compartilhar o retorno de clientes ou colegas que se sentiram bem orientados.",
+      "Convidar para orientar colegas novos ou preparar um material de referência.",
+      "Reconhecimento por escrito, citando o cuidado que evitou um problema.",
+      "Dar autoria visível: o nome da pessoa no material ou na solução."
+    ],
+    "desmotiva": [
+      "Críticas públicas ou vagas, sem exemplo e sem critério.",
+      "Pressa constante sem definir o que é suficiente para cada entrega.",
+      "Conflitos abertos e tom agressivo no ambiente de trabalho.",
+      "Informação incompleta ou mudanças de última hora sem explicação.",
+      "Ver o próprio trabalho apresentado por outra pessoa sem crédito."
+    ]
+  },
+  "retencao": {
+    "texto": "Este perfil tende a ficar onde a qualidade é valorizada, o clima é respeitoso e há espaço para aprender e orientar. Costuma sair quando precisa entregar coisas mal feitas, quando o ambiente fica hostil ou quando o cuidado não é reconhecido. Pondera bastante antes de decidir, raramente reclama em voz alta e pode pedir para sair já com a decisão tomada. Em pequenas empresas, uma liderança respeitosa e oportunidades de desenvolvimento costumam pesar muito.",
+    "fica": [
+      "Reconhecimento da qualidade e do cuidado com clientes e colegas.",
+      "Um clima respeitoso, com liderança cordial e coerente.",
+      "Critérios claros e informação de qualidade para trabalhar bem.",
+      "Oportunidades de aprender, orientar e se aprofundar.",
+      "Tempo razoável para fazer o trabalho bem feito."
+    ],
+    "sai": [
+      "Pressão frequente para entregar abaixo do próprio padrão de qualidade.",
+      "Ambiente hostil, com críticas públicas ou conflitos abertos.",
+      "Cuidado e precisão que nunca são reconhecidos.",
+      "Falta de oportunidades de aprendizado e crescimento."
+    ],
+    "sinais": [
+      "Deixa de sugerir melhorias e de apontar cuidados necessários.",
+      "Entrega só o mínimo, sem o capricho habitual.",
+      "Evita reuniões e conversas em que antes participava com gosto.",
+      "Fala mais de cursos, certificações ou de outras empresas."
+    ],
+    "perguntas": [
+      "O que mais atrapalha a qualidade do seu trabalho hoje?",
+      "Você sente que o seu cuidado é reconhecido aqui?",
+      "O que você gostaria de aprender ou ensinar no próximo ano?",
+      "O que poderia fazer você pensar em sair?"
+    ]
+  },
+  "desgaste": {
+    "texto": "Este perfil costuma se desgastar quando a exigência de qualidade e de atenção às pessoas continua alta, mas faltam tempo, critério e reconhecimento. A combinação de prazos curtos, exposição frequente e conflitos no ambiente pesa bastante. Os recursos que mais ajudam são clareza, retorno respeitoso e um clima cordial. Os primeiros sinais costumam ser mais revisão e mais adiamento; depois, recolhimento e autocrítica dura.",
+    "demandas": [
+      "Prazos curtos para entregas que exigem conferência cuidadosa.",
+      "Exposição frequente com risco de crítica em público.",
+      "Conflitos abertos no time ou com clientes difíceis.",
+      "Informação incompleta e mudanças de última hora."
+    ],
+    "recursos": [
+      "Critérios claros do que é suficiente em cada entrega.",
+      "Retorno respeitoso, específico e dado em particular.",
+      "Um clima de trabalho cordial e sem agressividade.",
+      "Tempo protegido para trabalho concentrado, sem interrupções."
+    ],
+    "sinais_iniciais": [
+      "Revisa demais e adia entregas que antes saíam no prazo.",
+      "Evita se posicionar em reuniões, mesmo sobre assuntos que domina.",
+      "Pede mais confirmações e informações do que o normal.",
+      "Fica mais sensível a comentários sobre o próprio trabalho."
+    ],
+    "sinais_fortes": [
+      "Atrasos repetidos em entregas que sempre foram precisas.",
+      "Recolhimento visível, evitando conversas e os momentos do time.",
+      "Autocrítica muito dura e falas de que nada fica bom o bastante.",
+      "Faltas, atrasos ou cansaço visível por várias semanas seguidas."
+    ],
+    "como_agir": [
+      "Converse em particular, com calma, e diga o que você observou com exemplos.",
+      "Defina juntos o que é suficiente para cada entrega pendente.",
+      "Reduza a exposição por um tempo e prepare junto o que for inevitável.",
+      "Dê retorno positivo e específico sobre as entregas recentes que ficaram boas.",
+      "Combine uma nova conversa em poucos dias para ver como a pessoa está."
+    ],
+    "conversa": "Tenho reparado que você está revisando muito as entregas e falando pouco nas reuniões. Sei o quanto você capricha. Quero entender como você está e o que posso fazer para tirar pressão."
+  },
+  "mudanca": {
+    "texto": "Este perfil tende a apoiar mudanças bem explicadas e a desconfiar das improvisadas. A resistência costuma ser educada e silenciosa: muitas perguntas, adesão lenta e preocupação com a qualidade e com as pessoas afetadas. Raramente confronta, mas pode seguir fazendo do jeito antigo até entender o novo. Com informação, tempo e um papel na explicação da mudança, costuma se tornar quem ajuda os colegas a entender e aplicar o novo processo.",
+    "antes": [
+      "Explique o motivo, com dados, e envie o material com antecedência.",
+      "Dê tempo para a pessoa analisar e trazer dúvidas antes de anunciar ao time.",
+      "Pergunte como a mudança vai afetar clientes e colegas e ouça a resposta com atenção."
+    ],
+    "durante": [
+      "Responda às dúvidas com precisão e mantenha a informação atualizada.",
+      "Peça ajuda para preparar guias, perguntas frequentes ou treinamentos.",
+      "Acompanhe de perto como o time e os clientes estão recebendo a mudança."
+    ],
+    "depois": [
+      "Reconheça em público o papel da pessoa em explicar e aplicar a mudança.",
+      "Peça sugestões de ajuste com base nas dúvidas que surgiram.",
+      "Registre o novo processo com a ajuda da pessoa."
+    ],
+    "frase": "Vamos mudar o sistema de agendamento no mês que vem. Te mandei o material com o motivo e o cronograma. Quero sua leitura cuidadosa e sua ajuda para explicar ao time e aos pacientes."
+  },
+  "conflito": {
+    "texto": "Este perfil tende a evitar o conflito aberto e a resolver as diferenças com argumentos cuidadosos e educados. Prefere uma conversa reservada ou uma mensagem bem escrita a uma discussão. Pode guardar discordâncias para não criar mal-estar, e se magoar com tom duro sem demonstrar. Quando o assunto é qualidade, porém, costuma sustentar a posição com firmeza tranquila e muitos fatos.",
+    "gatilhos": [
+      "Críticas públicas ou vagas ao próprio trabalho.",
+      "Tom agressivo, ironia ou discussões acaloradas no time.",
+      "Colegas que entregam sem cuidado e geram retrabalho.",
+      "Decisões tomadas sem informação ou sem consulta às pessoas afetadas.",
+      "Pressão para pular etapas de conferência e entregar logo."
+    ],
+    "como_aparece": "O atrito costuma ser discreto: argumentos cuidadosos, mensagens formais e bem escritas, correções gentis porém firmes, e afastamento de quem foi agressivo. Raramente vira discussão aberta; quando vira, costuma ser com muitos fatos e emoção contida.",
+    "mediar": [
+      "Converse em particular e ouça com calma os fatos e o que a pessoa sentiu.",
+      "Ajude a separar o problema técnico da forma como foi tratado.",
+      "Na conversa conjunta, garanta um tom respeitoso e que o lado mais quieto fale primeiro.",
+      "Defina juntos o critério que vai resolver a questão de qualidade.",
+      "Feche com um combinado escrito e pergunte depois de alguns dias como ficou a relação."
+    ],
+    "frase": "Vocês dois querem fazer o trabalho bem feito. Vamos olhar com calma o que aconteceu, separar os fatos do jeito como foi dito e sair daqui com um combinado que respeite os dois."
+  },
+  "um_a_um": {
+    "frequencia": "Semanal ou quinzenal, de 30 minutos, com pauta enviada antes e em lugar reservado. Este perfil gosta de se preparar e de conversas cordiais. Reserve espaço para dúvidas, aprendizado e para a pessoa dar opinião.",
+    "pauta": [
+      { "titulo": "Como você está", "texto": "Comece com uma conversa breve e cordial sobre a semana e o bem-estar da pessoa." },
+      { "titulo": "Entregas e acabamento", "texto": "Revisem as entregas em andamento, com o nível de acabamento e o prazo combinados para cada uma." },
+      { "titulo": "Versões parciais", "texto": "Peça para ver o que está em andamento, mesmo inacabado, e dê retorno de rascunho." },
+      { "titulo": "Opinião e posicionamento", "texto": "Pergunte o que a pessoa pensa de uma decisão recente e valorize a resposta sincera." },
+      { "titulo": "Aprendizado", "texto": "Feche com um tema que a pessoa quer aprofundar ou ensinar e como a empresa pode apoiar." }
+    ],
+    "perguntas": [
+      "O que você está preparando que eu poderia ver já?",
+      "Onde o nível de detalhe pode ser menor sem prejuízo?",
+      "Tem alguma decisão recente da qual você discorda?",
+      "Que informação está faltando para você trabalhar melhor?",
+      "Alguma crítica ou conversa recente ficou te incomodando?"
+    ],
+    "evite": [
+      "Criticar em detalhe ou corrigir na frente de outras pessoas.",
+      "Pedir posição imediata sobre assunto complexo, sem tempo de análise.",
+      "Encerrar sem combinar prazo e nível de acabamento das entregas."
+    ]
+  },
+  "plano_90": {
+    "texto": "Para quem acabou de chegar ou mudou de função, este perfil quer entender bem antes de se expor e de decidir. Uma integração com informação organizada, critérios claros e uma primeira entrega preparada com apoio costuma dar segurança e mostrar o valor da pessoa.",
+    "dias_30": [
+      "Entregue materiais, processos, critérios e contatos da função e apresente {nome} ao time com calma.",
+      "Explique o que se espera, como o trabalho é avaliado e o nível de acabamento de cada entrega.",
+      "Dê tempo para estudar sistemas, produtos e procedimentos antes de cobrar produtividade.",
+      "Faça conversas semanais com pauta e responda às dúvidas com precisão e paciência."
+    ],
+    "dias_60": [
+      "Peça uma primeira entrega que envolva orientar pessoas, com preparo junto se a pessoa quiser.",
+      "Combine o hábito de mostrar versões parciais na metade do prazo.",
+      "Dê o primeiro feedback estruturado, com elogios específicos e um ajuste concreto.",
+      "Peça a opinião da pessoa sobre um processo e use pelo menos uma sugestão."
+    ],
+    "dias_90": [
+      "Faça um balanço das entregas, do aprendizado e do que ainda está difícil.",
+      "Reconheça por escrito a contribuição destes três meses, citando um cuidado que fez diferença.",
+      "Combine metas do próximo trimestre, incluindo uma de agilidade e uma de posicionamento.",
+      "Pergunte o que a pessoa quer aprender e como a empresa pode apoiar esse caminho."
+    ],
+    "sinais_bons": [
+      "Os colegas já procuram a pessoa para tirar dúvidas e entender processos.",
+      "Entrega no prazo, com o nível de acabamento combinado.",
+      "Mostra versões parciais e dá opinião em reuniões com mais naturalidade."
+    ]
+  },
+  "voce_e_esta_pessoa": {
+    "D": {
+      "texto": "Seu estilo tende a ser rápido, direto e focado em resultado; o da pessoa, cuidadoso, preciso e diplomático. A sua franqueza pode soar dura e a sua pressa, descaso com a qualidade. A cautela da pessoa pode parecer lentidão para você. Combinar critérios evita boa parte do atrito.",
+      "ajustes": [
+        "Combine o nível de acabamento e o prazo antes, em vez de só cobrar velocidade.",
+        "Corrija em particular, com exemplos e tom respeitoso.",
+        "Peça a opinião da pessoa antes de decidir, e espere a resposta.",
+        "Reconheça a precisão e o cuidado com as pessoas, não só o resultado."
+      ]
+    },
+    "I": {
+      "texto": "Vocês compartilham a atenção às pessoas e a cordialidade. A diferença é que a pessoa costuma querer mais precisão e preparo, e você, mais espontaneidade e velocidade. O risco é você mudar planos sem aviso ou pedir apresentações de improviso, gerando insegurança.",
+      "ajustes": [
+        "Leve detalhes e informação completa quando pedir algo, não só entusiasmo.",
+        "Avise mudanças com antecedência e registre os combinados por escrito.",
+        "Dê tempo de preparo antes de expor a pessoa em reuniões ou com clientes.",
+        "Elogie de forma específica e sincera, sem exageros."
+      ]
+    },
+    "S": {
+      "texto": "Seu estilo tende a ser calmo, acolhedor e constante; o da pessoa, cuidadoso e cordial. A relação costuma ser tranquila e respeitosa. O risco é você não cobrar prazos com clareza e os dois evitarem conversas difíceis, enquanto as entregas atrasam por excesso de cuidado.",
+      "ajustes": [
+        "Combine prazos e o que é suficiente com clareza, mesmo que pareça desconfortável.",
+        "Peça versões parciais para evitar atrasos por excesso de revisão.",
+        "Marquem com data as conversas difíceis que estão sendo adiadas.",
+        "Estimule a pessoa a dar opinião e a se posicionar em público."
+      ]
+    },
+    "C": {
+      "texto": "Vocês se entendem muito bem na valorização da qualidade e da informação bem cuidada. A diferença é que a pessoa costuma precisar de mais cordialidade e reconhecimento do que você demonstra. O risco é os dois exagerarem na revisão e as entregas e decisões demorarem.",
+      "ajustes": [
+        "Combinem quando algo já está bom o suficiente para seguir adiante.",
+        "Acrescente cordialidade e reconhecimento às suas críticas técnicas.",
+        "Definam prazos para decidir, para a análise não virar demora.",
+        "Reconheçam juntos o cuidado com as pessoas, não só a precisão."
+      ]
+    }
+  }
+}

@@ -1,0 +1,259 @@
+{
+  "codigo": "CD",
+  "retrato": [
+    "Você está liderando alguém que analisa a fundo e, quando chega a uma conclusão, age com firmeza. No dia a dia, tende a ser a pessoa que desenha o processo, aponta o risco que ninguém viu, questiona o orçamento mal feito e propõe uma solução bem fundamentada. Numa área financeira, numa empresa de tecnologia, numa engenharia ou num controle de qualidade, costuma ser quem define o padrão e cuida para que o padrão seja seguido.",
+    "O ponto de atenção mais comum é a rigidez. Depois de analisar e decidir, este perfil tende a defender a própria conclusão com convicção e pode ter pouca paciência com quem pensa diferente sem dados. A crítica costuma ser precisa, mas o tom pode soar frio, cortante ou superior, especialmente com colegas menos técnicos. Também pode demorar para se manifestar enquanto analisa e, depois, cobrar com dureza quem não seguiu o padrão.",
+    "Para render bem, este perfil precisa de problemas complexos, autonomia técnica, informação completa e uma liderança competente, que decida com critério e explique as decisões. Em troca, você tende a ganhar alguém que antecipa riscos, estrutura soluções sólidas e eleva o nível técnico da área. O seu papel é abrir espaço para outras visões, combinar o que é bom o suficiente e ajudar a pessoa a cuidar do tom das críticas."
+  ],
+  "feedback": {
+    "texto": "Este perfil costuma respeitar feedback preciso, lógico e baseado em evidências. Opinião sem dado, generalização ou tom emocional tendem a gerar contestação firme e, às vezes, perda de respeito pela fonte. A pessoa costuma levar a sério o conteúdo e pode responder com uma análise detalhada de por que discorda. O caminho é preparar os fatos, mostrar o critério, ouvir a argumentação e, se mantiver o ponto, explicar a razão. Quando o tema for o tom com as pessoas, traga casos concretos do efeito causado, porque este perfil tende a enxergar a crítica só pelo conteúdo.",
+    "funciona": [
+      "Chegar com fatos, números e o critério que está sendo usado na avaliação.",
+      "Enviar a pauta antes, para a pessoa analisar e chegar preparada.",
+      "Ouvir a argumentação até o fim e responder com lógica, sem pressa.",
+      "Mostrar o efeito do tom nas pessoas com exemplos concretos e recentes.",
+      "Elogiar com precisão técnica: qual análise ou solução fez diferença e por quê."
+    ],
+    "da_errado": [
+      "Feedback baseado em impressão, sem exemplo verificável nem critério claro.",
+      "Corrigir em público: a pessoa tende a contestar na hora, com firmeza e frieza.",
+      "Ceder diante de uma boa argumentação sem explicar por que mudou de ideia.",
+      "Elogio genérico como \"ótimo trabalho\", que soa vazio para este perfil.",
+      "Rotular a pessoa, como \"você é arrogante\", em vez de descrever o comportamento."
+    ],
+    "frases": [
+      { "situacao": "Reconhecer uma análise", "frase": "A sua análise do contrato com a transportadora mostrou a multa escondida na cláusula 9. Isso evitou um prejuízo de uns R$ 40 mil. Excelente trabalho de leitura." },
+      { "situacao": "Tom cortante com a equipe", "frase": "Seu ponto sobre o erro no sistema estava certo. A forma, na frente do time, deixou o Diego sem reação. Como você daria o mesmo recado de um jeito que o Diego consiga ouvir?" },
+      { "situacao": "Rigidez com outra solução", "frase": "Entendo por que você prefere o seu modelo. A proposta da Carla tem uma vantagem de custo. Pode analisar as duas com os mesmos critérios e me trazer a comparação até quinta?" },
+      { "situacao": "Exigência acima do necessário", "frase": "Para este cliente pequeno, o relatório atual atende o contrato. O nível de detalhe que você quer custa mais três dias. Vamos entregar assim e usar o seu modelo completo nos contratos grandes?" },
+      { "situacao": "Discordância de uma decisão", "frase": "Li os seus argumentos e alguns são fortes. Vou manter a decisão por causa do prazo do investidor. Registre os riscos que apontou e revisamos juntos em 60 dias." },
+      { "situacao": "Novo desafio", "frase": "Quero que você desenhe o novo controle de estoque das três lojas. Você define o método e os indicadores. Me apresenta a proposta, com riscos e custos, até o dia 15?" }
+    ]
+  },
+  "delegacao": {
+    "texto": "Este perfil gosta de receber problemas complexos e ter autonomia técnica para estruturar a solução. Rende menos quando o pedido é vago, quando falta informação ou quando alguém interfere no método sem fundamento. Delegar bem aqui é dar o objetivo, os dados, o prazo e os limites de decisão, e deixar a pessoa desenhar o caminho. O cuidado é evitar que a busca da solução perfeita atrase a entrega e que a pessoa decida sem ouvir quem vai executar.",
+    "autonomia": "Alta no método e na análise, combinada no prazo e no nível de acabamento. Deixe a pessoa decidir a estrutura e os critérios técnicos. Combine quando a análise precisa virar decisão e quem precisa ser ouvido antes, especialmente as pessoas que vão executar.",
+    "combinar": [
+      "Apresente o problema, o objetivo e todos os dados disponíveis, dizendo onde há incerteza.",
+      "Defina o prazo e o momento em que a análise precisa virar decisão.",
+      "Combine o nível de detalhe adequado para o público da entrega.",
+      "Diga quem precisa ser ouvido antes da decisão, como quem vai executar.",
+      "Deixe claro o que a pessoa pode decidir sem você e o que precisa de aprovação."
+    ],
+    "acompanhar": "Acompanhe por marcos, com uma revisão da análise parcial no meio do prazo. Pergunte também como as pessoas envolvidas estão recebendo a solução. Evite discutir detalhes técnicos que a pessoa domina melhor do que você.",
+    "exemplo": "Numa rede pequena de lojas, em vez de \"vê o que dá para fazer com o estoque\", combine: \"Quero um método de reposição que reduza o estoque parado em 20% sem faltar produto, implantado até o fim do trimestre. Você define os critérios e os indicadores. Antes de implantar, apresente para os três gerentes e ouça a opinião de cada um. Na metade do prazo, me mostra a análise do jeito que estiver\".",
+    "armadilhas": [
+      "Delegar sem dados e depois discordar da conclusão a que a pessoa chegou.",
+      "Não combinar quando parar de analisar, e a decisão atrasar por semanas.",
+      "Deixar a pessoa implantar sem ouvir quem vai executar, gerando resistência.",
+      "Interferir no método sem argumento técnico, abrindo um conflito desnecessário."
+    ]
+  },
+  "motivacao": {
+    "texto": "Este perfil costuma se mover por problemas difíceis, excelência técnica e autonomia. Desenhar uma solução, ver um processo funcionar como previsto e ser reconhecido pela competência tendem a acender a energia. Decisões sem fundamento, incompetência tolerada e interferência de quem não domina o assunto tendem a apagar o interesse. O reconhecimento que mais pesa é o de quem entende o trabalho: um elogio preciso de alguém competente.",
+    "autonomia": "Para este perfil, autonomia significa decidir o método, os critérios e a estrutura da solução, com acesso a toda a informação. Dê problemas inteiros, não pedaços, e respeite as decisões técnicas tomadas com fundamento.",
+    "competencia": "A sensação de estar ficando melhor vem de resolver problemas cada vez mais complexos e de ser referência técnica. Ofereça desafios difíceis, cursos avançados, certificações e a chance de definir padrões para a empresa.",
+    "vinculo": "O vínculo se constrói pelo respeito à competência e pela coerência. A pessoa tende a se ligar a líderes que dominam o assunto, decidem com critério e cumprem o que dizem. Conversas francas sobre estratégia e qualidade valem mais do que eventos sociais.",
+    "reconhecer": [
+      "Elogio preciso, citando a análise, o risco evitado ou a solução que fez diferença.",
+      "Confiar um problema mais complexo e importante depois de uma boa entrega.",
+      "Dar autoridade para definir padrões, métodos e indicadores da área.",
+      "Levar a análise da pessoa para decisões estratégicas, com o crédito devido.",
+      "Reconhecer por escrito, com números, diante de quem decide na empresa."
+    ],
+    "desmotiva": [
+      "Decisões tomadas sem fundamento ou contra os dados apresentados.",
+      "Interferência no método por quem não domina o assunto.",
+      "Incompetência tolerada e retrabalho causado por outras pessoas.",
+      "Pressão para entregar algo que a pessoa considera mal resolvido.",
+      "Reuniões longas, sem pauta, sem dados e sem decisão."
+    ]
+  },
+  "retencao": {
+    "texto": "Este perfil tende a ficar onde há desafio técnico, padrão alto e liderança competente. Costuma sair quando percebe decisões incoerentes, mediocridade tolerada ou falta de espaço para aplicar o que sabe. Avalia a saída com calma e de forma racional, comparando condições, aprendizado e perspectivas. Em pequenas e médias empresas, o risco aparece quando a pessoa sente que a empresa não acompanha o nível técnico que a pessoa tem ou que as decisões são tomadas sem critério.",
+    "fica": [
+      "Problemas complexos e espaço para aplicar e aprofundar o conhecimento.",
+      "Uma liderança competente, coerente e que decide com critério.",
+      "Autonomia técnica e autoridade para definir padrões.",
+      "Critérios claros e transparentes de crescimento e remuneração.",
+      "Colegas preparados, com quem dá para discutir no mesmo nível."
+    ],
+    "sai": [
+      "Decisões arbitrárias ou sem fundamento por parte da liderança.",
+      "Mediocridade tolerada e retrabalho constante causado por outros.",
+      "Falta de desafio técnico ou de perspectiva de crescimento.",
+      "Proposta de fora com mais desafio, estrutura ou remuneração."
+    ],
+    "sinais": [
+      "Para de apontar riscos e de contestar decisões, como se não valesse mais a pena.",
+      "Entrega só o pedido, sem as análises extras que costumava fazer.",
+      "Faz críticas mais frequentes e ácidas à gestão da empresa.",
+      "Fala mais de cursos, certificações e oportunidades fora da empresa."
+    ],
+    "perguntas": [
+      "Que problema técnico você gostaria de resolver aqui no próximo ano?",
+      "Que decisão da empresa mais te incomodou recentemente, e por quê?",
+      "Onde você sente que o seu conhecimento é pouco aproveitado?",
+      "O que uma proposta de fora precisaria ter para você considerar?"
+    ]
+  },
+  "desgaste": {
+    "texto": "Este perfil costuma se desgastar quando a exigência continua alta e, ao mesmo tempo, faltam informação, autonomia e critério nas decisões. Ver erros que poderiam ser evitados, decisões contrárias aos dados e retrabalho constante consome muita energia. Os recursos que mais ajudam são autonomia técnica, liderança coerente e tempo para trabalho concentrado. Os primeiros sinais costumam ser mais rigidez e crítica; depois, cinismo e afastamento.",
+    "demandas": [
+      "Decisões da empresa contrárias aos dados e às análises apresentadas.",
+      "Retrabalho constante causado por erros de outras pessoas.",
+      "Prazos que obrigam a entregar soluções mal resolvidas.",
+      "Interrupções frequentes que impedem o trabalho concentrado."
+    ],
+    "recursos": [
+      "Autonomia técnica para decidir o método e os critérios.",
+      "Liderança que explica as decisões com lógica e coerência.",
+      "Tempo protegido para análise, sem interrupções constantes.",
+      "Reconhecimento preciso pela qualidade e pelos riscos evitados."
+    ],
+    "sinais_iniciais": [
+      "Críticas mais duras e menos paciência com erros de colegas.",
+      "Mais rigidez diante de qualquer sugestão diferente da própria.",
+      "Centraliza revisões e refaz o trabalho de outros com mais frequência.",
+      "Isola-se mais, com menos conversa e mais mensagens formais."
+    ],
+    "sinais_fortes": [
+      "Cinismo frequente sobre a empresa, as decisões e as pessoas.",
+      "Explosões de irritação fria ou comentários cortantes fora do padrão.",
+      "Erros ou atrasos em análises que sempre foram impecáveis.",
+      "Faltas, atrasos ou cansaço visível por várias semanas seguidas."
+    ],
+    "como_agir": [
+      "Converse em particular, de forma objetiva, com os fatos que você observou.",
+      "Pergunte o que está pesando mais e quais decisões têm incomodado.",
+      "Explique com lógica as decisões contrárias à análise da pessoa.",
+      "Proteja tempo de trabalho concentrado e reduza interrupções.",
+      "Reconheça o esforço recente com precisão e combine uma nova conversa em poucos dias."
+    ],
+    "conversa": "Tenho notado que você está fazendo mais críticas nas reuniões e revisando tudo sem ajuda. Não é cobrança: quero entender o que está pesando e quais decisões têm te incomodado."
+  },
+  "mudanca": {
+    "texto": "Este perfil tende a apoiar mudanças bem fundamentadas e a criticar duramente as que parecem improvisadas. A resistência aparece em forma de perguntas difíceis, pedidos de dados e apontamentos de risco, às vezes com tom cético. Se a pessoa não for ouvida, pode cumprir a mudança apenas formalmente, esperando que dê errado. Com lógica, dados e um papel no desenho da mudança, costuma virar quem garante que a mudança funcione.",
+    "antes": [
+      "Apresente o problema, os dados e o resultado esperado antes de anunciar ao time.",
+      "Peça uma análise crítica do plano e trate cada objeção como contribuição.",
+      "Ofereça a responsabilidade de desenhar uma parte técnica da mudança."
+    ],
+    "durante": [
+      "Defina indicadores claros de sucesso e acompanhe com dados.",
+      "Responda às perguntas com precisão; respostas vagas aumentam o ceticismo.",
+      "Peça que a pessoa explique a parte técnica ao time com paciência."
+    ],
+    "depois": [
+      "Mostre os resultados com números, inclusive o que não funcionou como previsto.",
+      "Reconheça os riscos que a pessoa ajudou a evitar.",
+      "Revisem juntos o processo depois de algumas semanas e ajustem com base em dados."
+    ],
+    "frase": "Vamos mudar o sistema financeiro no próximo semestre. Aqui está a análise que motivou a decisão. Quero sua crítica sincera ao plano e quero você desenhando a parte de integração com o estoque."
+  },
+  "conflito": {
+    "texto": "Este perfil tende a entrar no conflito pelo argumento técnico e a sustentar a posição com firmeza. Costuma ter certeza de que a análise está certa e pode ver quem discorda como alguém que não entendeu. A crítica tende a ser precisa e fria, e o outro lado pode se sentir diminuído. Por outro lado, costuma mudar de posição diante de dados melhores e respeita quem argumenta bem.",
+    "gatilhos": [
+      "Decisões tomadas sem dados ou contra a análise apresentada.",
+      "Colegas que não seguem o padrão ou pulam etapas de controle.",
+      "Interferência no trabalho por quem não domina o assunto.",
+      "Erros repetidos que poderiam ter sido evitados com cuidado.",
+      "Críticas ao próprio trabalho sem fundamento técnico."
+    ],
+    "como_aparece": "O atrito costuma aparecer como crítica detalhada, perguntas difíceis, tom seco e e-mails longos com evidências. Pode incluir comentários que soam superiores. Quando alguém contraria a pessoa sem argumento, a tendência é se fechar e a seguir com a própria posição.",
+    "mediar": [
+      "Converse em particular e reconheça o mérito técnico do ponto da pessoa.",
+      "Mostre com exemplos o efeito da forma como a crítica foi feita.",
+      "Na conversa conjunta, separe o problema técnico da relação entre as pessoas.",
+      "Defina juntos o critério objetivo que vai decidir a questão.",
+      "Feche com um acordo sobre o trabalho e sobre a forma de dar críticas daqui para frente."
+    ],
+    "frase": "O ponto técnico tem fundamento e vamos tratá-lo. Antes, quero combinar como a gente discute aqui: argumentos sobre o trabalho, sem desqualificar ninguém. Vamos aos fatos."
+  },
+  "um_a_um": {
+    "frequencia": "Quinzenal ou semanal, de 30 minutos, com pauta enviada antes. Este perfil valoriza reuniões objetivas, preparadas e com decisão. Reserve parte do tempo para falar de pessoas, que tende a ser o lado menos cuidado por este estilo.",
+    "pauta": [
+      { "titulo": "Andamento e indicadores", "texto": "Revisem marcos, indicadores e o que está em risco, com dados e prazos." },
+      { "titulo": "Decisões pendentes", "texto": "Liste as análises que precisam virar decisão e defina quando cada uma será tomada." },
+      { "titulo": "Riscos e obstáculos", "texto": "Peça que a pessoa traga os riscos que enxerga e as informações que estão faltando." },
+      { "titulo": "Pessoas e equipe", "texto": "Converse sobre como a equipe está recebendo as soluções e sobre o tom das críticas." },
+      { "titulo": "Desenvolvimento", "texto": "Feche com o próximo desafio técnico e um ponto de desenvolvimento, como ouvir outras visões." }
+    ],
+    "perguntas": [
+      "Que análise está pronta para virar decisão agora?",
+      "Que risco você está vendo que ainda não chegou até mim?",
+      "Onde o padrão pode ser mais simples sem perder segurança?",
+      "Quem da equipe discordou de você recentemente e por quê?",
+      "Que problema técnico você gostaria de atacar a seguir?"
+    ],
+    "evite": [
+      "Chegar sem dados ou sem preparo para discutir o assunto.",
+      "Falar só de técnica e esquecer as pessoas da equipe.",
+      "Deixar contestações técnicas sem uma resposta clara e lógica."
+    ]
+  },
+  "plano_90": {
+    "texto": "Para quem acabou de chegar ou mudou de função, este perfil quer entender a lógica da empresa antes de agir e, depois, mudar o que considerar mal feito. Dê informação completa e um problema técnico concreto, e proteja o tempo de conhecer pessoas e contexto antes de redesenhar processos.",
+    "dias_30": [
+      "Entregue documentos, indicadores e processos da área e explique a história das decisões atuais.",
+      "Combine metas, padrões e limites de decisão da função em conversa franca.",
+      "Apresente {nome} às pessoas-chave e explique o papel de cada uma no processo.",
+      "Dê um primeiro problema técnico concreto, com prazo e critério de sucesso."
+    ],
+    "dias_60": [
+      "Peça uma análise de um processo da área, com riscos, custos e proposta de melhoria.",
+      "Combine que a proposta seja apresentada às pessoas que vão executar antes da decisão.",
+      "Dê o primeiro feedback estruturado, incluindo o tom com colegas e equipe.",
+      "Amplie a autonomia técnica com um projeto maior e indicadores combinados."
+    ],
+    "dias_90": [
+      "Faça um balanço com indicadores: o que melhorou, o que falta e o que foi aprendido.",
+      "Combine metas do próximo trimestre, incluindo uma de envolvimento da equipe.",
+      "Pergunte o que faria a pessoa ficar e crescer aqui, e o que poderia fazer ir embora.",
+      "Reconheça com precisão, diante de quem decide, uma melhoria concreta destes três meses."
+    ],
+    "sinais_bons": [
+      "Já melhorou pelo menos um processo com resultado mensurável e documentado.",
+      "Ouve as pessoas que executam antes de decidir mudanças técnicas.",
+      "Discorda com argumentos e aceita decisões contrárias quando explicadas."
+    ]
+  },
+  "voce_e_esta_pessoa": {
+    "D": {
+      "texto": "Vocês dois tendem a ser firmes e a defender as próprias posições. A diferença é que você costuma decidir mais rápido, pela intuição e pelo resultado, e a pessoa, depois de analisar a fundo. O risco é a queda de braço entre a sua pressa e a análise da pessoa, com dois estilos fortes que não cedem.",
+      "ajustes": [
+        "Traga dados e argumentos para as decisões; ordens sem justificativa geram resistência.",
+        "Combine prazos para a análise virar decisão, em vez de cobrar velocidade no improviso.",
+        "Aceite revisões quando o risco apontado for real, mesmo que atrasem um pouco.",
+        "Discordem em particular e mostrem alinhamento diante da equipe."
+      ]
+    },
+    "I": {
+      "texto": "Você tende a liderar pela conversa e pelo entusiasmo; a pessoa, pela análise e pelo critério. Você pode ajudar muito no lado humano e na comunicação das soluções, mas este perfil tende a desconfiar de decisões sem dados e de planos que mudam com frequência.",
+      "ajustes": [
+        "Leve dados e fundamentos para as decisões, não só entusiasmo e visão.",
+        "Registre os combinados por escrito e evite mudanças de última hora.",
+        "Respeite o tempo de análise antes de pedir adesão a uma ideia nova.",
+        "Use a sua leitura de pessoas para ajudar a pessoa a cuidar do tom."
+      ]
+    },
+    "S": {
+      "texto": "Seu estilo tende a ser calmo, paciente e atento às pessoas; o da pessoa, analítico e firme. Você pode ser um ótimo contrapeso no cuidado com a equipe, desde que se posicione com argumentos. Este perfil respeita quem sustenta uma posição com lógica.",
+      "ajustes": [
+        "Posicione-se com argumentos claros quando discordar de uma conclusão técnica.",
+        "Decida no prazo as questões que dependem de você, sem adiar.",
+        "Mostre com exemplos concretos quando o tom da pessoa ferir alguém da equipe.",
+        "Use a sua escuta para ajudar a pessoa a ouvir outras visões."
+      ]
+    },
+    "C": {
+      "texto": "Vocês se entendem muito bem na valorização dos dados, da qualidade e do método. A diferença é que a pessoa costuma ser mais assertiva na hora de agir e de cobrar. O risco é os dois elevarem demais o padrão e a equipe sentir excesso de crítica e pouca proximidade.",
+      "ajustes": [
+        "Combinem quando uma análise já está boa o suficiente para virar decisão.",
+        "Cuidem juntos do tom das críticas e do clima da equipe.",
+        "Definam onde o padrão pode ser mais simples sem perder segurança.",
+        "Revezem quem dá o retorno à equipe, com atenção ao reconhecimento."
+      ]
+    }
+  }
+}

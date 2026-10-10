@@ -16,6 +16,10 @@
  *
  *   lideranca({ pessoa: {nome, cargo, resultado}, lider: {nome, resultado} | null, empresa: {nome}, consultor? }, opcoes?)
  *     -> { modelo: 'lideranca', versao, titulo, geradoEm, empresa, consultor, pessoa, lider, relacao, resumo, secoes, aviso }
+ *     Avançado (versão 2): com DISC_LIDERANCA_AVANCADO carregado (admin.html; no Node, opcoes.avancado) e conteúdo da
+ *     combinação, o snapshot ganha versao: 2 e avancado: { versao, combinacao, retrato, capitulos, fundamentos }
+ *     (js/lideranca-avancado.js); combinacao e pessoa.estilo passam a ser os da combinação do conteúdo (pura ou dupla).
+ *     Sem o módulo ou sem conteúdo: versão 1, igual à de antes. Snapshots antigos (versão 1) continuam sendo desenhados.
  *
  *   pessoa({ pessoa: {nome, resultado}, consultor? }, opcoes?)
  *     -> { modelo: 'pessoa', versao, titulo, geradoEm, consultor, pessoa, frase, fatores, secoes, aviso }
@@ -31,6 +35,7 @@
   'use strict';
 
   var VERSAO = 1;
+  var VERSAO_LIDERANCA_AVANCADO = 2;   // snapshot 'lideranca' com o bloco "avancado"
   var LETRAS = ['D', 'I', 'S', 'C'];
   var NOMES = { D: 'Dominância', I: 'Influência', S: 'Estabilidade', C: 'Conformidade' };
   var FORCA = {
@@ -490,7 +495,13 @@
       relacao = { nivel: par.nivel, pontuacao: par.pontuacao, sinergias: par.sinergias.slice(0, 3), riscos: par.riscos.slice(0, 3), dicas: par.dicas.slice(0, 4) };
     }
     var nome = g.pessoa.nome;
-    return {
+    // "Como liderar" avançado (conteúdo por combinação). Só quando a página carregou o módulo ou quem chama o passa.
+    var LA = (opcoes && opcoes.avancado) || (root && root.DISC_LIDERANCA_AVANCADO) || null;
+    var av = null;
+    try {
+      av = LA ? LA.montar(r, { nome: nome, lider: l && rl ? { nome: nomeCurto(l.nome), percentuais: rl.percentuais, codigo: rl.codigo } : null }) : null;
+    } catch (e) { av = null; }
+    var dados = {
       modelo: 'lideranca',
       versao: VERSAO,
       titulo: 'Como liderar ' + nome + (g.pessoa.cargo ? ' — ' + g.pessoa.cargo : ''),
@@ -512,6 +523,24 @@
       }),
       aviso: g.aviso
     };
+    if (av && Array.isArray(av.capitulos) && av.capitulos.length) {
+      dados.versao = VERSAO_LIDERANCA_AVANCADO;
+      dados.avancado = copia(av);
+      var cbA = av.combinacao || {};
+      if (cbA.nome) {
+        dados.combinacao = { codigo: cbA.codigo, nome: texto(cbA.nome), frase: texto(cbA.frase) || null, descricao: texto(cbA.descricao) || null };
+        if (!dados.pessoa.equilibrado) dados.pessoa.estilo = texto(cbA.nome);
+      }
+      // Abertura neutra (sem "direto(a)"), coerente com a combinação do conteúdo (pura ou dupla).
+      var codA = texto(cbA.codigo) || g.pessoa.codigo;
+      var pc = function (l) { return (Math.round(r.percentuais[l] * 10) / 10).toString().replace('.', ',') + '%'; };
+      var l1 = codA.charAt(0), l2 = codA.length > 1 ? codA.charAt(1) : null;
+      dados.resumo = 'Combinação ' + codA + (cbA.nome ? ' (' + texto(cbA.nome) + ')' : '') + ': ' + NOMES[l1] + ' ' + pc(l1) + ' como traço principal' +
+        (l2 ? ' e ' + NOMES[l2] + ' ' + pc(l2) + ' como secundário.' : ', com folga sobre os outros fatores.') +
+        (dados.pessoa.equilibrado ? '' :
+          r.percentuais[l1] >= 35 ? ' Traço principal acentuado (a média é 25%): o que este guia descreve tende a aparecer com mais força.' : '');
+    }
+    return dados;
   }
 
   /* ------------------------------------------------------------------ PESSOA (desenvolvimento) */
@@ -618,6 +647,7 @@
 
   var DISC_RELATORIO_MODELOS = {
     VERSAO: VERSAO,
+    VERSAO_LIDERANCA_AVANCADO: VERSAO_LIDERANCA_AVANCADO,
     MODELOS: ['equipe', 'lideranca', 'pessoa'],
     equipe: equipe,
     lideranca: lideranca,

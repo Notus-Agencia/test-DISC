@@ -82,8 +82,8 @@ test('líder D com pessoa S gera ajuste específico', () => {
   const t = v.itens.join(' ');
   assert.match(t, /Desacelere/);
   assert.match(t, /silêncio/);
-  assert.match(t, /Você tem bem mais Dominância \(50%\) que Ana P\. \(10%\)/);
-  assert.match(t, /Ana P\. tem bem mais Estabilidade \(43%\) que você \(10%\)/);
+  assert.match(t, /A Dominância pesa bem mais no seu estilo do que no de Ana P\.:/);
+  assert.match(t, /A Estabilidade pesa bem mais no estilo de Ana P\. do que no seu:/);
   assert.equal(d.lider.codigo, 'DI');
   assert.equal(d.lider.nome, 'Carlos L.');
   assert.ok(R.gerarTexto(d).includes('*Você e esta pessoa*'));
@@ -152,7 +152,7 @@ test('novas seções: do que precisa, o que tende a evitar e feedback com mais e
     assert.ok(chaves.indexOf('precisa') > chaves.indexOf('motivacao'));
     assert.ok(chaves.indexOf('evita') === chaves.indexOf('precisa') + 1);
     assert.equal(secao(d, 'precisa').titulo, 'Do que esta pessoa precisa');
-    assert.equal(secao(d, 'evita').titulo, 'O que ela tende a evitar');
+    assert.equal(secao(d, 'evita').titulo, 'O que esta pessoa tende a evitar');
     assert.ok(secao(d, 'precisa').itens.length >= 4);
     assert.ok(secao(d, 'evita').itens.length >= 4);
     assert.ok(!/medo|pavor|terror/i.test(secao(d, 'evita').itens.join(' ')));

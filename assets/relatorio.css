@@ -860,3 +860,43 @@ em { font-family: var(--ff-serif); font-style: italic; font-weight: 400; letter-
   .assina { margin-top: 32px; }
   .final__texto { margin-top: 24px; }
 }
+
+/* ---------- Como liderar · avançado (versão 2 do modelo "lideranca", js/lideranca-avancado.js) ----------
+ * Capítulos com as mesmas peças do documento (leituras, cartões, obs, etapas90, plano-doc) e quatro peças novas:
+ * frases prontas, perguntas numeradas, estilos de quem lidera e a linha "Base" no fim de cada capítulo. */
+.texto-doc p { max-width: 760px; }
+.texto-doc p + p { margin-top: 12px; }
+.texto-doc + .texto-doc { margin-top: 12px; }
+.leituras--um { grid-template-columns: minmax(0, 1fr) !important; }
+.leituras .leitura p + p { margin-top: 8px; }
+.frases-doc .h4doc { margin-bottom: 12px; }
+.frases-doc__lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.frase-doc { background: var(--branco-doc); border: 1px solid var(--linha-doc); border-left: 3px solid var(--laranja); border-radius: 2px; padding: 16px 18px; min-width: 0; }
+.frase-doc__sit { display: block; font-family: var(--ff-mono); font-size: var(--f-eixo); letter-spacing: .12em; text-transform: uppercase; color: var(--notus-forte); margin-bottom: 6px; }
+.frase-doc__txt { margin: 0; font-family: var(--ff-serif); font-style: italic; font-size: var(--f-forte); line-height: 1.45; color: var(--tinta); overflow-wrap: break-word; }
+@media (min-width: 900px), print { .frases-doc__lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } .frases-doc--um .frases-doc__lista { grid-template-columns: minmax(0, 1fr); } }
+.frases-doc--um .frase-doc { max-width: 760px; }
+.perguntas-doc { margin: 0; padding: 0 0 0 22px; display: grid; gap: 10px; }
+.perguntas-doc li { font-size: var(--f-corpo); line-height: 1.5; padding-left: 4px; overflow-wrap: break-word; }
+.perguntas-doc li::marker { font-family: var(--ff-mono); font-size: var(--f-nota); font-weight: 600; color: var(--notus-forte); }
+.passos-doc li { grid-template-columns: 40px minmax(0, 1fr); }
+.estilos-doc { display: grid; gap: 16px; }
+.estilo-doc { background: var(--branco-doc); border: 1px solid var(--linha-doc); border-radius: 2px; padding: 22px 20px; min-width: 0; }
+.estilo-doc--atual { box-shadow: inset 0 0 0 1px rgba(243,68,5,.45); border-color: transparent; }
+.estilo-doc__cab { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.estilo-doc__cab .disc-def__letra { margin: 0; font-size: var(--f-h2); }
+.estilo-doc__cab .h4doc { margin: 0; }
+.estilo-doc > p { font-size: var(--f-corpo); line-height: 1.55; max-width: 760px; }
+@media (min-width: 900px), print { .estilos-doc { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; } .estilos-doc--um { grid-template-columns: minmax(0, 1fr); } }
+.base-doc { margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--linha-doc); font-size: var(--f-nota); line-height: 1.5; color: var(--mudo); max-width: 760px; }
+.fundamentos-doc { margin: 12px 0 0; padding: 0 0 0 20px; display: grid; gap: 8px; }
+.fundamentos-doc li { font-size: var(--f-nota); line-height: 1.5; color: rgba(255,255,255,.78); overflow-wrap: anywhere; }
+.fundamentos-doc li::marker { color: var(--ambar); font-family: var(--ff-mono); }
+@media print {
+  .frase-doc, .estilo-doc, .perguntas-doc li, .fundamentos-doc li, .texto-doc p { break-inside: avoid; }
+  .h4doc, .frases-doc .h4doc { break-after: avoid; }
+  .base-doc { break-before: avoid; break-inside: avoid; }
+  /* índice com 13 capítulos: linhas mais baixas para caber numa página A4 */
+  .doc--lideranca-avancado .indice { gap: 20px; }
+  .doc--lideranca-avancado .indice__lista a { padding: 10px 0; }
+}

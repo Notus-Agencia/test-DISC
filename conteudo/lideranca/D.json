@@ -1,0 +1,258 @@
+{
+  "codigo": "D",
+  "retrato": [
+    "Você está liderando alguém em quem a Dominância aparece com folga sobre os outros fatores. No dia a dia, tende a ser a pessoa que quer a meta mais difícil, decide rápido, encara o cliente bravo e destrava o que está parado. Numa oficina, numa distribuidora ou num escritório pequeno, costuma assumir o problema que ninguém quer e resolver do próprio jeito, muitas vezes antes de alguém pedir.",
+    "O outro lado dessa força é a impaciência. Conversas longas, explicações detalhadas e processos com muitas aprovações tendem a irritar. A pessoa pode passar por cima de etapas, falar de forma seca com colegas mais lentos e testar os limites da autoridade de quem lidera, especialmente quando acha que a decisão está errada. Isso não costuma ser desrespeito: é a forma como este perfil mede se há firmeza do outro lado.",
+    "Para render bem, este perfil precisa de desafio real, autonomia para decidir o caminho e uma liderança que fale de forma direta, cumpra o que promete e deixe claros os limites. Em troca, você tende a ganhar alguém que entrega resultado sob pressão e assume responsabilidade. O seu papel é apontar a direção, combinar as regras do jogo e ajudar a pessoa a dosar a velocidade com escuta."
+  ],
+  "feedback": {
+    "texto": "Este perfil prefere feedback curto, direto e com foco em resultado. Rodeio é lido como falta de clareza ou de coragem, e a pessoa tende a parar de escutar. O risco mais comum é a conversa virar disputa: a pessoa contesta os fatos, devolve a crítica ou tenta mostrar que o problema está em outro lugar. Chegue com dois ou três fatos verificáveis, diga o efeito no resultado e devolva a pergunta: o que você propõe? Elogio vale quando é específico e ligado a número ou a problema resolvido; elogio genérico costuma ser ignorado.",
+    "funciona": [
+      "Começar pelo ponto principal na primeira frase, sem preparação longa.",
+      "Usar fatos e números: prazo perdido, cliente que reclamou, meta que ficou abaixo.",
+      "Pedir que a pessoa proponha a solução e assuma o prazo de correção.",
+      "Ligar o elogio a um resultado concreto, como um contrato salvo ou um problema destravado.",
+      "Falar de igual para igual, com firmeza e sem ironia, mesmo quando a pessoa sobe o tom."
+    ],
+    "da_errado": [
+      "Rodeios, sanduíche de elogio e crítica, ou mensagens indiretas por terceiros.",
+      "Corrigir em público: a pessoa tende a reagir com confronto aberto.",
+      "Recuar diante da primeira contestação: o combinado perde valor para este perfil.",
+      "Críticas sobre o jeito de ser, como \"você é muito agressivo\", em vez do comportamento observado.",
+      "Esperar semanas para falar do problema e depois despejar tudo de uma vez."
+    ],
+    "frases": [
+      { "situacao": "Reconhecer um resultado", "frase": "Você resolveu em três dias o atraso do fornecedor que estava travando a obra havia um mês. Isso segurou o cliente. Muito bem feito." },
+      { "situacao": "Corrigir um tom duro", "frase": "Na reunião de ontem você cortou a Júlia duas vezes e a Júlia parou de falar. Preciso da sua firmeza e também do que a Júlia sabe. Como você vai conduzir a próxima?" },
+      { "situacao": "Passou por cima de um processo", "frase": "Você liberou o desconto de 15% sem passar pelo financeiro. O cliente gostou, mas a margem do mês ficou negativa. Daqui para frente, acima de 10% fala comigo antes. Fechado?" },
+      { "situacao": "Contestou a decisão na frente do time", "frase": "Discordar de mim é bem-vindo, e prefiro saber. Na frente da equipe, não. Traz para mim primeiro e, se fizer sentido, eu mesmo mudo a decisão." },
+      { "situacao": "Novo desafio", "frase": "Tenho um problema difícil e acho que você é a pessoa certa: reduzir pela metade as devoluções até março. Você decide como. Me mostra o plano até sexta?" },
+      { "situacao": "Meta não batida", "frase": "Fechamos o mês em 82% da meta. Quero entender o que travou e o que você vai fazer diferente nas próximas quatro semanas, com números." }
+    ]
+  },
+  "delegacao": {
+    "texto": "Este perfil quer receber o problema inteiro, com autoridade para resolver. Tarefas picadas e instruções passo a passo costumam ser lidas como falta de confiança. A boa delegação aqui é generosa no como e muito clara no quê: resultado esperado, prazo, recursos e limites de decisão. Sem esses limites, a pessoa tende a ocupar todo o espaço disponível, inclusive decisões que eram de outra área.",
+    "autonomia": "Alta, com fronteiras explícitas. Diga o que precisa ser alcançado e deixe a pessoa escolher o caminho. Combine por escrito o que não pode ser decidido sem você, como contratações, descontos acima de certo valor ou mudanças que afetam outras áreas. Quanto mais clara a fronteira, menos disputa de espaço.",
+    "combinar": [
+      "Apresente a meta como um desafio, com número e data, e explique o que está em jogo.",
+      "Defina os limites de decisão em uma frase: até onde a pessoa decide sem consultar e o que passa por você.",
+      "Diga quais recursos estão disponíveis, como orçamento, pessoas e prazo, sem prometer o que não tem.",
+      "Peça o plano resumido em poucas linhas e aprove rápido, para não esfriar a energia.",
+      "Combine como e quando a pessoa vai reportar avanços, de preferência por marcos e não por tarefas."
+    ],
+    "acompanhar": "Acompanhe por resultado, não por atividade. Uma checagem curta por semana, de dez a quinze minutos, olhando números e marcos, costuma bastar. Entre uma checagem e outra, deixe claro que você quer saber logo se algo sair do trilho.",
+    "exemplo": "Numa transportadora pequena, em vez de \"vê se melhora essas entregas atrasadas\", combine: \"Quero o índice de entregas no prazo saindo de 78% para 92% até o fim do trimestre. Você pode reorganizar rotas e escalas. Contratar ou trocar de fornecedor passa por mim. Toda segunda, me manda o índice da semana anterior e o que mudou\".",
+    "armadilhas": [
+      "Delegar a responsabilidade sem a autoridade: a pessoa se frustra e passa a ignorar a regra.",
+      "Revisar cada passo ou refazer decisões já tomadas: a confiança cai rápido.",
+      "Dar autonomia sem dizer onde termina, para depois corrigir na frente dos outros.",
+      "Dar só tarefas fáceis e repetitivas: a pessoa entrega no automático e procura desafio em outro lugar."
+    ]
+  },
+  "motivacao": {
+    "texto": "Este perfil costuma se mover por desafio, conquista e controle sobre o próprio trabalho. Uma meta difícil, um problema que outros não resolveram ou a chance de assumir mais responsabilidade tendem a acender a energia. O reconhecimento que mais pesa é a confiança: receber uma missão maior. Rotina sem desafio, burocracia e liderança indecisa costumam apagar o interesse rapidamente. Na prática, quem lidera bem este perfil troca o elogio frequente por confiança crescente: cada entrega boa abre espaço para uma decisão maior.",
+    "autonomia": "Para este perfil, autonomia significa decidir o caminho, ter voz nas decisões que afetam o próprio trabalho e não precisar pedir licença para cada passo. Ofereça escolhas de verdade, como qual problema atacar primeiro, e explique com franqueza as regras que não podem mudar.",
+    "competencia": "A sensação de estar ficando melhor vem de vencer desafios maiores e ver resultado mensurável. Mostre o placar, aumente a dificuldade das metas aos poucos e dê problemas novos, como um cliente difícil, uma unidade com resultado ruim ou um processo travado.",
+    "vinculo": "O vínculo com este perfil se constrói pelo respeito mútuo, mais do que pela proximidade social. A pessoa tende a se ligar a líderes firmes, coerentes e que cumprem a palavra. Conversas francas sobre rumo e resultado da empresa fortalecem mais a relação do que confraternizações.",
+    "reconhecer": [
+      "Confiar uma missão maior ou um problema mais difícil logo depois de uma entrega bem feita.",
+      "Citar o resultado com números na reunião da equipe, de forma breve e objetiva.",
+      "Dar mais autonomia ou um limite de decisão maior como sinal de confiança.",
+      "Levar a pessoa para conversas com a diretoria ou com clientes importantes.",
+      "Um retorno direto e rápido logo após a conquista, sem cerimônia."
+    ],
+    "desmotiva": [
+      "Microgerenciamento e aprovações para decisões pequenas.",
+      "Metas fáceis demais ou trabalho repetitivo por muito tempo.",
+      "Liderança que muda de ideia sem explicar ou não cumpre o combinado.",
+      "Reuniões longas sem decisão e discussões que não levam a nada."
+    ]
+  },
+  "retencao": {
+    "texto": "Este perfil tende a ficar onde há desafio crescente, espaço para decidir e uma liderança que respeita. Costuma sair quando sente que bateu no teto, quando sofre controle em excesso ou quando perde a confiança em quem lidera. Em pequenas e médias empresas, o risco aparece quando a pessoa cresce mais rápido do que a função: se não houver um próximo passo à vista, a tendência é buscar o desafio em outro lugar, às vezes abrindo o próprio negócio.",
+    "fica": [
+      "Desafios cada vez maiores, com metas ambiciosas e recompensa clara.",
+      "Autonomia real e participação nas decisões da área.",
+      "Uma liderança direta, coerente e que cumpre o que promete.",
+      "Perspectiva concreta de mais responsabilidade ou de uma área própria.",
+      "Reconhecimento do resultado com mais confiança e espaço."
+    ],
+    "sai": [
+      "Sensação de teto: mesmas tarefas, mesmas metas, nenhuma conversa sobre o futuro.",
+      "Microgerenciamento ou decisões tomadas sem consulta na área que a pessoa conduz.",
+      "Perda de respeito pela liderança, por indecisão ou incoerência.",
+      "Proposta com mais desafio ou mais autonomia vinda de fora."
+    ],
+    "sinais": [
+      "Para de disputar as metas difíceis e entrega só o combinado.",
+      "Deixa de contestar decisões, como se não valesse mais a pena discutir.",
+      "Fala mais do mercado, de projetos fora da empresa ou de abrir algo próprio.",
+      "Fica impaciente com tudo e com todos, mais do que o normal, por semanas."
+    ],
+    "perguntas": [
+      "Qual é o próximo desafio que faria você ficar mais dois anos aqui?",
+      "Onde você sente que eu atrapalho em vez de ajudar?",
+      "Que decisão você gostaria de poder tomar sem precisar de mim?",
+      "O que uma proposta de fora precisaria ter para você considerar?"
+    ]
+  },
+  "desgaste": {
+    "texto": "Este perfil aguenta muita pressão quando sente que tem controle sobre o resultado. O desgaste tende a crescer quando a demanda continua alta e o controle some: metas impossíveis com recursos cortados, decisões travadas por outros, responsabilidade sem autoridade. Como a pessoa costuma esconder o cansaço atrás de mais esforço, os sinais aparecem primeiro no tom e na forma de lidar com os outros, e só depois no resultado.",
+    "demandas": [
+      "Responsabilidade por resultados sem autoridade para decidir.",
+      "Trabalhar em várias frentes urgentes sem prioridade definida.",
+      "Depender de áreas lentas ou de aprovações demoradas.",
+      "Conflitos frequentes com colegas ou com a liderança."
+    ],
+    "recursos": [
+      "Autonomia e decisões rápidas de quem lidera.",
+      "Prioridades claras: saber o que pode esperar.",
+      "Vitórias visíveis, mesmo pequenas, no meio de projetos longos.",
+      "Uma pessoa de confiança para delegar o operacional."
+    ],
+    "sinais_iniciais": [
+      "Tom mais seco e respostas mais curtas e cortantes do que o normal.",
+      "Centraliza ainda mais e para de delegar para a equipe.",
+      "Pouca paciência com erros pequenos de colegas.",
+      "Trabalha até mais tarde com frequência e não aceita ajuda."
+    ],
+    "sinais_fortes": [
+      "Explosões de irritação em reuniões ou com clientes, fora do padrão da pessoa.",
+      "Decisões impulsivas que ignoram combinados importantes.",
+      "Desinteresse por metas que antes eram tratadas como questão de honra.",
+      "Cansaço visível, faltas ou atrasos repetidos por várias semanas."
+    ],
+    "como_agir": [
+      "Converse em particular, de forma direta, sobre o que você observou e pergunte o que está pesando.",
+      "Revise as prioridades juntos e diga claramente o que pode sair da lista.",
+      "Devolva poder de decisão onde for possível e destrave o que depende de você.",
+      "Ofereça apoio concreto, como alguém para assumir parte do operacional.",
+      "Combine pausas reais, como folga depois de uma entrega pesada, e cumpra."
+    ],
+    "conversa": "Você tem segurado muita coisa e eu reparei que o tom nas reuniões mudou nas últimas semanas. Não estou cobrando: quero entender o que está pesando e o que eu posso tirar do seu caminho."
+  },
+  "mudanca": {
+    "texto": "Este perfil costuma gostar de mudança quando a novidade traz desafio ou quando é a própria pessoa que propõe. A resistência aparece quando a mudança reduz autonomia, chega sem explicação ou parece mal pensada. Nesse caso, a reação tende a ser aberta: questionamento duro, discussão na frente do time ou a decisão de seguir fazendo do próprio jeito. Envolver cedo e dar um papel de condução costuma transformar a resistência em liderança da mudança.",
+    "antes": [
+      "Converse antes com a pessoa, explique o motivo e o resultado esperado e peça críticas.",
+      "Ouça as objeções com atenção: este perfil costuma enxergar riscos práticos que os outros não falam.",
+      "Ofereça um papel de condução em parte da mudança, com meta e limites claros."
+    ],
+    "durante": [
+      "Deixe claro o que é inegociável e onde há espaço para adaptar.",
+      "Peça relatórios curtos de avanço e de obstáculos, e decida rápido quando for chamado.",
+      "Se a pessoa contestar em público, converse em particular logo depois, sem deixar passar."
+    ],
+    "depois": [
+      "Mostre o resultado alcançado com números e dê crédito pela condução.",
+      "Pergunte o que faria diferente na próxima mudança e registre.",
+      "Defina o próximo desafio, para a energia não se voltar contra a nova rotina."
+    ],
+    "frase": "Vamos mudar o jeito de fazer orçamento a partir do mês que vem, porque estamos perdendo margem. Antes de anunciar, quero sua crítica sincera e quero você conduzindo a parte da equipe de campo."
+  },
+  "conflito": {
+    "texto": "Este perfil tende a entrar no conflito de frente. Diz o que pensa sem suavizar, defende a posição com firmeza e pode transformar uma discordância em disputa para ver quem tem razão. Com colegas mais calmos, isso costuma soar como agressividade, e o outro lado se cala. Em compensação, a pessoa raramente guarda rancor: depois que o assunto é resolvido, tende a seguir em frente rápido.",
+    "gatilhos": [
+      "Colegas que atrasam, enrolam ou não assumem responsabilidade.",
+      "Decisões que parecem lentas, fracas ou mal justificadas.",
+      "Sentir que alguém invadiu a área ou a decisão que era sua.",
+      "Receber correção em público ou ter a competência questionada na frente de outros.",
+      "Disputa por metas, recursos ou reconhecimento com outra pessoa competitiva."
+    ],
+    "como_aparece": "O atrito costuma ser visível e imediato: tom mais alto, interrupções, ultimatos e frases definitivas como \"assim não dá\". Também pode aparecer como decisão unilateral, em que a pessoa resolve o problema do próprio jeito sem avisar os envolvidos.",
+    "mediar": [
+      "Converse primeiro em particular com a pessoa, de forma direta, para baixar a temperatura.",
+      "Na conversa conjunta, defina a regra: fatos e propostas, sem ataques e sem interromper.",
+      "Peça que cada lado diga o que precisa para entregar o resultado, não quem está errado.",
+      "Garanta que o colega mais quieto fale primeiro e até o fim.",
+      "Feche com uma decisão clara, com responsáveis e prazos, e acompanhe na semana seguinte."
+    ],
+    "frase": "Vocês dois querem o mesmo resultado e estão brigando pelo caminho. Cada um vai falar por dois minutos, sem interrupção, sobre o que precisa do outro. Depois eu decido o que não fecharem."
+  },
+  "um_a_um": {
+    "frequencia": "Semanal ou quinzenal, de 15 a 20 minutos, com pauta curta e objetiva. Este perfil valoriza conversas que terminam em decisão. Se precisar cancelar, remarque logo: reunião cancelada sem aviso é lida como falta de prioridade.",
+    "pauta": [
+      { "titulo": "Resultado da semana", "texto": "Comece pelos números e marcos combinados: o que avançou, o que ficou para trás e por quê." },
+      { "titulo": "Decisões pendentes", "texto": "Liste o que depende de você e decida ali mesmo sempre que possível." },
+      { "titulo": "Obstáculos", "texto": "Pergunte o que está travando: uma área lenta, um recurso que falta, uma regra que atrapalha." },
+      { "titulo": "Relação com o time", "texto": "Traga um exemplo concreto de como a pessoa está lidando com a equipe, positivo ou a ajustar." },
+      { "titulo": "Próximo desafio", "texto": "Feche com o que vem pela frente e com no máximo três compromissos com prazo." }
+    ],
+    "perguntas": [
+      "Qual foi a decisão mais difícil que você tomou nesta semana?",
+      "O que eu poderia decidir mais rápido para te ajudar?",
+      "Quem do time você acha que está precisando de mais espaço?",
+      "Qual meta você acha que está fácil demais?",
+      "Tem algum combinado nosso que está atrapalhando o resultado?"
+    ],
+    "evite": [
+      "Conversas longas sobre assuntos sem decisão a tomar.",
+      "Revisar tarefas uma a uma, como checklist de controle.",
+      "Deixar para a reunião o feedback que deveria ter sido dado na hora."
+    ]
+  },
+  "plano_90": {
+    "texto": "Para quem acabou de chegar ou mudou de função, este perfil quer mostrar resultado rápido e assumir espaço. Dê um desafio concreto no primeiro mês, mas combine logo as regras do jogo: quem decide o quê, como a empresa funciona e quais acordos não podem ser quebrados.",
+    "dias_30": [
+      "Combine em conversa franca os limites de decisão, as metas do trimestre e o que você espera do tom com a equipe.",
+      "Dê um primeiro problema concreto para resolver, com prazo de quatro semanas e resultado visível.",
+      "Apresente {nome} às pessoas-chave e explique a história de decisões importantes, para evitar mudanças às cegas.",
+      "Marque checagens semanais curtas e pergunte o que parece lento ou sem sentido na empresa."
+    ],
+    "dias_60": [
+      "Amplie a autonomia com uma meta maior e um limite de decisão mais alto, se o primeiro mês foi bem.",
+      "Dê o primeiro feedback estruturado, incluindo como a pessoa está se relacionando com colegas e subordinados.",
+      "Peça uma proposta de melhoria para um processo da área, com números do antes e depois.",
+      "Observe se há atrito com algum colega e converse cedo, antes que vire disputa."
+    ],
+    "dias_90": [
+      "Faça um balanço com números: o que foi entregue, o que mudou na área e o que ainda falta.",
+      "Combine metas do próximo trimestre que sejam um degrau acima das atuais.",
+      "Pergunte o que faria a pessoa ficar e crescer aqui, e o que poderia fazer ir embora.",
+      "Reconheça diante da equipe uma conquista concreta destes três meses."
+    ],
+    "sinais_bons": [
+      "Já resolve problemas da área sem precisar de você para cada decisão.",
+      "Respeita os limites combinados mesmo quando não concorda com algum.",
+      "A equipe próxima continua falando e trazendo ideias, sem se calar."
+    ]
+  },
+  "voce_e_esta_pessoa": {
+    "D": {
+      "texto": "Vocês dois tendem a ser diretos, rápidos e competitivos. A conversa costuma ser franca e objetiva, o que economiza tempo. O risco é a disputa de espaço: duas pessoas querendo decidir, nenhuma querendo ceder e discussões que viram queda de braço diante do time.",
+      "ajustes": [
+        "Combinem por escrito quem decide o quê, para evitar disputa de território.",
+        "Discorde em particular e com argumentos; diante da equipe, mostrem alinhamento.",
+        "Deixe a pessoa conduzir projetos inteiros, mesmo que você faria de outro jeito.",
+        "Cuidado para não transformar cada conversa em teste de força."
+      ]
+    },
+    "I": {
+      "texto": "Você tende a liderar pela conversa e pelo entusiasmo; a pessoa tende a querer ir direto ao ponto. Você traz clima e relacionamento, o que a equipe agradece, mas este perfil pode achar as conversas longas e pouco objetivas, e interpretar entusiasmo sem decisão como falta de rumo.",
+      "ajustes": [
+        "Comece pela conclusão e pela decisão, e deixe a conversa social para depois.",
+        "Cumpra e registre o que combinar: este perfil cobra coerência entre o falado e o feito.",
+        "Evite mudar de ideia com frequência por empolgação com algo novo.",
+        "Aproveite a sua leitura de pessoas para ajudar a pessoa a ajustar o tom com a equipe."
+      ]
+    },
+    "S": {
+      "texto": "Seu estilo tende a ser calmo, paciente e cuidadoso com o grupo; o da pessoa, rápido e direto. Você pode ser um bom contrapeso, desde que não evite o confronto. Este perfil respeita quem se posiciona e tende a ocupar o espaço de quem não ocupa.",
+      "ajustes": [
+        "Seja firme e claro nos limites desde o início, mesmo que isso pareça desconfortável.",
+        "Decida mais rápido do que costuma nas questões que dependem de você.",
+        "Não leve para o lado pessoal o tom seco; trate o conteúdo e combine a forma.",
+        "Use a sua escuta para mostrar à pessoa, com exemplos, o efeito que certas atitudes têm na equipe."
+      ]
+    },
+    "C": {
+      "texto": "Você tende a decidir com análise e cuidado; a pessoa, com rapidez e intuição. Juntos podem equilibrar velocidade e qualidade, mas o atrito costuma vir quando você pede mais dados e a pessoa quer agir, ou quando a pessoa pula etapas que você considera essenciais.",
+      "ajustes": [
+        "Leve a conclusão primeiro e os detalhes só no que for crítico.",
+        "Combine antes quais etapas são obrigatórias e quais podem ser simplificadas.",
+        "Aceite decisões rápidas com risco calculado quando o prazo exigir.",
+        "Explique a lógica das suas regras em poucas palavras, sem longas justificativas."
+      ]
+    }
+  }
+}

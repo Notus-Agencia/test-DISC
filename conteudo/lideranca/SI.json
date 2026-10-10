@@ -1,0 +1,259 @@
+{
+  "codigo": "SI",
+  "retrato": [
+    "Você está liderando alguém que combina constância com calor humano. No dia a dia, tende a ser a pessoa que escuta o cliente com paciência, lembra das preferências de cada um, percebe quando um colega não está bem e oferece ajuda antes que alguém peça. Numa clínica, numa farmácia de bairro, numa escola infantil ou num escritório de atendimento, costuma construir relações duradouras e fazer as pessoas confiarem na empresa.",
+    "O ponto de atenção mais comum é cuidar de todos antes de cuidar das próprias tarefas. Este perfil tende a assumir demandas dos colegas, dizer sim para não decepcionar e deixar as próprias entregas para o fim do dia. Também costuma evitar conflitos e cobranças, preferindo manter o clima a ter uma conversa desconfortável. Mudanças bruscas, especialmente as que mexem com o time ou com clientes queridos, tendem a ser sentidas com força, mesmo que a pessoa não diga.",
+    "Para render bem, este perfil precisa de um ambiente de confiança, rotina previsível, reconhecimento sincero e uma liderança próxima, que pergunte como a pessoa está. Em troca, você tende a ganhar alguém leal, paciente e de quem clientes e colegas gostam muito, que segura o clima nos momentos difíceis. O seu papel é proteger a pessoa da sobrecarga, dar permissão explícita para dizer não e conduzir junto as conversas difíceis que a pessoa tende a evitar."
+  ],
+  "feedback": {
+    "texto": "Este perfil costuma receber feedback com sensibilidade e tende a pensar mais na relação do que no conteúdo. Uma crítica em tom duro pode ser sentida como sinal de desagrado pessoal, e a pessoa pode passar dias com a preocupação, sem dizer nada. Por outro lado, também tende a concordar com tudo na hora, o que não garante que entendeu ou que vai conseguir mudar. Avise o assunto ao marcar, converse em particular e com calma, deixe claro que a relação está bem, combine um passo simples e pergunte o que a pessoa precisa para conseguir. Reconheça com calor e sinceridade o cuidado com as pessoas.",
+    "funciona": [
+      "Avisar o assunto ao marcar a conversa, para evitar apreensão desnecessária.",
+      "Começar dizendo, com sinceridade, que a relação está bem e que o objetivo é ajudar.",
+      "Explicar o porquê do ajuste e o efeito em clientes ou colegas.",
+      "Combinar um passo simples e perguntar o que a pessoa precisa para conseguir.",
+      "Reconhecer de forma calorosa e específica o cuidado com as pessoas."
+    ],
+    "da_errado": [
+      "Tom ríspido ou crítica na frente do time: a pessoa tende a se retrair por dias.",
+      "Tomar o \"tudo bem\" como sinal de que a pessoa concorda e vai conseguir mudar.",
+      "Pedir mudanças rápidas sem explicar o porquê nem como fazer.",
+      "Elogio apressado e genérico, que soa protocolar para este perfil.",
+      "Deixar acumular vários pontos para uma conversa só, longa e pesada."
+    ],
+    "frases": [
+      { "situacao": "Reconhecer o cuidado", "frase": "A dona Cida ligou para agradecer a paciência que você teve explicando o tratamento da mãe da dona Cida. Esse cuidado é o que faz os pacientes confiarem na gente. Agradeço muito." },
+      { "situacao": "Ajudou todo mundo e atrasou a própria tarefa", "frase": "Você ajudou o pessoal da recepção a semana toda, e eu agradeço. O fechamento do caixa ficou para trás. Vamos combinar um horário protegido para as suas tarefas?" },
+      { "situacao": "Dar permissão para recusar", "frase": "Pode dizer para os colegas que hoje você não consegue ajudar, quando a sua agenda estiver cheia. Eu banco essa resposta, e ninguém vai achar ruim." },
+      { "situacao": "Evitou uma conversa difícil", "frase": "Sei que é desconfortável falar com a Paula sobre os atrasos. Quer que eu esteja junto, ou prefere que a gente prepare a conversa antes?" },
+      { "situacao": "Corrigir um ponto", "frase": "Está tudo bem entre nós, e quero ajustar uma coisa: o registro dos atendimentos precisa ser feito no mesmo dia. O que torna isso difícil hoje?" },
+      { "situacao": "Ouvir uma discordância", "frase": "Na reunião você concordou com a nova escala, mas fiquei com a sensação de que algo te incomodou. Quero ouvir de verdade, sem pressa." }
+    ]
+  },
+  "delegacao": {
+    "texto": "Este perfil costuma receber bem tarefas claras, ligadas a pessoas e com espaço para cuidar bem de cada detalhe do relacionamento. Rende menos quando precisa cobrar, negociar duro, decidir sob pressão ou lidar com mudanças constantes. Delegar bem aqui é explicar o contexto, mostrar o passo a passo na primeira vez, dizer o que é prioridade e proteger a tarefa das ajudas aos colegas. A autonomia cresce aos poucos, com confiança e retorno frequente.",
+    "autonomia": "Crescente, com orientação próxima no início. Explique o passo a passo, esteja disponível e diga explicitamente quando a pessoa já pode decidir sem consultar. Este perfil tende a pedir aprovação para não desagradar, então a permissão precisa ser clara e repetida.",
+    "combinar": [
+      "Explique o objetivo e quem será beneficiado pela tarefa, com exemplos.",
+      "Mostre como fazer na primeira vez ou indique um modelo de referência.",
+      "Diga com clareza o que é prioridade em relação às ajudas aos colegas.",
+      "Defina prazos realistas e mande o combinado por escrito no mesmo dia.",
+      "Pergunte se a carga atual comporta a nova tarefa e ajuste se necessário."
+    ],
+    "acompanhar": "Uma conversa individual fixa por semana e disponibilidade para dúvidas no dia a dia. Pergunte de forma direta como está indo e se algo está atrapalhando, porque a pessoa tende a dizer que está tudo bem para não incomodar.",
+    "exemplo": "Numa farmácia de bairro, em vez de \"cuida dos clientes de uso contínuo\", combine: \"A partir do mês que vem, você acompanha os 40 clientes de uso contínuo: liga uma semana antes de acabar o remédio. Meta: que 80% renovem com a gente. Você decide como abordar cada um. Das 14h às 16h, esse é o seu horário protegido; se alguém pedir ajuda, pode dizer que atende depois\".",
+    "armadilhas": [
+      "Não dizer o que é prioridade, e a tarefa ficar atrás das ajudas aos colegas.",
+      "Pedir cobranças duras a clientes ou colegas sem preparo e sem apoio.",
+      "Supor que, por não reclamar, a carga está sob controle.",
+      "Mudar a tarefa no meio do caminho sem explicação, gerando insegurança."
+    ]
+  },
+  "motivacao": {
+    "texto": "Este perfil costuma se mover por pertencimento, harmonia e pela sensação de ajudar as pessoas de verdade. Um clima de confiança, colegas próximos, rotina previsível e reconhecimento sincero tendem a sustentar a energia por muito tempo. Conflitos frequentes, cobrança agressiva e mudanças constantes tendem a desgastar. O reconhecimento que mais pesa é caloroso, verdadeiro e de preferência em particular, mostrando que alguém percebeu o cuidado.",
+    "autonomia": "Para este perfil, autonomia significa organizar o próprio ritmo e escolher a forma de cuidar das pessoas, dentro de prioridades claras. Avise mudanças com antecedência e dê tempo para a pessoa se organizar, em vez de exigir adaptação imediata.",
+    "competencia": "A sensação de estar ficando melhor vem de dominar bem a função e de ganhar segurança em situações difíceis, como lidar com um cliente bravo ou dar um não. Ofereça prática acompanhada e reconheça cada avanço, mesmo pequeno.",
+    "vinculo": "O vínculo é o centro deste perfil. A pessoa tende a se ligar profundamente ao time e a quem lidera, e sofre quando o grupo muda. Conversas regulares, interesse genuíno pela pessoa e momentos simples do time fortalecem muito a relação.",
+    "reconhecer": [
+      "Agradecimento sincero e específico em particular, citando o cuidado que a pessoa teve.",
+      "Compartilhar elogios de clientes ou colegas que perceberam a atenção da pessoa.",
+      "Um bilhete ou mensagem escrita de agradecimento, que a pessoa possa guardar.",
+      "Convidar para acolher colegas novos, como reconhecimento da paciência e da confiança.",
+      "Celebrar com o time, de forma simples, as conquistas do grupo."
+    ],
+    "desmotiva": [
+      "Clima de conflito ou de cobrança agressiva no dia a dia.",
+      "Mudanças bruscas e decisões que chegam sem nenhuma explicação.",
+      "Sentir que o cuidado com as pessoas não é visto nem valorizado.",
+      "Troca frequente de equipe, de clientes ou de função.",
+      "Pressão para endurecer com clientes ou colegas sem preparo."
+    ]
+  },
+  "retencao": {
+    "texto": "Este perfil tende a ser muito leal e a ficar por muitos anos onde encontra segurança, afeto e a sensação de ser útil. Costuma sair depois de um longo acúmulo silencioso: sobrecarga constante, conflitos frequentes, mudanças que desfazem o time ou a sensação de que ninguém vê o esforço. Como raramente reclama, o pedido de saída costuma surpreender a liderança. Em pequenas empresas, um líder próximo e atento costuma ser o principal motivo para este perfil ficar.",
+    "fica": [
+      "Um time unido, estável e com clima de confiança.",
+      "Uma liderança próxima, justa e que se interessa pela pessoa.",
+      "Reconhecimento sincero do cuidado com clientes e colegas.",
+      "Rotina previsível, com mudanças avisadas e explicadas.",
+      "Segurança para falar de problemas sem medo de punição."
+    ],
+    "sai": [
+      "Acúmulo de sobrecarga por meses, sem que ninguém perceba ou pergunte.",
+      "Clima de conflito frequente ou liderança dura e distante.",
+      "Saída de colegas próximos ou mudança de equipe sem conversa.",
+      "Sensação de que o esforço silencioso nunca é reconhecido."
+    ],
+    "sinais": [
+      "Fala menos, sorri menos e deixa de oferecer ajuda aos colegas.",
+      "Pede para ficar de fora de projetos novos e de mudanças.",
+      "Faltas pontuais ou pedidos de folga mais frequentes que o normal.",
+      "Comentários discretos de cansaço ou de que \"as coisas mudaram por aqui\"."
+    ],
+    "perguntas": [
+      "O que faz você gostar de trabalhar aqui, com este time?",
+      "Tem alguma coisa te incomodando que você ainda não falou?",
+      "Como está a sua carga de trabalho de verdade, de zero a dez?",
+      "O que poderia fazer você pensar em sair daqui?"
+    ]
+  },
+  "desgaste": {
+    "texto": "Este perfil costuma absorver as demandas dos outros e continuar sorrindo, o que torna o desgaste difícil de ver. A demanda que mais pesa é a combinação de ajudas a todos, tarefas próprias atrasadas, mudanças frequentes e clima tenso. Os recursos que mais devolvem energia são um time acolhedor, liderança próxima, previsibilidade e reconhecimento. Os sinais costumam ser discretos: recolhimento, menos alegria, mais lentidão e, por fim, ausência.",
+    "demandas": [
+      "Assumir demandas dos colegas além das próprias, por não conseguir dizer não.",
+      "Mudanças frequentes de rotina, de equipe ou de prioridades.",
+      "Clima de conflito ou de cobrança agressiva no time.",
+      "Atender clientes difíceis repetidamente, sem apoio de ninguém."
+    ],
+    "recursos": [
+      "Um time acolhedor e colegas de confiança por perto.",
+      "Liderança próxima, que pergunta como a pessoa está e escuta.",
+      "Previsibilidade, com avisos feitos com boa antecedência.",
+      "Permissão explícita para recusar demandas extras dos colegas."
+    ],
+    "sinais_iniciais": [
+      "Menos conversa e menos brincadeiras com o time no dia a dia.",
+      "Fica até mais tarde com frequência para dar conta das tarefas.",
+      "Demora mais para concluir tarefas que antes eram rotina tranquila.",
+      "Pede desculpas com frequência, mesmo por coisas pequenas."
+    ],
+    "sinais_fortes": [
+      "Recolhimento visível: evita conversas e os momentos do time.",
+      "Tristeza, choro ou irritação fora do comum no trabalho.",
+      "Erros em tarefas que sempre fez com cuidado.",
+      "Faltas, atrasos ou pedidos de afastamento repetidos por semanas."
+    ],
+    "como_agir": [
+      "Puxe você a conversa, em particular e sem pressa, porque a pessoa dificilmente vai pedir.",
+      "Pergunte o que está pesando e quais ajudas aos colegas podem ser redistribuídas.",
+      "Dê permissão explícita para recusar demandas extras por um período.",
+      "Reduza mudanças desnecessárias e avise tudo com antecedência.",
+      "Reconheça o esforço recente com sinceridade e combine uma nova conversa em poucos dias."
+    ],
+    "conversa": "Tenho reparado que você está ficando até mais tarde e falando menos nas reuniões. Não é cobrança: eu me preocupo com você. Como você está? O que podemos tirar do seu prato?"
+  },
+  "mudanca": {
+    "texto": "Este perfil tende a estranhar mudanças, principalmente as que mexem com o time, com clientes queridos ou com a rotina. A resistência raramente é aberta: a pessoa concorda, sofre em silêncio e pode continuar fazendo do jeito antigo para não perder o que funcionava. Com antecedência, explicação, treinamento e cuidado com as relações afetadas, costuma se adaptar bem e ajudar os colegas a se adaptarem também.",
+    "antes": [
+      "Avise com a maior antecedência possível, explicando o motivo e o que continua igual.",
+      "Converse individualmente e pergunte o que preocupa, dando tempo para a pessoa responder depois.",
+      "Mostre o plano em etapas, com datas e com o apoio que estará disponível."
+    ],
+    "durante": [
+      "Ofereça treinamento prático, com tempo para errar e perguntar sem constrangimento.",
+      "Pergunte com frequência como está sendo a adaptação, sem esperar a pessoa trazer.",
+      "Cuide das relações afetadas, ajudando a criar novos laços se o time ou os clientes mudaram."
+    ],
+    "depois": [
+      "Reconheça o esforço de adaptação, que para este perfil costuma ser grande.",
+      "Peça ajuda para acolher colegas que ainda estão com dificuldade.",
+      "Dê tempo de estabilidade antes de emendar a próxima mudança grande."
+    ],
+    "frase": "Quero te contar com calma, antes do time, uma mudança que vem aí: em maio a recepção vai funcionar com agendamento pelo sistema. Vou explicar o porquê e o passo a passo, e quero saber o que te preocupa."
+  },
+  "conflito": {
+    "texto": "Este perfil tende a evitar o conflito a quase qualquer custo. Prefere ceder, absorver o problema ou conversar com terceiros a confrontar quem causou o incômodo. Isso mantém a paz por um tempo, mas gera acúmulo: a pessoa se afasta, coopera menos e sofre em silêncio. Quando o assunto finalmente aparece, costuma vir com emoção e com histórico. Depois de resolvido, tende a buscar reaproximação rapidamente.",
+    "gatilhos": [
+      "Tom agressivo, ironia ou cobrança na frente de outras pessoas.",
+      "Colegas que não colaboram e sobrecarregam o restante do time.",
+      "Injustiças na divisão de tarefas ou no reconhecimento do esforço.",
+      "Pressão para tomar partido numa briga entre colegas próximos.",
+      "Mudanças impostas sem consulta que afetam o time ou os clientes."
+    ],
+    "como_aparece": "O atrito costuma ser silencioso: menos conversa com quem incomodou, cooperação no mínimo necessário, desabafos com colegas de confiança e uma tristeza visível. Raramente vira discussão aberta; quando vira, costuma ser com a voz embargada e com exemplos de muito tempo atrás.",
+    "mediar": [
+      "Puxe a conversa em particular, com acolhimento, e diga que percebeu algo, com exemplos.",
+      "Dê tempo e espaço para a pessoa falar, sem pressionar por uma resposta imediata.",
+      "Ofereça estar junto na conversa com o colega, se isso trouxer segurança.",
+      "Ajude a transformar o incômodo em pedidos concretos e possíveis.",
+      "Feche com combinados simples e acompanhe de perto nas semanas seguintes."
+    ],
+    "frase": "Vocês dois são importantes para o time e eu sei que essa situação incomoda os dois. Quero que cada um diga, com calma, o que precisa do outro. Ninguém aqui está errado por sentir incômodo."
+  },
+  "um_a_um": {
+    "frequencia": "Semanal, de 30 minutos, sempre no mesmo dia e horário, num lugar reservado. Para este perfil, a regularidade e o tom acolhedor são o que permite trazer incômodos e cansaço antes que acumulem. Evite cancelar.",
+    "pauta": [
+      { "titulo": "Como você está", "texto": "Comece com calma, perguntando pela semana e pelo bem-estar da pessoa antes de qualquer tarefa." },
+      { "titulo": "Carga e ajudas", "texto": "Pergunte quanto tempo foi para ajudar colegas e o que ficou atrasado nas tarefas próprias." },
+      { "titulo": "Incômodos e conversas adiadas", "texto": "Abra espaço para incômodos e veja se há alguma conversa difícil que a pessoa está evitando." },
+      { "titulo": "Mudanças à vista", "texto": "Antecipe o que vai mudar nas próximas semanas e ouça as preocupações com atenção." },
+      { "titulo": "Reconhecimento e combinados", "texto": "Feche agradecendo algo específico da semana e confirmando as prioridades da próxima, por escrito." }
+    ],
+    "perguntas": [
+      "De zero a dez, como está a sua carga de trabalho nesta semana?",
+      "Quem te pediu ajuda nesta semana e quanto tempo isso tomou?",
+      "Tem alguma coisa que te incomodou e ficou sem falar?",
+      "Que conversa difícil você está adiando, e posso ajudar?",
+      "O que deixaria a sua semana mais tranquila?"
+    ],
+    "evite": [
+      "Transformar a reunião em cobrança apressada, sem contato pessoal.",
+      "Aceitar o \"está tudo bem\" sem fazer uma segunda pergunta.",
+      "Cancelar ou remarcar a reunião com frequência."
+    ]
+  },
+  "plano_90": {
+    "texto": "Para quem acabou de chegar ou mudou de função, este perfil precisa de acolhida, segurança e clareza sobre o que se espera. Uma integração calma, com padrinho, roteiro e conversas regulares, costuma gerar alguém leal e confiável já nos primeiros meses.",
+    "dias_30": [
+      "Faça uma acolhida calorosa e apresente {nome} ao time e aos principais clientes com calma.",
+      "Entregue um roteiro do primeiro mês, com tarefas, horários e pessoas de referência.",
+      "Indique um colega padrinho para dúvidas do dia a dia e explique os processos principais.",
+      "Faça uma conversa semanal fixa e pergunte, de forma direta, o que ainda está confuso."
+    ],
+    "dias_60": [
+      "Amplie as responsabilidades uma de cada vez, com explicação e acompanhamento próximo.",
+      "Dê o primeiro feedback estruturado em particular, começando pelo que está indo bem.",
+      "Confira se a pessoa está assumindo tarefas demais dos colegas e reequilibre a carga.",
+      "Peça a opinião da pessoa sobre o atendimento ou um processo e use uma sugestão."
+    ],
+    "dias_90": [
+      "Faça uma conversa de balanço sobre como se sente no time e o que falta para ter segurança.",
+      "Reconheça a adaptação e o cuidado destes três meses com exemplos concretos.",
+      "Combine um pequeno desafio de desenvolvimento, como conduzir uma conversa difícil com apoio.",
+      "Defina juntos as prioridades do próximo trimestre, em ritmo possível e por escrito."
+    ],
+    "sinais_bons": [
+      "Já domina a rotina principal e sabe a quem recorrer em cada situação.",
+      "Traz incômodos e dúvidas nas conversas individuais, sem guardar por semanas.",
+      "Consegue proteger o próprio tempo e recusar ajudas quando a agenda está cheia."
+    ]
+  },
+  "voce_e_esta_pessoa": {
+    "D": {
+      "texto": "Seu estilo tende a ser rápido, direto e firme; o da pessoa, calmo, acolhedor e constante. A sua objetividade pode ajudar a dar direção, mas pode soar como pressão ou frieza. Este perfil dificilmente vai discordar de você abertamente, e o silêncio pode esconder desconforto ou cansaço.",
+      "ajustes": [
+        "Desacelere: fale com mais calma e dê tempo para a pessoa responder.",
+        "Avise mudanças com antecedência e explique o porquê, mesmo quando parecer óbvio.",
+        "Pergunte em particular o que a pessoa pensa; não tome silêncio por concordância.",
+        "Assuma as cobranças duras que a pessoa tende a evitar, ou prepare junto."
+      ]
+    },
+    "I": {
+      "texto": "Vocês se entendem no gosto por pessoas e por um clima bom. A diferença é que você tende a trazer mais novidade e agitação, e a pessoa prefere estabilidade. O risco é a sua mudança frequente de planos gerar insegurança, e a cobrança ficar de lado pela afinidade.",
+      "ajustes": [
+        "Evite mudar de ideia com frequência; quando mudar, explique e dê tempo.",
+        "Registre os combinados por escrito para dar segurança à pessoa.",
+        "Faça as correções necessárias com carinho, mas sem adiar.",
+        "Dê espaço para a pessoa falar e espere a resposta com paciência."
+      ]
+    },
+    "S": {
+      "texto": "Vocês têm ritmo parecido e compartilham o cuidado com o time. A relação tende a ser tranquila e de muita confiança. O risco é os dois evitarem conversas difíceis e cobranças necessárias, e problemas de prazo ou de convivência ficarem guardados até crescerem demais.",
+      "ajustes": [
+        "Marquem as conversas difíceis com data, em vez de esperar o momento certo.",
+        "Pergunte diretamente sobre carga e incômodos, mesmo quando parecer tudo bem.",
+        "Estimulem juntos a iniciativa e a abertura para mudanças necessárias.",
+        "Cuide para não proteger a pessoa de desafios que ajudariam a crescer."
+      ]
+    },
+    "C": {
+      "texto": "Vocês se entendem na calma e na previsibilidade. A pessoa costuma valorizar a sua organização, mas precisa de mais calor humano do que você costuma demonstrar. O risco é a crítica técnica soar fria e pessoal e a pessoa sofrer em silêncio com o retorno.",
+      "ajustes": [
+        "Acrescente calor humano ao retorno técnico e diga que a relação está bem.",
+        "Reconheça o cuidado com as pessoas, não só a precisão das tarefas.",
+        "Explique as regras com o porquê, de forma próxima e sem formalidade excessiva.",
+        "Pergunte como a pessoa está antes de entrar nos assuntos técnicos."
+      ]
+    }
+  }
+}

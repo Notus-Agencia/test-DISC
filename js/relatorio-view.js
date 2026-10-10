@@ -1224,9 +1224,200 @@
     return '<article class="doc doc--equipe" data-modelo="equipe">' + h + '</article>';
   }
 
-  /* ------------------------------------------------------------------ LIDERANÇA (individual) */
+  /* ------------------------------------------------------------------ LIDERANÇA (individual)
+   * Versão 1 (snapshots antigos, já publicados): capa, "Quem é", guia em cartões e limites.
+   * Versão 2 (dados.avancado com capítulos, js/lideranca-avancado.js): capa, índice, "Quem é" + retrato, guia rápido,
+   * um capítulo por tema (feedback, delegação, motivação, retenção, desgaste, mudanças, conflito, 1:1, 90 dias,
+   * você e esta pessoa) e "Limites e fundamentos". Cada capítulo é uma .secao (página nova no PDF). */
+
+  // Bloco "Quem é" (01): o mesmo nas duas versões; na avançada ganha o retrato para quem lidera.
+  function quemEHtml(d, av) {
+    var p = d.pessoa || {};
+    var c = '<p class="lede">' + esc(d.resumo || '') + '</p>' + pilhaDe(p.percentuais);
+    // Na avançada, só nome e frase da combinação (a descrição é escrita para a própria pessoa, em "você").
+    var cbx = av && d.combinacao && typeof d.combinacao === 'object' ? { codigo: d.combinacao.codigo, nome: d.combinacao.nome, frase: d.combinacao.frase } : d.combinacao;
+    var comb = combinacaoHtml(cbx).replace('Sua combinação', 'Combinação');
+    if (av) {
+      c += comb;
+      if (p.equilibrado) c += nota('info', 'Resultado equilibrado', 'Os quatro fatores apareceram em doses parecidas. Os capítulos descrevem a combinação ' + codigoSeguro(d.combinacao && d.combinacao.codigo) + ', mas as preferências desta pessoa podem variar mais conforme a situação: confirme na prática.');
+      var ret = lista(av.retrato).filter(function (t) { return typeof t === 'string' && t; });
+      if (ret.length) c += '<h3 class="h3 mt48">Retrato para quem lidera</h3><div class="texto-doc">' + ret.map(function (t) { return '<p>' + esc(t) + '</p>'; }).join('') + '</div>';
+    }
+    if (d.relacao) {
+      var r = d.relacao;
+      c += '<h3 class="h3 mt48">Você e ' + esc(p.nome) + '</h3><div class="par-doc par-doc--' + nivelSeguro(r.nivel) + '">' +
+        '<div class="par-doc__cab"><span class="par-doc__nomes"><strong>' + esc(d.lider && d.lider.nome) + '</strong> <span class="par-doc__tipo">lidera</span> <strong>' + esc(p.nome) + '</strong></span>' + seloNivel(r.nivel, r.pontuacao) + '</div>' +
+        (ehNumero(r.pontuacao) ? barra(r.pontuacao, 100, 'barra--nv-' + nivelSeguro(r.nivel), 'Pontuação ' + r.pontuacao + ' de 100') : '') +
+        '<div class="par-doc__grade">' +
+        (lista(r.sinergias).length ? '<div><div class="rotulo-doc">Sinergias</div>' + listaItens(r.sinergias) + '</div>' : '') +
+        (lista(r.riscos).length ? '<div><div class="rotulo-doc">Riscos</div>' + listaItens(r.riscos) + '</div>' : '') +
+        (lista(r.dicas).length ? '<div><div class="rotulo-doc">Dicas</div>' + listaItens(r.dicas) + '</div>' : '') + '</div></div>';
+    }
+    // Combinação, mapa ritmo × foco e esforço de adaptação ao cargo (Parte 2)
+    var ex = d.exigido && typeof d.exigido === 'object' && d.exigido.percentuais ? d.exigido : null;
+    var secEsforco = lista(d.secoes).filter(function (s) { return s && typeof s === 'object'; }).filter(ehSecaoExigido)[0] || null;
+    if (!av) c += comb;
+    if (d.mapa && lista(d.mapa.pontos).length) {
+      var pt0 = lista(d.mapa.pontos)[0];
+      c += '<h3 class="h3 mt48">Ritmo e foco</h3><div class="mapa-bloco">' + mapaRitmoFocoHtml(d.mapa.pontos, { rotulo: 'Ritmo e foco de ' + (p.nome || 'esta pessoa'), rotuloExigido: 'Cargo' }) +
+        '<div class="mapa-bloco__txt"><p>' + esc(textoMapaPessoa(d, false)) + '</p>' +
+        (ex && pt0 && eixoValido(pt0.exigido) ? '<p>O círculo laranja mostra o que o cargo pede, na percepção de ' + esc(p.nome || 'esta pessoa') + '; a seta indica a direção do ajuste diário.</p>' : '') +
+        '<p class="nota-curta">Em cima, ritmo acelerado; embaixo, cauteloso. À esquerda, foco em tarefas; à direita, em pessoas.</p></div></div>';
+    }
+    if (ex) {
+      c += '<h3 class="h3 mt48">Esforço de adaptação ao cargo</h3>' + naturalExigidoHtml(p.percentuais, ex) + (secEsforco ? '' : textosExigido(ex, null));
+    }
+    return c;
+  }
+
+  // Seções do guia em cartões (versão 1: todas; versão 2: só as do "guia rápido").
+  function guiaCartoesHtml(secs) {
+    return '<div class="guia-doc">' + secs.map(function (s, i) {
+      var corpo = lista(s.etapas).length ? lista(s.etapas).map(function (e) {
+        return '<div class="guia-doc__etapa"><div class="rotulo-doc">' + esc(e.periodo) + '</div>' + listaItens(e.itens) + '</div>';
+      }).join('') : listaItens(s.itens);
+      if (lista(s.exemplos).length) corpo += '<div class="rotulo-doc mt16">Exemplos</div>' + listaItens(lista(s.exemplos).map(function (e) { return typeof e === 'string' ? e : e && (e.texto || e.frase) ? String(e.texto || e.frase) : ''; }), 'itens-doc--exemplos');
+      var larga = s.chave === 'plano' || s.chave === 'voceEEla' || ehSecaoExigido(s);
+      return '<article class="guia-doc__sec' + (larga ? ' guia-doc__sec--larga' : '') + '"><div class="leitura__n">' + n2(i) + '</div><h3 class="h4doc">' + esc(s.titulo) + '</h3>' + corpo + '</article>';
+    }).join('') + '</div>';
+  }
+
+  // O avançado só é desenhado com capítulos válidos; qualquer outra coisa cai na versão 1.
+  function avancadoDe(d) {
+    var av = d && d.avancado;
+    if (!av || typeof av !== 'object' || !Array.isArray(av.capitulos)) return null;
+    var caps = av.capitulos.filter(function (c) { return c && typeof c === 'object' && typeof c.id === 'string' && c.titulo; });
+    return caps.length ? { retrato: lista(av.retrato), capitulos: caps, fundamentos: lista(av.fundamentos) } : null;
+  }
+
+  function idCapitulo(id) { return String(id || '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 40) || 'capitulo'; }
+
+  function textoBloco(t) { return t ? '<div class="texto-doc">' + paragrafos(t) + '</div>' : ''; }
+  function so(itens) { return lista(itens).filter(function (t) { return typeof t === 'string' && t; }); }
+  function objs(itens) { return lista(itens).filter(function (x) { return x && typeof x === 'object'; }); }
+
+  // Um bloco de capítulo (lista branca de tipos; desconhecido = nada).
+  function blocoCapituloHtml(b) {
+    if (!b || typeof b !== 'object') return '';
+    var t = b.tipo;
+    if (t === 'texto') return textoBloco(b.texto);
+    if (t === 'destaques') {
+      var ds = objs(b.itens).filter(function (x) { return x.titulo || x.texto; });
+      if (!ds.length) return '';
+      return '<div class="leituras mt24' + (ds.length === 1 ? ' leituras--um' : ds.length % 2 === 0 ? ' leituras--par' : '') + '">' + ds.map(function (x) {
+        return '<article class="leitura">' + (x.titulo ? '<h4>' + esc(x.titulo) + '</h4>' : '') + paragrafos(x.texto) + '</article>';
+      }).join('') + '</div>';
+    }
+    if (t === 'grupos') {
+      var gs = objs(b.itens).filter(function (g) { return so(g.itens).length; });
+      if (!gs.length) return '';
+      var cartoes = gs.map(function (g) { return '<div class="cartao-doc">' + (g.titulo ? '<div class="rotulo-doc">' + esc(g.titulo) + '</div>' : '') + listaItens(so(g.itens)) + '</div>'; });
+      return gs.length === 1 ? '<div class="mt24">' + cartoes[0] + '</div>' : '<div class="duas mt24">' + cartoes.join('') + '</div>';
+    }
+    if (t === 'frases') {
+      var fs = objs(b.itens).filter(function (x) { return typeof x.frase === 'string' && x.frase; });
+      if (!fs.length) return '';
+      return '<div class="frases-doc mt32' + (fs.length === 1 ? ' frases-doc--um' : '') + '">' + (b.titulo ? '<h3 class="h4doc">' + esc(b.titulo) + '</h3>' : '') + '<ul class="frases-doc__lista">' + fs.map(function (x) {
+        return '<li class="frase-doc">' + (x.situacao ? '<span class="frase-doc__sit">' + esc(x.situacao) + '</span>' : '') + '<blockquote class="frase-doc__txt">“' + esc(x.frase) + '”</blockquote></li>';
+      }).join('') + '</ul></div>';
+    }
+    if (t === 'etapas') {
+      var es = objs(b.itens).filter(function (e) { return so(e.itens).length; });
+      if (!es.length) return '';
+      return '<div class="etapas90 mt24">' + es.map(function (e) { return '<div class="cartao-doc"><div class="rotulo-doc">' + esc(e.titulo) + '</div>' + listaItens(so(e.itens)) + '</div>'; }).join('') + '</div>';
+    }
+    if (t === 'passos') {
+      var ps = objs(b.itens).filter(function (x) { return x.texto; });
+      if (!ps.length) return '';
+      return '<div class="mt32">' + (b.titulo ? '<h3 class="h4doc">' + esc(b.titulo) + '</h3>' : '') + '<ol class="plano-doc passos-doc">' + ps.map(function (x, k) {
+        return '<li><span class="plano-doc__prazo">' + n2(k) + '</span><span>' + (x.titulo ? '<strong>' + esc(x.titulo) + '</strong>' : '') + '<span class="plano-doc__txt">' + esc(x.texto) + '</span></span></li>';
+      }).join('') + '</ol></div>';
+    }
+    if (t === 'perguntas') {
+      var qs = so(b.itens);
+      if (!qs.length) return '';
+      return '<div class="cartao-doc mt24">' + (b.titulo ? '<div class="rotulo-doc">' + esc(b.titulo) + '</div>' : '') + '<ol class="perguntas-doc">' + qs.map(function (q) { return '<li>' + esc(q) + '</li>'; }).join('') + '</ol></div>';
+    }
+    if (t === 'exemplo') {
+      return b.texto ? '<div class="nota-doc">' + (b.titulo ? '<span class="nota-doc__tag">' + esc(b.titulo) + '</span>' : '') + paragrafos(b.texto) + '</div>' : '';
+    }
+    if (t === 'alerta') {
+      if (!b.texto && !so(b.itens).length) return '';
+      return '<div class="obs ' + (b.leve ? 'obs--destaque' : 'obs--alerta') + ' mt24">' + (b.titulo ? '<div class="obs__tit">' + esc(b.titulo) + '</div>' : '') +
+        paragrafos(b.texto) + listaItens(so(b.itens)) + '</div>';
+    }
+    if (t === 'estilos') {
+      var st = objs(b.itens).filter(function (x) { return x.texto || so(x.ajustes).length; });
+      if (!st.length) return '';
+      return '<div class="estilos-doc mt24' + (st.length === 1 ? ' estilos-doc--um' : '') + '">' + st.map(function (x) {
+        var L = letraDisc(x.letra);
+        return '<article class="estilo-doc' + (x.atual ? ' estilo-doc--atual' : '') + '" data-letra="' + L + '"><div class="estilo-doc__cab"><span class="disc-def__letra disc-letra-' + L + '">' + (L || '–') + '</span>' +
+          '<h4 class="h4doc">' + esc(x.nome) + (x.atual ? ' <span class="disc-def__tag">seu estilo</span>' : '') + '</h4></div>' +
+          (x.texto ? '<p>' + esc(x.texto) + '</p>' : '') + (so(x.ajustes).length ? '<div class="rotulo-doc mt16">Ajustes que ajudam</div>' + listaItens(so(x.ajustes)) : '') + '</article>';
+      }).join('') + '</div>';
+    }
+    return '';
+  }
+
+  function capituloLiderancaHtml(c) {
+    var cc = c.intro ? '<p class="lede lede--curta">' + esc(c.intro) + '</p>' : '';
+    lista(c.blocos).forEach(function (b) { cc += blocoCapituloHtml(b); });
+    if (c.base) cc += '<p class="base-doc">' + esc(c.base) + '</p>';
+    return cc;
+  }
+
+  // Seções da versão 1 que entram no "guia rápido" da versão 2 (as outras viraram capítulos).
+  var GUIA_RAPIDO = ['comunicacao', 'precisa', 'evita', 'cobrar', 'rendeMais', 'riscos'];
+
+  function liderancaAvancadoHtml(d, av) {
+    var p = d.pessoa || {};
+    var emp = d.empresa || {};
+    var cod = codigoSeguro(p.codigo);
+    var secsRL = lista(d.secoes).filter(function (s) { return s && typeof s === 'object'; });
+    var rapidas = secsRL.filter(function (s) { return GUIA_RAPIDO.indexOf(s.chave) >= 0 || ehSecaoExigido(s); });
+    var S = [{ id: 'resumo', titulo: 'Quem é ' + (p.nome || 'esta pessoa'), curto: 'Quem é', meta: 'Perfil · Retrato · Ritmo e foco' + (d.relacao ? ' · Relação com o líder' : '') }];
+    if (rapidas.length) S.push({ id: 'liderar', titulo: 'Guia rápido do dia a dia', curto: 'Guia rápido', meta: 'Comunicação · Do que precisa · Cobrança · Riscos' });
+    av.capitulos.forEach(function (c) { S.push({ id: idCapitulo(c.id), titulo: String(c.titulo), curto: c.curto ? String(c.curto) : '', meta: c.meta ? String(c.meta) : '', cap: c }); });
+    S.push({ id: 'encerramento', titulo: 'Limites e fundamentos', curto: 'Limites', meta: 'Como usar · Estudos de base' });
+    S.forEach(function (x, i) { x.n = n2(i); });
+    var cb = d.combinacao && d.combinacao.nome ? d.combinacao.nome : '';
+    var h = capaModelo({
+      retrato: { nome: p.nome, foto: p.foto },
+      meta: 'Guia de liderança · avançado', sobre: 'Guia de liderança' + (emp.nome ? ' · ' + emp.nome : ''),
+      tituloHtml: 'Como liderar <em>' + esc(p.nome || 'esta pessoa') + '</em>',
+      subtitulo: 'Um guia completo para quem lidera: feedback, delegação, motivação, retenção, sinais de desgaste, mudanças, conflitos, reuniões individuais e os primeiros 90 dias.',
+      numeros: [
+        { valor: codigoSeguro(d.combinacao && d.combinacao.codigo) || cod || '—', rotulo: 'perfil DISC' },
+        { valor: cb || p.estilo || '—', rotulo: 'estilo', destaque: true, texto: true }
+      ],
+      rodape: [
+        { rotulo: 'Pessoa', linhas: [p.nome, p.cargo] },
+        { rotulo: 'Líder', linhas: [d.lider ? d.lider.nome : '—'] },
+        { rotulo: 'Empresa', linhas: [emp.nome || '—'] },
+        { rotulo: 'Emitido em', linhas: [data(d.geradoEm) || '—'] }
+      ]
+    });
+    h += indiceModelo(S, 'Como liderar ' + (p.nome || 'esta pessoa') + ', capítulo a capítulo.', 'Leia na ordem ou vá direto ao tema do momento. Cada capítulo traz o que costuma funcionar com este perfil, exemplos do dia a dia e frases prontas.');
+    S.slice(0, -1).forEach(function (s, k) {
+      var corpo;
+      if (s.id === 'resumo') corpo = quemEHtml(d, av);
+      else if (s.id === 'liderar') corpo = '<p class="lede lede--curta">O essencial para o dia a dia, em cartões. Os capítulos seguintes aprofundam cada tema.</p>' + guiaCartoesHtml(rapidas);
+      else corpo = capituloLiderancaHtml(s.cap);
+      h += secao(s, k % 2 === 1, cabecalhoPagina(s, s.id === 'resumo' ? p.cargo : (p.nome || '')) + corpo);
+    });
+    var fund = so(av.fundamentos);
+    var fim = S[S.length - 1];
+    var corpoFim = '<div class="final__texto"><p>' + esc(d.aviso || '') + '</p></div>' +
+      '<div class="passos-cab">Um ajuste de cada vez</div><p class="final__dica">Escolha um capítulo por semana, teste uma ou duas ideias com ' + esc(p.nome || 'esta pessoa') + ' e converse sobre o que funcionou. Liderar bem é ajustar no caminho.</p>' +
+      (fund.length ? '<div class="passos-cab">Fundamentos</div><ol class="fundamentos-doc">' + fund.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ol>' : '');
+    h += encerramentoModelo(fim, emp.nome, corpoFim, d.consultor, d.geradoEm);
+    return '<article class="doc doc--lideranca doc--lideranca-avancado" data-modelo="lideranca" data-versao="avancado">' + h +
+      rodapeModelo([emp.nome, 'Guia de liderança', p.nome], 'Documento confidencial, para o líder direto. Sem dados de contato.') + '</article>';
+  }
 
   function liderancaHtml(d) {
+    var av = avancadoDe(d);
+    if (av) return liderancaAvancadoHtml(d, av);
     var p = d.pessoa || {};
     var emp = d.empresa || {};
     var S = [
@@ -1253,43 +1444,10 @@
       ]
     });
     // 01
-    var c = '<p class="lede">' + esc(d.resumo || '') + '</p>' + pilhaDe(p.percentuais);
-    if (d.relacao) {
-      var r = d.relacao;
-      c += '<h3 class="h3 mt48">Você e ' + esc(p.nome) + '</h3><div class="par-doc par-doc--' + nivelSeguro(r.nivel) + '">' +
-        '<div class="par-doc__cab"><span class="par-doc__nomes"><strong>' + esc(d.lider && d.lider.nome) + '</strong> <span class="par-doc__tipo">lidera</span> <strong>' + esc(p.nome) + '</strong></span>' + seloNivel(r.nivel, r.pontuacao) + '</div>' +
-        (ehNumero(r.pontuacao) ? barra(r.pontuacao, 100, 'barra--nv-' + nivelSeguro(r.nivel), 'Pontuação ' + r.pontuacao + ' de 100') : '') +
-        '<div class="par-doc__grade">' +
-        (lista(r.sinergias).length ? '<div><div class="rotulo-doc">Sinergias</div>' + listaItens(r.sinergias) + '</div>' : '') +
-        (lista(r.riscos).length ? '<div><div class="rotulo-doc">Riscos</div>' + listaItens(r.riscos) + '</div>' : '') +
-        (lista(r.dicas).length ? '<div><div class="rotulo-doc">Dicas</div>' + listaItens(r.dicas) + '</div>' : '') + '</div></div>';
-    }
-    // Combinação, mapa ritmo × foco e esforço de adaptação ao cargo (Parte 2)
-    var ex = d.exigido && typeof d.exigido === 'object' && d.exigido.percentuais ? d.exigido : null;
-    var secsRL = lista(d.secoes).filter(function (s) { return s && typeof s === 'object'; });
-    var secEsforco = secsRL.filter(ehSecaoExigido)[0] || null;
-    c += combinacaoHtml(d.combinacao).replace('Sua combinação', 'Combinação');
-    if (d.mapa && lista(d.mapa.pontos).length) {
-      var pt0 = lista(d.mapa.pontos)[0];
-      c += '<h3 class="h3 mt48">Ritmo e foco</h3><div class="mapa-bloco">' + mapaRitmoFocoHtml(d.mapa.pontos, { rotulo: 'Ritmo e foco de ' + (p.nome || 'esta pessoa'), rotuloExigido: 'Cargo' }) +
-        '<div class="mapa-bloco__txt"><p>' + esc(textoMapaPessoa(d, false)) + '</p>' +
-        (ex && pt0 && eixoValido(pt0.exigido) ? '<p>O círculo laranja mostra o que o cargo pede, na percepção de ' + esc(p.nome || 'esta pessoa') + '; a seta indica a direção do ajuste diário.</p>' : '') +
-        '<p class="nota-curta">Em cima, ritmo acelerado; embaixo, cauteloso. À esquerda, foco em tarefas; à direita, em pessoas.</p></div></div>';
-    }
-    if (ex) {
-      c += '<h3 class="h3 mt48">Esforço de adaptação ao cargo</h3>' + naturalExigidoHtml(p.percentuais, ex) + (secEsforco ? '' : textosExigido(ex, null));
-    }
-    var h1 = secao(S[0], false, cabecalhoPagina(S[0], p.cargo) + c);
+    var h1 = secao(S[0], false, cabecalhoPagina(S[0], p.cargo) + quemEHtml(d, null));
     // 02
-    c = '<div class="guia-doc">' + secsRL.map(function (s, i) {
-      var corpo = lista(s.etapas).length ? lista(s.etapas).map(function (e) {
-        return '<div class="guia-doc__etapa"><div class="rotulo-doc">' + esc(e.periodo) + '</div>' + listaItens(e.itens) + '</div>';
-      }).join('') : listaItens(s.itens);
-      if (lista(s.exemplos).length) corpo += '<div class="rotulo-doc mt16">Exemplos</div>' + listaItens(lista(s.exemplos).map(function (e) { return typeof e === 'string' ? e : e && (e.texto || e.frase) ? String(e.texto || e.frase) : ''; }), 'itens-doc--exemplos');
-      var larga = s.chave === 'plano' || s.chave === 'voceEEla' || ehSecaoExigido(s);
-      return '<article class="guia-doc__sec' + (larga ? ' guia-doc__sec--larga' : '') + '"><div class="leitura__n">' + n2(i) + '</div><h3 class="h4doc">' + esc(s.titulo) + '</h3>' + corpo + '</article>';
-    }).join('') + '</div>';
-    var h2 = secao(S[1], true, cabecalhoPagina(S[1], cod ? 'Perfil ' + cod : '') + c);
+    var secsRL = lista(d.secoes).filter(function (s) { return s && typeof s === 'object'; });
+    var h2 = secao(S[1], true, cabecalhoPagina(S[1], cod ? 'Perfil ' + cod : '') + guiaCartoesHtml(secsRL));
     var h3 = encerramentoModelo(S[2], emp.nome, '<div class="final__texto"><p>' + esc(d.aviso || '') + '</p></div>', d.consultor, d.geradoEm);
     return '<article class="doc doc--lideranca" data-modelo="lideranca">' + h + h1 + h2 + h3 +
       rodapeModelo([emp.nome, 'Guia de liderança', p.nome], 'Documento confidencial, para o líder direto. Sem dados de contato.') + '</article>';

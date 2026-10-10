@@ -1,0 +1,259 @@
+{
+  "codigo": "C",
+  "retrato": [
+    "Você está liderando alguém em quem a Conformidade se destaca com folga. No dia a dia, tende a ser a pessoa que percebe o erro na nota fiscal antes de sair, confere o estoque item por item, lê o contrato inteiro e pergunta o que ninguém perguntou. Num laboratório, num escritório de contabilidade, numa farmácia ou na área financeira de uma loja, costuma ser a garantia de que as coisas são feitas do jeito certo.",
+    "O ponto de atenção mais comum é o tempo. Este perfil tende a querer todas as informações antes de decidir, revisar mais uma vez antes de entregar e travar quando o pedido é vago ou muda no meio do caminho. Também costuma ser crítico com trabalho mal feito, inclusive o da liderança, e pode passar uma impressão de frieza ou distância quando corrige alguém. Diante de pressão por rapidez sem critério, tende a ficar na defensiva.",
+    "Para render bem, este perfil precisa de critérios claros, informação completa, tempo para análise e uma liderança coerente, que explique o porquê das decisões. Em troca, você tende a ganhar alguém que entrega com qualidade, evita retrabalho e enxerga riscos antes dos outros. O seu papel é definir com a pessoa o que é bom o suficiente para cada tarefa e proteger a qualidade sem deixar o prazo escapar."
+  ],
+  "feedback": {
+    "texto": "Este perfil costuma receber melhor o feedback que vem com fatos, exemplos verificáveis e critério claro. Opinião sem embasamento, generalização e tom emocional tendem a gerar contestação ou silêncio defensivo. A pessoa costuma ser muito exigente consigo e pode levar uma crítica mais a sério do que você pretendia, revisando tudo depois. Por isso, separe o trabalho da pessoa, aponte o ponto exato a ajustar, mostre o critério combinado e dê tempo para a pessoa voltar com uma proposta. Elogio funciona quando é específico sobre a qualidade, e de preferência sem exageros.",
+    "funciona": [
+      "Trazer o exemplo exato: qual documento, qual item, qual critério ficou fora do combinado.",
+      "Enviar a pauta antes da conversa, para a pessoa chegar preparada.",
+      "Separar claramente o trabalho da pessoa e falar do padrão, não do jeito de ser.",
+      "Dar tempo para a pessoa analisar e responder depois, se preferir.",
+      "Elogiar a qualidade de forma específica, dizendo o que ficou bem feito e por quê."
+    ],
+    "da_errado": [
+      "Generalizações como \"isso sempre dá problema\", sem exemplo concreto.",
+      "Opinião sem critério: a pessoa tende a contestar ou a se fechar.",
+      "Corrigir na frente dos outros, expondo o erro.",
+      "Pressionar por resposta imediata sobre um assunto complexo.",
+      "Mudar o critério de qualidade sem avisar e depois cobrar pelo novo."
+    ],
+    "frases": [
+      { "situacao": "Reconhecer a qualidade", "frase": "A conciliação bancária de setembro estava completa e sem nenhuma diferença. Usei direto na reunião com o contador e economizou dois dias de conferência." },
+      { "situacao": "Corrigir um ponto específico", "frase": "No relatório de estoque, os itens 3 e 7 ficaram fora do padrão que combinamos. O resto está ótimo. Como podemos evitar isso nas próximas contagens?" },
+      { "situacao": "Perfeccionismo atrasando o prazo", "frase": "A proposta está muito boa e o cliente precisa receber hoje. O que falta é refinamento, não erro. Vamos enviar assim e ajustar os detalhes na versão final?" },
+      { "situacao": "Crítica dura a um colega", "frase": "Você tem razão sobre o erro no pedido do Marcos. O jeito como foi dito no grupo deixou o Marcos exposto. Na próxima, fala em particular. Combinado?" },
+      { "situacao": "Pedir uma decisão com informação incompleta", "frase": "Sei que ainda faltam dados do fornecedor. Com o que temos hoje, qual opção você escolheria e qual é o maior risco? Decidimos com isso e revisamos em 30 dias." },
+      { "situacao": "Combinar o nível de detalhe", "frase": "Para relatórios internos, uma página com os números principais basta. Para o cliente, mantemos o seu padrão completo. Faz sentido para você?" }
+    ]
+  },
+  "delegacao": {
+    "texto": "Este perfil gosta de tarefas bem definidas, com critério claro de qualidade e espaço para fazer com cuidado. Rende menos quando o pedido é vago, quando o critério muda no meio do caminho ou quando há pressão para entregar rápido sem saber o que é aceitável. Delegar bem aqui é combinar antes o que é pronto, o prazo, o nível de detalhe esperado e o que pode ser simplificado. Com isso claro, a pessoa costuma precisar de pouco acompanhamento.",
+    "autonomia": "Alta no método, combinada no critério e no prazo. Deixe a pessoa escolher como fazer e confie na análise da pessoa sobre riscos técnicos. O que precisa ficar combinado com você é o padrão de qualidade, o prazo e quando parar de refinar. Autonomia sem critério de pronto tende a virar análise sem fim.",
+    "combinar": [
+      "Explique o objetivo e para quem é a entrega, porque isso define o nível de detalhe.",
+      "Defina por escrito o critério de pronto: o que precisa estar, o que é opcional.",
+      "Combine o prazo e um ponto intermediário de revisão para entregas maiores.",
+      "Passe toda a informação disponível de uma vez, em vez de aos poucos.",
+      "Diga o que pode ser decidido sem você e o que precisa de aprovação."
+    ],
+    "acompanhar": "Acompanhe mais o prazo do que o método. Revisões em entregas parciais funcionam melhor do que perguntas soltas no dia a dia. Se o prazo apertar, decidam juntos o que pode ser simplificado, em vez de só cobrar rapidez.",
+    "exemplo": "Numa farmácia, em vez de \"organiza o controle de validade\", combine: \"Quero uma planilha com todos os itens que vencem nos próximos 90 dias, atualizada toda segunda, até o dia 15. Para cada item, basta código, lote, validade e quantidade. Você decide como levantar os dados. Me mostra a primeira versão na quarta para eu ver se está no caminho\".",
+    "armadilhas": [
+      "Pedidos vagos como \"dá uma olhada nisso\" sem objetivo nem prazo.",
+      "Mudar o critério depois que o trabalho já foi feito.",
+      "Cobrar rapidez sem dizer o que pode ser simplificado.",
+      "Refazer o trabalho da pessoa sem explicar o motivo, o que mina a confiança."
+    ]
+  },
+  "motivacao": {
+    "texto": "Este perfil costuma se mover pela qualidade, pela lógica e pela chance de fazer bem feito. Ambientes organizados, decisões baseadas em dados, regras que valem para todos e tempo para se aprofundar tendem a sustentar a energia. Improviso constante, incoerência e pressão para entregar sem critério tendem a desgastar. O reconhecimento que mais pesa é o específico, que mostra que alguém percebeu o cuidado e o rigor do trabalho.",
+    "autonomia": "Para este perfil, autonomia significa decidir o método, organizar o próprio trabalho e ter espaço para analisar antes de agir. Dê acesso às informações, explique o porquê das regras e permita que a pessoa proponha melhorias de processo com base em dados.",
+    "competencia": "A sensação de estar ficando melhor vem de dominar o assunto a fundo e de ser referência técnica. Ofereça cursos, normas, materiais de estudo e problemas complexos para resolver. Reconheça o conhecimento técnico diante de quem decide.",
+    "vinculo": "O vínculo com este perfil tende a ser construído pelo respeito ao trabalho e pela coerência, mais do que pela proximidade social. A pessoa costuma se ligar a líderes justos, organizados e que cumprem o combinado. Conversas francas e objetivas valem mais do que eventos sociais.",
+    "reconhecer": [
+      "Elogio específico sobre a qualidade, citando o detalhe que fez diferença.",
+      "Pedir a opinião técnica da pessoa em decisões importantes e usar a contribuição.",
+      "Dar acesso a cursos, normas ou ferramentas que aprofundem o conhecimento.",
+      "Reconhecer por escrito, num e-mail ou mensagem, com o resultado da entrega.",
+      "Confiar à pessoa a definição de um padrão ou de um processo da área."
+    ],
+    "desmotiva": [
+      "Pedidos vagos e mudanças constantes de critério.",
+      "Pressão para entregar algo que a pessoa considera mal feito.",
+      "Decisões incoerentes ou regras que valem só para alguns.",
+      "Exposição pública de erros ou cobrança emocional.",
+      "Reuniões sem pauta e sem conclusão."
+    ]
+  },
+  "retencao": {
+    "texto": "Este perfil tende a ficar onde o trabalho é levado a sério, a qualidade é valorizada e a liderança é coerente. Costuma sair quando sente que precisa fazer as coisas de qualquer jeito, quando as regras mudam ao sabor do humor de alguém ou quando o conhecimento técnico não é respeitado. A decisão de sair costuma ser analisada com calma e por bastante tempo, e quase sempre vem acompanhada de uma comparação racional entre as opções.",
+    "fica": [
+      "Padrões claros de qualidade e processos que funcionam.",
+      "Uma liderança coerente, justa e que explica as decisões.",
+      "Tempo e recursos para fazer o trabalho bem feito.",
+      "Oportunidades de aprofundar o conhecimento e ser referência técnica.",
+      "Remuneração e critérios de crescimento transparentes."
+    ],
+    "sai": [
+      "Pressão constante para entregar rápido e mal feito.",
+      "Desorganização crônica e retrabalho causado por outros.",
+      "Decisões arbitrárias ou incoerentes da liderança.",
+      "Falta de reconhecimento pela qualidade e pelo conhecimento."
+    ],
+    "sinais": [
+      "Para de apontar riscos e problemas, como se não valesse mais a pena.",
+      "Faz só o que está escrito, sem a revisão extra de antes.",
+      "Pergunta mais sobre regras de férias, rescisão ou benefícios do que o normal.",
+      "Faz mais críticas e ironias sobre decisões da empresa."
+    ],
+    "perguntas": [
+      "O que mais atrapalha a qualidade do seu trabalho hoje?",
+      "Que regra ou processo você mudaria se pudesse?",
+      "Em que você gostaria de se aprofundar nos próximos meses?",
+      "O que uma proposta de fora precisaria ter para você considerar?"
+    ]
+  },
+  "desgaste": {
+    "texto": "Este perfil costuma se desgastar quando a exigência de qualidade continua alta e, ao mesmo tempo, faltam tempo, informação e critério para atingir. O conflito entre fazer certo e fazer rápido, repetido por meses, cobra muita energia. Os recursos que mais devolvem energia são previsibilidade, clareza e reconhecimento do cuidado. Os primeiros sinais costumam aparecer como mais revisão, mais rigidez e mais crítica; depois, como afastamento.",
+    "demandas": [
+      "Prazos apertados sem critério do que pode ser simplificado.",
+      "Retrabalho causado por mudanças de última hora.",
+      "Pressão para decidir sem informação suficiente.",
+      "Ambiente desorganizado, com regras que mudam o tempo todo."
+    ],
+    "recursos": [
+      "Critérios claros e informação completa desde o início.",
+      "Tempo protegido para trabalho concentrado, sem interrupções.",
+      "Reconhecimento específico pela qualidade e pelo cuidado.",
+      "Uma liderança que decide junto o que pode ser simplificado."
+    ],
+    "sinais_iniciais": [
+      "Revisa o mesmo trabalho várias vezes e atrasa entregas que antes saíam no prazo.",
+      "Faz mais perguntas e pede mais confirmações do que o normal.",
+      "Críticas mais duras ou irônicas ao trabalho dos colegas.",
+      "Isola-se mais, com fones de ouvido e menos conversa."
+    ],
+    "sinais_fortes": [
+      "Rigidez fora do comum: recusa qualquer flexibilidade, mesmo pequena.",
+      "Erros em tarefas que sempre fez com precisão.",
+      "Comentários de desânimo sobre a empresa ou de que nada é feito direito.",
+      "Faltas, atrasos ou cansaço visível por várias semanas."
+    ],
+    "como_agir": [
+      "Converse em particular, com calma e com exemplos do que você observou.",
+      "Pergunte o que está pesando mais e quais tarefas estão sem critério claro.",
+      "Defina juntos o que é bom o suficiente para cada entrega pendente.",
+      "Proteja blocos de tempo sem interrupção e reduza mudanças de última hora.",
+      "Reconheça o cuidado recente de forma específica e combine uma nova conversa."
+    ],
+    "conversa": "Tenho notado que você está revisando mais vezes e ficando até mais tarde para fechar as entregas. Quero entender o que está pesando e onde eu posso ajudar a tirar pressão. Como você está?"
+  },
+  "mudanca": {
+    "texto": "Este perfil tende a questionar mudanças, especialmente as que chegam sem dados, sem plano ou que parecem colocar a qualidade em risco. A resistência costuma vir em forma de perguntas e objeções detalhadas, que podem soar como má vontade, mas costumam apontar riscos reais. Com explicação lógica, tempo para analisar e um plano claro, a pessoa tende a aderir e a garantir que a mudança seja bem implementada.",
+    "antes": [
+      "Explique o problema que a mudança resolve, com dados, e o resultado esperado.",
+      "Envie o material com antecedência e dê tempo para a pessoa analisar e perguntar.",
+      "Peça que a pessoa aponte os riscos e trate as objeções como contribuição."
+    ],
+    "durante": [
+      "Defina com clareza o novo processo, por escrito, com responsáveis e critérios.",
+      "Peça ajuda da pessoa para testar, documentar e ajustar o novo jeito de fazer.",
+      "Responda às dúvidas com precisão; respostas vagas aumentam a resistência."
+    ],
+    "depois": [
+      "Mostre os resultados da mudança com números, inclusive o que não funcionou.",
+      "Reconheça os riscos que a pessoa ajudou a evitar.",
+      "Revise o processo depois de algumas semanas e ajuste com base nos dados."
+    ],
+    "frase": "Vamos trocar o sistema de estoque no próximo trimestre. Te mandei o material com o motivo e os números. Quero que você analise com calma e me diga quais riscos enxerga antes de levarmos para o time."
+  },
+  "conflito": {
+    "texto": "Este perfil tende a entrar em conflito pelo argumento técnico. Discorda quando vê erro, falta de critério ou risco, e costuma defender a posição com lógica e insistência. Em geral, evita discussões emocionais e pode se fechar quando o tom sobe. Com colegas mais rápidos ou mais informais, a crítica pode soar fria, minuciosa ou arrogante, mesmo quando a intenção é só evitar um erro.",
+    "gatilhos": [
+      "Trabalho mal feito de colegas que gera retrabalho.",
+      "Decisões tomadas sem dados ou contra os critérios combinados.",
+      "Pressão para pular etapas de controle.",
+      "Críticas ao trabalho sem fundamento ou em público.",
+      "Regras aplicadas para uns e não para outros."
+    ],
+    "como_aparece": "O atrito costuma aparecer como crítica detalhada, e-mails longos com evidências, correções frias ou resistência a seguir uma decisão considerada errada. Quando o conflito esquenta, a pessoa tende a se retirar da conversa e voltar com argumentos por escrito.",
+    "mediar": [
+      "Converse em particular com cada lado e peça os fatos e as evidências.",
+      "Na conversa conjunta, separe o problema técnico da forma como foi comunicado.",
+      "Defina juntos o critério que vai resolver a discordância, como dados, norma ou cliente.",
+      "Combine a forma de dar críticas daqui para frente: em particular e com sugestão.",
+      "Registre o acordo por escrito e marque uma revisão curta em algumas semanas."
+    ],
+    "frase": "Vocês dois têm argumentos válidos. Vamos separar duas coisas: o erro no pedido, que precisa ser resolvido, e o jeito como isso foi falado. Primeiro os fatos, depois o combinado de como conversar."
+  },
+  "um_a_um": {
+    "frequencia": "Semanal ou quinzenal, de 30 minutos, com pauta enviada um dia antes. Este perfil rende mais quando pode se preparar. Prefira um lugar reservado e sem interrupções, e mantenha a reunião objetiva.",
+    "pauta": [
+      { "titulo": "Andamento das entregas", "texto": "Revisem juntos o status das entregas, com datas, critérios e o que está pendente." },
+      { "titulo": "Dúvidas e riscos", "texto": "Peça que a pessoa traga os riscos que enxerga e as informações que estão faltando." },
+      { "titulo": "Critérios e prioridades", "texto": "Confirme o que é prioridade e o nível de detalhe esperado em cada entrega da próxima semana." },
+      { "titulo": "Melhorias de processo", "texto": "Abra espaço para sugestões de melhoria com base em dados e decidam qual testar." },
+      { "titulo": "Desenvolvimento", "texto": "Converse sobre o que a pessoa quer aprofundar e como a empresa pode apoiar esse aprendizado." }
+    ],
+    "perguntas": [
+      "Qual informação está faltando para você trabalhar melhor?",
+      "Que risco você está vendo que eu talvez não esteja?",
+      "Em qual entrega você poderia simplificar sem perder o essencial?",
+      "Que regra ou processo está atrapalhando mais do que ajudando?",
+      "O que você gostaria de aprender a fundo neste ano?"
+    ],
+    "evite": [
+      "Chegar sem pauta e decidir tudo no improviso.",
+      "Pedir posição imediata sobre assuntos complexos.",
+      "Conversas emocionais demais, sem dados e sem conclusão."
+    ]
+  },
+  "plano_90": {
+    "texto": "Para quem acabou de chegar ou mudou de função, este perfil quer entender as regras antes de agir. Uma integração organizada, com documentos, critérios e tempo para aprender, tende a acelerar a adaptação e reduzir erros.",
+    "dias_30": [
+      "Entregue no primeiro dia um material com processos, regras, contatos e critérios de qualidade da função.",
+      "Explique como o trabalho de {nome} será avaliado e o que é prioridade nos primeiros meses.",
+      "Dê tempo para conhecer os sistemas e os documentos antes de cobrar produtividade.",
+      "Faça conversas semanais com pauta e responda às dúvidas com precisão."
+    ],
+    "dias_60": [
+      "Dê autonomia técnica numa entrega maior, com padrão e prazo combinados por escrito.",
+      "Combine o nível de detalhe adequado para cada tipo de tarefa.",
+      "Peça uma análise de um processo da área, com sugestões de melhoria.",
+      "Dê o primeiro feedback estruturado, com exemplos concretos, critérios claros e tempo para a pessoa responder."
+    ],
+    "dias_90": [
+      "Faça uma revisão com dados: qualidade, prazos e dúvidas que ainda existem.",
+      "Envolva a pessoa numa decisão de melhoria de processo ou de controle de risco.",
+      "Combine metas do próximo trimestre, incluindo uma de agilidade nas entregas.",
+      "Reconheça por escrito a contribuição destes três meses, citando entregas e riscos evitados."
+    ],
+    "sinais_bons": [
+      "Domina os processos principais e já aponta melhorias com base em dados.",
+      "Entrega no prazo com o nível de detalhe combinado.",
+      "Faz perguntas e aponta riscos cedo, antes que virem problema."
+    ]
+  },
+  "voce_e_esta_pessoa": {
+    "D": {
+      "texto": "Você tende a decidir rápido e focar no resultado; a pessoa tende a querer analisar e fazer bem feito. A sua pressa pode soar como descuido, e a cautela da pessoa pode parecer lentidão para você. Juntos podem equilibrar velocidade e qualidade, se combinarem os critérios.",
+      "ajustes": [
+        "Antes de pedir uma decisão, entregue os dados e dê um tempo para análise.",
+        "Ao cobrar rapidez, definam juntos o que é bom o suficiente.",
+        "Explique a lógica das suas decisões; ordens sem justificativa geram resistência.",
+        "Dê crédito às objeções técnicas: muitas vezes são riscos reais que você não viu."
+      ]
+    },
+    "I": {
+      "texto": "Você tende a liderar pelo entusiasmo e pela conversa; a pessoa, pela análise e pelo critério. A sua energia pode ajudar a pessoa a se expor mais, mas a falta de detalhe e as mudanças frequentes de plano tendem a incomodar este perfil.",
+      "ajustes": [
+        "Leve dados e detalhes, não só entusiasmo; este perfil confia em fatos.",
+        "Envie os combinados por escrito e evite mudanças de última hora.",
+        "Reconheça de forma discreta e específica, sem celebração pública exagerada.",
+        "Respeite o tempo de análise antes de pedir adesão a uma ideia nova."
+      ]
+    },
+    "S": {
+      "texto": "Vocês tendem a se entender na calma, no método e na previsibilidade. A pessoa costuma valorizar o seu cuidado e a sua constância. O risco é os dois adiarem decisões e conversas difíceis, por cautela, e a área ficar parada.",
+      "ajustes": [
+        "Combinem prazos claros para decidir, para a análise não virar demora.",
+        "Vá direto ao ponto ao apontar um problema, mesmo que pareça desconfortável.",
+        "Estimule a pessoa a compartilhar o conhecimento com o time.",
+        "Traga desafios novos de vez em quando, para a rotina não estagnar."
+      ]
+    },
+    "C": {
+      "texto": "Estilos parecidos: vocês valorizam qualidade, dados e organização, e tendem a se respeitar muito. O risco é a análise se estender demais, os padrões ficarem altos além do necessário e o restante da equipe sentir falta de proximidade e de rapidez.",
+      "ajustes": [
+        "Combinem um prazo para decidir em cada assunto importante.",
+        "Definam juntos onde o padrão pode ser mais simples.",
+        "Cuidem juntos da comunicação com a equipe, que pode precisar de mais calor humano.",
+        "Evitem transformar as conversas em revisões técnicas sem fim."
+      ]
+    }
+  }
+}
