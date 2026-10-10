@@ -250,6 +250,8 @@ test('textosAvaliacao: sem link, seleção e equipe', () => {
   assert.equal(eq.rotuloFuncao, 'Seu cargo/função');
   assert.match(eq.escopo, /compartilhado com a empresa/);
   assert.match(eq.usoDados, /cadastro da equipe/);
+  assert.equal(eq.avisoEstilo, 'O seu resultado descreve estilo de comportamento, não mede competência e não deve ser usado para decisões de desligamento ou salário.');
+  assert.equal(sel.avisoEstilo, '');
   assert.match(eq.enviado, /avaliação da equipe/);
 });
 

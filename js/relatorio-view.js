@@ -4,6 +4,8 @@
  * Desenha o JSON "relatorio" (contrato em docs/SPEC.md / js/relatorio-motor.js) num documento editorial:
  * capa, índice, 01 sumário, 02 atração, 03 avaliação técnica, 04 DISC, 05 ranking, 06 encerramento, rodapé.
  * Com dados.modelo = 'equipe' | 'lideranca' | 'pessoa' (js/relatorio-modelos.js) desenha o modelo correspondente.
+ * Equipe: equipeV2(dados) converte um snapshot v1 (já publicado, com harmonia/notas/"tensão") no formato v2 antes de
+ * desenhar; nenhum relatório de equipe mostra nota de harmonia, de dupla ou de encaixe, nem "tensão".
  * organogramaHtml(organograma, {focoId?, rotulo?}) é exportado para o painel reutilizar (estilos: bloco ".org" de relatorio.css).
  *
  * Segurança:
@@ -673,7 +675,7 @@
     return '<div class="org-cartao' + (l ? ' org-cartao--' + l : ' org-cartao--sem') + (no.foco ? ' org-cartao--foco' : '') + (comFoto ? ' org-cartao--com-foto' : '') + '">' + letra +
       '<span class="org-cartao__txt"><strong class="org-cartao__nome">' + esc(no.nome) + '</strong>' +
       (no.cargo ? '<span class="org-cartao__cargo">' + esc(no.cargo) + '</span>' : '') +
-      '<span class="org-cartao__cod">' + (cod ? 'Perfil ' + esc(cod) : 'Sem teste') + (no.foco ? ' · candidato' : '') + '</span></span></div>';
+      '<span class="org-cartao__cod">' + (cod ? 'Perfil ' + esc(cod) : 'Sem teste') + (no.foco ? ' · em integração' : '') + '</span></span></div>';
   }
 
   // Organograma: árvore de cartões ligados por linhas (CSS). Celular: lista recuada por nível.
@@ -999,62 +1001,237 @@
       (cb.descricao ? '<p>' + esc(cb.descricao) + '</p>' : '') + '</div>';
   }
 
-  /* ------------------------------------------------------------------ EQUIPE */
+  /* ------------------------------------------------------------------ EQUIPE
+   * Versão 2 do snapshot (js/relatorio-modelos.js, VERSAO_EQUIPE; decisão do painel científico,
+   * docs/painel-cientifico/decisao.md, seção 4): sem nota de harmonia, de dupla ou de encaixe, sem "tensão", sem média
+   * por fator. Relatórios v1 já publicados guardam esses campos no banco: equipeV2() os converte na exibição (nada
+   * deles aparece), com os mesmos textos do motor (tests/relatorio-view.test.js confere que são iguais). */
+
+  var LEITURA_EQUIPE = { fluido: 'fluido', atencao: 'combinados', tensao: 'combinados', combinados: 'combinados' };
+  var ROTULO_LEITURA = { fluido: 'Tende a fluir', combinados: 'Pede combinados', indefinido: 'Sem leitura' };
+  var ORDEM_TIPO = { lidera: 0, direto: 1, indireto: 2 };
+  // Iguais a js/compatibilidade.js (FALTA, EXCESSO, AVISOS[1]) e js/relatorio-modelos.js (ROTULOS_ESTILOS, textos).
+  var TEXTO_FALTA = {
+    D: 'Ninguém do time descreveu Dominância como estilo forte. Vale conferir: quem destrava decisões e cobra prazos quando a equipe empaca?',
+    I: 'Ninguém do time descreveu Influência como estilo forte. Vale conferir: quem cuida de engajar clientes e outras áreas?',
+    S: 'Ninguém do time descreveu Estabilidade como estilo forte. Vale conferir: quem garante que as rotinas combinadas sejam mantidas até o fim?',
+    C: 'Ninguém do time descreveu Conformidade como estilo forte. Vale conferir se processos, padrões e qualidade têm dono claro.'
+  };
+  var TEXTO_EXCESSO = {
+    D: 'Boa parte do time descreve Dominância como estilo principal. Vale combinar como decidir quando houver divergência e quem dá a palavra final.',
+    I: 'Boa parte do time descreve Influência como estilo principal. Vale combinar como registrar acordos e acompanhar prazos.',
+    S: 'Boa parte do time descreve Estabilidade como estilo principal. Vale combinar como a equipe se prepara para mudanças e urgências.',
+    C: 'Boa parte do time descreve Conformidade como estilo principal. Vale combinar quando uma decisão pode ser tomada sem todos os dados.'
+  };
+  var ROTULO_ESTILOS = {
+    'sem-dados': 'Sem dados', equilibrado: 'Estilos variados', lacunas: 'Algum estilo pouco presente',
+    excesso: 'Um estilo predomina', 'lacunas-excesso': 'Um estilo predomina e outro está pouco presente'
+  };
+  var TEXTO_DISTANCIA = {
+    baixa: 'Em média, o que os cargos pedem fica perto do estilo natural de quem respondeu.',
+    moderada: 'Em média, os cargos pedem alguns ajustes em relação ao estilo natural de quem respondeu.',
+    alta: 'Em média, os cargos pedem um estilo bem diferente do natural de quem respondeu: vale conversar sobre papéis, rotinas e apoios.'
+  };
+  var ROTULO_DISTANCIA = { baixa: 'Pequena', moderada: 'Moderada', alta: 'Grande', muito_alta: 'Muito grande' };
+  var AVISO_RELACOES = 'As sugestões por relação indicam onde a convivência pode pedir combinados. Não medem a qualidade da relação nem preveem desempenho; qualquer dupla pode trabalhar bem com papéis e acordos claros.';
+  var TEXTO_EQUIPE = {
+    subtitulo: 'Organograma com perfis DISC, estilos do time, combinados sugeridos entre as pessoas e como liderar cada uma.',
+    percentuais: 'Os percentuais do DISC são relativos dentro de cada pessoa e somam 100%: mostram o que cada um prioriza, não quanto tem de cada característica. Estilo não é competência.',
+    relacoes: 'Sugestões de estilo para cada relação registrada, a partir do DISC de cada pessoa. Não medem a qualidade da relação nem preveem desempenho: confirme em conversa.',
+    distancia: 'Mostra quanto cada pessoa diz adaptar o próprio estilo ao cargo. Não mede estresse, saúde nem risco psicossocial e não deve ser usado no PGR.',
+    integracao: 'Este capítulo ajuda a receber bem quem foi contratado(a). Não serve para decidir a contratação.',
+    naoUse: 'Não use este relatório para decidir contratação, promoção, desligamento, remanejamento, salário ou bônus.',
+    noventa: 'Conversa dos 90 dias com metas e retorno nos dois sentidos, com base no trabalho do dia a dia, não no perfil.'
+  };
+  // O que nunca pode aparecer num relatório de equipe (nem vindo de dados antigos).
+  var RE_PROIBIDO_EQUIPE = /\/\s*100|tens[aã]o|harmonia|pedem atenção/i;
+  var RE_COMBINAR_CEDO = /^Com .+, vale combinar desde cedo/;
+  function textoSemTeste(nomes) {
+    return nomes.length + ' pessoa' + (nomes.length > 1 ? 's' : '') + ' sem teste (' + nomes.join(', ') + '): as relações ' + (nomes.length > 1 ? 'delas' : 'dela') + ' ficam sem sugestões.';
+  }
+
+  function leituraEquipe(n) { return LEITURA_EQUIPE[n] || 'indefinido'; }
+  function seloLeitura(n) {
+    var l = leituraEquipe(n);
+    return '<span class="selo-doc selo-doc--nv-' + l + '">' + esc(ROTULO_LEITURA[l]) + '</span>';
+  }
+  function objeto(v) { return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; }
+  function textos(v) { return lista(v).filter(function (t) { return typeof t === 'string' && t; }); }
+  function juntarNomes(nomes, conj) { return nomes.length > 1 ? nomes.slice(0, -1).join(', ') + ' ' + (conj || 'e') + ' ' + nomes[nomes.length - 1] : nomes.join(''); }
+  function textoEstilos(status, falta, excesso, comum) {
+    if (status === 'sem-dados') return 'Ainda não há colaboradores com o teste concluído; os estilos do time aparecem quando as respostas chegarem.';
+    var nomesF = falta.map(function (f) { return f.nome; }), nomesE = excesso.map(function (f) { return f.nome; });
+    var t;
+    if (status === 'equilibrado') t = 'Os quatro estilos do DISC aparecem como fortes em alguém do time, e nenhum é o estilo principal da maior parte das pessoas.';
+    else if (status === 'lacunas') t = 'Ninguém do time descreveu ' + juntarNomes(nomesF, 'nem') + ' como estilo forte; os outros estilos aparecem em ao menos uma pessoa.';
+    else if (status === 'excesso') t = 'Os quatro estilos aparecem como fortes em alguém do time, e boa parte das pessoas descreve ' + juntarNomes(nomesE) + ' como estilo principal.';
+    else t = 'Ninguém do time descreveu ' + juntarNomes(nomesF, 'nem') + ' como estilo forte, e boa parte das pessoas descreve ' + juntarNomes(nomesE) + ' como estilo principal.';
+    if (comum) t += ' Estilo principal mais comum: ' + comum.nome + ' (' + comum.qtd + ' de ' + comum.de + ' pessoa' + (comum.de > 1 ? 's' : '') + ').';
+    return t;
+  }
+  // "Com X, vale combinar desde cedo: <dica>." a partir do "como conduzir" do liderado (dados v1).
+  function combinarCedo(nomeLiderado, nomeLider, dicas) {
+    var deLider = nomeLider + ': ', deLiderado = nomeLiderado + ': ';
+    var l = textos(dicas);
+    var doLider = l.filter(function (t) { return t.indexOf(deLider) === 0; })[0];
+    var daDupla = l.filter(function (t) { return t.indexOf(deLider) !== 0 && t.indexOf(deLiderado) !== 0; })[0];
+    var dica = doLider ? doLider.slice(deLider.length) : daDupla || 'combinem papéis, prioridades e a forma de comunicação.';
+    dica = dica.replace(/: /, ', ');
+    return 'Com ' + nomeLiderado + ', vale combinar desde cedo: ' + dica.charAt(0).toLowerCase() + dica.slice(1);
+  }
+  // Ordem pelo tipo de relação (lidera → direto → indireto); dentro do tipo, a ordem registrada.
+  function porTipo(itens) {
+    return itens.map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) {
+      var ta = ORDEM_TIPO[a.p && a.p.tipo], tb = ORDEM_TIPO[b.p && b.p.tipo];
+      return ((ta === undefined ? 3 : ta) - (tb === undefined ? 3 : tb)) || (a.i - b.i);
+    }).map(function (x) { return x.p; });
+  }
+
+  // Snapshot de equipe pronto para desenhar. v2: como veio (só a ordem dos pares). v1 (sem versao ou versao < 2):
+  // tira harmonia, notas, níveis "atenção/tensão", média por fator, rótulos de encaixe e reescreve os textos que mudaram.
+  function equipeV2(dados) {
+    var d;
+    try { d = JSON.parse(JSON.stringify(objeto(dados))); } catch (e) { d = {}; }
+    d.pares = porTipo(lista(d.pares).filter(function (p) { return p && typeof p === 'object'; }));
+    if (ehNumero(d.versao) && d.versao >= 2) return d;
+
+    var eqb = d.equilibrio = objeto(d.equilibrio);
+    var dist = objeto(eqb.distribuicao);
+    var comTeste = ehNumero(eqb.comTeste) ? eqb.comTeste : 0;
+    var antigos = lista(eqb.falta).concat(lista(eqb.excesso)).map(function (f) { return f && f.texto; });
+    eqb.falta = lista(eqb.falta).filter(function (f) { return f && TEXTO_FALTA[f.fator]; })
+      .map(function (f) { return { fator: f.fator, nome: NOMES_DISC[f.fator].nome, texto: TEXTO_FALTA[f.fator] }; });
+    // "Predomina" passou a ser só contagem: estilo principal de 60% ou mais do time, com 3 ou mais pessoas.
+    eqb.excesso = lista(eqb.excesso).filter(function (f) {
+      return f && TEXTO_EXCESSO[f.fator] && comTeste >= 3 && ehNumero(dist[f.fator]) && dist[f.fator] / comTeste >= 0.6;
+    }).map(function (f) { return { fator: f.fator, nome: NOMES_DISC[f.fator].nome, texto: TEXTO_EXCESSO[f.fator], pessoas: dist[f.fator], total: comTeste }; });
+    var status = !comTeste ? 'sem-dados' : eqb.falta.length && eqb.excesso.length ? 'lacunas-excesso' : eqb.falta.length ? 'lacunas' : eqb.excesso.length ? 'excesso' : 'equilibrado';
+    var pred = null;
+    LETRAS.forEach(function (l) { if (ehNumero(dist[l]) && dist[l] > 0 && (!pred || dist[l] > dist[pred])) pred = l; });
+    eqb.status = status;
+    eqb.rotulo = ROTULO_ESTILOS[status];
+    eqb.texto = textoEstilos(status, eqb.falta, eqb.excesso, pred ? { nome: NOMES_DISC[pred].nome, qtd: dist[pred], de: comTeste } : null);
+    delete eqb.media;
+
+    var num = d.numeros = objeto(d.numeros);
+    delete num.harmonia;
+    num.estilosPresentes = comTeste ? LETRAS.length - eqb.falta.length : null;
+
+    d.pares.forEach(function (p) { p.nivel = leituraEquipe(p.nivel); delete p.pontuacao; });
+    d.liderancas = lista(d.liderancas).filter(function (l) { return l && typeof l === 'object'; });
+    d.liderancas.forEach(function (l) {
+      var lids = lista(l.liderados).filter(function (x) { return x && typeof x === 'object'; });
+      l.liderados = lids;
+      lids.forEach(function (x) {
+        x.nivel = leituraEquipe(x.nivel);
+        delete x.pontuacao;
+        if (typeof x.tendencia === 'string') x.tendencia = x.tendencia.replace(/ ?A relação tende a ter tensão sem acordos explícitos\./, ' A relação pede combinados claros.').trim();
+      });
+      l.alertas = textos(l.alertas).map(function (a) {
+        var m = /^Relação com (.+?) em tensão \(/.exec(a);
+        if (!m) return a;
+        var x = lids.filter(function (y) { return y.nome === m[1]; })[0];
+        return combinarCedo(m[1], String(l.nome || ''), x && x.comoConduzir);
+      });
+    });
+
+    // Pontos para conversar: estilos menos e mais presentes, avisos dos líderes (sem os de relação) e quem não fez o
+    // teste — a mesma ordem do motor. Nada sobre duplas.
+    var sum = objeto(d.sumario);
+    var conversar = [];
+    function conv(t) { if (t && conversar.indexOf(t) < 0 && !RE_PROIBIDO_EQUIPE.test(t)) conversar.push(t); }
+    eqb.falta.concat(eqb.excesso).forEach(function (f) { conv(f.texto); });
+    textos(sum.alertas).forEach(function (t) { if (antigos.indexOf(t) < 0 && !/^Ninguém com |^\S+ em excesso: /.test(t)) conv(t); });
+    d.liderancas.forEach(function (l) {
+      textos(l.alertas).forEach(function (a) { if (!RE_COMBINAR_CEDO.test(a)) conv(a.indexOf(l.nome) === 0 ? a : l.nome + ': ' + a.charAt(0).toLowerCase() + a.slice(1)); });
+    });
+    var semT = lista(eqb.semTeste).filter(function (x) { return x && x.nome; }).map(function (x) { return x.nome; });
+    if (semT.length) conv(textoSemTeste(semT));
+    d.sumario = {
+      equilibrio: { status: status, rotulo: eqb.rotulo, texto: eqb.texto },
+      destaques: textos(sum.destaques).filter(function (t) { return !RE_PROIBIDO_EQUIPE.test(t) && !/tende a fluir com toda/.test(t); }).slice(0, 3),
+      alertas: conversar.slice(0, 3)
+    };
+
+    if (d.foco && typeof d.foco === 'object') {
+      var f = d.foco;
+      d.foco = {
+        nome: f.nome, cargo: f.cargo, foto: f.foto, codigo: f.codigo, percentuais: f.percentuais, organograma: f.organograma,
+        observacoes: f.codigo ? [] : [String(f.nome || 'A pessoa') + ' ainda não respondeu ao DISC: o plano de integração aparece quando houver resposta.'],
+        recomendacoes90: lista(f.recomendacoes90).map(function (e) {
+          e = objeto(e);
+          return { periodo: e.periodo, itens: textos(e.itens).map(function (t) { return /revisar o encaixe/.test(t) ? TEXTO_EQUIPE.noventa : t; }) };
+        })
+      };
+    }
+
+    if (d.pressao && typeof d.pressao === 'object') {
+      var pr = d.pressao;
+      var fx = TEXTO_DISTANCIA[pr.faixa] ? pr.faixa : pr.faixa === 'muito_alta' ? 'alta' : null;
+      pr.textos = (fx ? [TEXTO_DISTANCIA[fx]] : []).concat(NOMES_DISC[pr.maisCobrado] ? ['Fator que os cargos mais pedem: ' + NOMES_DISC[pr.maisCobrado].nome + '.'] : []);
+    }
+
+    var av = d.avisos = objeto(d.avisos);
+    av.limites = textos(av.limites).map(function (t) { return /^Compatibilidade indica/.test(t) ? AVISO_RELACOES : t; });
+    return d;
+  }
 
   function secoesEquipe(d) {
     var s = [
-      { id: 'sumario', titulo: 'Sumário executivo', meta: 'Equilíbrio · Harmonia · Destaques e alertas' },
+      { id: 'sumario', titulo: 'Sumário executivo', meta: 'Estilos · Destaques · Pontos para conversar' },
       { id: 'organograma', titulo: 'Organograma com perfis', curto: 'Organograma', meta: 'Quem lidera quem · Perfil DISC de cada pessoa' },
-      { id: 'equilibrio', titulo: 'Equilíbrio do time', meta: 'Média D/I/S/C · Estilos · Lacunas' },
-      { id: 'ritmo', titulo: 'Ritmo, foco e decisão', curto: 'Ritmo e foco', meta: 'Mapa do time · Como o grupo decide' + (d.pressao ? ' · Pressão do trabalho' : '') },
-      { id: 'relacoes', titulo: 'Mapa de relações', meta: 'Fluido · Atenção · Tensão' },
+      { id: 'equilibrio', titulo: 'Estilos do time', meta: 'Estilo principal · Menos e mais presentes' },
+      { id: 'ritmo', titulo: 'Ritmo, foco e decisão', curto: 'Ritmo e foco', meta: 'Mapa do time · Como o grupo decide' + (d.pressao ? ' · Natural × cargo' : '') },
+      { id: 'relacoes', titulo: 'Combinados sugeridos por relação', curto: 'Combinados', meta: 'Tende a fluir · Pede combinados' },
       { id: 'lideres', titulo: 'Guia por líder', meta: 'Como conduzir cada liderado' },
       { id: 'pessoas', titulo: 'Como liderar cada pessoa', curto: 'Como liderar', meta: 'Comunicação · Delegação · Feedback · Motivação' }
     ];
-    if (d.foco) s.push({ id: 'foco', titulo: 'Encaixe do candidato', curto: 'Encaixe', meta: 'Relações · Equipe · Plano de 90 dias' });
+    if (d.foco) s.push({ id: 'foco', titulo: 'Plano de integração', curto: 'Integração', meta: 'Organograma · Plano de 90 dias' });
     s.push({ id: 'encerramento', titulo: 'Limites e próximos passos', curto: 'Limites', meta: 'Como usar este relatório' });
     s.forEach(function (x, i) { x.n = n2(i); });
     return s;
   }
 
-  function equipeHtml(d) {
-    var emp = d.empresa || {};
-    var num = d.numeros || {};
-    var sum = d.sumario || {};
-    var eqb = d.equilibrio || {};
+  function equipeHtml(dados) {
+    var d = equipeV2(dados);
+    var emp = objeto(d.empresa);
+    var num = objeto(d.numeros);
+    var sum = objeto(d.sumario);
+    var eqb = objeto(d.equilibrio);
     var S = secoesEquipe(d);
     function sec(id) { return S.filter(function (x) { return x.id === id; })[0]; }
+    var presentes = ehNumero(num.estilosPresentes) ? num.estilosPresentes : null;
     var h = capaModelo({
       meta: 'Relatório de equipe', sobre: 'Relatório de equipe · ' + (emp.nome || 'Empresa'),
       tituloHtml: 'Mapa da <em>equipe</em>' + (emp.nome ? '<br>' + esc(emp.nome) : ''),
-      subtitulo: 'Organograma com perfis DISC, equilíbrio do time, compatibilidade entre as pessoas e como liderar cada uma.',
+      subtitulo: TEXTO_EQUIPE.subtitulo,
       numeros: [
         { valor: numeroCurto(num.pessoas), rotulo: 'pessoas no time' },
         { valor: numeroCurto(num.comTeste), rotulo: 'com teste DISC' },
-        { valor: numeroCurto(num.relacoes), rotulo: 'relações analisadas' },
-        { valor: ehNumero(num.harmonia) ? numeroCurto(num.harmonia) : '—', sufixo: ehNumero(num.harmonia) ? '/100' : '', rotulo: 'harmonia geral', destaque: true }
+        { valor: numeroCurto(num.relacoes), rotulo: 'relações registradas' },
+        { valor: presentes === null ? '—' : numeroCurto(presentes), sufixo: presentes === null ? '' : ' de 4', rotulo: 'estilos presentes', destaque: true }
       ],
       rodape: [
         { rotulo: 'Empresa', linhas: [emp.nome || '—', emp.cidade] },
         { rotulo: 'Consultoria', linhas: ['Gestão sem Caos', d.consultor] },
         { rotulo: 'Emitido em', linhas: [data(d.geradoEm) || '—'] },
-        { rotulo: 'Equilíbrio', linhas: [eqb.rotulo || '—'] }
+        { rotulo: 'Estilos', linhas: [eqb.rotulo || '—'] }
       ]
     });
-    h += indiceModelo(S, 'Quem é o time, como ele se equilibra e como liderar cada pessoa.', 'Leitura comportamental (DISC) da equipe: use para conversar, combinar e desenvolver, não para rotular.');
+    h += indiceModelo(S, 'Quem é o time, que estilos ele reúne e como liderar cada pessoa.', 'Leitura comportamental (DISC) da equipe: use para conversar, combinar e desenvolver, não para rotular.');
 
     // 01 Sumário
     var c = '<p class="lede">' + esc((sum.equilibrio && sum.equilibrio.texto) || eqb.texto || '') + '</p>';
     c += '<div class="mini-nums">' +
-      '<div class="mini-num"><div class="mini-num__valor mini-num__valor--texto">' + esc(eqb.rotulo || '—') + '</div><div class="mini-num__rot">equilíbrio do time</div></div>' +
-      '<div class="mini-num"><div class="mini-num__valor">' + (ehNumero(sum.harmonia) ? esc(numeroCurto(sum.harmonia)) + '<small>/100</small>' : '—') + '</div><div class="mini-num__rot">harmonia (' + esc(rotuloNivel(sum.harmoniaNivel).toLowerCase()) + ')</div></div>' +
-      '<div class="mini-num"><div class="mini-num__valor">' + esc(numeroCurto((sum.niveis && sum.niveis.tensao) || 0)) + '</div><div class="mini-num__rot">relações em tensão</div></div>' +
+      '<div class="mini-num"><div class="mini-num__valor mini-num__valor--texto">' + esc(eqb.rotulo || '—') + '</div><div class="mini-num__rot">estilos do time</div></div>' +
+      '<div class="mini-num"><div class="mini-num__valor">' + (presentes === null ? '—' : esc(numeroCurto(presentes)) + '<small> de 4</small>') + '</div><div class="mini-num__rot">estilos presentes</div></div>' +
+      '<div class="mini-num"><div class="mini-num__valor">' + esc(numeroCurto(num.relacoes || 0)) + '</div><div class="mini-num__rot">relações registradas</div></div>' +
       '</div>';
-    var dest = lista(sum.destaques), al = lista(sum.alertas);
+    var dest = textos(sum.destaques), conv = textos(sum.alertas);
     c += '<div class="duas mt32"><div><h3 class="h3">Destaques</h3><div class="obs-pilha">' +
       (dest.length ? dest.map(function (t, i) { return '<div class="obs obs--destaque"><div class="obs__tit">' + n2(i) + '</div><p>' + esc(t) + '</p></div>'; }).join('') : '<p class="nota-curta">Sem destaques até aqui.</p>') +
-      '</div></div><div><h3 class="h3">Alertas</h3><div class="obs-pilha">' +
-      (al.length ? al.map(function (t, i) { return '<div class="obs obs--alerta"><div class="obs__tit">' + n2(i) + '</div><p>' + esc(t) + '</p></div>'; }).join('') : '<p class="nota-curta">Nenhum alerta relevante.</p>') +
+      '</div></div><div><h3 class="h3">Pontos para conversar</h3><div class="obs-pilha">' +
+      (conv.length ? conv.map(function (t, i) { return '<div class="obs obs--alerta"><div class="obs__tit">' + n2(i) + '</div><p>' + esc(t) + '</p></div>'; }).join('') : '<p class="nota-curta">Nenhum ponto para conversar até aqui.</p>') +
       '</div></div></div>';
     h += secao(sec('sumario'), false, cabecalhoPagina(sec('sumario'), emp.nome) + c);
 
@@ -1063,27 +1240,25 @@
       '<div class="cartao-doc">' + organogramaHtml(d.organograma) + '</div>';
     h += secao(sec('organograma'), true, cabecalhoPagina(sec('organograma'), numeroCurto(num.pessoas) + ' pessoas') + c);
 
-    // 03 Equilíbrio
-    var media = eqb.media || {}, dist = eqb.distribuicao || {};
-    c = '<h3 class="h2doc">' + esc(eqb.rotulo || 'Equilíbrio') + '</h3><p class="lede lede--curta">' + esc(eqb.texto || '') + '</p>';
-    c += '<div class="duas"><div class="cartao-doc"><div class="rotulo-doc">Média do time por fator</div><ul class="barras">' + LETRAS.map(function (L) {
+    // 03 Estilos do time (só contagens: os percentuais do DISC são relativos dentro de cada pessoa)
+    var dist = objeto(eqb.distribuicao);
+    c = '<h3 class="h2doc">' + esc(eqb.rotulo || 'Estilos do time') + '</h3><p class="lede lede--curta">' + esc(eqb.texto || '') + '</p>';
+    c += '<div class="cartao-doc"><div class="rotulo-doc">Estilo principal das pessoas</div><ul class="barras">' + LETRAS.map(function (L) {
       return '<li><span class="barras__rot"><span class="legenda disc-fundo-' + L + '" aria-hidden="true"></span>' + esc(NOMES_DISC[L].nome) + '</span>' +
-        barra(media[L], 50, 'barra--disc-' + L, NOMES_DISC[L].nome + ' ' + pct(media[L])) + '<span class="barras__val"><strong>' + esc(pct(media[L])) + '</strong></span></li>';
-    }).join('') + '</ul><p class="nota-curta">Escala da barra: 0 a 50%. A média de cada fator num perfil é 25%.</p></div>' +
-      '<div class="cartao-doc"><div class="rotulo-doc">Estilo principal das pessoas</div><ul class="barras">' + LETRAS.map(function (L) {
-        return '<li><span class="barras__rot"><span class="legenda disc-fundo-' + L + '" aria-hidden="true"></span>' + esc(NOMES_DISC[L].nome) + '</span>' +
-          barra(dist[L] || 0, eqb.comTeste || 1, 'barra--disc-' + L, NOMES_DISC[L].nome + ': ' + (dist[L] || 0)) + '<span class="barras__val"><strong>' + esc(numeroCurto(dist[L] || 0)) + '</strong> de ' + esc(numeroCurto(eqb.comTeste || 0)) + '</span></li>';
-      }).join('') + (dist.equilibrado ? '<li><span class="barras__rot">Perfil equilibrado</span>' + barra(dist.equilibrado, eqb.comTeste || 1, '') + '<span class="barras__val"><strong>' + esc(numeroCurto(dist.equilibrado)) + '</strong></span></li>' : '') +
-      '</ul></div></div>';
-    var gaps = lista(eqb.falta).map(function (f) { return nota('alerta', 'Lacuna: ' + f.nome, f.texto); })
-      .concat(lista(eqb.excesso).map(function (f) { return nota('alerta', 'Em excesso: ' + f.nome, f.texto); }));
-    c += '<h3 class="h3 mt48">Lacunas e excessos</h3>' + (gaps.length ? '<div class="obs-grade">' + gaps.join('') + '</div>' :
-      '<div class="obs obs--destaque mt24"><div class="obs__tit">Sem lacunas</div><p>Todos os fatores têm ao menos uma pessoa em destaque e nenhum domina o time.</p></div>');
-    var sem = lista(eqb.semTeste);
+        barra(dist[L] || 0, eqb.comTeste || 1, 'barra--disc-' + L, NOMES_DISC[L].nome + ': ' + (dist[L] || 0)) + '<span class="barras__val"><strong>' + esc(numeroCurto(dist[L] || 0)) + '</strong> de ' + esc(numeroCurto(eqb.comTeste || 0)) + '</span></li>';
+    }).join('') + (dist.equilibrado ? '<li><span class="barras__rot">Perfil equilibrado</span>' + barra(dist.equilibrado, eqb.comTeste || 1, '') + '<span class="barras__val"><strong>' + esc(numeroCurto(dist.equilibrado)) + '</strong></span></li>' : '') +
+      '</ul><p class="nota-curta">' + esc(TEXTO_EQUIPE.percentuais) + '</p></div>';
+    var estilos = lista(eqb.falta).filter(function (f) { return f && f.nome; }).map(function (f) { return nota('alerta', 'Pouco presente: ' + f.nome, f.texto); })
+      .concat(lista(eqb.excesso).filter(function (f) { return f && f.nome; }).map(function (f) {
+        return nota('alerta', 'Predomina: ' + f.nome + (ehNumero(f.pessoas) && ehNumero(f.total) ? ' (' + f.pessoas + ' de ' + f.total + ' pessoas)' : ''), f.texto);
+      }));
+    c += '<h3 class="h3 mt48">Estilos menos e mais presentes</h3>' + (estilos.length ? '<div class="obs-grade">' + estilos.join('') + '</div>' :
+      '<div class="obs obs--destaque mt24"><div class="obs__tit">Estilos variados</div><p>Cada estilo aparece como forte em ao menos uma pessoa, e nenhum é o estilo principal da maior parte do time.</p></div>');
+    var sem = lista(eqb.semTeste).filter(function (x) { return x && x.nome; });
     if (sem.length) c += '<div class="obs obs--info mt24"><div class="obs__tit">Sem teste (' + esc(sem.length) + ')</div><p>' + esc(sem.map(function (x) { return x.nome + (x.cargo ? ' (' + x.cargo + ')' : ''); }).join(', ')) + '. Aplicar o teste completa a leitura do time.</p></div>';
     h += secao(sec('equilibrio'), false, cabecalhoPagina(sec('equilibrio'), numeroCurto(eqb.comTeste) + ' com teste') + c);
 
-    // 04 Ritmo, foco e decisão (rodada 3)
+    // 04 Ritmo, foco e decisão
     var pts = lista(d.mapa && d.mapa.pontos);
     var dec = d.decisao && typeof d.decisao === 'object' ? d.decisao : null;
     var prs = d.pressao && typeof d.pressao === 'object' ? d.pressao : null;
@@ -1093,117 +1268,102 @@
       '<div class="obs obs--info"><div class="obs__tit">Sem pontos no mapa</div><p>O mapa aparece quando os colaboradores concluírem o teste.</p></div>';
     if (dec) {
       var maxB = 0;
-      lista(dec.bases).forEach(function (b) { if (ehNumero(b.qtd) && b.qtd > maxB) maxB = b.qtd; });
+      lista(dec.bases).forEach(function (b) { if (b && ehNumero(b.qtd) && b.qtd > maxB) maxB = b.qtd; });
       c += '<h3 class="h3 mt48">Como o grupo decide</h3><div class="duas"><div class="cartao-doc"><div class="mini-nums mini-nums--2">' +
         '<div class="mini-num"><div class="mini-num__valor mini-num__valor--texto">' + esc(dec.ritmoRotulo || '—') + '</div><div class="mini-num__rot">ritmo de decisão</div></div>' +
         '<div class="mini-num"><div class="mini-num__valor mini-num__valor--texto">' + esc(dec.focoRotulo || '—') + '</div><div class="mini-num__rot">olhar principal</div></div></div>' +
-        '<div class="rotulo-doc mt24">Base de decisão (pelo fator principal)</div><ul class="barras">' + lista(dec.bases).map(function (b) {
+        '<div class="rotulo-doc mt24">Base de decisão (pelo fator principal)</div><ul class="barras">' + lista(dec.bases).filter(Boolean).map(function (b) {
           return '<li><span class="barras__rot">' + esc(b.nome) + '</span>' + barra(b.qtd, maxB || 1, '', b.nome + ': ' + b.qtd) + '<span class="barras__val"><strong>' + esc(numeroCurto(b.qtd || 0)) + '</strong></span></li>';
         }).join('') + '</ul></div><div class="cartao-doc">' + listaItens(dec.textos) + '</div></div>';
     }
+    // Distância natural × cargo: só o retrato do grupo; o detalhe por pessoa fica no guia do líder.
     if (prs) {
-      var ROT_F = { baixa: 'Baixa', moderada: 'Moderada', alta: 'Alta', muito_alta: 'Muito alta' };
-      var fxp = ROT_F[prs.faixa] ? prs.faixa : 'baixa';
-      c += '<h3 class="h3 mt48">Pressão do trabalho sobre o estilo</h3><div class="duas"><div class="cartao-doc">' +
-        '<div class="rotulo-doc">Esforço médio de adaptação</div><div class="natex__num">' + esc(numeroCurto(prs.media)) + '<small>/100</small></div>' +
-        '<span class="selo-doc selo-doc--esf-' + fxp + '">' + esc(ROT_F[fxp]) + '</span>' +
-        '<p class="nota-curta">' + esc(numeroCurto(prs.comExigido)) + ' de ' + esc(numeroCurto(prs.total)) + ' pessoas responderam a segunda parte do teste.</p>' + listaItens(prs.textos) + '</div>' +
-        '<div class="cartao-doc"><div class="rotulo-doc">Esforço por pessoa</div><ul class="barras">' + lista(prs.pessoas).map(function (x) {
-          var fx = ROT_F[x.faixa] ? x.faixa : 'baixa';
-          return '<li><span class="barras__rot">' + esc(x.nome) + '</span>' + barra(x.indice, 50, 'barra--esf-' + fx, x.nome + ': ' + x.indice + ' de 100') + '<span class="barras__val"><strong>' + esc(numeroCurto(x.indice)) + '</strong></span></li>';
-        }).join('') + '</ul><p class="nota-curta">Escala da barra: 0 a 50. Abaixo de 10, baixo; 10 a 19, moderado; 20 a 29, alto; a partir de 30, muito alto.</p></div></div>';
+      c += '<h3 class="h3 mt48">Distância entre o estilo natural e o que o cargo pede</h3>' +
+        '<div class="obs obs--info"><p>' + esc(TEXTO_EQUIPE.distancia) + '</p></div>' +
+        '<div class="cartao-doc mt24 distancia-doc">' + listaItens(prs.textos) +
+        '<p class="nota-curta">' + esc(numeroCurto(prs.comExigido)) + ' de ' + esc(numeroCurto(prs.total)) + ' pessoas responderam a segunda parte do teste. O detalhe por pessoa fica no guia de cada líder.</p></div>';
     }
     h += secao(sec('ritmo'), true, cabecalhoPagina(sec('ritmo'), pts.length + ' no mapa') + c);
 
-    // 05 Mapa de relações
+    // 05 Combinados sugeridos por relação (sem nota; dois rótulos; ordem pelo tipo de relação)
     var pares = lista(d.pares);
-    var cont = { fluido: 0, atencao: 0, tensao: 0, indefinido: 0 };
-    pares.forEach(function (p) { cont[nivelSeguro(p.nivel)]++; });
-    c = '<h3 class="h2doc">Como as relações tendem a funcionar</h3><p class="lede lede--curta">Cada par com relação registrada (liderança, trabalho direto ou indireto). Pontuação de 0 a 100: a partir de 70 tende a fluir; abaixo de 50, pede acordos explícitos.</p>';
-    c += '<div class="niveis-doc">' + ['fluido', 'atencao', 'tensao'].map(function (n) {
-      return '<div class="nivel-doc nivel-doc--' + n + '"><div class="nivel-doc__valor">' + esc(cont[n]) + '</div><div class="nivel-doc__rot">' + esc(rotuloNivel(n)) + '</div></div>';
+    var cont = { fluido: 0, combinados: 0, indefinido: 0 };
+    pares.forEach(function (p) { cont[leituraEquipe(p.nivel)]++; });
+    c = '<h3 class="h2doc">Como as relações tendem a funcionar</h3><p class="lede lede--curta">' + esc(TEXTO_EQUIPE.relacoes) + '</p>';
+    c += '<div class="niveis-doc niveis-doc--2">' + ['fluido', 'combinados'].map(function (n) {
+      return '<div class="nivel-doc nivel-doc--' + n + '"><div class="nivel-doc__valor">' + esc(cont[n]) + '</div><div class="nivel-doc__rot">' + esc(ROTULO_LEITURA[n]) + '</div></div>';
     }).join('') + '</div>';
     if (pares.length) {
       c += '<ol class="pares-doc">' + pares.map(function (p) {
-        var nv = nivelSeguro(p.nivel);
+        var nv = leituraEquipe(p.nivel);
         var cods = lista(p.codigos);
         return '<li class="par-doc par-doc--' + nv + '">' +
           '<div class="par-doc__cab"><span class="par-doc__nomes"><strong>' + esc(p.deNome) + '</strong> <span class="par-doc__tipo">' + esc(ROTULO_TIPO[p.tipo] || 'com') + '</span> <strong>' + esc(p.paraNome) + '</strong></span>' +
-          seloNivel(nv, p.pontuacao) + '</div>' +
+          seloLeitura(nv) + '</div>' +
           (cods.length === 2 ? '<div class="par-doc__cods">' + esc(codigoSeguro(cods[0]) + ' × ' + codigoSeguro(cods[1])) + '</div>' : '') +
-          (ehNumero(p.pontuacao) ? barra(p.pontuacao, 100, 'barra--nv-' + nv, 'Pontuação ' + p.pontuacao + ' de 100') : '') +
           '<div class="par-doc__grade">' +
-          (lista(p.sinergias).length ? '<div><div class="rotulo-doc">Sinergias</div>' + listaItens(p.sinergias) + '</div>' : '') +
-          (lista(p.riscos).length ? '<div><div class="rotulo-doc">Riscos</div>' + listaItens(p.riscos) + '</div>' : '') +
-          (lista(p.dicas).length ? '<div><div class="rotulo-doc">Dicas</div>' + listaItens(p.dicas) + '</div>' : '') +
+          (textos(p.sinergias).length ? '<div><div class="rotulo-doc">Sinergias</div>' + listaItens(p.sinergias) + '</div>' : '') +
+          (textos(p.riscos).length ? '<div><div class="rotulo-doc">Pontos para combinar</div>' + listaItens(p.riscos) + '</div>' : '') +
+          (textos(p.dicas).length ? '<div><div class="rotulo-doc">Dicas</div>' + listaItens(p.dicas) + '</div>' : '') +
           '</div></li>';
       }).join('') + '</ol>';
-    } else c += '<div class="obs obs--info mt24"><div class="obs__tit">Sem relações registradas</div><p>Registre quem lidera quem e quem trabalha com quem para ver o mapa.</p></div>';
+    } else c += '<div class="obs obs--info mt24"><div class="obs__tit">Sem relações registradas</div><p>Registre quem lidera quem e quem trabalha com quem para ver as sugestões.</p></div>';
     h += secao(sec('relacoes'), false, cabecalhoPagina(sec('relacoes'), pares.length + ' relações') + c);
 
-    // 05 Guia por líder
-    var lids = lista(d.liderancas);
-    c = '<h3 class="h2doc">Como cada líder pode conduzir a equipe</h3><p class="lede lede--curta">Estilo provável de cada líder e, para cada liderado, a tendência da relação e o que fazer no dia a dia.</p>';
+    // 06 Guia por líder (aqui fica a distância natural × cargo de cada liderado)
+    var lids = lista(d.liderancas).filter(function (l) { return l && typeof l === 'object'; });
+    var distPorId = {};
+    lista(prs && prs.pessoas).forEach(function (x) { if (x && x.id != null && ehNumero(x.indice)) distPorId[String(x.id)] = x; });
+    var temDist = lids.some(function (l) { return lista(l.liderados).some(function (x) { return x && distPorId[String(x.id)]; }); });
+    c = '<h3 class="h2doc">Como cada líder pode conduzir a equipe</h3><p class="lede lede--curta">Estilo provável de cada líder e, para cada liderado, a tendência da relação e sugestões para o dia a dia.</p>' +
+      (temDist ? '<p class="nota-curta">Distância entre o estilo natural e o que o cargo pede: ' + esc(TEXTO_EQUIPE.distancia.charAt(0).toLowerCase() + TEXTO_EQUIPE.distancia.slice(1)) + '</p>' : '');
     c += lids.length ? lids.map(function (l) {
       return '<article class="lider-doc">' +
         '<div class="lider-doc__cab">' + cartaoPessoa({ nome: l.nome, cargo: l.cargo, codigo: l.codigo, foto: l.foto }) + '</div>' +
         (l.estilo ? '<p class="lider-doc__estilo">' + esc(l.estilo) + '</p>' : '') +
-        (lista(l.alertas).length ? '<div class="obs obs--alerta"><div class="obs__tit">Atenção</div>' + listaItens(l.alertas) + '</div>' : '') +
-        '<ul class="liderados-doc">' + lista(l.liderados).map(function (x) {
+        (textos(l.alertas).length ? '<div class="obs obs--alerta"><div class="obs__tit">Para combinar</div>' + listaItens(l.alertas) + '</div>' : '') +
+        '<ul class="liderados-doc">' + lista(l.liderados).filter(function (x) { return x && typeof x === 'object'; }).map(function (x) {
+          var dx = distPorId[String(x.id)];
+          var fx = dx && ROTULO_DISTANCIA[dx.faixa] ? dx.faixa : null;
           return '<li class="liderado-doc"><div class="liderado-doc__cab"><strong>' + esc(x.nome) + '</strong>' +
             (x.codigo ? '<span class="quadro-disc__cod">' + esc(codigoSeguro(x.codigo)) + '</span>' : '') +
-            (x.estiloLiderado ? '<span class="liderado-doc__estilo">' + esc(x.estiloLiderado) + '</span>' : '') + seloNivel(x.nivel, x.pontuacao) + '</div>' +
+            (x.estiloLiderado ? '<span class="liderado-doc__estilo">' + esc(x.estiloLiderado) + '</span>' : '') + seloLeitura(x.nivel) + '</div>' +
             (x.tendencia ? '<p>' + esc(x.tendencia) + '</p>' : '') +
-            (lista(x.comoConduzir).length ? '<div class="rotulo-doc mt16">Como conduzir</div>' + listaItens(x.comoConduzir) : '') + '</li>';
+            (dx && fx ? '<div class="liderado-doc__dist"><span class="rotulo-doc">Distância do natural ao que o cargo pede</span>' +
+              barra(dx.indice, 50, 'barra--dist', 'Distância ' + ROTULO_DISTANCIA[fx].toLowerCase()) +
+              '<span class="liderado-doc__dist-rot">' + esc(ROTULO_DISTANCIA[fx]) + '</span></div>' : '') +
+            (textos(x.comoConduzir).length ? '<div class="rotulo-doc mt16">Como conduzir · sugestão de estilo</div>' + listaItens(x.comoConduzir) : '') + '</li>';
         }).join('') + '</ul></article>';
     }).join('') : '<div class="obs obs--info"><div class="obs__tit">Sem lideranças registradas</div><p>Registre as relações "lidera" para ver o guia por líder.</p></div>';
     h += secao(sec('lideres'), true, cabecalhoPagina(sec('lideres'), lids.length + ' líderes') + c);
 
-    // 06 Como liderar cada pessoa
-    var cols = lista(d.colaboradores);
+    // 07 Como liderar cada pessoa
+    var cols = lista(d.colaboradores).filter(function (p) { return p && typeof p === 'object'; });
     c = '<h3 class="h2doc">Como liderar cada pessoa</h3><p class="lede lede--curta">Resumo prático do guia de liderança de cada colaborador. O guia completo pode ser enviado ao líder em um relatório individual.</p>';
     c += '<div class="pessoas-doc">' + cols.map(function (p) {
       return '<article class="pessoa-doc">' + cartaoPessoa(p) +
         (p.codigo ? pilhaDe(p.percentuais) : '') +
         (p.combinacao && p.combinacao.nome ? '<div class="pessoa-doc__comb">' + esc(p.combinacao.nome) + '</div>' : '') +
         (p.estilo ? '<div class="pessoa-doc__estilo">' + esc(p.estilo) + '</div>' : '') +
-        (p.exigido && ehNumero(p.exigido.indice) ? '<div class="pessoa-doc__esf">Esforço de adaptação: <strong>' + esc(numeroCurto(p.exigido.indice)) + '/100</strong>' +
-          (ROTULO_FAIXA_ESFORCO[p.exigido.faixa] ? ' · ' + esc(ROTULO_FAIXA_ESFORCO[p.exigido.faixa].replace('Esforço ', '')) : '') + '</div>' : '') +
         (p.resumo ? '<p class="pessoa-doc__resumo">' + esc(p.resumo) + '</p>' : '') +
-        (lista(p.secoes).length ? lista(p.secoes).map(function (s) {
+        (lista(p.secoes).length ? lista(p.secoes).filter(Boolean).map(function (s) {
           return '<div class="pessoa-doc__sec"><div class="rotulo-doc">' + esc(s.titulo) + '</div>' + listaItens(s.itens) + '</div>';
         }).join('') : '<p class="nota-curta">Ainda sem teste: o guia aparece quando a pessoa responder.</p>') +
         '</article>';
     }).join('') + '</div>';
     h += secao(sec('pessoas'), false, cabecalhoPagina(sec('pessoas'), cols.length + ' pessoas') + c);
 
-    // 07 Encaixe do candidato
+    // 08 Plano de integração de quem foi contratado(a): sem nota, nível ou rótulo de encaixe
     if (d.foco) {
-      var f = d.foco;
-      var rel = [];
-      if (f.lider) rel.push({ papel: 'Líder', x: f.lider });
-      lista(f.liderados).forEach(function (x) { rel.push({ papel: 'Liderado(a)', x: x }); });
-      lista(f.diretos).forEach(function (x) { rel.push({ papel: 'Trabalho direto', x: x }); });
-      lista(f.indiretos).forEach(function (x) { rel.push({ papel: 'Trabalho indireto', x: x }); });
-      c = '<div class="rec"><div class="rec__topo"><span class="rec__etiqueta">Encaixe do candidato</span>' +
-        '<span class="rec__nota"><span class="rec__nota-num">' + (ehNumero(f.pontuacao) ? esc(numeroCurto(f.pontuacao)) : '—') + '</span><span class="rec__nota-den">/100</span></span></div>' +
-        '<div class="rec__nome">' + avatarSeFoto(f.nome, f.foto, 44, 'avatar--rec') + esc(f.nome) + ' ' + seloNivel(f.nivel) + '</div>' +
-        '<div class="rec__texto"><p>' + esc((f.cargo ? 'Posição: ' + f.cargo + '. ' : '') + (f.codigo ? 'Perfil ' + codigoSeguro(f.codigo) + '.' : 'Ainda sem teste DISC.')) + '</p></div></div>';
+      var f = objeto(d.foco);
+      c = '<p class="lede lede--curta">' + esc(TEXTO_EQUIPE.integracao) + '</p>' +
+        '<div class="rec"><div class="rec__topo"><span class="rec__etiqueta">Plano de integração</span></div>' +
+        '<div class="rec__nome">' + avatarSeFoto(f.nome, f.foto, 44, 'avatar--rec') + esc(f.nome) + '</div>' +
+        '<div class="rec__texto"><p>' + esc((f.cargo ? 'Cargo: ' + f.cargo + '. ' : '') + (f.codigo ? 'Perfil ' + codigoSeguro(f.codigo) + '.' : 'Ainda sem teste DISC.')) + '</p></div></div>';
       if (f.percentuais) c += '<div class="mt24">' + pilhaDe(f.percentuais) + '</div>';
-      if (f.organograma) c += '<h3 class="h3 mt48">Onde entra no organograma</h3><div class="cartao-doc">' + organogramaHtml(f.organograma, { rotulo: 'Organograma com o candidato' }) + '</div>';
-      if (rel.length) {
-        c += '<h3 class="h3 mt48">Relações na posição</h3><ul class="ranklista">' + rel.map(function (r) {
-          return '<li><span class="ranklista__pos ranklista__pos--txt">' + esc(r.papel) + '</span><span class="ranklista__nome"><strong>' + esc(r.x.nome) + '</strong></span>' + seloNivel(r.x.nivel, r.x.pontuacao) + '</li>';
-        }).join('') + '</ul>';
-      }
-      var enc = f.encaixeEquipe || {};
-      if (lista(enc.preencheLacunas).length || lista(enc.reforcaExcesso).length) {
-        c += '<p class="nota-curta mt24">' + esc((lista(enc.preencheLacunas).length ? 'Preenche lacuna do time: ' + enc.preencheLacunas.join(', ') + '. ' : '') +
-          (lista(enc.reforcaExcesso).length ? 'Reforça fator que já predomina: ' + enc.reforcaExcesso.join(', ') + '.' : '')) + '</p>';
-      }
-      c += '<div class="duas mt32"><div class="cartao-doc"><div class="rotulo-doc">Pontos fortes do encaixe</div>' + (listaItens(f.pontosFortes) || '<p class="nota-curta">—</p>') + '</div>' +
-        '<div class="cartao-doc"><div class="rotulo-doc">Riscos e cuidados</div>' + (listaItens(f.riscos) || '<p class="nota-curta">Nenhum risco típico.</p>') + '</div></div>';
-      var etapas = lista(f.recomendacoes90);
+      if (f.organograma) c += '<h3 class="h3 mt48">Onde entra no organograma</h3><div class="cartao-doc">' + organogramaHtml(f.organograma, { rotulo: 'Organograma com a pessoa que está chegando' }) + '</div>';
+      if (textos(f.observacoes).length) c += '<div class="obs obs--info mt24"><div class="obs__tit">Observações</div>' + listaItens(f.observacoes) + '</div>';
+      var etapas = lista(f.recomendacoes90).filter(function (e) { return e && typeof e === 'object'; });
       if (etapas.length) {
         c += '<h3 class="h3 mt48">Plano para os primeiros 90 dias</h3><div class="etapas90">' + etapas.map(function (e) {
           return '<div class="cartao-doc"><div class="rotulo-doc">' + esc(e.periodo) + '</div>' + listaItens(e.itens) + '</div>';
@@ -1212,13 +1372,14 @@
       h += secao(sec('foco'), true, cabecalhoPagina(sec('foco'), f.nome) + c);
     }
 
-    // Encerramento: avisos e limites
-    var av = d.avisos || {};
+    // Encerramento: uso proibido, limites e observações
+    var av = objeto(d.avisos);
     c = '<div class="final__texto"><p>Este relatório mostra tendências de comportamento para orientar conversas, combinados e o desenvolvimento do time.</p></div>' +
-      '<div class="passos-cab">Limites do DISC</div><ol class="passos">' + lista(av.limites).map(function (t, i) {
+      '<p class="final__aviso">' + esc(TEXTO_EQUIPE.naoUse) + '</p>' +
+      '<div class="passos-cab">Limites do DISC</div><ol class="passos">' + textos(av.limites).map(function (t, i) {
         return '<li><span class="passos__n">' + n2(i) + '</span><span class="passos__t passos__t--texto">' + esc(t) + '</span></li>';
       }).join('') + '</ol>' +
-      (lista(av.observacoes).length ? '<div class="passos-cab">Observações sobre os dados</div>' + listaItens(av.observacoes, 'itens-doc--escuro') : '');
+      (textos(av.observacoes).length ? '<div class="passos-cab">Observações sobre os dados</div>' + listaItens(av.observacoes, 'itens-doc--escuro') : '');
     h += encerramentoModelo(sec('encerramento'), emp.nome, c, d.consultor, d.geradoEm);
     h += rodapeModelo([d.consultor ? 'Consultor: ' + d.consultor : '', emp.nome, 'Relatório de equipe'], 'Documento confidencial, para uso da direção. Sem dados de contato dos colaboradores.');
     return '<article class="doc doc--equipe" data-modelo="equipe">' + h + '</article>';
@@ -1592,6 +1753,8 @@
     fotoValida: fotoValida,
     iniciais: iniciais,
     rotuloNivel: rotuloNivel,
+    equipeV2: equipeV2,
+    TEXTOS_EQUIPE: { falta: TEXTO_FALTA, excesso: TEXTO_EXCESSO, estilos: ROTULO_ESTILOS, distancia: TEXTO_DISTANCIA, avisoRelacoes: AVISO_RELACOES, fixos: TEXTO_EQUIPE },
     render: render,
     mostrarErro: mostrarErro,
     iniciar: iniciar,

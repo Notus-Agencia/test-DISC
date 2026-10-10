@@ -1151,7 +1151,7 @@
     if (modelo === 'lideranca') {
       return 'Olá! O guia de como liderar ' + (pessoa || 'o colaborador') + (empresa ? ' (' + empresa + ')' : '') + ', a partir do perfil DISC, está pronto:\n' + url + rodape;
     }
-    return 'Olá! O relatório da equipe' + (empresa ? ' da ' + empresa : '') + ' (organograma, perfis DISC e compatibilidade) está pronto:\n' + url + rodape;
+    return 'Olá! O relatório da equipe' + (empresa ? ' da ' + empresa : '') + ' (organograma, perfis DISC e combinados sugeridos) está pronto:\n' + url + rodape;
   }
 
   // Texto do processo de equipe ligado a uma empresa cadastrada.
@@ -5778,7 +5778,7 @@
     } else if (sub === 'relatorios') {
       painel.appendChild(el('section', { classe: 'caixa emp-bloco', id: 'emp-rel-gerar' }, [
         el('h3', { classe: 'caixa__titulo', texto: 'Gerar um relatório desta empresa' }),
-        el('p', { classe: 'texto-suave t-rotulo', texto: 'Relatório da equipe (organograma, perfis e compatibilidade) aqui. Como liderar e relatório da pessoa ficam em cada colaborador, ou na aba Relatórios do painel.' }),
+        el('p', { classe: 'texto-suave t-rotulo', texto: 'Relatório da equipe (organograma, perfis e combinados sugeridos) aqui. Como liderar e relatório da pessoa ficam em cada colaborador, ou na aba Relatórios do painel.' }),
         el('div', { classe: 'gestao-card__acoes' }, [
           botao('botao--principal botao--pequeno', 'Relatório da equipe', function () { janelaRelatorioEquipe(emp, eq); }, { id: 'btn-emp-rel-equipe', disabled: colabs.length ? null : true, title: colabs.length ? null : 'Adicione colaboradores primeiro' }),
           botao('botao--claro botao--pequeno', 'Ver todos os modelos', function () { irParaRelatorios('modelos'); }, { id: 'btn-emp-ver-modelos' })
@@ -6122,24 +6122,34 @@
     carregarEquipe(p.emp.id).then(function () { renderizarEmpresas(); avisar('Organograma de volta ao que está gravado.', 'ok'); }).catch(falhou);
   }
 
-  var NIVEIS_PAR = { fluido: 'Fluido', atencao: 'Atenção', tensao: 'Tensão', indefinido: 'Sem teste' };
-  var CLASSE_PAR = { fluido: 'selo--verde', atencao: '', tensao: 'selo--laranja', indefinido: '' };
+  // Leitura de cada relação em dois rótulos, sem número (decisão do painel científico: nada de nota de "harmonia"
+  // nem de "tensão" — o consultor repassaria o número ao cliente).
+  var NIVEIS_PAR = { fluido: 'Tende a fluir', combinados: 'Pede combinados', indefinido: 'Sem teste' };
+  var CLASSE_PAR = { fluido: 'selo--verde', combinados: '', indefinido: '' };
+  var ORDEM_TIPO_PAR = { lidera: 0, direto: 1, indireto: 2 };
   var TIPOS_REL = { lidera: 'lidera', direto: 'trabalha diretamente com', indireto: 'trabalha indiretamente com' };
+  function leituraPar(nivel) {
+    var CP = root.DISC_COMPATIBILIDADE;
+    if (CP && typeof CP.leitura === 'function') return CP.leitura(nivel);
+    return nivel === 'fluido' ? 'fluido' : nivel === 'atencao' || nivel === 'tensao' || nivel === 'combinados' ? 'combinados' : 'indefinido';
+  }
 
   function blocoCompatibilidade(compat, colabs) {
-    var sec = el('section', { classe: 'caixa caixa--ampla emp-bloco', id: 'emp-compat' }, [el('h3', { classe: 'caixa__titulo', texto: 'Mapa de compatibilidade' })]);
+    var sec = el('section', { classe: 'caixa caixa--ampla emp-bloco', id: 'emp-compat' }, [el('h3', { classe: 'caixa__titulo', texto: 'Combinados sugeridos por relação' })]);
     if (!colabs.length) { sec.appendChild(el('p', { classe: 'texto-suave t-rotulo', texto: 'Sem colaboradores ainda.' })); return sec; }
     if (!compat) { sec.appendChild(el('p', { classe: 'texto-suave t-rotulo', texto: 'Mapa indisponível (compatibilidade.js não carregado).' })); return sec; }
     var eq = compat.equipe || {};
-    var niveis = eq.niveis || {};
+    var leituras = { fluido: 0, combinados: 0, indefinido: 0 };
+    (compat.pares || []).forEach(function (p) { leituras[leituraPar(p.nivel)]++; });
+    var nRel = (compat.pares || []).length;
     sec.appendChild(el('div', { classe: 'compat-topo' }, [
-      el('div', { classe: 'caixa caixa--compacta caixa--destaque compat-harmonia' }, [
-        el('span', { classe: 'resumo__rotulo', texto: 'Harmonia da equipe' }),
-        el('span', { classe: 't-numero-grande valor-destaque', id: 'emp-harmonia', texto: eq.harmonia == null ? '—' : String(eq.harmonia) }),
-        el('span', { classe: 'resumo__nota', texto: eq.harmonia == null ? 'Defina as ligações entre quem já fez o teste' : 'de 0 a 100, média das ligações' })
+      el('div', { classe: 'caixa caixa--compacta caixa--destaque compat-relacoes' }, [
+        el('span', { classe: 'resumo__rotulo', texto: 'Relações registradas' }),
+        el('span', { classe: 't-numero-grande valor-destaque', id: 'emp-relacoes', texto: String(nRel) }),
+        el('span', { classe: 'resumo__nota', texto: nRel ? 'com combinados sugeridos' : 'Defina as ligações entre quem já fez o teste' })
       ]),
-      el('div', { classe: 'compat-contagem' }, ['fluido', 'atencao', 'tensao'].map(function (k) {
-        return el('span', { classe: 'selo ' + CLASSE_PAR[k], 'data-nivel': k, texto: NIVEIS_PAR[k] + ': ' + (niveis[k] || 0) });
+      el('div', { classe: 'compat-contagem' }, ['fluido', 'combinados'].map(function (k) {
+        return el('span', { classe: 'selo ' + CLASSE_PAR[k], 'data-nivel': k, texto: NIVEIS_PAR[k] + ': ' + leituras[k] });
       }).concat(el('p', { classe: 't-rotulo texto-medio compat-resumo', texto: eq.resumo || '' })))
     ]));
     var lacunas = (eq.falta || []).concat(eq.excesso || []);
@@ -6148,23 +6158,24 @@
     }
     var nomes = {};
     colabs.forEach(function (c) { nomes[String(c.pessoaId)] = c.nome; });
-    var pares = (compat.pares || []).slice().sort(function (a, b) {
-      var ordem = { tensao: 0, atencao: 1, fluido: 2, indefinido: 3 };
-      return ordem[a.nivel] - ordem[b.nivel];
-    });
+    // Ordem pelo tipo de relação (lidera → direto → indireto), como no relatório; dentro do tipo, a ordem registrada.
+    var pares = (compat.pares || []).map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) {
+      return ((ORDEM_TIPO_PAR[a.p.tipo] || 0) - (ORDEM_TIPO_PAR[b.p.tipo] || 0)) || (a.i - b.i);
+    }).map(function (x) { return x.p; });
     if (!pares.length) {
       sec.appendChild(el('p', { classe: 'texto-suave t-rotulo emp-dica', texto: 'Nenhuma ligação definida. Em cada colaborador, use "Ligações" para dizer quem é o líder e com quem trabalha.' }));
     } else {
       sec.appendChild(el('ul', { classe: 'compat-pares', id: 'emp-pares' }, pares.map(function (p) {
         var dicas = (p.dicas || []).slice(0, 3);
-        return el('li', { classe: 'compat-par', 'data-nivel': p.nivel, 'data-de': p.de, 'data-para': p.para }, [
+        var leit = leituraPar(p.nivel);
+        return el('li', { classe: 'compat-par', 'data-nivel': leit, 'data-de': p.de, 'data-para': p.para }, [
           el('div', { classe: 'compat-par__topo' }, [
             el('span', { classe: 'compat-par__nomes' }, [
               el('span', { classe: 'seminegrito', texto: nomes[p.de] || p.de }),
               el('span', { classe: 'texto-suave', texto: ' ' + (TIPOS_REL[p.tipo] || p.tipo) + ' ' }),
               el('span', { classe: 'seminegrito', texto: nomes[p.para] || p.para })
             ]),
-            el('span', { classe: 'selo ' + (CLASSE_PAR[p.nivel] || ''), texto: NIVEIS_PAR[p.nivel] + (p.pontuacao != null ? ' · ' + p.pontuacao : '') })
+            el('span', { classe: 'selo ' + (CLASSE_PAR[leit] || ''), texto: NIVEIS_PAR[leit] })
           ]),
           p.riscos && p.riscos[0] ? el('p', { classe: 't-rotulo texto-medio', texto: p.riscos[0] }) : (p.sinergias && p.sinergias[0] ? el('p', { classe: 't-rotulo texto-medio', texto: p.sinergias[0] }) : null),
           dicas.length ? el('ul', { classe: 'compat-dicas' }, dicas.map(function (d) { return el('li', { texto: d }); })) : null
@@ -6349,7 +6360,7 @@
     abrirJanela({
       id: 'janela-ligacoes',
       titulo: 'Ligações de ' + c.nome,
-      texto: outros.length ? 'Quem lidera e com quem trabalha no dia a dia. Isso monta o organograma e o mapa de compatibilidade.' : 'Adicione outros colaboradores para criar ligações.',
+      texto: outros.length ? 'Quem lidera e com quem trabalha no dia a dia. Isso monta o organograma e os combinados sugeridos por relação.' : 'Adicione outros colaboradores para criar ligações.',
       corpo: [
         campoEscolha('Líder (um)', escLider, 'lig-lider-rotulo'),
         campoEscolha('Trabalha diretamente com', escDiretos, 'lig-diretos-rotulo'),
@@ -6433,29 +6444,30 @@
     var daEmpresa = function (r) { var pr = r.avaliacao ? acharProcessoPorCodigo(r.avaliacao) : null; return !!(pr && String(pr.empresaId || '') === String(emp.id)); };
     var candidatos = estado.registros.filter(function (r) { return r.calc && r.origem !== 'pessoal' && !(r.pessoaId && ids[String(r.pessoaId)]); })
       .sort(function (a, b) { return (daEmpresa(b) ? 1 : 0) - (daEmpresa(a) ? 1 : 0); });
-    var escCand = criarSeletorBusca({ id: 'rel-cand', rotulo: 'Candidato', rotuloId: 'rel-cand-rotulo', vazio: 'Escolher uma resposta',
+    var escCand = criarSeletorBusca({ id: 'rel-cand', rotulo: 'Pessoa contratada', rotuloId: 'rel-cand-rotulo', vazio: 'Escolher uma resposta',
       opcoes: candidatos.map(function (r) { return { valor: r.id, rotulo: r.nome || '(sem nome)', sub: [textoOrigem(r), r.calc.codigo, formatarData(r.fim || r.recebidoEm)].filter(Boolean).join(' · '), busca: r.protocolo }; }) });
-    var escLider = criarSeletorBusca({ id: 'rel-cand-lider', rotulo: 'Líder do candidato', rotuloId: 'rel-cand-lider-rotulo', vazio: 'Sem líder definido', opcoes: opColabs });
-    var escColegas = criarSeletorBusca({ id: 'rel-cand-colegas', rotulo: 'Colegas diretos do candidato', rotuloId: 'rel-cand-colegas-rotulo', multiplo: true, opcoes: opColabs, textoBotao: 'Adicionar colega' });
-    var marcar = campoMarcar('rel-incluir-candidato', 'Incluir o encaixe de um candidato nesta equipe', false);
+    var escLider = criarSeletorBusca({ id: 'rel-cand-lider', rotulo: 'Quem vai liderar', rotuloId: 'rel-cand-lider-rotulo', vazio: 'Sem líder definido', opcoes: opColabs });
+    var escColegas = criarSeletorBusca({ id: 'rel-cand-colegas', rotulo: 'Colegas diretos', rotuloId: 'rel-cand-colegas-rotulo', multiplo: true, opcoes: opColabs, textoBotao: 'Adicionar colega' });
+    var marcar = campoMarcar('rel-incluir-candidato', 'Incluir o plano de integração de quem foi contratado', false);
     var area = el('div', { classe: 'janela__corpo', id: 'rel-candidato-area', hidden: true }, [
-      campoEscolha('Candidato (resposta de um processo)', escCand, 'rel-cand-rotulo'),
-      campoTexto('rel-cand-cargo', 'Cargo pretendido', { maxlength: 120 }),
-      campoEscolha('Líder do candidato', escLider, 'rel-cand-lider-rotulo'),
-      campoEscolha('Colegas diretos do candidato', escColegas, 'rel-cand-colegas-rotulo')
+      el('p', { classe: 'texto-suave t-rotulo', texto: 'O plano ajuda a receber bem quem foi contratado(a). Não serve para decidir a contratação.' }),
+      campoEscolha('Pessoa contratada (resposta de um processo)', escCand, 'rel-cand-rotulo'),
+      campoTexto('rel-cand-cargo', 'Cargo', { maxlength: 120 }),
+      campoEscolha('Quem vai liderar', escLider, 'rel-cand-lider-rotulo'),
+      campoEscolha('Colegas diretos', escColegas, 'rel-cand-colegas-rotulo')
     ]);
     marcar.querySelector('input').addEventListener('change', function (e) { area.hidden = !e.target.checked; });
     abrirJanela({
       id: 'janela-rel-equipe',
       titulo: 'Relatório da equipe',
-      texto: 'Organograma com os perfis, compatibilidade, equilíbrio do time e como liderar cada colaborador. Gerado aqui no navegador: confira a prévia antes de publicar.',
+      texto: 'Organograma com os perfis, estilos do time, combinados sugeridos entre as pessoas e como liderar cada colaborador. Gerado aqui no navegador: confira a prévia antes de publicar.',
       corpo: [marcar, area],
       botao: 'Gerar prévia',
       aoConfirmar: function () {
         var foco = null;
         if ($('rel-incluir-candidato').checked) {
           var r = acharRegistro(escCand.valor());
-          if (!r) throw new Error('Escolha o candidato.');
+          if (!r) throw new Error('Escolha a pessoa contratada.');
           foco = { nome: r.nome, cargo: $('rel-cand-cargo').value.trim() || r.vaga || '', resultado: resultadoDoRegistro(r), foto: fotoDe(r) || undefined,
             liderId: escLider.valor(), diretos: escColegas.valores() };
           foco.relacoes = relacoesDoFoco(foco);

@@ -90,15 +90,20 @@ test('intensidade importa: D pouco acentuado gera menos atrito', () => {
   assert.ok(leve.pontuacao > forte.pontuacao);
 });
 
-test('equipe: distribuição, média, lacunas e pessoas sem teste', () => {
+test('equipe: distribuição, estilos pouco presentes, quem predomina (só contagem) e pessoas sem teste', () => {
   const s = C.montar(cenario());
   assert.equal(s.equipe.total, 6);
   assert.equal(s.equipe.comTeste, 5);
   assert.deepEqual(s.equipe.distribuicao, { D: 2, I: 0, S: 2, C: 1, equilibrado: 0 });
   assert.ok(s.equipe.falta.some((f) => f.fator === 'I'));
   assert.deepEqual(s.equipe.semTeste.map((p) => p.id), ['n']);
+  // sem média por fator e sem harmonia (decisão do painel científico): só contagens
+  assert.ok(!('media' in s.equipe) && !('harmonia' in s.equipe) && !('niveis' in s.equipe));
+  assert.deepEqual(Object.keys(s.equipe.leituras), ['fluido', 'combinados', 'indefinido']);
+  assert.equal(s.equipe.leituras.fluido + s.equipe.leituras.combinados + s.equipe.leituras.indefinido, s.pares.length);
+  assert.doesNotMatch(s.equipe.resumo, /Média|%/);
   const semC = C.montar({ pessoas: [pessoa('a', 'Ana Souza', 'D'), pessoa('b', 'Bia Reis', 'I')], relacoes: [] });
-  assert.ok(semC.equipe.falta.find((f) => f.fator === 'C').texto.includes('processos e qualidade'));
+  assert.ok(semC.equipe.falta.find((f) => f.fator === 'C').texto.includes('processos, padrões e qualidade'));
   const pc = par(s, 'c', 'n');
   assert.equal(pc.nivel, 'indefinido');
   assert.equal(pc.pontuacao, null);
@@ -115,7 +120,34 @@ test('lideranças: estilo do líder, liderados e alertas', () => {
   assert.deepEqual(l.liderados.map((x) => x.id), ['s1', 's2', 'c', 'novo']);
   l.liderados.forEach((x) => { assert.ok(x.tendencia); assert.ok(x.comoConduzir.length > 0); });
   assert.ok(l.alertas.some((a) => /previsibilidade/.test(a)));
-  assert.ok(l.alertas.some((a) => /tensão/.test(a)), 'D líder × D liderado deve gerar alerta');
+  // D líder × D liderado: lembrete prático, sem nota e sem "tensão"
+  const cedo = l.alertas.find((a) => /^Com Daniel F\., vale combinar desde cedo: /.test(a));
+  assert.ok(cedo, 'D líder × D liderado deve gerar o lembrete: ' + l.alertas.join(' | '));
+  assert.match(cedo, /desde cedo: [a-zà-ÿ]/, 'dica em minúscula, sem "Nome:" no começo');
+  for (const t of l.alertas.concat(l.liderados.map((x) => x.tendencia))) assert.doesNotMatch(t, /tens[aã]o|\/100/);
+  assert.ok(l.liderados.find((x) => x.id === 'novo').tendencia.endsWith('A relação pede combinados claros.'));
+});
+
+test('leitura: dois rótulos sem número; textos de par sem previsão fechada', () => {
+  assert.equal(C.leitura('fluido'), 'fluido');
+  assert.equal(C.leitura('atencao'), 'combinados');
+  assert.equal(C.leitura('tensao'), 'combinados');
+  assert.equal(C.leitura('indefinido'), 'indefinido');
+  assert.equal(C.leitura('"><x>'), 'indefinido');
+  assert.deepEqual(C.ROTULOS_LEITURA, { fluido: 'Tende a fluir', combinados: 'Pede combinados', indefinido: 'Sem leitura' });
+  // Regra do painel: nos pares e nos guias, "tende a" ou "pode" — nunca "risco de …" nem previsão fechada.
+  const todos = [];
+  for (const a of Object.keys(P)) for (const b of Object.keys(P)) for (const tipo of ['lidera', 'direto', 'indireto']) {
+    const r = C.analisarPar({ id: 1, nome: 'Ana Souza', percentuais: P[a] }, { id: 2, nome: 'Bruno Lima', percentuais: P[b] }, tipo);
+    todos.push(...r.riscos, ...r.sinergias);
+  }
+  for (const t of new Set(todos)) {
+    assert.doesNotMatch(t, /^Risco de|risco de|garante|tens[aã]o/i, t);
+  }
+  for (const t of new Set(todos)) {
+    if (/Ritmo de trabalho parecido|Sem atritos típicos/.test(t)) continue; // descrição, não previsão
+    assert.match(t, /tende|tendem|pode|podem|costuma/i, 'sem "tende a"/"pode": ' + t);
+  }
 });
 
 test('organograma: árvore, níveis e ciclo quebrado com aviso', () => {
@@ -146,37 +178,37 @@ test('dois líderes para a mesma pessoa: fica o primeiro, com aviso', () => {
   assert.ok(s.avisos.some((a) => /mais de um líder/.test(a)));
 });
 
-test('foco: encaixe com líder, diretos, equipe e plano de 90 dias', () => {
+test('foco: plano de integração (líder, diretos e 90 dias), sem nota, nível nem rótulo de encaixe', () => {
   const s = C.montar(cenario());
   const f = s.foco;
   assert.equal(f.id, 'novo');
   assert.equal(f.nome, 'Daniel F.');
-  assert.equal(f.lider.id, 'g');
-  assert.equal(f.lider.nivel, 'tensao');
+  assert.deepEqual(f.lider, { id: 'g', nome: 'Gabriela M.', tipo: 'lidera' });
   assert.deepEqual(f.diretos.map((d) => d.id), ['c']);
-  assert.ok(['fluido', 'atencao', 'tensao'].includes(f.nivel));
-  assert.ok(f.pontuacao >= 0 && f.pontuacao <= 100);
-  assert.ok(f.pontosFortes.length > 0);
-  assert.ok(f.riscos.some((r) => /Gabriela M\./.test(r)));
+  for (const k of ['pontuacao', 'nivel', 'encaixeEquipe', 'pontosFortes', 'riscos']) assert.ok(!(k in f), 'sem ' + k);
   assert.deepEqual(f.recomendacoes90.map((r) => r.periodo), ['Dias 1–30', 'Dias 31–60', 'Dias 61–90']);
   f.recomendacoes90.forEach((r) => assert.ok(r.itens.length > 0));
+  const txt = JSON.stringify(f);
+  assert.doesNotMatch(txt, /encaixe|tens[aã]o|\/100|lacuna|predomina/i);
+  assert.match(f.recomendacoes90[2].itens[0], /não no perfil/);
+  assert.ok(f.recomendacoes90[2].itens.some((t) => /combinados com Gabriela M\. e Carla N\./.test(t)), 'nomes juntados com "e"');
 });
 
-test('foco que preenche lacuna da equipe vira ponto forte', () => {
+test('foco com o estilo que falta na equipe: o plano aproveita o estilo, sem rótulo de "preenche lacuna"', () => {
   const s = C.montar({
     pessoas: [pessoa('l', 'Lia Costa', 'S'), pessoa('x', 'Rui Alves', 'S'), pessoa('novo', 'Iara Dias', 'I')],
     relacoes: [{ de: 'l', para: 'novo', tipo: 'lidera' }, { de: 'x', para: 'novo', tipo: 'direto' }],
     foco: 'novo'
   });
-  assert.ok(s.foco.pontosFortes.some((t) => /falta na equipe/.test(t)));
-  assert.deepEqual(s.foco.encaixeEquipe.preencheLacunas, ['Influência']);
+  assert.ok(s.foco.recomendacoes90[1].itens.some((t) => /responsabilidade visível .*\(Influência\)/.test(t)));
+  assert.doesNotMatch(JSON.stringify(s.foco), /falta na equipe|preenche|reforça/i);
 });
 
 test('foco sem teste e foco inexistente', () => {
   const d = cenario(); d.foco = 'n';
   const s = C.montar(d);
-  assert.equal(s.foco.nivel, 'indefinido');
-  assert.ok(s.foco.riscos[0].includes('não fez o teste'));
+  assert.deepEqual(s.foco.recomendacoes90, []);
+  assert.ok(s.foco.observacoes[0].includes('ainda não respondeu ao DISC'));
   d.foco = 'zzz';
   const s2 = C.montar(d);
   assert.equal(s2.foco, null);

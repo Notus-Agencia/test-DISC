@@ -1569,8 +1569,13 @@ test.describe('Empresas (Supabase, API falsa)', () => {
 
     // Subaba Compatibilidade: mapa de compatibilidade, ritmo × foco e esforço de adaptação (só o Bruno fez a Parte 2)
     await page.click('#emp-subaba-compatibilidade');
-    await expect(page.locator('#emp-compat')).toContainText('Harmonia da equipe');
+    // Sem nota de "harmonia" (decisão do painel científico: o consultor repassaria o número ao cliente): a caixa
+    // conta as relações registradas e cada par mostra só "Tende a fluir" ou "Pede combinados", sem número.
+    await expect(page.locator('#emp-compat')).toContainText('Relações registradas');
+    await expect(page.locator('#emp-relacoes')).toHaveText('2');
+    await expect(page.locator('#emp-compat')).not.toContainText(/Harmonia|Tensão|\/100/);
     await expect(page.locator('#emp-pares > li')).toHaveCount(2);
+    await expect(page.locator('#emp-pares > li .selo')).toHaveText([/^(Tende a fluir|Pede combinados|Sem teste)$/, /^(Tende a fluir|Pede combinados|Sem teste)$/]);
     await expect(page.locator('#emp-mapa svg')).toHaveCount(1);
     await expect(page.locator('#emp-esforco > li')).toHaveCount(1);
     await expect(page.locator('#emp-esforco > li[data-pessoa="p-bruno"] .esforco-selo')).toHaveText(/^Esforço /);
@@ -1769,7 +1774,7 @@ test.describe('Empresas (Supabase, API falsa)', () => {
     await page.click('#emp-subaba-colaboradores');
     await expect(page.locator('#lista-colaboradores > li[data-nome="Bruno Lima Costa"] .colab-card__ligacoes')).toContainText('Líder: Ana Souza');
     await page.click('#emp-subaba-compatibilidade');
-    await expect(page.locator('#emp-compat')).toContainText('Harmonia da equipe');
+    await expect(page.locator('#emp-compat')).toContainText('Relações registradas'); // era "Harmonia da equipe" (saiu: sem nota)
     await capturar(page, 'empresa-compatibilidade');
     await page.click('#emp-subaba-relatorios');
     await expect(page.locator('#btn-emp-rel-equipe')).toBeEnabled();
@@ -1912,7 +1917,7 @@ test.describe('Empresas (Supabase, API falsa)', () => {
     await page.click('#emp-subaba-organograma');
     await expect(page.locator('#emp-organograma .orgx-cartao[data-org-id]')).toHaveCount(n);
     await page.click('#emp-subaba-compatibilidade');
-    await expect(page.locator('#emp-compat')).toContainText('Harmonia da equipe');
+    await expect(page.locator('#emp-compat')).toContainText('Relações registradas'); // era "Harmonia da equipe" (saiu: sem nota)
     await page.click('#btn-relatorio-equipe');
     await page.click('#janela-ok');
     await expect(page.locator('#rel-modelo-previa')).toBeVisible();
