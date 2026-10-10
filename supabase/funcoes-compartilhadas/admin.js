@@ -16,7 +16,7 @@ import {
 import { lerAvisos } from './avisos.js';
 import { acaoDiagnostico, acaoTestar } from './conexoes.js';
 import { criarResend } from './asaas.js';
-import { montarEmailRelatorio } from './email.js';
+import { montarEmailRelatorio, registrarEnvio } from './email.js';
 
 function agoraIso(ctx) { return new Date(ctx.agora()).toISOString(); }
 
@@ -235,13 +235,19 @@ async function acaoRelatorioEnviarEmail(ctx, corpo) {
     remetente = eu ? limparTexto(eu.nome, 80) : '';
   } catch (err) { remetente = ''; }
   const m = montarEmailRelatorio({ modelo, url, nome, mensagem, remetente, titulo: limparTexto(l.dados.titulo, 160) });
+  // Histórico (public.envios_email): cada tentativa no Resend, ok ou erro, com quem enviou.
+  const historico = { tipo: 'relatorio', referencia: l.token, destinatario: para, enviadoPor: remetente, enviadoPorId: ctx.usuario.id };
+  let enviado;
   try {
-    await email.enviar({ para, assunto: m.assunto, html: m.html, texto: m.texto });
+    enviado = await email.enviar({ para, assunto: m.assunto, html: m.html, texto: m.texto });
   } catch (err) {
     try { console.error(err); } catch (e) { /* sem console */ }
+    await registrarEnvio(ctx.db, Object.assign({ resultado: 'erro', em: agoraIso(ctx) }, historico));
     return erro('Não foi possível enviar o e-mail agora (' + limparTexto(err && err.message, 120) + '). Tente de novo em instantes.');
   }
-  return { ok: true, para, enviadoEm: agoraIso(ctx), assunto: m.assunto };
+  const enviadoEm = agoraIso(ctx);
+  await registrarEnvio(ctx.db, Object.assign({ resultado: 'ok', em: enviadoEm, provedorId: enviado && enviado.id }, historico));
+  return { ok: true, para, enviadoEm, assunto: m.assunto, por: remetente || 'Administrador' };
 }
 
 // ---------------------------------------------------------------------------

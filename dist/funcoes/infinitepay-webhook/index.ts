@@ -216,6 +216,132 @@ function processoDaLinha(l) {
   };
 }
 
+// ======== supabase/funcoes-compartilhadas/email.js ========
+// E-mails com a marca Gestão sem Caos (mesmo visual de supabase/templates/*.html: logo PNG, faixa laranja,
+// botão em pílula). Só texto e link: nunca anexos. Tudo que vem de fora passa por escaparHtml().
+
+const LOGO_EMAIL = 'https://disc.gestaosemcaos.com.br/assets/marca/gsc-logo-email.png';
+
+function escaparHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+const P = 'margin:0 0 16px;font-size:16px;line-height:1.6;color:#13283F';
+
+/**
+ * HTML do e-mail na moldura da marca.
+ * m = { titulo, previa?, paragrafos: [texto], botao: {texto, url}, nota?, rodape? }
+ */
+function htmlMarca(m) {
+  const paras = (m.paragrafos || []).filter((t) => t !== null && t !== undefined && String(t) !== '')
+    .map((t) => '<p style="' + P + '">' + escaparHtml(t).replace(/\n/g, '<br>') + '</p>').join('');
+  const url = escaparHtml(m.botao.url);
+  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
+    '<meta name="color-scheme" content="light"><title>' + escaparHtml(m.titulo) + '</title></head>' +
+    '<body style="margin:0;padding:0;background:#F4F2EF;font-family:\'Plus Jakarta Sans\',Arial,Helvetica,sans-serif">' +
+    (m.previa ? '<span style="display:none;max-height:0;overflow:hidden;opacity:0">' + escaparHtml(m.previa) + '</span>' : '') +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F2EF;padding:32px 12px"><tr><td align="center">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden">' +
+    '<tr><td style="height:6px;background:#F34405;font-size:0;line-height:0">&nbsp;</td></tr>' +
+    '<tr><td style="padding:32px 32px 8px"><img src="' + LOGO_EMAIL + '" width="200" alt="Gestão sem Caos" style="display:block;width:200px;max-width:100%;height:auto;border:0"></td></tr>' +
+    '<tr><td style="padding:16px 32px 8px">' +
+    '<h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;color:#13283F;font-weight:700">' + escaparHtml(m.titulo) + '</h1>' + paras +
+    '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 24px"><tr><td style="border-radius:999px;background:#F34405">' +
+    '<a href="' + url + '" style="display:inline-block;padding:14px 28px;font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:999px">' + escaparHtml(m.botao.texto) + '</a>' +
+    '</td></tr></table>' +
+    (m.nota ? '<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#5B6878">' + escaparHtml(m.nota) + '</p>' : '') +
+    '<p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#5B6878">Se o botão não funcionar, copie este endereço no navegador:<br>' +
+    '<a href="' + url + '" style="color:#F34405;word-break:break-all">' + url + '</a></p>' +
+    '</td></tr>' +
+    '<tr><td style="padding:24px 32px 32px;border-top:1px solid #E7E2DC"><p style="margin:0;font-size:12px;line-height:1.6;color:#8A94A2">' +
+    escaparHtml(m.rodape || 'Gestão sem Caos · Mapa DISC') + '</p></td></tr>' +
+    '</table></td></tr></table></body></html>';
+}
+
+const ASSUNTOS_RELATORIO = {
+  pessoa: 'Seu relatório DISC — Gestão sem Caos',
+  equipe: 'Relatório de equipe — Gestão sem Caos',
+  lideranca: 'Como liderar — relatório da Gestão sem Caos',
+  processo: 'Relatório do processo seletivo — Gestão sem Caos'
+};
+
+/**
+ * E-mail com o link de um relatório publicado (painel -> cliente).
+ * d = { modelo, url, nome? (destinatário), mensagem? (do consultor), remetente? (nome do consultor), titulo? (do relatório) }
+ * -> { assunto, html, texto }
+ */
+function montarEmailRelatorio(d) {
+  const modelo = Object.prototype.hasOwnProperty.call(ASSUNTOS_RELATORIO, d.modelo) ? d.modelo : 'processo';
+  const primeiro = String(d.nome || '').trim().split(/\s+/)[0] || '';
+  const ola = primeiro ? 'Olá, ' + primeiro + '!' : 'Olá!';
+  const quem = d.remetente ? d.remetente + ', da Gestão sem Caos,' : 'A Gestão sem Caos';
+  const oque = modelo === 'pessoa' ? 'o seu relatório DISC' : (modelo === 'equipe' ? 'o relatório da equipe'
+    : (modelo === 'lideranca' ? 'o relatório "Como liderar"' : 'o relatório do processo seletivo'));
+  const intro = quem + ' enviou ' + oque + (d.titulo ? ': ' + d.titulo : '') + '.';
+  const mensagem = String(d.mensagem || '').trim();
+  const nota = 'O link abre o relatório no navegador, no celular ou no computador. Guarde este e-mail para voltar a ele.';
+  const html = htmlMarca({
+    titulo: modelo === 'pessoa' ? 'Seu relatório DISC está pronto' : 'Relatório pronto para você',
+    previa: intro,
+    paragrafos: [ola, intro, mensagem],
+    botao: { texto: 'Ver relatório', url: d.url },
+    nota,
+    rodape: 'Gestão sem Caos · Mapa DISC. Você recebeu este e-mail porque a consultoria enviou um relatório para este endereço.'
+  });
+  const texto = [ola, '', intro].concat(mensagem ? ['', mensagem] : [])
+    .concat(['', 'Ver relatório: ' + d.url, '', nota, '', 'Gestão sem Caos']).join('\n');
+  return { assunto: ASSUNTOS_RELATORIO[modelo], html, texto };
+}
+
+// ---------------------------------------------------------------------------
+// Histórico de envios (public.envios_email, migração 20261016120000_envios_email.sql): o painel mostra
+// "Enviado para … em dd/mm às hh:mm por Nome". Só o combinado: o que (tipo + referência), para quem, quem enviou
+// (nome do administrador ou 'cliente'), quando, resultado e o id no provedor. Nada do conteúdo do e-mail.
+// ---------------------------------------------------------------------------
+
+const TIPOS_ENVIO = ['relatorio', 'pedido'];
+const RE_UUID_ENVIO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Linha de public.envios_email. r = { tipo, referencia, destinatario, enviadoPor? (nome), enviadoPorId? (uuid do admin;
+ * sem ele = 'cliente'), resultado ('ok' | qualquer outro = 'erro'), provedorId?, em? (ISO) }. null se algo essencial
+ * não bater com as regras da tabela (aí nada é gravado).
+ */
+function linhaEnvio(r) {
+  r = r || {};
+  const tipo = TIPOS_ENVIO.indexOf(r.tipo) >= 0 ? r.tipo : '';
+  const referencia = String(r.referencia == null ? '' : r.referencia);
+  const destinatario = String(r.destinatario == null ? '' : r.destinatario).trim().toLowerCase();
+  if (!tipo || !/^[A-Za-z0-9_-]{1,128}$/.test(referencia)) return null;
+  if (destinatario.length < 3 || destinatario.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(destinatario)) return null;
+  const porId = r.enviadoPorId == null || r.enviadoPorId === '' ? '' : String(r.enviadoPorId);
+  if (porId && !RE_UUID_ENVIO.test(porId)) return null;
+  const nome = String(r.enviadoPor == null ? '' : r.enviadoPor).replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim()
+    .substring(0, 120).trim();
+  const provedorId = String(r.provedorId == null ? '' : r.provedorId);
+  return {
+    tipo, referencia, destinatario,
+    enviado_por: porId ? (nome || 'Administrador') : 'cliente',
+    enviado_por_id: porId || null,
+    em: typeof r.em === 'string' && r.em ? r.em : new Date().toISOString(),
+    resultado: r.resultado === 'ok' ? 'ok' : 'erro',
+    provedor_id: /^[A-Za-z0-9_.:-]{1,200}$/.test(provedorId) ? provedorId : null
+  };
+}
+
+/** Grava a tentativa no histórico. NUNCA lança: o e-mail já foi (ou falhou) e o histórico é só para o painel. */
+async function registrarEnvio(db, r) {
+  const linha = linhaEnvio(r);
+  if (!linha || !db || typeof db.envioRegistrar !== 'function') return false;
+  try {
+    await db.envioRegistrar(linha);
+    return true;
+  } catch (err) {
+    try { console.error(err); } catch (e) { /* sem console */ }
+    return false;
+  }
+}
+
 // ======== supabase/funcoes-compartilhadas/infinitepay.js ========
 // Cliente mínimo do "Checkout Integrado" da InfinitePay (CloudWalk), sem nada do Deno: recebe fetch por parâmetro
 // (testável no Node com respostas falsas).
@@ -779,7 +905,7 @@ function criarAsaas(op) {
   };
 }
 
-/** Envio pelo Resend. {configurado, enviar({para, assunto, html, texto})} — lança erro em falha. */
+/** Envio pelo Resend. {configurado, enviar({para, assunto, html, texto}) -> {id} (id do e-mail no Resend, '' se não veio)} — lança erro em falha. */
 function criarResend(op) {
   const chave = String((op && op.apiKey) || '').trim();
   const remetente = String((op && op.remetente) || '').trim() || 'Gestão sem Caos <onboarding@resend.dev>';
@@ -792,7 +918,12 @@ function criarResend(op) {
         body: JSON.stringify({ from: remetente, to: [m.para], subject: m.assunto, html: m.html, text: m.texto })
       });
       if (!r.ok) throw new Error('Resend: HTTP ' + r.status);
-      return true;
+      let id = '';
+      try {
+        const j = typeof r.json === 'function' ? await r.json() : null;
+        id = j && typeof j.id === 'string' ? j.id : '';
+      } catch (err) { id = ''; }
+      return { id };
     }
   };
 }
@@ -838,6 +969,7 @@ function criarResend(op) {
 //             Limite: 3 pedidos por e-mail por hora e 60 no total por hora.
 //   enviarLink {tokenAcesso} -> {ok, email (mascarado)}: botão "Enviar para meu e-mail" de meu-relatorio.html; manda o
 //             link do relatório para o e-mail da compra (só pedido pago/cortesia). Limite: 3 por pedido por hora.
+//             Cada tentativa no Resend (ok ou erro) vai para o histórico public.envios_email (tipo 'pedido', 'cliente').
 // "infinitepay-webhook": SEM assinatura (a InfinitePay não documenta uma). O corpo NUNCA é confiável: lê order_nsu
 //   (= pedidoId), transaction_nsu e slug e confere com payment_check; só marca pago com paid=true e valor >= pedido.
 //   Idempotente (pedido já pago: nada). Grava o corpo bruto em pedidos.provedor_dados.webhook (depuração).
@@ -993,6 +1125,8 @@ function criarDbVendas(sb) {
       return (await dadosVendas(sb.from('pedidos').select('id, pacote, token_acesso, status, criado_em').eq('email', email)
         .in('status', ['pago', 'cortesia']).order('criado_em', { ascending: false }).limit(10))) || [];
     },
+    /** Histórico de envios por e-mail (public.envios_email; linha montada por linhaEnvio em email.js). */
+    async envioRegistrar(linha) { await dadosVendas(sb.from('envios_email').insert(linha)); },
     /** Registra uma tentativa e devolve quantas houve desde "desdeIso" (inclui esta). */
     async contarTentativa(tipo, chave, desdeIso, agoraIso) {
       await dadosVendas(sb.from('limites_vendas').insert({ tipo, chave: String(chave).substring(0, 200), em: agoraIso }));
@@ -1042,10 +1176,6 @@ function linkRelatorio(env, token) {
 /** Data 'YYYY-MM-DD' de Brasília, "dias" depois de agora. */
 function dataBrasil(agoraMs, dias) {
   return new Date(agoraMs - 3 * 3600 * 1000 + (dias || 0) * 86400000).toISOString().slice(0, 10);
-}
-
-function escaparHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 /** E-mail com o(s) link(s) do relatório. pedidos: [{pacote, token_acesso}] */
@@ -1519,12 +1649,17 @@ async function acaoEnviarLink(ctx, corpo) {
   if (await ctx.db.contarTentativa('enviar_link', p.id, hora, agoraIso) > 3) return erro('Já enviamos o link algumas vezes. Tente de novo daqui a 1 hora.');
   if (await ctx.db.contarTentativa('recuperar_total', '*', hora, agoraIso) > 60) return erro('Muitos pedidos agora. Tente de novo mais tarde.');
   const m = montarEmailAcesso(ctx.env, p.nome, [p]);
+  // Histórico (public.envios_email): o painel mostra "Enviado para … pelo cliente" no pedido.
+  const historico = { tipo: 'pedido', referencia: String(p.id), destinatario: p.email, enviadoPor: 'cliente', em: agoraIso };
+  let enviado;
   try {
-    await ctx.email.enviar({ para: p.email, assunto: m.assunto, html: m.html, texto: m.texto });
+    enviado = await ctx.email.enviar({ para: p.email, assunto: m.assunto, html: m.html, texto: m.texto });
   } catch (err) {
     try { console.error(err); } catch (e) { /* sem console */ }
+    await registrarEnvio(ctx.db, Object.assign({ resultado: 'erro' }, historico));
     return erro('Não foi possível enviar o e-mail agora. Tente de novo em instantes ou fale com o suporte.');
   }
+  await registrarEnvio(ctx.db, Object.assign({ resultado: 'ok', provedorId: enviado && enviado.id }, historico));
   return { ok: true, email: mascararEmail(p.email) };
 }
 

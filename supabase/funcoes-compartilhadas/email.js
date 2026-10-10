@@ -73,3 +73,52 @@ export function montarEmailRelatorio(d) {
     .concat(['', 'Ver relatório: ' + d.url, '', nota, '', 'Gestão sem Caos']).join('\n');
   return { assunto: ASSUNTOS_RELATORIO[modelo], html, texto };
 }
+
+// ---------------------------------------------------------------------------
+// Histórico de envios (public.envios_email, migração 20261016120000_envios_email.sql): o painel mostra
+// "Enviado para … em dd/mm às hh:mm por Nome". Só o combinado: o que (tipo + referência), para quem, quem enviou
+// (nome do administrador ou 'cliente'), quando, resultado e o id no provedor. Nada do conteúdo do e-mail.
+// ---------------------------------------------------------------------------
+
+export const TIPOS_ENVIO = ['relatorio', 'pedido'];
+const RE_UUID_ENVIO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Linha de public.envios_email. r = { tipo, referencia, destinatario, enviadoPor? (nome), enviadoPorId? (uuid do admin;
+ * sem ele = 'cliente'), resultado ('ok' | qualquer outro = 'erro'), provedorId?, em? (ISO) }. null se algo essencial
+ * não bater com as regras da tabela (aí nada é gravado).
+ */
+export function linhaEnvio(r) {
+  r = r || {};
+  const tipo = TIPOS_ENVIO.indexOf(r.tipo) >= 0 ? r.tipo : '';
+  const referencia = String(r.referencia == null ? '' : r.referencia);
+  const destinatario = String(r.destinatario == null ? '' : r.destinatario).trim().toLowerCase();
+  if (!tipo || !/^[A-Za-z0-9_-]{1,128}$/.test(referencia)) return null;
+  if (destinatario.length < 3 || destinatario.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(destinatario)) return null;
+  const porId = r.enviadoPorId == null || r.enviadoPorId === '' ? '' : String(r.enviadoPorId);
+  if (porId && !RE_UUID_ENVIO.test(porId)) return null;
+  const nome = String(r.enviadoPor == null ? '' : r.enviadoPor).replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim()
+    .substring(0, 120).trim();
+  const provedorId = String(r.provedorId == null ? '' : r.provedorId);
+  return {
+    tipo, referencia, destinatario,
+    enviado_por: porId ? (nome || 'Administrador') : 'cliente',
+    enviado_por_id: porId || null,
+    em: typeof r.em === 'string' && r.em ? r.em : new Date().toISOString(),
+    resultado: r.resultado === 'ok' ? 'ok' : 'erro',
+    provedor_id: /^[A-Za-z0-9_.:-]{1,200}$/.test(provedorId) ? provedorId : null
+  };
+}
+
+/** Grava a tentativa no histórico. NUNCA lança: o e-mail já foi (ou falhou) e o histórico é só para o painel. */
+export async function registrarEnvio(db, r) {
+  const linha = linhaEnvio(r);
+  if (!linha || !db || typeof db.envioRegistrar !== 'function') return false;
+  try {
+    await db.envioRegistrar(linha);
+    return true;
+  } catch (err) {
+    try { console.error(err); } catch (e) { /* sem console */ }
+    return false;
+  }
+}

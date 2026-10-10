@@ -94,6 +94,11 @@ export function criarDbFalso(inicial) {
       if (a) a.nome = nome; else st.admins.push({ user_id: userId, nome, criado_em: new Date().toISOString() });
     },
     async adminRemover(userId) { st.admins = st.admins.filter((a) => a.user_id !== userId); },
+    async envioRegistrar(linha) {
+      if (st.envioFalha) throw new Error('falha no banco de dados (envios_email)');
+      st.envios = st.envios || [];
+      st.envios.push(clone(linha));
+    },
     async contarTentativa(tipo, chave, desdeIso, agoraIso) {
       st.limites = st.limites || [];
       st.limites.push({ tipo, chave: String(chave), em: agoraIso });

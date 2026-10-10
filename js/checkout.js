@@ -421,6 +421,9 @@
           '<h1 id="ck-titulo" class="titulo-pagina">Falta só pagar</h1>' +
           resumoPacoteHtml() +
           '<div class="ck-stripe" id="ck-stripe">' +
+            // Pix vem primeiro no Payment Element (js/stripe-pagamento.js, paymentMethodOrder); o selo explica por quê.
+            '<p class="ck-selo-pix" id="ck-selo-pix"><span class="selo selo--verde">' +
+              '<svg class="ck-selo-pix-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5L20 7"/></svg>Pix: aprovado na hora</span></p>' +
             '<div class="ck-stripe-elemento" id="ck-stripe-elemento" aria-busy="true">' +
               '<p class="ck-stripe-carregando"><span class="giro" aria-hidden="true"></span>Carregando as formas de pagamento…</p>' +
             '</div>' +
@@ -431,7 +434,7 @@
           '</div>' +
           erroHtml() +
           '<div class="ck-espera ck-espera--discreta" role="status" aria-live="polite"><span id="ck-status">' +
-            (stripePix ? 'Pague o Pix no app do seu banco. A liberação é automática.' : 'Cartão, Apple Pay, Google Pay ou Pix. O relatório abre assim que o pagamento é aprovado.') + '</span></div>' +
+            (stripePix ? 'Pague o Pix no app do seu banco. A liberação é automática.' : 'Pix, cartão, Apple Pay ou Google Pay. O relatório abre assim que o pagamento é aprovado.') + '</span></div>' +
           '<div class="acoes acoes-coluna ck-acoes">' +
             // "Já paguei" só faz sentido depois de gerar o Pix (o cartão é aprovado na hora, na própria tela).
             '<button type="button" class="botao botao--claro botao--grande" data-ck="verificar"' + (stripePix ? '' : ' hidden') + '>Já paguei</button>' +
