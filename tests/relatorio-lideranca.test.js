@@ -152,7 +152,7 @@ test('novas seções: do que precisa, o que tende a evitar e feedback com mais e
     assert.ok(chaves.indexOf('precisa') > chaves.indexOf('motivacao'));
     assert.ok(chaves.indexOf('evita') === chaves.indexOf('precisa') + 1);
     assert.equal(secao(d, 'precisa').titulo, 'Do que esta pessoa precisa');
-    assert.equal(secao(d, 'evita').titulo, 'O que ela tende a evitar');
+    assert.equal(secao(d, 'evita').titulo, 'O que esta pessoa tende a evitar');
     assert.ok(secao(d, 'precisa').itens.length >= 4);
     assert.ok(secao(d, 'evita').itens.length >= 4);
     assert.ok(!/medo|pavor|terror/i.test(secao(d, 'evita').itens.join(' ')));

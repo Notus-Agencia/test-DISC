@@ -1,0 +1,260 @@
+{
+  "codigo": "DI",
+  "retrato": [
+    "Você está liderando alguém que tende a juntar duas forças: a vontade de fazer acontecer e a facilidade de levar gente junto. No dia a dia de uma pequena ou média empresa, é a pessoa que propõe a campanha nova da loja, puxa conversa com o cliente difícil, convence o fornecedor a antecipar a entrega e anima o time numa semana pesada. Costuma pensar rápido, decidir rápido e falar com convicção.",
+    "O ponto de atenção mais comum é a distância entre começar e terminar. A energia está no lançamento, na negociação e no contato com pessoas; o acompanhamento, a planilha e o registro do que foi combinado tendem a ficar para depois. Também pode prometer mais do que o prazo comporta, no embalo de uma boa conversa, e se irritar com processos que parecem lentos ou burocráticos.",
+    "Para render bem, este perfil precisa de três coisas de quem lidera: metas claras e desafiadoras, liberdade para escolher o caminho e retorno rápido, de preferência com reconhecimento visível. Em troca, você tende a ganhar alguém que puxa o time para frente, abre portas e resolve problemas com pessoas. O seu papel é dar direção e combinar marcos de acompanhamento, não frear a energia."
+  ],
+  "feedback": {
+    "texto": "Este perfil costuma receber bem feedback direto e rápido, desde que perceba respeito e um objetivo claro. Escuta melhor quando a conversa começa pelo resultado que importa e não por uma lista de falhas. O risco é a pessoa transformar a conversa em negociação: argumenta bem, muda o rumo do assunto e sai com a certeza de que tinha razão. Por isso, prepare dois ou três fatos concretos, fale do efeito no cliente ou na equipe e feche com um combinado que caiba numa frase. Elogio funciona melhor quando é público e ligado a um resultado; correção funciona melhor em particular e logo depois do fato.",
+    "funciona": [
+      "Ir direto ao ponto nos primeiros minutos, com um ou dois exemplos concretos e recentes.",
+      "Ligar o ajuste a algo que a pessoa valoriza: a meta do mês, o cliente, a reputação da equipe.",
+      "Pedir que a própria pessoa proponha a solução e o prazo, e anotar o combinado na hora.",
+      "Reconhecer em público o resultado conquistado, citando o que foi feito e o efeito que teve.",
+      "Voltar ao assunto na semana seguinte, rapidamente, para mostrar que o combinado importa."
+    ],
+    "da_errado": [
+      "Rodeios longos antes de chegar ao ponto: a pessoa perde a paciência e para de escutar.",
+      "Corrigir na frente do time: tende a reagir com defesa, ironia ou desafio aberto.",
+      "Comentários vagos como \"precisa se organizar melhor\", sem dizer qual entrega e qual prazo.",
+      "Deixar a conversa virar debate sobre quem tem razão, em vez de focar no próximo passo.",
+      "Guardar vários problemas para uma conversa só, semanas depois do que aconteceu."
+    ],
+    "frases": [
+      { "situacao": "Reconhecer um resultado", "frase": "Você virou o jogo com aquele cliente que estava para cancelar. Fechamos o contrato do ano e o time viu que dá para recuperar conta difícil. Valeu por puxar isso." },
+      { "situacao": "Corrigir um prazo perdido", "frase": "O orçamento da obra da rua Sete era para terça e saiu na quinta. O cliente reclamou e quase fechou com o concorrente. O que você propõe para isso não se repetir no próximo pedido?" },
+      { "situacao": "Promessa grande demais", "frase": "Gosto da sua garra com o cliente. Antes de prometer entrega em dois dias, confirme com o estoque. Combinamos que qualquer prazo fora do padrão passa por mim ou pela logística primeiro?" },
+      { "situacao": "Atropelou colegas numa decisão", "frase": "A decisão de mudar a vitrine foi boa, mas a equipe do caixa soube na hora e ficou perdida. Na próxima, avise quem é afetado na véspera. Como você prefere fazer esse aviso?" },
+      { "situacao": "Combinar acompanhamento", "frase": "Vamos fazer assim: toda sexta, dez minutos, você me mostra os três pedidos mais importantes e em que pé estão. Se algo travar no meio da semana, me chame antes." },
+      { "situacao": "Ideia nova no meio de outra entrega", "frase": "A ideia da parceria com a academia é boa. Antes de abrir essa frente, vamos fechar a campanha do mês. Coloca a parceria na nossa conversa do dia 5?" }
+    ]
+  },
+  "delegacao": {
+    "texto": "Este perfil gosta de receber a missão inteira, não pedaços soltos. Rende mais quando sabe aonde precisa chegar e tem espaço para escolher o caminho. O cuidado é que a mesma autonomia que energiza pode virar improviso: a pessoa começa rápido, muda o plano no meio e esquece de avisar quem depende do trabalho. Delegar bem aqui é combinar com clareza o resultado, o prazo, o orçamento e o que não pode ser decidido sem consultar você, e depois acompanhar por marcos curtos.",
+    "autonomia": "Alta no como, combinada no quê. Defina a meta, o prazo, o limite de gasto e as decisões que precisam passar por você, como desconto acima de certo valor ou mudança que afeta outra área. Dentro disso, deixe a pessoa decidir. Autonomia sem limites claros tende a gerar atrito com processos e colegas.",
+    "combinar": [
+      "Comece pelo objetivo e pelo porquê: o que muda para o cliente ou para a empresa se der certo.",
+      "Transforme a meta em número e data: \"20 novos clientes no bairro até o fim do mês\", não \"aumentar as vendas\".",
+      "Diga em uma frase o que precisa passar por você antes de ser decidido.",
+      "Peça que a pessoa devolva o plano em poucas linhas, com marcos semanais, no mesmo dia.",
+      "Combine quem precisa ser avisado em cada etapa, para que a velocidade não atropele colegas."
+    ],
+    "acompanhar": "Checagens curtas e frequentes, de dez a quinze minutos por semana, olhando marcos e números, não cada passo. Uma mensagem rápida no meio da semana ajuda a pegar desvios cedo. Evite pedir relatórios longos: peça três linhas e um número.",
+    "exemplo": "Numa loja de materiais de construção, em vez de dizer \"cuida da campanha de reforma\", combine: \"Quero 40 orçamentos de reforma fechados até 30 de novembro, com desconto máximo de 8% sem falar comigo. Você escolhe as ações. Toda sexta me manda três linhas: quantos orçamentos, quantos fechados e o que travou\". A pessoa ganha liberdade para criar e você ganha visibilidade sem precisar vigiar.",
+    "armadilhas": [
+      "Delegar só a parte chata e operacional: a pessoa perde o interesse e entrega no automático.",
+      "Dar autonomia total sem limite de decisão e depois desautorizar na frente de cliente ou equipe.",
+      "Aceitar o entusiasmo inicial como garantia de entrega e só olhar o resultado no fim do prazo.",
+      "Mudar a prioridade toda semana: a pessoa acompanha a mudança, mas o que estava pela metade fica abandonado."
+    ]
+  },
+  "motivacao": {
+    "texto": "Este perfil costuma se mover por desafio, visibilidade e gente. Uma meta difícil, a chance de convencer alguém importante ou de liderar um projeto novo tendem a acender a energia. Rotina longa, trabalho isolado e processos lentos tendem a apagar. O reconhecimento importa, e de preferência na frente dos outros. Isso não é vaidade: é a forma como a pessoa confirma que está indo bem e que o esforço tem valor para o grupo.",
+    "autonomia": "Para este perfil, autonomia é poder decidir o caminho, testar uma ideia sem pedir licença para cada detalhe e ter acesso direto a quem decide. Dê escolhas reais, como qual cliente atacar primeiro ou como organizar a ação do mês, e explique o porquê das regras que não podem mudar.",
+    "competencia": "A sensação de estar ficando melhor vem de vencer desafios cada vez maiores e de ver números subindo. Mostre o placar com frequência, aumente a dificuldade das metas aos poucos e ofereça aprendizado prático, como acompanhar uma negociação importante ou conduzir um treinamento para a equipe.",
+    "vinculo": "Este perfil cria laços com facilidade e gosta de sentir que o grupo reconhece o que faz. Inclua a pessoa em conversas de rumo da empresa, peça opinião sobre novidades e celebre conquistas do time juntos. Isolamento prolongado, como meses só em tarefas internas, tende a minar o engajamento.",
+    "reconhecer": [
+      "Elogio público e específico na reunião da equipe, dizendo o que foi feito e qual foi o efeito.",
+      "Dar o próximo desafio maior como prêmio: um cliente importante, um projeto novo, uma meta ousada.",
+      "Deixar a pessoa apresentar o resultado para a diretoria ou para o dono da empresa.",
+      "Uma mensagem curta logo depois da conquista, no mesmo dia, em vez de esperar a avaliação do semestre.",
+      "Contar para outras áreas a conquista, dando o crédito com o nome da pessoa."
+    ],
+    "desmotiva": [
+      "Microgerenciamento em cada passo, com aprovação para tudo.",
+      "Passar semanas em tarefas repetitivas e solitárias sem contato com clientes ou com a equipe.",
+      "Ver o próprio resultado ser apresentado por outra pessoa sem crédito.",
+      "Reuniões longas que terminam sem decisão.",
+      "Regras que ninguém sabe explicar o motivo."
+    ]
+  },
+  "retencao": {
+    "texto": "Este perfil tende a ficar onde vê crescimento rápido, desafios novos e uma liderança que confia. Costuma sair quando sente que bateu no teto, que as ideias não andam ou que é tratado como peça de engrenagem. Em pequenas e médias empresas, onde nem sempre há plano de carreira formal, o que segura é a sensação de que a função está crescendo: mais responsabilidade, mais clientes, mais voz nas decisões. Propostas de concorrentes chegam com frequência para quem tem esse estilo, porque costuma se destacar e chamar atenção.",
+    "fica": [
+      "Metas desafiadoras com recompensa clara quando são batidas, inclusive variável ou comissão bem explicada.",
+      "Espaço para propor e testar ideias, com resposta rápida da liderança.",
+      "Perspectiva concreta de mais responsabilidade nos próximos meses, combinada em conversa.",
+      "Uma relação franca com quem lidera, em que dá para discordar sem medo.",
+      "Um time animado, com clima de conquista."
+    ],
+    "sai": [
+      "Sensação de estagnação: o mesmo cargo, as mesmas tarefas e nenhuma conversa sobre o futuro.",
+      "Ideias ignoradas ou que morrem em aprovações longas.",
+      "Promessas de crescimento que não se cumprem.",
+      "Liderança que controla cada passo ou que leva o crédito pelo resultado.",
+      "Ambiente parado, sem metas nem celebração."
+    ],
+    "sinais": [
+      "Para de propor ideias nas reuniões e cumpre só o mínimo combinado.",
+      "Comenta mais do que o normal sobre o mercado, outras empresas ou conhecidos que mudaram de emprego.",
+      "Perde o interesse pelas metas do mês e pela comemoração de resultados.",
+      "Faz mais críticas em público sobre decisões da empresa, com tom de quem já está desistindo."
+    ],
+    "perguntas": [
+      "O que faria você recusar uma proposta de outra empresa amanhã?",
+      "Que desafio você gostaria de assumir nos próximos seis meses?",
+      "O que está te travando aqui que eu poderia tirar do caminho?",
+      "Que tipo de reconhecimento faz diferença para você?"
+    ]
+  },
+  "desgaste": {
+    "texto": "Este perfil costuma aguentar muita demanda quando há desafio e gente por perto. O desgaste tende a aparecer quando a pressão por resultado continua alta e, ao mesmo tempo, somem os recursos que devolvem energia: autonomia, contato com pessoas e reconhecimento. É o caso de quem passa meses apagando incêndio sem ajuda, sob cobrança por números e sem retorno de ninguém. Os primeiros sinais costumam ser mais impaciência e mais conversa do que entrega; com o tempo, a energia característica desaparece.",
+    "demandas": [
+      "Metas altas sem autonomia para decidir como chegar lá.",
+      "Muitas frentes abertas ao mesmo tempo, todas urgentes.",
+      "Trabalho administrativo e de controle acumulado, sem ajuda.",
+      "Clima de crítica constante, em que só se fala do que deu errado."
+    ],
+    "recursos": [
+      "Liberdade para decidir e resposta rápida quando precisa de você.",
+      "Contato com clientes e com a equipe, não só com planilhas.",
+      "Reconhecimento visível das conquistas, mesmo as pequenas.",
+      "Apoio de alguém mais organizado para o acompanhamento e os registros."
+    ],
+    "sinais_iniciais": [
+      "Mais impaciência e respostas curtas e ásperas em reuniões e mensagens.",
+      "Abre ainda mais frentes novas e fecha menos as que já começou.",
+      "Interrompe colegas com mais frequência e decide sem consultar quem é afetado.",
+      "Brinca menos e o humor do time cai junto."
+    ],
+    "sinais_fortes": [
+      "Some das conversas em que antes puxava a fala.",
+      "Atrasos e esquecimentos repetidos em entregas que antes eram tranquilas.",
+      "Comentários de que \"nada aqui vale a pena\" ou de que tanto faz o resultado.",
+      "Faltas, atrasos frequentes ou cansaço visível por várias semanas seguidas."
+    ],
+    "como_agir": [
+      "Pergunte, em particular, como está a carga de trabalho e o que está pesando mais.",
+      "Corte ou adie frentes: diga explicitamente o que pode esperar.",
+      "Devolva autonomia onde der e reduza aprovações desnecessárias.",
+      "Reconheça o esforço recente de forma concreta, sem esperar a meta fechar.",
+      "Ofereça apoio para o lado administrativo, como alguém que ajude com registros e controles."
+    ],
+    "conversa": "Tenho reparado que você está chegando com menos energia e respondendo mais rápido do que costuma. Pode ser impressão minha. Como você está? O que está pesando mais agora?"
+  },
+  "mudanca": {
+    "texto": "Este perfil tende a lidar bem com mudança, especialmente quando a novidade abre oportunidade. Costuma ser dos primeiros a abraçar uma novidade e a convencer os outros. O risco é o oposto: aderir rápido demais, sair implementando do próprio jeito e atropelar etapas ou colegas mais cautelosos. Quando a mudança vem de cima, sem conversa, também pode reagir com resistência barulhenta, porque se sente de fora da decisão. Envolver cedo e dar um papel ativo costuma transformar a pessoa em aliada.",
+    "antes": [
+      "Conte a mudança antes de anunciar para o time e peça a opinião sincera da pessoa.",
+      "Explique o problema que a mudança resolve e o resultado esperado, com números quando houver.",
+      "Ofereça um papel ativo, como apresentar a novidade para a equipe ou testar primeiro."
+    ],
+    "durante": [
+      "Combine o que pode ser adaptado e o que precisa ser seguido como está, para evitar versões próprias.",
+      "Peça que a pessoa traga as reações do time e do cliente, não só as próprias.",
+      "Acompanhe de perto as primeiras semanas, com conversas rápidas sobre o que está funcionando."
+    ],
+    "depois": [
+      "Mostre os resultados da mudança e dê crédito público a quem ajudou.",
+      "Peça sugestões de ajuste e implemente pelo menos uma.",
+      "Registre o novo jeito de fazer, para que a pessoa não volte ao antigo por pressa."
+    ],
+    "frase": "Vamos trocar o sistema de pedidos em março. Quero você nessa: preciso de alguém que ajude o time a adotar o novo jeito. Antes de anunciar, me diz o que pode dar errado."
+  },
+  "conflito": {
+    "texto": "Este perfil tende a entrar em conflito de forma aberta e rápida. Diz o que pensa, defende a ideia com energia e pode subir o tom quando sente que o resultado está em risco ou que alguém está travando o caminho. Costuma vencer discussões pela persuasão e pela velocidade, o que às vezes deixa o outro lado calado, mas não convencido. Em compensação, também costuma esquecer o atrito rápido e não guardar mágoa, desde que o assunto se resolva.",
+    "gatilhos": [
+      "Colegas que atrasam entregas das quais o trabalho da pessoa depende.",
+      "Processos e aprovações percebidos como burocracia sem motivo.",
+      "Sentir que a ideia foi ignorada sem ser ouvida.",
+      "Críticas em público ou perda de espaço diante da equipe.",
+      "Disputa por clientes, metas ou reconhecimento com outro colega competitivo."
+    ],
+    "como_aparece": "O atrito costuma aparecer em reunião, na hora, com frases firmes, ironia ou mensagens rápidas e duras. Com colegas mais calmos ou mais detalhistas, a pessoa pode atropelar sem perceber, e o outro lado se cala e guarda o incômodo.",
+    "mediar": [
+      "Converse primeiro em separado com cada lado, para baixar a temperatura e ouvir os fatos.",
+      "Na conversa conjunta, comece pelo objetivo comum, como o cliente, a meta ou o prazo.",
+      "Peça que cada um descreva o problema em fatos, sem adjetivos sobre o outro.",
+      "Dê tempo de fala igual e segure as interrupções: este perfil tende a falar mais e mais rápido.",
+      "Feche com um acordo concreto, dizendo quem faz o quê e até quando, e marque uma conversa curta de retorno."
+    ],
+    "frase": "Vocês dois querem a mesma coisa: entregar o pedido do cliente no prazo. Vamos olhar só os fatos de ontem e sair daqui com um combinado de quem faz o quê. Um de cada vez, sem interromper."
+  },
+  "um_a_um": {
+    "frequencia": "Semanal, de 20 a 30 minutos, em horário fixo e protegido. Prefira conversa em pé ou caminhando, ou numa sala sem tela aberta. Com este perfil, conversas curtas e frequentes funcionam melhor do que uma longa por mês.",
+    "pauta": [
+      { "titulo": "Vitórias da semana", "texto": "Comece pelo que deu certo. Reconhecer logo no início abre espaço para falar do resto." },
+      { "titulo": "Números e marcos", "texto": "Olhem juntos dois ou três indicadores combinados e o que está adiantado ou atrasado." },
+      { "titulo": "O que está travando", "texto": "Pergunte o que depende de você: uma decisão, um contato, uma aprovação que está parada." },
+      { "titulo": "Ideias novas", "texto": "Dê cinco minutos para ideias, mas decida juntos qual entra e qual espera, para não abrir frente demais." },
+      { "titulo": "Combinados da semana", "texto": "Feche com no máximo três compromissos escritos, com dono e data, e retome na próxima conversa." }
+    ],
+    "perguntas": [
+      "O que você conquistou nesta semana de que tem orgulho?",
+      "Onde você precisa de mim para andar mais rápido?",
+      "Tem alguma promessa feita a cliente que está apertada no prazo?",
+      "Qual frente você pode largar ou passar adiante?",
+      "Que desafio novo você gostaria de assumir?"
+    ],
+    "evite": [
+      "Transformar a reunião em leitura de relatório ou em cobrança item por item.",
+      "Cancelar ou remarcar com frequência: a pessoa entende que não é prioridade.",
+      "Deixar a conversa sem fechamento, só com ideias soltas."
+    ]
+  },
+  "plano_90": {
+    "texto": "Para quem acabou de chegar ou mudou de função, este perfil quer resultado rápido. Use isso a favor: dê uma vitória possível no primeiro mês, mas proteja o tempo de aprender como as coisas funcionam antes de mudar tudo.",
+    "dias_30": [
+      "Apresente {nome} pessoalmente aos clientes, fornecedores e colegas mais importantes, explicando o papel de cada um.",
+      "Combine uma meta pequena e visível para as quatro primeiras semanas, que dê a sensação de conquista.",
+      "Explique as regras que não podem mudar e o motivo de cada uma, antes que surjam atalhos.",
+      "Marque conversas semanais de 20 minutos e pergunte o que está estranho ou confuso."
+    ],
+    "dias_60": [
+      "Amplie a autonomia com um projeto ou carteira de clientes com meta própria e limites claros de decisão.",
+      "Peça uma lista de melhorias que a pessoa enxergou e decidam juntos qual testar primeiro.",
+      "Observe como está o acompanhamento das entregas e combine uma rotina simples de registro.",
+      "Dê o primeiro feedback estruturado: o que está funcionando e um ponto a ajustar."
+    ],
+    "dias_90": [
+      "Faça um balanço com números: o que foi entregue, o que ficou pela metade e o que aprendeu.",
+      "Combine metas e desafios para o próximo trimestre, incluindo uma de organização ou de acompanhamento.",
+      "Pergunte o que faria a pessoa ficar mais um ano e o que poderia fazer ir embora.",
+      "Reconheça a evolução diante da equipe, citando conquistas concretas destes três meses."
+    ],
+    "sinais_bons": [
+      "Já tem relação própria com clientes e colegas-chave, sem depender de você para abrir portas.",
+      "Entrega a maior parte do que promete no prazo combinado.",
+      "Traz ideias e problemas cedo, sem esperar a reunião mensal."
+    ]
+  },
+  "voce_e_esta_pessoa": {
+    "D": {
+      "texto": "Vocês dois tendem a ser diretos, rápidos e focados em resultado. Isso acelera muita coisa, mas também pode virar disputa de espaço: duas pessoas querendo decidir, falando ao mesmo tempo e defendendo o próprio caminho. A relação funciona melhor quando o território de cada um está claro.",
+      "ajustes": [
+        "Combine por escrito quais decisões são suas e quais são da pessoa.",
+        "Discorde em particular e com argumentos, nunca diante do cliente ou do time.",
+        "Reserve alguns minutos para conversa e reconhecimento: o lado Influência da pessoa precisa disso mais do que você.",
+        "Deixe a pessoa conduzir algumas apresentações e negociações, mesmo que você faria mais rápido."
+      ]
+    },
+    "I": {
+      "texto": "Vocês tendem a se entender bem: gostam de gente, de ideias e de energia. O risco é a afinidade substituir a cobrança e as conversas virarem ótimas trocas de ideia sem compromisso de entrega. Quem lidera precisa trazer o método que nenhum dos dois traz naturalmente.",
+      "ajustes": [
+        "Feche toda conversa com um combinado escrito, com dono e prazo.",
+        "Cuide para que a amizade não impeça uma correção necessária.",
+        "Escolham juntos uma ideia de cada vez para tirar do papel.",
+        "Peça ajuda a alguém mais organizado do time para acompanhar os números."
+      ]
+    },
+    "S": {
+      "texto": "Seu ritmo tende a ser mais calmo e previsível que o da pessoa, e o seu cuidado com o grupo é um bom contrapeso para essa velocidade. O risco é você evitar o confronto e deixar a pessoa decidir por você, ou sentir que as mudanças constantes atropelam você.",
+      "ajustes": [
+        "Diga não com clareza quando for preciso; este perfil respeita quem se posiciona.",
+        "Responda rápido às decisões que dependem de você, para não virar gargalo.",
+        "Dê desafios maiores do que parece confortável para você: proteção demais soa como falta de confiança.",
+        "Use a sua escuta para ajudar a pessoa a perceber o efeito da pressa nos colegas."
+      ]
+    },
+    "C": {
+      "texto": "Você tende a valorizar análise, regra e qualidade; a pessoa tende a valorizar velocidade, pessoas e oportunidade. Juntos podem ser uma ótima dupla, se cada um respeitar o que o outro traz. O atrito costuma vir quando você pede detalhes demais ou quando a pessoa pula etapas que você considera essenciais.",
+      "ajustes": [
+        "Comece pela conclusão e pela decisão necessária; detalhes só no que for crítico.",
+        "Combine antes o que é inegociável em qualidade e o que pode ser simplificado.",
+        "Troque relatórios longos por três linhas e um número por semana.",
+        "Reconheça a energia e as ideias, não só a precisão, e diga isso em voz alta."
+      ]
+    }
+  }
+}

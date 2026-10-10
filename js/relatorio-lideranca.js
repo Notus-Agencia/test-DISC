@@ -22,6 +22,9 @@
  * Seções (ordem): comunicacao, delegar, feedback, motivacao, precisa, evita, cobrar, estresse, reconhecer,
  *   rendeMais, esforco (só com exigido), riscos, plano, voceEEla (só com percentuais do líder).
  * gerarTexto(dados) -> texto com *negrito* e • para WhatsApp.
+ * DIFERENCA / LIMIAR_DIFERENCA: textos de "diferença grande num fator" entre líder e pessoa (reaproveitados por
+ *   js/lideranca-avancado.js no capítulo "Você e esta pessoa").
+ * Estilo = nome oficial da combinação de dois fatores (DISC_COMBINACOES.nome), como no Guia para a Liderança.
  *
  * Nome exibido sempre como "Primeiro nome + inicial" (ex.: "Ana P."). Nenhum dado
  * sensível (idade, gênero, contato, documento) é lido ou devolvido.
@@ -49,7 +52,7 @@
     feedback: 'Como dar feedback',
     motivacao: 'O que motiva e o que desmotiva',
     precisa: 'Do que esta pessoa precisa',
-    evita: 'O que ela tende a evitar',
+    evita: 'O que esta pessoa tende a evitar',
     esforco: 'Esforço de adaptação ao cargo',
     cobrar: 'Como cobrar resultado',
     estresse: 'Sinais de estresse e como agir',
@@ -447,7 +450,11 @@
       (g.secoes || []).forEach(function (s, i) { if (CHAVES_GUIA[i]) guia[CHAVES_GUIA[i]] = (s.itens || []).slice(); });
       combo = (LID.combinacoes && LID.combinacoes[a.codigo]) || null;
     }
-    var estilo = a.equilibrado ? 'Perfil equilibrado' : (combo ? combo.nome : nomeFator(prim));
+    // Nome oficial da combinação (js/disc-combinacoes.js), o mesmo do painel e dos outros relatórios.
+    var CBN = dep('DISC_COMBINACOES', './disc-combinacoes.js');
+    var oficial = null;
+    if (CBN && typeof CBN.nome === 'function') { try { oficial = CBN.nome(a.codigo); } catch (e) { oficial = null; } }
+    var estilo = a.equilibrado ? 'Perfil equilibrado' : (oficial && oficial.nome ? oficial.nome : combo ? combo.nome : nomeFator(prim));
 
     // ---- Resumo (3 frases) ----
     var resumoBase = (LID && LID.porPerfil && LID.porPerfil[prim] && LID.porPerfil[prim].resumo) || '';
@@ -651,6 +658,8 @@
     TITULOS: TITULOS,
     porPerfil: porPerfil,
     AJUSTES: AJUSTES,
+    DIFERENCA: DIFERENCA,
+    LIMIAR_DIFERENCA: LIMIAR_DIFERENCA,
     nomeExibicao: nomeExibicao,
     montar: montar,
     gerarTexto: gerarTexto

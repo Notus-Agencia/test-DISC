@@ -687,6 +687,9 @@ test('admin.html carrega compatibilidade, relatórios dos modelos e a view antes
   assert.ok(i('js/lideranca.js') < i('js/compatibilidade.js'));
   assert.ok(i('js/compatibilidade.js') < i('js/relatorio-modelos.js'));
   assert.ok(i('js/relatorio-lideranca.js') < i('js/relatorio-modelos.js'));
+  // "Como liderar" avançado: dados por combinação antes do montador, e os dois antes dos modelos.
+  assert.ok(i('js/lideranca-avancado-dados.js') !== -1 && i('js/lideranca-avancado-dados.js') < i('js/lideranca-avancado.js'));
+  assert.ok(i('js/lideranca-avancado.js') < i('js/relatorio-modelos.js'));
   assert.ok(i('js/relatorio-pessoa.js') < i('js/relatorio-modelos.js'));
 });
 

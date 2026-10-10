@@ -1,0 +1,259 @@
+{
+  "codigo": "DC",
+  "retrato": [
+    "Você está liderando alguém que une ambição a um padrão alto de qualidade. No dia a dia, tende a ser a pessoa que quer a meta maior e, ao mesmo tempo, quer chegar lá do jeito certo. Numa empresa de engenharia, numa área financeira, numa indústria ou numa agência que atende clientes exigentes, costuma estruturar o caminho, cobrar consistência e apontar com precisão onde o trabalho está abaixo do esperado.",
+    "O ponto de atenção mais comum é o tom. Este perfil tende a ser exigente consigo e com os outros, e pode corrigir de forma seca, direta e detalhada, sem perceber o efeito nas pessoas. Também costuma ter pouca paciência com improviso, retrabalho e falta de preparo, inclusive da liderança. Quando discorda de uma decisão que considera mal fundamentada, tende a contestar com argumentos e a insistir até ver dados que mudem a própria posição.",
+    "Para render bem, este perfil precisa de metas desafiadoras, critérios claros, autonomia para estruturar o trabalho e uma liderança competente e coerente. Em troca, você tende a ganhar alguém que transforma objetivos ambiciosos em entregas sólidas e eleva o padrão da área. O seu papel é combinar o nível de exigência adequado para cada situação e ajudar a pessoa a cuidar do tom com quem não acompanha o mesmo ritmo."
+  ],
+  "feedback": {
+    "texto": "Este perfil costuma respeitar feedback objetivo, bem fundamentado e ligado a resultado e qualidade. Rodeios, opiniões sem dados e elogios genéricos tendem a perder valor. O risco é a conversa virar debate técnico: a pessoa contesta cada ponto, pede evidências e pode tentar provar que o critério usado está errado. Prepare os fatos com cuidado, fale do efeito no resultado e na equipe, ouça os argumentos e feche com um acordo claro. Quando o assunto for o tom com as pessoas, traga exemplos concretos do efeito causado, porque este perfil tende a subestimar esse lado.",
+    "funciona": [
+      "Chegar com fatos verificáveis, números e exemplos específicos.",
+      "Conectar o ajuste ao resultado e à qualidade que a pessoa valoriza.",
+      "Ouvir os argumentos até o fim e responder com lógica, sem pressa.",
+      "Mostrar o efeito do tom nas pessoas com casos concretos, não com adjetivos.",
+      "Elogiar com precisão: o que ficou excelente e por que fez diferença."
+    ],
+    "da_errado": [
+      "Feedback baseado em impressão, sem dado ou exemplo.",
+      "Corrigir em público: a pessoa tende a contestar na hora, com dureza.",
+      "Ceder diante de qualquer contestação, sem sustentar o combinado.",
+      "Elogio genérico como \"bom trabalho\", que soa vazio para este perfil.",
+      "Rotular a pessoa, como \"você é exigente demais\", em vez de descrever o comportamento."
+    ],
+    "frases": [
+      { "situacao": "Reconhecer uma entrega", "frase": "O projeto da reforma ficou dentro do orçamento e sem nenhuma correção pedida pelo cliente. O padrão que você colocou na obra fez a diferença. Parabéns pela condução." },
+      { "situacao": "Tom duro com a equipe", "frase": "Sua correção no relatório do Felipe estava certa. O jeito, na frente de todos, fez o Felipe travar e errar mais no dia seguinte. Como você pode dar o mesmo recado em particular?" },
+      { "situacao": "Exigência acima do necessário", "frase": "Para este cliente, a versão atual já atende o contrato. Os ajustes que você quer fazer custam mais dois dias. Vamos entregar assim e guardar o seu padrão para o projeto grande?" },
+      { "situacao": "Contestou uma decisão", "frase": "Entendi seus argumentos e alguns são bons. A decisão vai ficar como está por causa do prazo do cliente. Quero que você registre os riscos que apontou para revisarmos em 60 dias." },
+      { "situacao": "Novo desafio", "frase": "Quero que você reestruture o processo de compras, que hoje gera retrabalho toda semana. Você define o novo fluxo. Me apresenta a proposta com números até o dia 20?" },
+      { "situacao": "Centralizando revisões", "frase": "Hoje todo orçamento passa pela sua revisão e isso virou gargalo. Vamos definir juntos um padrão que a equipe consiga seguir sem você revisar tudo?" }
+    ]
+  },
+  "delegacao": {
+    "texto": "Este perfil gosta de receber um objetivo desafiador e estruturar o caminho com rigor. Rende menos quando a meta é vaga, quando falta informação ou quando alguém interfere no método sem fundamento. Delegar bem aqui é combinar resultado, prazo, padrão de qualidade e limites de decisão, e deixar a pessoa organizar o plano. O cuidado é evitar que o padrão alto vire gargalo: a pessoa tende a centralizar revisões e a refazer o trabalho dos outros.",
+    "autonomia": "Alta, com padrão e prazo combinados. Deixe a pessoa decidir o método e a estrutura do trabalho. Combine com clareza o nível de qualidade adequado para cada entrega e o que precisa passar por você. Ajude a definir quando algo está bom o suficiente para seguir.",
+    "combinar": [
+      "Defina a meta com número, prazo e o padrão de qualidade esperado.",
+      "Passe toda a informação disponível e diga onde há incerteza.",
+      "Combine o que pode ser decidido sem você e o que precisa de aprovação.",
+      "Combine como a equipe será envolvida, para a pessoa não fazer tudo sem ajuda.",
+      "Peça o plano com etapas e riscos, e aprove sem demora."
+    ],
+    "acompanhar": "Acompanhe por marcos e indicadores, com uma conversa semanal objetiva. Pergunte também sobre a equipe envolvida: como está o clima, quem está aprendendo e quem está sobrecarregado. Evite revisar detalhes que a pessoa domina melhor do que você.",
+    "exemplo": "Numa agência de marketing, em vez de \"melhora a qualidade das entregas\", combine: \"Quero reduzir de 30% para 10% as peças que voltam do cliente para correção até o fim do trimestre. Você define o checklist de revisão. A equipe precisa conseguir seguir sem você revisar tudo. Toda sexta, me mostra o índice da semana e um caso de aprendizado\".",
+    "armadilhas": [
+      "Delegar sem critério de qualidade e depois discordar do padrão adotado.",
+      "Deixar a pessoa centralizar todas as revisões até virar gargalo.",
+      "Ignorar o efeito do tom exigente na equipe envolvida.",
+      "Interferir no método sem argumento técnico, gerando conflito."
+    ]
+  },
+  "motivacao": {
+    "texto": "Este perfil costuma se mover por desafios difíceis, excelência e controle sobre o próprio trabalho. Metas ambiciosas, problemas complexos e a chance de construir algo sólido tendem a acender a energia. Improviso, incompetência e decisões sem fundamento tendem a apagar o interesse e a gerar crítica. O reconhecimento que mais pesa é o de quem entende o trabalho: um elogio preciso de alguém competente vale mais do que festa.",
+    "autonomia": "Para este perfil, autonomia significa definir a estrutura, o método e o padrão do trabalho, e ter acesso às informações para decidir. Dê responsabilidade sobre resultados completos e respeite as decisões técnicas tomadas com critério.",
+    "competencia": "A sensação de estar ficando melhor vem de resolver problemas complexos e ver resultados sólidos. Ofereça desafios difíceis, acesso a conhecimento técnico e a chance de definir padrões para a área.",
+    "vinculo": "O vínculo com este perfil se constrói pelo respeito à competência e pela coerência. A pessoa tende a se ligar a líderes que dominam o assunto, decidem com critério e cumprem o que dizem. Conversas francas sobre estratégia e qualidade fortalecem a relação.",
+    "reconhecer": [
+      "Elogio preciso, citando o detalhe técnico ou o resultado que fez diferença.",
+      "Confiar um desafio maior e mais complexo depois de uma boa entrega.",
+      "Dar autoridade para definir padrões e processos da área.",
+      "Levar a pessoa para decisões estratégicas e pedir uma análise por escrito.",
+      "Reconhecer por escrito, com números, diante de quem decide na empresa."
+    ],
+    "desmotiva": [
+      "Decisões tomadas sem fundamento ou contra os dados.",
+      "Trabalho mal feito de outros que gera retrabalho.",
+      "Metas fáceis demais ou desafios sem importância.",
+      "Interferência no método por quem não domina o assunto.",
+      "Promessas da liderança que não se cumprem."
+    ]
+  },
+  "retencao": {
+    "texto": "Este perfil tende a ficar onde há desafio, padrão alto e uma liderança que respeita. Costuma sair quando percebe mediocridade tolerada, decisões incoerentes ou falta de espaço para crescer. Analisa a decisão de sair com cuidado e compara opções de forma racional. Em empresas pequenas, o risco é a pessoa sentir que o negócio não acompanha o nível de exigência que a pessoa tem, ou que bateu no teto sem perspectiva de assumir mais responsabilidade.",
+    "fica": [
+      "Desafios técnicos e de gestão cada vez maiores.",
+      "Padrões de qualidade levados a sério por toda a empresa.",
+      "Uma liderança competente, coerente e que cumpre a palavra.",
+      "Autonomia para estruturar a área e definir o método.",
+      "Critérios claros de crescimento e remuneração."
+    ],
+    "sai": [
+      "Mediocridade tolerada e retrabalho constante causado por outros.",
+      "Decisões arbitrárias ou mal fundamentadas da liderança.",
+      "Sensação de teto, sem próximo desafio à vista.",
+      "Proposta de fora com mais desafio, estrutura ou remuneração."
+    ],
+    "sinais": [
+      "Para de contestar decisões, como se não valesse mais a pena argumentar.",
+      "Cumpre só o combinado, sem propor melhorias.",
+      "Faz críticas mais frequentes e ácidas à gestão da empresa.",
+      "Fala de cursos, certificações ou projetos fora da empresa com mais frequência."
+    ],
+    "perguntas": [
+      "O que precisaria mudar aqui para você ficar mais cinco anos?",
+      "Que decisão da empresa mais te incomodou nos últimos meses?",
+      "Que desafio você gostaria de assumir no próximo ano?",
+      "Onde você sente que o seu padrão de qualidade não é respeitado?"
+    ]
+  },
+  "desgaste": {
+    "texto": "Este perfil costuma se desgastar quando a exigência continua alta e, ao mesmo tempo, faltam controle, recursos e equipe preparada. O choque entre o padrão que a pessoa quer e o que é possível entregar, repetido por muito tempo, consome muita energia. Os recursos que mais ajudam são autonomia, prioridades claras e uma equipe confiável. Os primeiros sinais costumam aparecer como mais controle e mais dureza; depois, como cansaço e cinismo.",
+    "demandas": [
+      "Metas altas com equipe ou recursos insuficientes.",
+      "Retrabalho constante causado por erros de outros.",
+      "Decisões da liderança que contrariam o que a pessoa considera certo.",
+      "Prazos que obrigam a entregar abaixo do próprio padrão."
+    ],
+    "recursos": [
+      "Autonomia para decidir o método e as prioridades.",
+      "Uma equipe preparada, em quem a pessoa possa confiar.",
+      "Liderança que decide com critério e explica as decisões.",
+      "Reconhecimento preciso pela qualidade e pelo resultado."
+    ],
+    "sinais_iniciais": [
+      "Revisa e refaz o trabalho dos outros com mais frequência.",
+      "Críticas mais duras e menos paciência com erros pequenos.",
+      "Centraliza decisões e para de delegar.",
+      "Trabalha até tarde com frequência para manter o padrão."
+    ],
+    "sinais_fortes": [
+      "Cinismo frequente sobre a empresa, a equipe ou os clientes.",
+      "Explosões de irritação ou rigidez fora do comum.",
+      "Queda na qualidade de entregas que sempre foram impecáveis.",
+      "Cansaço visível, faltas ou atrasos por várias semanas."
+    ],
+    "como_agir": [
+      "Converse em particular, de forma objetiva, com os fatos que você observou.",
+      "Revisem juntos as prioridades e o nível de qualidade realmente necessário em cada entrega.",
+      "Garanta apoio de pessoas preparadas para dividir a carga.",
+      "Destrave decisões que dependem de você e explique as que foram contrárias à pessoa.",
+      "Reconheça o esforço recente e combine uma pausa concreta depois da entrega atual."
+    ],
+    "conversa": "Tenho reparado que você está revisando tudo, ficando até tarde e com menos paciência nas reuniões. Não é crítica: quero entender o que está pesando e o que eu posso fazer para tirar pressão."
+  },
+  "mudanca": {
+    "texto": "Este perfil tende a apoiar mudanças que fazem sentido técnico e trazem resultado melhor. A resistência aparece quando a mudança parece mal planejada, sem dados ou contrária à qualidade. A reação costuma ser direta e argumentada: questionamentos, pedidos de evidência e críticas ao plano. Envolver cedo, apresentar a lógica e dar à pessoa a responsabilidade de estruturar parte da mudança costuma transformar a crítica em melhoria do próprio plano.",
+    "antes": [
+      "Apresente o problema, os dados e o resultado esperado antes de anunciar ao time.",
+      "Peça uma análise crítica do plano e trate as objeções como contribuição.",
+      "Ofereça a responsabilidade de estruturar uma parte da mudança."
+    ],
+    "durante": [
+      "Defina critérios claros de sucesso e acompanhe com indicadores.",
+      "Decida rápido quando a pessoa trouxer um obstáculo.",
+      "Cuide do tom da pessoa com quem tem mais dificuldade de se adaptar."
+    ],
+    "depois": [
+      "Mostre os resultados com números e reconheça a contribuição técnica.",
+      "Revisem juntos o que funcionou e o que precisa de ajuste.",
+      "Registre o novo padrão para que a equipe siga sem depender da pessoa."
+    ],
+    "frase": "Vamos mudar o sistema de orçamento em maio porque estamos perdendo margem em 30% dos projetos. Aqui estão os números. Quero sua análise crítica do plano antes de levar ao time e quero você estruturando a parte de engenharia."
+  },
+  "conflito": {
+    "texto": "Este perfil tende a entrar no conflito com argumentos firmes e um padrão alto de exigência. Discorda abertamente quando vê erro, falta de critério ou baixa qualidade, e pode ser duro na forma. Costuma separar pouco o problema da pessoa na hora de falar, e o outro lado pode se sentir atacado. Por outro lado, tende a respeitar quem apresenta bons argumentos e a mudar de posição diante de dados.",
+    "gatilhos": [
+      "Trabalho mal feito ou entregue sem cuidado.",
+      "Decisões tomadas sem nenhum fundamento técnico ou dado.",
+      "Interferência no trabalho por quem não domina o assunto.",
+      "Colegas que não assumem os próprios erros.",
+      "Pressão para baixar o padrão sem justificativa."
+    ],
+    "como_aparece": "O atrito costuma ser direto e argumentado: críticas detalhadas, perguntas duras, tom seco e insistência até provar o ponto. Com colegas mais sensíveis, pode deixar marcas que a pessoa nem percebe.",
+    "mediar": [
+      "Converse em particular e reconheça o mérito técnico do ponto da pessoa.",
+      "Mostre com exemplos o efeito da forma como o recado foi dado.",
+      "Na conversa conjunta, separe o problema técnico da relação entre as pessoas.",
+      "Defina juntos o critério objetivo que vai resolver a discordância.",
+      "Feche com um acordo claro sobre o trabalho e sobre a forma de dar críticas."
+    ],
+    "frase": "O ponto técnico está certo e precisa ser corrigido. O jeito como foi falado está atrapalhando o time. Vamos resolver as duas coisas: primeiro o erro do pedido, depois como vocês vão dar retorno um ao outro."
+  },
+  "um_a_um": {
+    "frequencia": "Semanal ou quinzenal, de 30 minutos, com pauta objetiva. Este perfil valoriza reuniões preparadas e que terminam em decisão. Use parte do tempo para falar de pessoas, que tende a ser o lado menos cuidado por este estilo.",
+    "pauta": [
+      { "titulo": "Resultados e indicadores", "texto": "Revisem números, marcos e qualidade das entregas, com foco no que mudou desde a última conversa." },
+      { "titulo": "Decisões e obstáculos", "texto": "Liste o que depende de você e o que está travando, e decida o que puder na hora." },
+      { "titulo": "Pessoas e equipe", "texto": "Converse sobre a equipe: quem está crescendo, quem precisa de apoio e como está o clima." },
+      { "titulo": "Padrões e processos", "texto": "Discuta melhorias de processo e onde o padrão pode ser simplificado sem perder o essencial." },
+      { "titulo": "Desenvolvimento", "texto": "Feche com o próximo desafio e com um ponto de desenvolvimento, como delegar ou ajustar o tom." }
+    ],
+    "perguntas": [
+      "Qual resultado desta semana mais te deu orgulho?",
+      "Onde o seu padrão está alto além do necessário?",
+      "Quem da equipe poderia assumir mais se tivesse um bom modelo?",
+      "Que decisão minha recente você questionaria, e por quê?",
+      "Que conversa difícil com a equipe você está adiando?"
+    ],
+    "evite": [
+      "Chegar sem dados ou sem preparo.",
+      "Discutir só números e esquecer as pessoas da equipe.",
+      "Deixar contestações técnicas sem resposta clara."
+    ]
+  },
+  "plano_90": {
+    "texto": "Para quem acabou de chegar ou mudou de função, este perfil quer entender o padrão da empresa e começar a melhorar o que encontrar. Dê um desafio concreto, mas proteja o tempo de entender o contexto e as pessoas antes de reestruturar tudo.",
+    "dias_30": [
+      "Combine metas, padrões de qualidade e limites de decisão da função em conversa franca.",
+      "Apresente {nome} às pessoas-chave e explique a história e os motivos dos processos atuais.",
+      "Dê um primeiro problema concreto, com prazo de quatro semanas e critério de sucesso.",
+      "Faça conversas semanais e pergunte o que parece desorganizado ou sem critério."
+    ],
+    "dias_60": [
+      "Peça uma proposta de melhoria com dados e aprove pelo menos uma parte.",
+      "Dê o primeiro feedback estruturado, incluindo como a pessoa está se relacionando com a equipe.",
+      "Amplie a autonomia com um projeto maior e um limite de decisão mais alto.",
+      "Observe se a pessoa está centralizando revisões e ajude a criar padrões para a equipe."
+    ],
+    "dias_90": [
+      "Faça um balanço com indicadores: o que melhorou, o que ainda falta e o que foi aprendido.",
+      "Combine metas do próximo trimestre, incluindo uma de desenvolvimento da equipe.",
+      "Pergunte o que faria a pessoa ficar e crescer aqui, e o que poderia fazer ir embora.",
+      "Reconheça com precisão, diante da equipe, uma melhoria concreta destes três meses."
+    ],
+    "sinais_bons": [
+      "Já melhorou pelo menos um processo com resultado mensurável.",
+      "A equipe próxima segue o padrão sem depender de revisão constante.",
+      "Discorda com argumentos e sabe aceitar decisões contrárias."
+    ]
+  },
+  "voce_e_esta_pessoa": {
+    "D": {
+      "texto": "Vocês dois tendem a ser firmes, diretos e focados em resultado. A diferença é que a pessoa costuma exigir mais critério e qualidade, e você mais velocidade. O risco é a disputa de espaço e de razão: dois estilos fortes defendendo cada um o seu caminho.",
+      "ajustes": [
+        "Combinem por escrito quem decide o quê e quais padrões são inegociáveis.",
+        "Traga argumentos e dados para as decisões; ordens sem justificativa geram resistência.",
+        "Aceite revisões de qualidade quando o risco for real, mesmo que atrasem um pouco.",
+        "Discordem em particular e mostrem alinhamento diante da equipe."
+      ]
+    },
+    "I": {
+      "texto": "Você tende a liderar pelo entusiasmo e pela conversa; a pessoa, pelo critério e pelo resultado. Você pode ajudar a pessoa a cuidar do lado humano, mas este perfil pode achar suas conversas pouco objetivas e suas decisões pouco fundamentadas.",
+      "ajustes": [
+        "Leve dados e argumentos para as decisões, não só entusiasmo.",
+        "Vá ao ponto nas reuniões e feche cada conversa com uma decisão.",
+        "Cumpra e registre o que combinar: este perfil cobra coerência da liderança.",
+        "Use a sua leitura de pessoas para ajudar a pessoa a ajustar o tom com a equipe."
+      ]
+    },
+    "S": {
+      "texto": "Seu estilo tende a ser calmo, paciente e cuidadoso com o grupo; o da pessoa, exigente e direto. Você pode ser um ótimo contrapeso para o lado humano, desde que não evite o confronto. Este perfil respeita quem se posiciona com firmeza e argumentos.",
+      "ajustes": [
+        "Posicione-se com clareza e com argumentos sempre que discordar de algo.",
+        "Decida no prazo as questões que dependem de você.",
+        "Aponte com exemplos concretos quando o tom da pessoa ferir a equipe.",
+        "Dê desafios difíceis: proteção demais soa como falta de confiança."
+      ]
+    },
+    "C": {
+      "texto": "Vocês se entendem no gosto por qualidade, dados e método, e tendem a se respeitar muito. A diferença é que a pessoa costuma ser mais rápida e mais direta para agir. O risco é o padrão de exigência dos dois ficar alto demais para o restante da equipe e para o prazo.",
+      "ajustes": [
+        "Combinem quando algo está bom o suficiente para seguir.",
+        "Aceite decisões mais rápidas quando o risco estiver calculado.",
+        "Cuidem juntos do clima da equipe, que pode sentir excesso de cobrança.",
+        "Revezem quem dá o retorno à equipe, com cuidado no tom."
+      ]
+    }
+  }
+}

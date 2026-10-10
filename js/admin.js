@@ -1172,7 +1172,7 @@
       responde: 'O resumo do perfil DISC e dicas práticas para o dia a dia, para ler em poucos minutos.' },
     { chave: 'lideranca', modelo: 'lideranca', titulo: 'Como liderar', alvo: 'colaborador',
       paraQuem: 'Para o líder direto de um colaborador.',
-      responde: 'Como se comunicar, delegar, dar feedback e motivar essa pessoa, e o que evitar.' },
+      responde: 'Como dar feedback, delegar, motivar e reter essa pessoa, perceber sinais de desgaste, conduzir mudanças e conflitos, a reunião 1:1 e os primeiros 90 dias.' },
     { chave: 'equipe', modelo: 'equipe', titulo: 'Equipe', alvo: 'empresa',
       paraQuem: 'Para o dono ou o gestor da empresa.',
       responde: 'Como a equipe se organiza, onde combina e onde pode haver atrito, o que falta no time e como liderar cada um.' },
