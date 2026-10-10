@@ -219,6 +219,10 @@ test('modelo liderança: documento curto para o líder', () => {
   for (const s of d.secoes) assert.ok(html.includes(V.esc(s.titulo)), s.titulo);
   assert.ok(html.includes('Você e Bruno L.'));
   assert.ok(html.includes(V.esc(d.aviso)));
+  // Relação líder × pessoa sem nota (decisão do painel científico): só "Tende a fluir" / "Pede combinados".
+  const cap = html.slice(html.indexOf('Você e Bruno L.'));
+  assert.match(cap.slice(0, 1500), /Tende a fluir|Pede combinados/);
+  assert.ok(!/de 100|Pontuação|Tensão|>Riscos</.test(cap.slice(0, 3000)), 'sem nota, "tensão" nem "Riscos" na relação');
 });
 
 test('modelo pessoa: documento de desenvolvimento, acolhedor', () => {

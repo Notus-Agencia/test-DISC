@@ -1406,12 +1406,12 @@
     }
     if (d.relacao) {
       var r = d.relacao;
-      c += '<h3 class="h3 mt48">Você e ' + esc(p.nome) + '</h3><div class="par-doc par-doc--' + nivelSeguro(r.nivel) + '">' +
-        '<div class="par-doc__cab"><span class="par-doc__nomes"><strong>' + esc(d.lider && d.lider.nome) + '</strong> <span class="par-doc__tipo">lidera</span> <strong>' + esc(p.nome) + '</strong></span>' + seloNivel(r.nivel, r.pontuacao) + '</div>' +
-        (ehNumero(r.pontuacao) ? barra(r.pontuacao, 100, 'barra--nv-' + nivelSeguro(r.nivel), 'Pontuação ' + r.pontuacao + ' de 100') : '') +
+      // Como no relatório de equipe (decisão do painel científico): leitura sem nota, "Tende a fluir" / "Pede combinados".
+      c += '<h3 class="h3 mt48">Você e ' + esc(p.nome) + '</h3><div class="par-doc par-doc--' + leituraEquipe(r.nivel) + '">' +
+        '<div class="par-doc__cab"><span class="par-doc__nomes"><strong>' + esc(d.lider && d.lider.nome) + '</strong> <span class="par-doc__tipo">lidera</span> <strong>' + esc(p.nome) + '</strong></span>' + seloLeitura(r.nivel) + '</div>' +
         '<div class="par-doc__grade">' +
         (lista(r.sinergias).length ? '<div><div class="rotulo-doc">Sinergias</div>' + listaItens(r.sinergias) + '</div>' : '') +
-        (lista(r.riscos).length ? '<div><div class="rotulo-doc">Riscos</div>' + listaItens(r.riscos) + '</div>' : '') +
+        (lista(r.riscos).length ? '<div><div class="rotulo-doc">Pontos para combinar</div>' + listaItens(r.riscos) + '</div>' : '') +
         (lista(r.dicas).length ? '<div><div class="rotulo-doc">Dicas</div>' + listaItens(r.dicas) + '</div>' : '') + '</div></div>';
     }
     // Combinação, mapa ritmo × foco e esforço de adaptação ao cargo (Parte 2)
