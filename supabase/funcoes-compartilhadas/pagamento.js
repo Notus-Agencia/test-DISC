@@ -38,6 +38,7 @@
 //             Limite: 3 pedidos por e-mail por hora e 60 no total por hora.
 //   enviarLink {tokenAcesso} -> {ok, email (mascarado)}: botão "Enviar para meu e-mail" de meu-relatorio.html; manda o
 //             link do relatório para o e-mail da compra (só pedido pago/cortesia). Limite: 3 por pedido por hora.
+//             Cada tentativa no Resend (ok ou erro) vai para o histórico public.envios_email (tipo 'pedido', 'cliente').
 // "infinitepay-webhook": SEM assinatura (a InfinitePay não documenta uma). O corpo NUNCA é confiável: lê order_nsu
 //   (= pedidoId), transaction_nsu e slug e confere com payment_check; só marca pago com paid=true e valor >= pedido.
 //   Idempotente (pedido já pago: nada). Grava o corpo bruto em pedidos.provedor_dados.webhook (depuração).
@@ -54,6 +55,7 @@
 //   PAYMENT_DELETED -> 'cancelado' (só se aguardando). Idempotente: as trocas só valem a partir do status certo;
 //   reenvio do mesmo evento não faz nada. Falha no banco -> 500 (o Asaas tenta de novo).
 import { erro, normalizarEmail, emailValido, MSG_ERRO_INTERNO } from './regras.js';
+import { registrarEnvio, escaparHtml } from './email.js';
 import { criarInfinitePay, lerRefsInfinitePay, refInfinitePay } from './infinitepay.js';
 import {
   criarStripe, idIntentStripe, segredoClienteStripe, recusaStripe, chavePublicavelStripe, stripeMetodo, verificarAssinaturaStripe,
@@ -203,6 +205,8 @@ export function criarDbVendas(sb) {
       return (await dadosVendas(sb.from('pedidos').select('id, pacote, token_acesso, status, criado_em').eq('email', email)
         .in('status', ['pago', 'cortesia']).order('criado_em', { ascending: false }).limit(10))) || [];
     },
+    /** Histórico de envios por e-mail (public.envios_email; linha montada por linhaEnvio em email.js). */
+    async envioRegistrar(linha) { await dadosVendas(sb.from('envios_email').insert(linha)); },
     /** Registra uma tentativa e devolve quantas houve desde "desdeIso" (inclui esta). */
     async contarTentativa(tipo, chave, desdeIso, agoraIso) {
       await dadosVendas(sb.from('limites_vendas').insert({ tipo, chave: String(chave).substring(0, 200), em: agoraIso }));
@@ -252,10 +256,6 @@ export function linkRelatorio(env, token) {
 /** Data 'YYYY-MM-DD' de Brasília, "dias" depois de agora. */
 export function dataBrasil(agoraMs, dias) {
   return new Date(agoraMs - 3 * 3600 * 1000 + (dias || 0) * 86400000).toISOString().slice(0, 10);
-}
-
-function escaparHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 /** E-mail com o(s) link(s) do relatório. pedidos: [{pacote, token_acesso}] */
@@ -729,12 +729,17 @@ export async function acaoEnviarLink(ctx, corpo) {
   if (await ctx.db.contarTentativa('enviar_link', p.id, hora, agoraIso) > 3) return erro('Já enviamos o link algumas vezes. Tente de novo daqui a 1 hora.');
   if (await ctx.db.contarTentativa('recuperar_total', '*', hora, agoraIso) > 60) return erro('Muitos pedidos agora. Tente de novo mais tarde.');
   const m = montarEmailAcesso(ctx.env, p.nome, [p]);
+  // Histórico (public.envios_email): o painel mostra "Enviado para … pelo cliente" no pedido.
+  const historico = { tipo: 'pedido', referencia: String(p.id), destinatario: p.email, enviadoPor: 'cliente', em: agoraIso };
+  let enviado;
   try {
-    await ctx.email.enviar({ para: p.email, assunto: m.assunto, html: m.html, texto: m.texto });
+    enviado = await ctx.email.enviar({ para: p.email, assunto: m.assunto, html: m.html, texto: m.texto });
   } catch (err) {
     try { console.error(err); } catch (e) { /* sem console */ }
+    await registrarEnvio(ctx.db, Object.assign({ resultado: 'erro' }, historico));
     return erro('Não foi possível enviar o e-mail agora. Tente de novo em instantes ou fale com o suporte.');
   }
+  await registrarEnvio(ctx.db, Object.assign({ resultado: 'ok', provedorId: enviado && enviado.id }, historico));
   return { ok: true, email: mascararEmail(p.email) };
 }
 

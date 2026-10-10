@@ -33,7 +33,8 @@ function libFalsa(opcoes) {
       relatorios: opcoes.relatorios || [],
       pedidos: opcoes.pedidos || [],
       cupons: opcoes.cupons || [],
-      pacotes: opcoes.pacotes || []
+      pacotes: opcoes.pacotes || [],
+      envios_email: opcoes.envios_email || []
     },
     rpc: opcoes.rpc || {},
     funcoes: opcoes.funcoes || {},
@@ -77,6 +78,7 @@ function libFalsa(opcoes) {
       neq(c, v) { q.filtros.push((l) => l[c] !== v); return b; },
       gte(c, v) { q.filtros.push((l) => String(l[c]) >= String(v)); q.eqs = (q.eqs || []).concat([[c, '>=' + v]]); return b; },
       lt(c, v) { q.filtros.push((l) => String(l[c]) < String(v)); q.eqs = (q.eqs || []).concat([[c, '<' + v]]); return b; },
+      in(c, v) { q.filtros.push((l) => v.includes(l[c])); q.eqs = (q.eqs || []).concat([[c, 'in:' + v.join(',')]]); return b; },
       upsert(d, o) { q.op = 'upsert'; q.dados = d; q.conflito = o && o.onConflict; return b; },
       order(c) { q.ordem = c; return b; },
       range(a, z) { q.intervalo = [a, z]; return b; },
@@ -1005,16 +1007,19 @@ test('topoIds: salvarRelacoes manda p_opcoes só quando vem topoIds; listarEquip
 });
 
 test('versaoBanco: com a função devolve versão e faltando; sem ela sonda tabelas/colunas (banco antigo)', async () => {
-  const atual = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261015120000, migracoes: [], faltando: [] }, error: null }) } });
-  assert.deepEqual(await atual.api.versaoBanco(), { ok: true, versao: 20261015120000, faltando: [] });
-  assert.equal(SB.VERSAO_ATUAL, 20261015120000);
-  assert.deepEqual(SB.MIGRACOES.map((m) => m.nome.slice(0, 8)), ['20261005', '20261006', '20261007', '20261008', '20261009', '20261010', '20261011', '20261012', '20261013', '20261014', '20261015']);
+  const atual = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261016120000, migracoes: [], faltando: [] }, error: null }) } });
+  assert.deepEqual(await atual.api.versaoBanco(), { ok: true, versao: 20261016120000, faltando: [] });
+  assert.equal(SB.VERSAO_ATUAL, 20261016120000);
+  assert.deepEqual(SB.MIGRACOES.map((m) => m.nome.slice(0, 8)), ['20261005', '20261006', '20261007', '20261008', '20261009', '20261010', '20261011', '20261012', '20261013', '20261014', '20261015', '20261016']);
+  // Com a 20261015 mas sem a 20261016 (histórico de envios por e-mail).
+  const semEnvios = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261015120000, migracoes: [], faltando: [] }, error: null }) } });
+  assert.deepEqual(await semEnvios.api.versaoBanco(), { ok: true, versao: 20261015120000, faltando: ['20261016120000_envios_email'] });
   // Com a 20261013 mas sem a 20261014 (Stripe): a função antiga responde a versão dela.
   const semStripe = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261013120000, migracoes: [], faltando: [] }, error: null }) } });
-  assert.deepEqual(await semStripe.api.versaoBanco(), { ok: true, versao: 20261013120000, faltando: ['20261014120000_stripe', '20261015120000_minimo_cobranca'] });
+  assert.deepEqual(await semStripe.api.versaoBanco(), { ok: true, versao: 20261013120000, faltando: ['20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email'] });
   // Com a 20261014 mas sem a 20261015 (mínimo de cobrança no banco).
   const semMinimo = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261014120000, migracoes: [], faltando: [] }, error: null }) } });
-  assert.deepEqual(await semMinimo.api.versaoBanco(), { ok: true, versao: 20261014120000, faltando: ['20261015120000_minimo_cobranca'] });
+  assert.deepEqual(await semMinimo.api.versaoBanco(), { ok: true, versao: 20261014120000, faltando: ['20261015120000_minimo_cobranca', '20261016120000_envios_email'] });
   assert.ok(fs.existsSync(path.join(__dirname, '..', 'supabase', 'migrations', SB.MIGRACOES[7].nome + '.sql')));
   SB.MIGRACOES.forEach((m) => assert.ok(fs.existsSync(path.join(__dirname, '..', 'supabase', 'migrations', m.nome + '.sql')), m.nome));
 
@@ -1023,7 +1028,7 @@ test('versaoBanco: com a função devolve versão e faltando; sem ela sonda tabe
   const v = await velho.api.versaoBanco();
   assert.deepEqual(v, { ok: true, versao: 20261007120000, semFuncao: true,
     faltando: ['20261008120000_parte2', '20261009120000_fotos', '20261010120000_mover_versao', '20261011120000_vendas',
-      '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca'] });
+      '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email'] });
   const sondas = velho.e.chamadas.filter((c) => c.tabela && c.tabela !== 'admins' && c.op === 'select');
   assert.deepEqual(sondas.map((c) => c.tabela + '.' + c.colunas),
     ['pessoas.id', 'empresas.id', 'respostas.exigido', 'respostas.foto', 'respostas.historico_processos', 'pedidos.id',
@@ -1035,14 +1040,14 @@ test('versaoBanco: com a função devolve versão e faltando; sem ela sonda tabe
   // Com a 20261009 aplicada mas sem a 20261010: só ela falta.
   const quase = await logado({ faltando: ['respostas.historico_processos', 'pedidos'] });
   assert.deepEqual(await quase.api.versaoBanco(), { ok: true, versao: 20261009120000, semFuncao: true,
-    faltando: ['20261010120000_mover_versao', '20261011120000_vendas', '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca'] });
+    faltando: ['20261010120000_mover_versao', '20261011120000_vendas', '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email'] });
   // Com a função versao_banco (20261010) mas sem a 20261011: a função antiga responde a versão dela.
   const semVendas = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261010120000, migracoes: [], faltando: [] }, error: null }) } });
   assert.deepEqual(await semVendas.api.versaoBanco(), { ok: true, versao: 20261010120000,
-    faltando: ['20261011120000_vendas', '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca'] });
+    faltando: ['20261011120000_vendas', '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email'] });
   // Com a 20261011 mas sem a 20261012 (InfinitePay).
   const semIP = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261011120000, migracoes: [], faltando: [] }, error: null }) } });
-  assert.deepEqual(await semIP.api.versaoBanco(), { ok: true, versao: 20261011120000, faltando: ['20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca'] });
+  assert.deepEqual(await semIP.api.versaoBanco(), { ok: true, versao: 20261011120000, faltando: ['20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email'] });
   // Sem rede: mensagem de conexão.
   quase.e.falhaRede = true;
   await assert.rejects(quase.api.versaoBanco(), /Não foi possível conectar/);
@@ -1273,7 +1278,41 @@ test('relatorioEnviarEmail (Edge Function "admin") e enviarLinkPorEmail ("pagame
   assert.deepEqual(await api.enviarLinkPorEmail('a'.repeat(64)), { ok: true, email: 'b**@exemplo.com' });
   assert.deepEqual(e.invocacoes.at(-1).body, { acao: 'enviarLink', tokenAcesso: 'a'.repeat(64) });
   assert.deepEqual(await api.emailDaSessao(), { ok: true, email: 'dona@empresa.com' });
-  for (const m of ['relatorioEnviarEmail', 'enviarLinkPorEmail']) {
+  for (const m of ['relatorioEnviarEmail', 'enviarLinkPorEmail', 'listarEnviosEmail']) {
     await assert.rejects(API[m]('token', 'x'), (err) => err.message === 'Disponível só com o servidor Supabase.', m);
   }
+});
+
+test('listarEnviosEmail: lê o histórico (envios_email, RLS de admin) por tipo e referências; banco sem a migração não quebra', async () => {
+  const R1 = 'a'.repeat(64);
+  const R2 = 'b'.repeat(64);
+  const ADM = '11111111-2222-4333-8444-555555555555';
+  const linhas = [
+    { tipo: 'relatorio', referencia: R1, destinatario: 'dono@empresa.com', enviado_por: 'Wellington', enviado_por_id: ADM, em: '2026-10-06T12:00:00+00:00', resultado: 'ok', provedor_id: 're_1' },
+    { tipo: 'relatorio', referencia: R1, destinatario: 'errado@empresa.com', enviado_por: 'Wellington', enviado_por_id: ADM, em: '2026-10-06T11:00:00+00:00', resultado: 'erro', provedor_id: null },
+    { tipo: 'relatorio', referencia: R2, destinatario: 'outro@empresa.com', enviado_por: 'Ana', enviado_por_id: ADM, em: '2026-10-05T10:00:00+00:00', resultado: 'ok', provedor_id: null },
+    { tipo: 'pedido', referencia: PED, destinatario: 'bia@x.com', enviado_por: 'cliente', enviado_por_id: null, em: '2026-10-04T09:00:00+00:00', resultado: 'ok', provedor_id: 'em_9' }
+  ];
+  const { api, T, e } = await logado({ envios_email: linhas });
+  const r = await api.listarEnviosEmail(T, { tipo: 'relatorio', referencias: [R1, R1, 'inválida!', ''] });
+  assert.equal(r.ok, true);
+  // (a ordem — mais novos primeiro — é do banco: order em desc; o falso não ordena ao contrário)
+  const porData = r.envios.slice().sort((a, b) => b.em.localeCompare(a.em));
+  assert.deepEqual(porData.map((x) => [x.referencia, x.para, x.por, x.cliente, x.resultado, x.provedorId]),
+    [[R1, 'dono@empresa.com', 'Wellington', false, 'ok', 're_1'], [R1, 'errado@empresa.com', 'Wellington', false, 'erro', '']]);
+  assert.equal(porData[0].em, '2026-10-06T12:00:00.000Z');
+  const consulta = e.chamadas.filter((c) => c.tabela === 'envios_email').pop();
+  assert.deepEqual(consulta.eqs, [['tipo', 'relatorio'], ['referencia', 'in:' + R1]], 'referências sem repetir e só as válidas');
+  assert.ok(!/\*/.test(consulta.colunas), 'só as colunas do histórico');
+  const p = await api.listarEnviosEmail(T, { tipo: 'pedido', referencias: [PED] });
+  assert.deepEqual(p.envios.map((x) => [x.para, x.por, x.cliente]), [['bia@x.com', '', true]]);
+  // Nenhuma referência válida: nada a consultar.
+  const antes = e.chamadas.length;
+  assert.deepEqual(await api.listarEnviosEmail(T, { tipo: 'relatorio', referencias: ['x y'] }), { ok: true, envios: [] });
+  assert.equal(e.chamadas.filter((c, i) => i >= antes && c.tabela === 'envios_email').length, 0);
+  // Banco sem a 20261016120000_envios_email: segue sem histórico (o painel mostra só o que enviou agora).
+  const velho = await logado({ faltando: ['envios_email'] });
+  assert.deepEqual(await velho.api.listarEnviosEmail(velho.T, { tipo: 'relatorio', referencias: [R1] }), { ok: true, envios: [], semHistorico: true });
+  // Sem sessão: pede login.
+  await assert.rejects(nova().api.listarEnviosEmail('', { referencias: [R1] }), (err) => err.sessaoExpirada === true);
 });

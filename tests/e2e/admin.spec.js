@@ -2809,16 +2809,71 @@ test.describe('Painel: empresa nova na hora, prévia em nova aba e envio por e-m
     await page.click('#janela-ok');
     await expect(page.locator('#janela-enviar-email')).toHaveCount(0);
     await expect(page.locator('#aviso-geral')).toHaveText('Enviado para dono@clinica-exemplo.com.');
-    await expect(page.locator('#rel-modelo-envio')).toContainText('Enviado por e-mail para dono@clinica-exemplo.com');
+    await expect(page.locator('#rel-modelo-envio')).toContainText(/Enviado para dono@clinica-exemplo\.com em \d{2}\/\d{2} às \d{2}:\d{2} por \S/);
     await print2(page, '6-enviado');
 
     // Lista "Gerados": o publicado também tem "Enviar por e-mail"
     await page.click('#btn-voltar-relatorio');
     const linha = page.locator('#lista-gerados > li[data-status="publicado"]').first();
     await expect(linha.locator('[data-acao="enviar-email"]')).toBeVisible();
-    await expect(page.locator('#lista-gerados')).toContainText('Enviado por e-mail para dono@clinica-exemplo.com');
+    await expect(page.locator('#lista-gerados')).toContainText('Enviado para dono@clinica-exemplo.com em ');
     await print2(page, '7-gerados');
     // A prévia embutida (iframe sandbox, já existente) avisa que não roda scripts: não é erro desta tela.
+    expect(erros.filter((e) => !/about:srcdoc/.test(e))).toEqual([]);
+  });
+
+  test('histórico de envios: fica no servidor (prévia) e aparece depois de recarregar, com quem enviou; o pedido mostra o envio do cliente', async ({ page, context }) => {
+    const erros = coletarErros(page);
+    await entrarPrevia(page, context);
+    await abrirAba(page, 'relatorios');
+    await page.click('#btn-rel-novo');
+    await page.click('#assist-modelo-equipe');
+    await page.click('#assist-empresa');
+    await page.locator('#assist-empresa-lista [role="option"]', { hasText: 'Clínica Exemplo' }).click();
+    await page.click('#btn-assist-gerar');
+    await page.click('#btn-rel-publicar');
+    // Antes de enviar: nada de histórico (o bloco fica escondido)
+    await expect(page.locator('#rel-modelo-envio')).toBeHidden();
+    for (const para of ['dono@clinica-exemplo.com', 'socia@clinica-exemplo.com']) {
+      await page.click('#btn-rel-enviar-email');
+      await page.fill('#email-para', para);
+      await page.click('#janela-ok');
+      await expect(page.locator('#janela-enviar-email')).toHaveCount(0);
+    }
+    const itens = page.locator('#rel-modelo-envio .envios__item');
+    await expect(itens).toHaveCount(2);
+    await expect(itens.first()).toHaveText(/^Enviado para socia@clinica-exemplo\.com em \d{2}\/\d{2} às \d{2}:\d{2} por \S/);
+    await expect(itens.nth(1)).toContainText('dono@clinica-exemplo.com');
+    const token = await page.evaluate(() => window.location.hash);
+    // Recarregar zera a memória da tela: o histórico volta do servidor (API simulada = tabela envios_email)
+    await page.reload();
+    await expect(page.locator('#tela-painel')).toBeVisible({ timeout: 15000 });
+    expect(await page.evaluate(() => window.location.hash)).toBe(token);
+    await expect(page.locator('#rel-modelo-envio .envios__item')).toHaveCount(2);
+    await expect(page.locator('#rel-modelo-envio .envios__item').first()).toContainText('socia@clinica-exemplo.com');
+    await page.click('#btn-voltar-relatorio');
+    const linha = page.locator('#lista-gerados > li[data-status="publicado"]').first();
+    await expect(linha.locator('.gerado__envio')).toHaveText(/^Enviado para socia@clinica-exemplo\.com em .+ por \S.* · 2 envios$/);
+    await print2(page, '9-historico-gerados');
+
+    // Pedido pago em que o cliente usou "Enviar para meu e-mail": aparece no detalhe do pedido, "pelo cliente"
+    const pedidoId = await page.evaluate(async () => {
+      const api = window.DISC_API;
+      const r = await api.enviarPessoal({ v: 1, id: 'e2e-envio-' + Date.now(), nome: 'Bia Envio Teste', email: 'bia.envio@exemplo.com', telefone: '',
+        consentimento: true, inicio: '2026-10-01T12:00:00.000Z', fim: '2026-10-01T12:09:00.000Z', duracaoSeg: 540, respostas: '4321'.repeat(25) });
+      const p = await api.criarPedido(r.tokenResumo, 'completo', 'PREVIA100');
+      await api.enviarLinkPorEmail(p.tokenAcesso);
+      return p.pedidoId;
+    });
+    await page.reload();
+    await expect(page.locator('#tela-painel')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('#lista-gerados')).toBeVisible(); // a rota (#relatorios/gerados) volta antes de trocar de aba
+    await abrirAba(page, 'vendas');
+    await page.click('#vd-subaba-pedidos');
+    await page.locator('#vd-lista-pedidos > li[data-id="' + pedidoId + '"] button').click();
+    await expect(page.locator('#vd-pedido-envios')).toBeVisible();
+    await expect(page.locator('#vd-pedido-envios .envios__item')).toHaveText(/^Enviado para bia\.envio@exemplo\.com em .+ pelo cliente$/);
+    await print2(page, '10-historico-pedido');
     expect(erros.filter((e) => !/about:srcdoc/.test(e))).toEqual([]);
   });
 

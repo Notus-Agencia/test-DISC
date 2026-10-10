@@ -1148,6 +1148,14 @@ ul.vd-linhas.caixa { padding-top: 8px; padding-bottom: 8px; }
 
 /* ---------- Envio do relatório por e-mail ---------- */
 .gerado__envio { flex-basis: 100%; }
+/* Histórico dos envios (tabela envios_email), junto do botão "Enviar por e-mail" */
+.envios[hidden] { display: none; }
+.envios__lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.envios__item { margin: 0; overflow-wrap: anywhere; }
+.envios__item--erro { color: var(--erro); }
+.envios__mais { margin: 4px 0 0; }
+.rel-linha__envio { flex-basis: 100%; }
+#vd-pedido-envios { margin-top: 12px; }
 .email-config { display: grid; gap: 8px; justify-items: start; margin: 0; }
 .email-config[hidden] { display: none; }
 

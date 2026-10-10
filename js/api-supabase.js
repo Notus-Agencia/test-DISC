@@ -59,9 +59,13 @@
  *     status, modelo, url?}} · listarRelatoriosModelo(token, {empresaId?, pessoaId?}) -> {relatorios:[…]}
  *   excluirRelatorioModelo(token, id) -> {id}. relatorioPublico devolve também o "modelo".
  *   abrirRelatorioModelo(token, id) -> {relatorio: {id, token, modelo, status, empresaId, pessoaId, titulo, url?, dados}}.
- *   relatorioEnviarEmail(token, relatorioToken, {para, nome?, mensagem?}) -> {para, enviadoEm, assunto} (Edge Function
+ *   relatorioEnviarEmail(token, relatorioToken, {para, nome?, mensagem?}) -> {para, enviadoEm, assunto, por} (Edge Function
  *     "admin", ação relatorio.enviarEmail; só relatório publicado; 30 envios/h por admin; sem RESEND_API_KEY ->
  *     {ok:false, erro:'O envio por e-mail ainda não está configurado (veja Conexões).', naoConfigurado:true}).
+ *     Cada tentativa no Resend fica no histórico (tabela envios_email, migração 20261016120000_envios_email.sql).
+ *   listarEnviosEmail(token, {tipo:'relatorio'|'pedido', referencias:[token do relatório | id do pedido]}) -> {envios:[{tipo,
+ *     referencia, para, por (nome de quem enviou; '' = o cliente), cliente, em, resultado:'ok'|'erro', provedorId}]}
+ *     (mais novos primeiro; até 20 por referência). Banco sem a migração: {envios: [], semHistorico: true}.
  * Fotos (data URL "data:image/jpeg;base64,/9j/…", até 40 000 caracteres, guardada no banco; fotoValida(str)):
  *   enviar: payload.foto ('' = sem foto), conforme formulario.campos.foto ('obrigatorio'|'opcional'|'oculto').
  *   listar: item.foto (da resposta, '' sem foto) e item.pessoa.foto (da ficha). listarEquipe: colaborador.foto
@@ -194,9 +198,10 @@
     { nome: '20261012120000_infinitepay', descricao: 'InfinitePay (provedor do pagamento)', tabela: 'pedidos', coluna: 'provedor_dados' },
     { nome: '20261013120000_conexoes', descricao: 'aba Conexões (pedido de teste fora das vendas)', tabela: 'pedidos', coluna: 'teste' },
     { nome: '20261014120000_stripe', descricao: 'Stripe (pagamento dentro do site)' },
-    { nome: '20261015120000_minimo_cobranca', descricao: 'preço mínimo de R$ 0,50 em cupons e pacotes conferido no banco' }
+    { nome: '20261015120000_minimo_cobranca', descricao: 'preço mínimo de R$ 0,50 em cupons e pacotes conferido no banco' },
+    { nome: '20261016120000_envios_email', descricao: 'histórico de envios por e-mail' }
   ];
-  var VERSAO_ATUAL = 20261015120000;
+  var VERSAO_ATUAL = 20261016120000;
   var MSG_PRIMEIRO_ACESSO = 'Com o Supabase não há chave de primeiro acesso: crie o seu usuário no painel do Supabase ' +
     '(Authentication > Users > Add user) e entre com esse e-mail e senha. O primeiro login vira administrador.';
   var MSG_REDEFINIR = 'Com o Supabase cada pessoa cria a própria senha nova pelo "Esqueci minha senha", na tela de entrada.';
@@ -828,6 +833,18 @@
     var i = d.intent && typeof d.intent === 'object' ? d.intent : null;
     if (!i || typeof i.livemode !== 'boolean') return '';
     return i.livemode ? 'producao' : 'teste';
+  }
+  // Histórico de envios por e-mail (public.envios_email): referência = token do relatório ou id do pedido.
+  var RE_REF_ENVIO = /^[A-Za-z0-9_-]{1,128}$/;
+  var MAX_REFS_ENVIO = 100;    // referências por consulta (uma lista do painel)
+  var ENVIOS_POR_REF = 20;     // o painel mostra só os últimos
+  /** Linha de envios_email -> {tipo, referencia, para, por ('' = cliente), cliente, em, resultado, provedorId}. */
+  function envioDaLinha(l) {
+    l = l || {};
+    var cliente = !l.enviado_por_id;
+    return { tipo: l.tipo === 'pedido' ? 'pedido' : 'relatorio', referencia: String(l.referencia || ''), para: String(l.destinatario || ''),
+      por: cliente ? '' : String(l.enviado_por || ''), cliente: cliente, em: iso(l.em), resultado: l.resultado === 'ok' ? 'ok' : 'erro',
+      provedorId: l.provedor_id ? String(l.provedor_id) : '' };
   }
   /** Pedido do painel vindo da RPC (pedido_json) -> mesmo formato de pedidoDaLinha. */
   function pedidoDaRpc(p) {
@@ -2016,6 +2033,37 @@
         if (local && local.href) dados.baseUrl = String(local.href);
         return admin(token, 'relatorio.enviarEmail', dados, prazoLongo);
       }),
+      // Histórico de envios por e-mail (tabela envios_email, migração 20261016120000; RLS: só admin lê).
+      listarEnviosEmail: seguro(function (token, filtro) {
+        var f = filtro && typeof filtro === 'object' ? filtro : {};
+        var tipo = f.tipo === 'pedido' ? 'pedido' : 'relatorio';
+        var refs = [];
+        [].concat(f.referencias || f.referencia || []).forEach(function (r) {
+          r = String(r == null ? '' : r);
+          if (RE_REF_ENVIO.test(r) && refs.indexOf(r) < 0) refs.push(r);
+        });
+        refs = refs.slice(0, MAX_REFS_ENVIO);
+        return exigirSessao(token).then(function () {
+          if (!refs.length) return [];
+          return comPrazo(Promise.resolve().then(function () {
+            return cliente().from('envios_email').select('tipo, referencia, destinatario, enviado_por, enviado_por_id, em, resultado, provedor_id')
+              .eq('tipo', tipo).in('referencia', refs).order('em', { ascending: false }).limit(Math.min(MAX_LINHAS, refs.length * ENVIOS_POR_REF));
+          }), prazo).then(function (r) {
+            if (r && r.error) {
+              if (faltaNoBanco(r.error)) return null; // banco sem a migração: o painel segue sem histórico
+              throw erroDoBanco(r.error);
+            }
+            return (r && r.data) || [];
+          }, function (e) {
+            if (e && (e.message === MSG_DEMORA || e.sessaoExpirada || e.resposta)) throw e;
+            throw ehFalhaDeRede(e) ? new Error(MSG_CONEXAO) : e;
+          });
+        }).then(function (linhas) {
+          var r = { ok: true, envios: (linhas || []).map(envioDaLinha) };
+          if (linhas === null) r.semHistorico = true;
+          return r;
+        });
+      }),
 
       // --- aba Conexões (só admin): banco testado aqui; o resto pela Edge Function "admin" (nunca valores de segredos) ---
       diagnosticoConexoes: seguro(function (token) {
@@ -2140,7 +2188,7 @@
     'excluirUsuario', 'redefinirSenha',
     'processosListar', 'processosSalvar', 'processosExcluir', 'processoDados', 'clickupStatus', 'clickupListas',
     'relatorioRascunho', 'relatorioSalvar', 'relatorioPublicar', 'relatorioDespublicar', 'relatoriosListar',
-    'relatorioMelhorarTextos', 'relatorioPublico', 'relatorioEnviarEmail',
+    'relatorioMelhorarTextos', 'relatorioPublico', 'relatorioEnviarEmail', 'listarEnviosEmail',
     'listarEquipe', 'salvarColaborador', 'moverColaborador', 'desligarColaborador', 'salvarRelacoes',
     'salvarRelatorioModelo', 'listarRelatoriosModelo', 'excluirRelatorioModelo', 'abrirRelatorioModelo', 'salvarMinhaFoto', 'removerFoto',
     'moverResposta', 'contratarPessoa', 'versaoBanco',
