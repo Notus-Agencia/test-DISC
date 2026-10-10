@@ -738,6 +738,20 @@ test('Stripe: normalizarPagamento guarda clientSecret/publicável válidos; volt
   assert.equal(ST.resultadoConfirmacao({ error: { type: 'card_error', code: 'incorrect_cvc' } }).status, 'erro');
 });
 
+test('Stripe: Pix é a primeira forma de pagamento do checkout (paymentMethodOrder); o teste do painel deixa a ordem do Stripe', () => {
+  const ST = require('../js/stripe-pagamento.js');
+  const o = ST.opcoesElemento();
+  assert.deepEqual(o.paymentMethodOrder, ['pix', 'card']);
+  assert.deepEqual(o.layout, { type: 'tabs', defaultCollapsed: false });
+  assert.deepEqual(o.wallets, { applePay: 'auto', googlePay: 'auto' });
+  assert.equal(o.business.name, 'Gestão sem Caos');
+  assert.ok(!('paymentMethodOrder' in ST.opcoesElemento({ pixPrimeiro: false })));
+  o.paymentMethodOrder.push('x');
+  assert.deepEqual(ST.ORDEM_PIX_PRIMEIRO, ['pix', 'card'], 'cada chamada recebe a sua cópia');
+  // Sem desconto para Pix (o valor do PaymentIntent não muda com o método): nada de "amount" nas opções do elemento.
+  assert.ok(!('amount' in o) && !('mode' in o));
+});
+
 /* ---------------- Varredura de UX (cliente): correções ---------------- */
 
 test('mensagemErroEnvio: na venda direta não fala de recrutador nem de código de segurança', () => {

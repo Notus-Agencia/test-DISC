@@ -342,6 +342,13 @@ test.describe('Venda B2C com Stripe (pagamento dentro do site, Payment Element s
     await expect(tela).toBeVisible();
     await expect(tela.locator('[data-pe-simulado]')).toBeVisible();
     const pagar = tela.locator('[data-ck="pagar"]');
+    // Pix em primeiro (e já marcado, como a primeira aba do Payment Element), com o selo "Pix: aprovado na hora".
+    await expect(tela.locator('[data-pe-metodo]')).toHaveText(['Pix', 'Cartão']);
+    await expect(tela.locator('[data-pe-metodo="pix"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(tela.locator('#ck-selo-pix')).toHaveText('Pix: aprovado na hora');
+    await expect(pagar).toHaveText('Gerar o Pix de R$ 29');
+    if (CAPTURAS_STRIPE) await page.screenshot({ path: CAPTURAS_STRIPE + '/checkout-375-pix-primeiro.png', fullPage: true });
+    await tela.locator('[data-pe-metodo="cartao"]').click();
     await expect(pagar).toHaveText('Pagar R$ 29');
     await expect(pagar).toBeEnabled();
     await expect(pagar).toHaveClass(/botao--laranja/);
@@ -482,6 +489,7 @@ test.describe('Venda B2C: correções da varredura de UX', () => {
     await page.locator('[data-acao="comprar"][data-pacote="completo"]').click();
     await page.locator('[data-ck="continuar"]').click();
     const tela = page.locator('[data-ck-tela="pagamento"][data-provedor="stripe"]');
+    await tela.locator('[data-pe-metodo="cartao"]').click();
     await tela.locator('#pe-sim-numero').fill('4000 0000 0000 0002');
     await tela.locator('#pe-sim-validade').fill('12 / 34');
     await tela.locator('#pe-sim-cvc').fill('123');
