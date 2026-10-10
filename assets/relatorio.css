@@ -597,6 +597,19 @@ em { font-family: var(--ff-serif); font-style: italic; font-weight: 400; letter-
 .barra--nv-fluido .barra__feito { background: var(--tinta); }
 .barra--nv-atencao .barra__feito { background: var(--ambar); }
 .barra--nv-tensao .barra__feito { background: var(--notus); }
+/* Relatório de equipe: leitura da relação em dois rótulos, sem número ("Tende a fluir" · "Pede combinados") */
+.selo-doc--nv-combinados { background: rgba(255,159,64,.22); color: var(--preto); }
+.par-doc--combinados { border-left-color: var(--ambar); }
+.nivel-doc--combinados { border-top-color: var(--ambar); }
+.niveis-doc--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Guia por líder: distância entre o estilo natural e o que o cargo pede (só aqui, por pessoa) */
+.liderado-doc__dist { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 12px; margin: 12px 0 4px; }
+.liderado-doc__dist .rotulo-doc { grid-column: 1 / -1; margin: 0; }
+.liderado-doc__dist .barra { height: 6px; }
+.barra--dist .barra__feito { background: var(--ardosia); } /* cor neutra: distância não é alarme */
+.liderado-doc__dist-rot { font-size: var(--f-rotulo); color: var(--mudo); white-space: nowrap; }
+/* Encerramento do relatório de equipe: uso proibido em destaque */
+.doc .final__aviso { margin: 24px 0 0; padding-left: 16px; border-left: 3px solid var(--laranja); font-size: var(--f-forte); line-height: 1.5; color: var(--branco-doc); max-width: 760px; }
 
 /* Contagem por nível */
 .niveis-doc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 24px; }

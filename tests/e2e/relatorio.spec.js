@@ -192,6 +192,29 @@ test('organograma: cartões com letra DISC ligados por linhas; no celular vira l
   await semRolagemLateral(page);
 });
 
+// Relatório de equipe: nenhum "/100", "harmonia" nem "tensão" na página — no novo (v2) e no já publicado com os dados
+// antigos (v1, tests/fixtures/relatorio-equipe-v1.json): a view esconde esses campos na exibição.
+for (const [nome, dados] of [['novo (v2)', DADOS_MODELO.equipe], ['já publicado (v1)', require('../fixtures/relatorio-equipe-v1.json')]]) {
+  test('equipe ' + nome + ': sem nota de harmonia, de dupla ou de encaixe e sem "tensão"; aviso de uso no fim', async ({ page }) => {
+    const erros = coletarErros(page);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await prepararModelo(page, 'equipe', { ok: true, modelo: 'equipe', relatorio: dados });
+    await page.goto('/relatorio.html#r-' + TOKEN);
+    await expect(page.locator('#relatorio')).toHaveAttribute('data-estado', 'pronto');
+    const texto = await page.locator('#relatorio').innerText();
+    expect(texto).not.toMatch(/\/\s*100/);
+    expect(texto).not.toMatch(/tens[aã]o|harmonia/i);
+    expect(texto).not.toMatch(/Encaixe do candidato|Média do time por fator|Pressão do trabalho/);
+    await expect(page.locator('[data-secao="sumario"]')).toContainText('Pontos para conversar');
+    await expect(page.locator('[data-secao="relacoes"]')).toContainText('Combinados sugeridos por relação');
+    await expect(page.locator('[data-secao="relacoes"] .par-doc .selo-doc').first()).toHaveText(/^(Tende a fluir|Pede combinados|Sem leitura)$/);
+    await expect(page.locator('[data-secao="foco"]')).toContainText('Plano de integração');
+    await expect(page.locator('[data-secao="encerramento"]')).toContainText('Não use este relatório para decidir contratação, promoção, desligamento, remanejamento, salário ou bônus.');
+    await semRolagemLateral(page);
+    expect(erros).toEqual([]);
+  });
+}
+
 test('modelo vindo só no campo "modelo" da resposta também é desenhado', async ({ page }) => {
   const dados = Object.assign({}, DADOS_MODELO.pessoa);
   delete dados.modelo;
@@ -252,7 +275,8 @@ for (const chave of Object.keys(DADOS_R3)) {
       if (chave.startsWith('pessoa')) await expect(page.locator('.regua-doc__item')).toHaveCount(4);
       if (chave === 'equipe') {
         await expect(page.locator('[data-secao="ritmo"]')).toContainText('Como o grupo decide');
-        await expect(page.locator('[data-secao="ritmo"]')).toContainText('Pressão do trabalho sobre o estilo');
+        await expect(page.locator('[data-secao="ritmo"]')).toContainText('Distância entre o estilo natural e o que o cargo pede');
+        await expect(page.locator('[data-secao="ritmo"]')).not.toContainText('Pressão do trabalho');
         await expect(page.locator('[data-secao="organograma"] .org-cartao--com-foto img')).toHaveCount(1);
       }
       if (chave === 'pessoaCompleto') await expect(page.locator('.capa__retrato img')).toHaveCount(1);

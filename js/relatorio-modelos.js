@@ -11,8 +11,16 @@
  *     relacoes:      [{ de: pessoaId, para: pessoaId, tipo: 'lidera' | 'direto' | 'indireto' }]
  *     foco:          candidato a encaixar (opcional): { nome, cargo, resultado, relacoes: [{ de, para, tipo }] }
  *                    — nas relações do foco, o candidato é o id 'foco' (ou foco.id, se vier).
- *     -> { modelo: 'equipe', versao, titulo, geradoEm, empresa, consultor, numeros, sumario, organograma, equilibrio,
- *          pares, liderancas, colaboradores, foco, avisos: { limites, observacoes } }
+ *     -> { modelo: 'equipe', versao (VERSAO_EQUIPE), titulo, geradoEm, empresa, consultor, numeros, sumario, organograma,
+ *          equilibrio, pares, liderancas, colaboradores, foco, mapa, decisao, pressao, avisos: { limites, observacoes } }
+ *     Versão 2 (decisão do painel científico, docs/painel-cientifico/decisao.md, seção 4): sem nota de harmonia, de
+ *     dupla ou de encaixe e sem "tensão". numeros = { pessoas, comTeste, relacoes, liderancas, estilosPresentes };
+ *     sumario = { equilibrio: {status, rotulo, texto}, resumo, destaques (só de estilo), alertas (= "Pontos para
+ *     conversar") }; equilibrio sem média por fator (só contagens); pares[] e liderados[] com nivel 'fluido' |
+ *     'combinados' | 'indefinido' ("Tende a fluir" / "Pede combinados"), sem pontuação, na ordem lidera → direto →
+ *     indireto; foco = plano de integração de quem foi contratado(a) { nome, cargo, foto, codigo, percentuais,
+ *     organograma, observacoes, recomendacoes90 }. Relatórios v1 já publicados continuam no banco: a view
+ *     (js/relatorio-view.js) esconde deles a harmonia, as notas e a "tensão".
  *
  *   lideranca({ pessoa: {nome, cargo, resultado}, lider: {nome, resultado} | null, empresa: {nome}, consultor? }, opcoes?)
  *     -> { modelo: 'lideranca', versao, titulo, geradoEm, empresa, consultor, pessoa, lider, relacao, resumo, secoes, aviso }
@@ -36,6 +44,7 @@
 
   var VERSAO = 1;
   var VERSAO_LIDERANCA_AVANCADO = 2;   // snapshot 'lideranca' com o bloco "avancado"
+  var VERSAO_EQUIPE = 2; // 2: sem harmonia, notas de dupla/encaixe e "tensão" (decisão do painel científico)
   var LETRAS = ['D', 'I', 'S', 'C'];
   var NOMES = { D: 'Dominância', I: 'Influência', S: 'Estabilidade', C: 'Conformidade' };
   var FORCA = {
@@ -47,7 +56,7 @@
   // Seções do "Como liderar" que entram resumidas no relatório de equipe (2 itens cada).
   var CHAVES_RESUMO = ['comunicacao', 'delegar', 'feedback', 'motivacao', 'estresse'];
   var ITENS_RESUMO = 2;
-  var ORDEM_NIVEL = { tensao: 0, atencao: 1, fluido: 2, indefinido: 3 };
+  var ORDEM_TIPO = { lidera: 0, direto: 1, indireto: 2 };
 
   function dep(global, arquivo) {
     if (root && root[global]) return root[global];
@@ -190,11 +199,6 @@
     return { codigo: texto(c.codigo) || codigo, nome: texto(c.nome), frase: texto(c.frase) || null, descricao: texto(c.descricao) || null };
   }
 
-  function nivelHarmonia(n) {
-    if (n === null || n === undefined) return 'indefinido';
-    return n >= 70 ? 'fluido' : n >= 50 ? 'atencao' : 'tensao';
-  }
-
   // Remove ids externos: o organograma do compat já usa as referências locais (p1, p2…).
   function organogramaLimpo(org, focoRef) {
     function no(n) {
@@ -252,7 +256,13 @@
     };
   }
 
-  // Pressão média (Parte 2): só com colaboradores que responderam o perfil exigido.
+  // Distância entre o estilo natural e o que o cargo pede (Parte 2): só com quem respondeu o perfil exigido.
+  // Não mede estresse, saúde nem risco psicossocial. O detalhe por pessoa só vai para o guia de cada líder (view).
+  var TEXTO_DISTANCIA = {
+    baixa: 'Em média, o que os cargos pedem fica perto do estilo natural de quem respondeu.',
+    moderada: 'Em média, os cargos pedem alguns ajustes em relação ao estilo natural de quem respondeu.',
+    alta: 'Em média, os cargos pedem um estilo bem diferente do natural de quem respondeu: vale conversar sobre papéis, rotinas e apoios.'
+  };
   function pressaoGrupo(colabs, colaboradores) {
     var com = colaboradores.filter(function (c) { return c.exigido; });
     if (!com.length) return null;
@@ -266,13 +276,8 @@
     var faixa = media < 10 ? 'baixa' : media < 20 ? 'moderada' : media < 30 ? 'alta' : 'muito_alta';
     var maisCobrado = null;
     LETRAS.forEach(function (l) { if (cobrado[l] && (!maisCobrado || cobrado[l] > cobrado[maisCobrado])) maisCobrado = l; });
-    var altos = porFaixa.alta + porFaixa.muito_alta;
-    var t = [];
-    t.push(faixa === 'baixa' ? 'Em média, o trabalho pede das pessoas algo próximo do jeito natural delas: pouco esforço de adaptação.' :
-      faixa === 'moderada' ? 'Em média, o trabalho pede ajustes moderados em relação ao jeito natural das pessoas.' :
-        'Em média, o trabalho pede um estilo bem diferente do natural das pessoas: vale olhar papéis, rotinas e apoios.');
-    if (altos) t.push(altos + ' de ' + com.length + ' pessoa' + (com.length > 1 ? 's' : '') + ' com esforço alto ou muito alto: são as primeiras conversas a ter sobre como distribuir tarefas.');
-    if (maisCobrado) t.push('Fator mais cobrado pelo trabalho: ' + NOMES[maisCobrado] + '.');
+    var t = [TEXTO_DISTANCIA[faixa] || TEXTO_DISTANCIA.alta];
+    if (maisCobrado) t.push('Fator que os cargos mais pedem: ' + NOMES[maisCobrado] + '.');
     return {
       comExigido: com.length, total: colabs.length, media: media, faixa: faixa, porFaixa: porFaixa, maisCobrado: maisCobrado,
       pessoas: com.slice().sort(function (a, b) { return b.exigido.indice - a.exigido.indice; }).map(function (c) {
@@ -280,6 +285,27 @@
       }),
       textos: t
     };
+  }
+
+  // Estilos do time: rótulo e texto (sem rótulo avaliativo: "equilibrado/desequilibrado" saiu).
+  var ROTULO_ESTILOS = {
+    'sem-dados': 'Sem dados', equilibrado: 'Estilos variados', lacunas: 'Algum estilo pouco presente',
+    excesso: 'Um estilo predomina', 'lacunas-excesso': 'Um estilo predomina e outro está pouco presente'
+  };
+  // Lembrete do guia por líder sobre uma relação que pede combinados (fica só no capítulo do líder).
+  var RE_COMBINAR_CEDO = /^Com .+, vale combinar desde cedo/;
+  function juntar(nomes, conj) { return nomes.length > 1 ? nomes.slice(0, -1).join(', ') + ' ' + (conj || 'e') + ' ' + nomes[nomes.length - 1] : nomes.join(''); }
+  // comum: { nome, qtd, de } do estilo principal mais frequente (ou null).
+  function textoEstilos(status, falta, excesso, comum) {
+    if (status === 'sem-dados') return 'Ainda não há colaboradores com o teste concluído; os estilos do time aparecem quando as respostas chegarem.';
+    var nomesF = falta.map(function (f) { return f.nome; }), nomesE = excesso.map(function (f) { return f.nome; });
+    var t;
+    if (status === 'equilibrado') t = 'Os quatro estilos do DISC aparecem como fortes em alguém do time, e nenhum é o estilo principal da maior parte das pessoas.';
+    else if (status === 'lacunas') t = 'Ninguém do time descreveu ' + juntar(nomesF, 'nem') + ' como estilo forte; os outros estilos aparecem em ao menos uma pessoa.';
+    else if (status === 'excesso') t = 'Os quatro estilos aparecem como fortes em alguém do time, e boa parte das pessoas descreve ' + juntar(nomesE) + ' como estilo principal.';
+    else t = 'Ninguém do time descreveu ' + juntar(nomesF, 'nem') + ' como estilo forte, e boa parte das pessoas descreve ' + juntar(nomesE) + ' como estilo principal.';
+    if (comum) t += ' Estilo principal mais comum: ' + comum.nome + ' (' + comum.qtd + ' de ' + comum.de + ' pessoa' + (comum.de > 1 ? 's' : '') + ').';
+    return t;
   }
 
   function equipe(entrada, opcoes) {
@@ -318,20 +344,19 @@
     var porRef = {};
     colabs.forEach(function (c) { porRef[c.ref] = c; });
 
-    // ---- pares (ordem: tensão, atenção, fluido, indefinido; menor pontuação primeiro)
+    // ---- pares: combinados sugeridos por relação. Leitura em dois rótulos (sem nota), na ordem do tipo de
+    // relação (lidera → direto → indireto) e, dentro do tipo, na ordem em que foram registradas.
     var pares = analise.pares.map(function (p, i) {
-      return { de: p.de, para: p.para, deNome: p.deNome, paraNome: p.paraNome, tipo: p.tipo, nivel: p.nivel, pontuacao: p.pontuacao,
+      return { de: p.de, para: p.para, deNome: p.deNome, paraNome: p.paraNome, tipo: p.tipo, nivel: C.leitura(p.nivel),
         codigos: p.codigos || null, sinergias: p.sinergias.slice(0, 3), riscos: p.riscos.slice(0, 3), dicas: p.dicas.slice(0, 4), _i: i };
-    }).sort(function (a, b) {
-      return (ORDEM_NIVEL[a.nivel] - ORDEM_NIVEL[b.nivel]) || ((a.pontuacao == null ? 101 : a.pontuacao) - (b.pontuacao == null ? 101 : b.pontuacao)) || (a._i - b._i);
-    });
+    }).sort(function (a, b) { return (ORDEM_TIPO[a.tipo] - ORDEM_TIPO[b.tipo]) || (a._i - b._i); });
     pares.forEach(function (p) { delete p._i; });
 
     // ---- lideranças (guia por líder)
     var liderancas = analise.liderancas.map(function (l) {
       return { id: l.id, nome: l.nome, cargo: l.cargo || null, codigo: l.codigo, estilo: l.estilo, alertas: l.alertas.slice(),
         liderados: l.liderados.map(function (x) {
-          return { id: x.id, nome: x.nome, codigo: x.codigo, estiloLiderado: x.estiloLiderado, nivel: x.nivel, pontuacao: x.pontuacao,
+          return { id: x.id, nome: x.nome, codigo: x.codigo, estiloLiderado: x.estiloLiderado, nivel: C.leitura(x.nivel),
             tendencia: x.tendencia, comoConduzir: x.comoConduzir.slice(0, 4) };
         }) };
     });
@@ -362,60 +387,39 @@
     pares.forEach(function (p) { if (p.codigos) p.codigos = [codigoDe(p.de, p.codigos[0]), codigoDe(p.para, p.codigos[1])]; });
     liderancas.forEach(function (l) { l.foto = fotoRef(l.id); l.codigo = codigoDe(l.id, l.codigo); l.liderados.forEach(function (x) { x.codigo = codigoDe(x.id, x.codigo); }); });
 
-    // ---- equilíbrio
+    // ---- estilos do time (antes "equilíbrio"): só contagens, sem média por fator
     var status = !eq.comTeste ? 'sem-dados' : eq.falta.length && eq.excesso.length ? 'lacunas-excesso' : eq.falta.length ? 'lacunas' : eq.excesso.length ? 'excesso' : 'equilibrado';
-    var ROTULO_EQ = { 'sem-dados': 'Sem dados', equilibrado: 'Equilibrado', lacunas: 'Com lacunas', excesso: 'Concentrado', 'lacunas-excesso': 'Desequilibrado' };
     var predominante = null;
     LETRAS.forEach(function (l) { if (eq.distribuicao[l] && (!predominante || eq.distribuicao[l] > eq.distribuicao[predominante])) predominante = l; });
-    var textoEq;
-    if (status === 'sem-dados') textoEq = 'Ainda não há colaboradores com o teste concluído; o equilíbrio do time aparece quando as respostas chegarem.';
-    else if (status === 'equilibrado') textoEq = 'As quatro forças do DISC estão presentes no time, sem um estilo dominando os demais.';
-    else {
-      textoEq = 'O time ' + (eq.falta.length ? 'não tem ninguém com ' + eq.falta.map(function (f) { return f.nome; }).join(' nem ') + ' em destaque' : 'tem todas as forças representadas') +
-        (eq.excesso.length ? (eq.falta.length ? ' e concentra ' : ', mas concentra ') + eq.excesso.map(function (f) { return f.nome; }).join(' e ') : '') + '.';
-    }
-    if (predominante) textoEq += ' Estilo mais comum: ' + NOMES[predominante] + ' (' + eq.distribuicao[predominante] + ' de ' + eq.comTeste + ').';
+    var textoEq = textoEstilos(status, eq.falta, eq.excesso, predominante ? { nome: NOMES[predominante], qtd: eq.distribuicao[predominante], de: eq.comTeste } : null);
     var equilibrio = {
-      status: status, rotulo: ROTULO_EQ[status], texto: textoEq,
-      media: copia(eq.media), distribuicao: copia(eq.distribuicao),
+      status: status, rotulo: ROTULO_ESTILOS[status], texto: textoEq,
+      distribuicao: copia(eq.distribuicao),
       falta: copia(eq.falta), excesso: copia(eq.excesso),
       semTeste: eq.semTeste.map(function (s) { return { nome: s.nome, cargo: s.cargo || null }; }),
       total: eq.total, comTeste: eq.comTeste
     };
 
-    // ---- sumário: 3 destaques e 3 alertas
+    // ---- sumário: até 3 destaques (só de estilo) e até 3 pontos para conversar. Nada sobre duplas: as sugestões
+    // por relação ficam no capítulo próprio, sem nota.
     var destaques = [], alertas = [];
-    if (eq.harmonia !== null && eq.harmonia >= 70) addUnico(destaques, 'Harmonia geral de ' + eq.harmonia + '/100: a maior parte das relações tende a fluir.');
-    pares.filter(function (p) { return p.nivel === 'fluido'; }).sort(function (a, b) { return b.pontuacao - a.pontuacao; }).slice(0, 2)
-      .forEach(function (p) { addUnico(destaques, p.deNome + ' e ' + p.paraNome + ' (' + p.pontuacao + '/100): ' + (p.sinergias[0] || 'relação que tende a fluir.')); });
-    if (eq.comTeste && !eq.falta.length) addUnico(destaques, 'As quatro forças do DISC estão presentes no time: há quem decida, quem engaje, quem sustente a rotina e quem cuide da qualidade.');
-    liderancas.forEach(function (l) {
-      if (l.liderados.length && l.liderados.every(function (x) { return x.nivel === 'fluido'; })) addUnico(destaques, 'A liderança de ' + l.nome + ' tende a fluir com toda a equipe direta (' + l.liderados.length + ' pessoa' + (l.liderados.length > 1 ? 's' : '') + ').');
-    });
-    if (predominante) addUnico(destaques, 'Força predominante: ' + NOMES[predominante] + ' — o time traz ' + FORCA[predominante] + '.');
+    if (eq.comTeste && !eq.falta.length) addUnico(destaques, 'Os quatro estilos do DISC aparecem como fortes em alguém do time: há quem tenda a decidir, a engajar, a sustentar a rotina e a cuidar da qualidade.');
+    if (predominante) addUnico(destaques, 'Força predominante: ' + NOMES[predominante] + ' — o time tende a trazer ' + FORCA[predominante] + '.');
     LETRAS.forEach(function (l) { if (eq.distribuicao[l] && l !== predominante) addUnico(destaques, NOMES[l] + ' presente no time: ' + FORCA[l] + '.'); });
 
-    pares.filter(function (p) { return p.nivel === 'tensao'; }).forEach(function (p) {
-      addUnico(alertas, p.deNome + ' e ' + p.paraNome + ' em tensão (' + p.pontuacao + '/100): ' + (p.riscos[0] || 'pede acordos explícitos.'));
-    });
     eq.falta.forEach(function (f) { addUnico(alertas, f.texto); });
     eq.excesso.forEach(function (f) { addUnico(alertas, f.texto); });
-    liderancas.forEach(function (l) { l.alertas.forEach(function (a) { if (!/^Relação com .* em tensão/.test(a)) addUnico(alertas, a.indexOf(l.nome) === 0 ? a : l.nome + ': ' + a.charAt(0).toLowerCase() + a.slice(1)); }); });
-    if (eq.semTeste.length) addUnico(alertas, eq.semTeste.length + ' pessoa' + (eq.semTeste.length > 1 ? 's' : '') + ' sem teste (' + eq.semTeste.map(function (s) { return s.nome; }).join(', ') + '): as relações delas ficam sem leitura.');
-    pares.filter(function (p) { return p.nivel === 'atencao'; }).forEach(function (p) {
-      addUnico(alertas, p.deNome + ' e ' + p.paraNome + ' pedem atenção (' + p.pontuacao + '/100): ' + (p.riscos[0] || 'combinem papéis e prioridades.'));
-    });
+    liderancas.forEach(function (l) { l.alertas.forEach(function (a) { if (!RE_COMBINAR_CEDO.test(a)) addUnico(alertas, a.indexOf(l.nome) === 0 ? a : l.nome + ': ' + a.charAt(0).toLowerCase() + a.slice(1)); }); });
+    if (eq.semTeste.length) addUnico(alertas, eq.semTeste.length + ' pessoa' + (eq.semTeste.length > 1 ? 's' : '') + ' sem teste (' + eq.semTeste.map(function (s) { return s.nome; }).join(', ') + '): as relações ' + (eq.semTeste.length > 1 ? 'delas' : 'dela') + ' ficam sem sugestões.');
 
     var sumario = {
-      equilibrio: { status: status, rotulo: ROTULO_EQ[status], texto: textoEq },
-      harmonia: eq.harmonia, harmoniaNivel: nivelHarmonia(eq.harmonia),
-      niveis: copia(eq.niveis),
+      equilibrio: { status: status, rotulo: ROTULO_ESTILOS[status], texto: textoEq },
       resumo: eq.resumo,
       destaques: destaques.slice(0, 3),
       alertas: alertas.slice(0, 3)
     };
 
-    // ---- foco (encaixe do candidato) — segunda análise com o candidato incluído
+    // ---- foco: plano de integração de quem foi contratado(a) — segunda análise com a pessoa incluída
     var foco = null;
     var observacoes = analise.avisos.slice(C.AVISOS.length);
     if (entrada.foco && typeof entrada.foco === 'object' && texto(entrada.foco.nome)) {
@@ -428,21 +432,16 @@
         pessoas: pessoas.concat([{ id: REF_FOCO, nome: texto(f.nome), cargo: limitar(f.cargo, 120) || null, percentuais: rf ? rf.percentuais : null }]),
         relacoes: relacoes.concat(relFoco), foco: REF_FOCO });
       var fo = a2.foco;
-      var resumoPar = function (x) { return x ? { nome: x.nome, tipo: x.tipo, nivel: x.nivel, pontuacao: x.pontuacao } : null; };
       foco = {
         nome: fo.nome, cargo: fo.cargo || null, foto: fotoDe(f.foto), codigo: rf ? rf.codigo : null, percentuais: rf ? copia(rf.percentuais) : null,
-        pontuacao: fo.pontuacao, nivel: fo.nivel,
-        lider: resumoPar(fo.lider),
-        liderados: fo.liderados.map(resumoPar), diretos: fo.diretos.map(resumoPar), indiretos: fo.indiretos.map(resumoPar),
-        encaixeEquipe: copia(fo.encaixeEquipe),
-        pontosFortes: fo.pontosFortes.slice(0, 5), riscos: fo.riscos.slice(0, 5),
+        observacoes: fo.observacoes.slice(0, 5),
         recomendacoes90: copia(fo.recomendacoes90),
         organograma: organogramaLimpo(a2.organograma, REF_FOCO)
       };
       (function ajustar(nos) { nos.forEach(function (n) { if (n.id !== REF_FOCO) { n.codigo = codigoDe(n.id, n.codigo); n.primario = n.codigo ? n.codigo.charAt(0) : null; n.foto = fotoRef(n.id); } else { n.foto = fotoDe(f.foto); if (rf) { n.codigo = rf.codigo; n.primario = rf.codigo.charAt(0); } } ajustar(n.filhos); }); })(foco.organograma.raizes);
     }
 
-    // ---- mapa ritmo × foco com todos (e o candidato em destaque), como o grupo decide e pressão média (Parte 2)
+    // ---- mapa ritmo × foco com todos (e quem está chegando em destaque), como o grupo decide e distância natural × cargo
     var pontos = colabs.filter(function (c) { return c.resultado; }).map(function (c) {
       return { id: c.ref, nome: c.nome, codigo: c.resultado.codigo, natural: eixosDe(c.resultado.percentuais), exigido: c.exigido ? eixosDe(c.exigido.percentuais) : null };
     });
@@ -454,12 +453,12 @@
     var nLid = liderancas.length;
     return {
       modelo: 'equipe',
-      versao: VERSAO,
+      versao: VERSAO_EQUIPE,
       titulo: 'Relatório de equipe — ' + empresa.nome,
       geradoEm: agora(opcoes, entrada),
       empresa: empresa,
       consultor: limitar(entrada.consultor, 120) || null,
-      numeros: { pessoas: eq.total, comTeste: eq.comTeste, relacoes: pares.length, liderancas: nLid, harmonia: eq.harmonia },
+      numeros: { pessoas: eq.total, comTeste: eq.comTeste, relacoes: pares.length, liderancas: nLid, estilosPresentes: eq.comTeste ? LETRAS.length - eq.falta.length : null },
       sumario: sumario,
       organograma: organograma,
       equilibrio: equilibrio,
@@ -648,6 +647,8 @@
   var DISC_RELATORIO_MODELOS = {
     VERSAO: VERSAO,
     VERSAO_LIDERANCA_AVANCADO: VERSAO_LIDERANCA_AVANCADO,
+    VERSAO_EQUIPE: VERSAO_EQUIPE,
+    ROTULOS_ESTILOS: ROTULO_ESTILOS,
     MODELOS: ['equipe', 'lideranca', 'pessoa'],
     equipe: equipe,
     lideranca: lideranca,

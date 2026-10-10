@@ -12,12 +12,21 @@
  * Saída (serializável): { empresa, equipe, pares, liderancas, foco, organograma, avisos }
  *   - pares[]: { de, para, tipo, peso, nivel: 'fluido'|'atencao'|'tensao'|'indefinido',
  *                pontuacao (0–100 | null), sinergias[], riscos[], dicas[] }
+ *     nivel e pontuacao são INTERNOS (decidem a leitura e a ordem das dicas). Nada que o cliente vê mostra
+ *     nota, nível ou "tensão": quem exibe usa leitura(nivel) -> 'fluido' | 'combinados' | 'indefinido'
+ *     ("Tende a fluir" / "Pede combinados" / "Sem leitura", ROTULOS_LEITURA). Decisão do painel científico,
+ *     docs/painel-cientifico/decisao.md, seção 4.
+ *   - equipe: { total, comTeste, distribuicao (estilo principal), falta[], excesso[], semTeste[], leituras, resumo }
+ *     falta = estilo que ninguém descreve como forte (texto em forma de pergunta); excesso = estilo principal de
+ *     60% ou mais do time, com 3 ou mais pessoas (só contagem: média de percentual ipsativo não entra).
+ *   - foco: plano de integração de quem foi contratado(a) — sem nota de encaixe, nível ou rótulo.
  *   - nomes sempre como "Primeiro S."; só id, nome curto e cargo saem da entrada
  *     (qualquer outro campo — idade, gênero, telefone… — é ignorado).
  *
  * Regras (teoria DISC): ritmo rápido (D+I) × cauteloso (S+C); foco em tarefas (D+C) ×
  * pessoas (I+S); regras específicas por par de fatores altos (≥ 30%, média 25%), com
  * intensidade proporcional ao percentual. 'lidera' e 'direto' pesam 1; 'indireto' 0,6.
+ * Textos de par e de guia sempre com "tende a" ou "pode" (nunca previsão fechada).
  */
 (function (root) {
   var LETRAS = ['D', 'I', 'S', 'C'];
@@ -31,23 +40,30 @@
 
   var AVISOS_LIMITE = [
     'O DISC descreve estilo de comportamento no trabalho, não competência, inteligência nem caráter; não use como critério único de contratação, promoção ou desligamento.',
-    'Compatibilidade indica onde a convivência tende a fluir ou exigir combinados — não prevê desempenho. Qualquer dupla pode trabalhar bem com papéis e acordos claros.',
+    'As sugestões por relação indicam onde a convivência pode pedir combinados. Não medem a qualidade da relação nem preveem desempenho; qualquer dupla pode trabalhar bem com papéis e acordos claros.',
     'As leituras partem do autorrelato de cada pessoa e mudam com contexto, cargo e tempo; confirme em conversa antes de agir.'
   ];
 
-  // Texto de risco quando ninguém tem o fator alto / quando o fator está em excesso.
+  // Estilo que ninguém descreve como forte: pergunta para a conversa (não é "risco" nem diagnóstico).
   var FALTA = {
-    D: 'Ninguém com Dominância alta: risco de decisões lentas, pouca cobrança por resultado e dificuldade em destravar impasses.',
-    I: 'Ninguém com Influência alta: risco de pouca energia na comunicação, menos networking e dificuldade em engajar clientes e outras áreas.',
-    S: 'Ninguém com Estabilidade alta: risco de pouca constância, rotinas abandonadas no meio e menor cuidado com o clima da equipe.',
-    C: 'Ninguém com Conformidade alta: risco em processos e qualidade — erros de detalhe, pouca documentação e controles frágeis.'
+    D: 'Ninguém do time descreveu Dominância como estilo forte. Vale conferir: quem destrava decisões e cobra prazos quando a equipe empaca?',
+    I: 'Ninguém do time descreveu Influência como estilo forte. Vale conferir: quem cuida de engajar clientes e outras áreas?',
+    S: 'Ninguém do time descreveu Estabilidade como estilo forte. Vale conferir: quem garante que as rotinas combinadas sejam mantidas até o fim?',
+    C: 'Ninguém do time descreveu Conformidade como estilo forte. Vale conferir se processos, padrões e qualidade têm dono claro.'
   };
+  // Estilo principal de boa parte do time (contagem): o combinado que vale fazer.
   var EXCESSO = {
-    D: 'Dominância em excesso: risco de disputa por controle, decisões impulsivas e clima de pressão constante.',
-    I: 'Influência em excesso: muita ideia e conversa, risco de pouca execução, prazos perdidos e falta de acompanhamento.',
-    S: 'Estabilidade em excesso: risco de resistência a mudanças, conflitos evitados e ritmo lento diante de urgências.',
-    C: 'Conformidade em excesso: risco de perfeccionismo, análise demais e decisões travadas à espera de certeza.'
+    D: 'Boa parte do time descreve Dominância como estilo principal. Vale combinar como decidir quando houver divergência e quem dá a palavra final.',
+    I: 'Boa parte do time descreve Influência como estilo principal. Vale combinar como registrar acordos e acompanhar prazos.',
+    S: 'Boa parte do time descreve Estabilidade como estilo principal. Vale combinar como a equipe se prepara para mudanças e urgências.',
+    C: 'Boa parte do time descreve Conformidade como estilo principal. Vale combinar quando uma decisão pode ser tomada sem todos os dados.'
   };
+  var PREDOMINA_FRACAO = 0.6;    // estilo principal de 60% ou mais do time…
+  var PREDOMINA_MINIMO = 3;      // …com 3 ou mais pessoas com teste
+  // Leitura de uma relação para exibição: dois rótulos, sem número.
+  var LEITURA = { fluido: 'fluido', atencao: 'combinados', tensao: 'combinados', combinados: 'combinados' };
+  var ROTULOS_LEITURA = { fluido: 'Tende a fluir', combinados: 'Pede combinados', indefinido: 'Sem leitura' };
+  function leitura(nivel) { return LEITURA[nivel] || 'indefinido'; }
   var FORCA = {
     D: 'traz senso de urgência e foco em resultado',
     I: 'traz comunicação, entusiasmo e facilidade de engajar pessoas',
@@ -90,9 +106,10 @@
 
   function arred(n) { return Math.round(n * 10) / 10; }
   function limitar(n, a, b) { return Math.max(a, Math.min(b, n)); }
-  function fmt(n) { return String(arred(n)).replace('.', ',') + '%'; }
 
   function addUnico(lista, item) { if (item && lista.indexOf(item) === -1) lista.push(item); }
+  // ['Ana', 'Bia', 'Caio'] -> 'Ana, Bia e Caio'
+  function juntar(nomes) { return nomes.length > 1 ? nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1] : nomes.join(''); }
 
   // Perfil normalizado: percentuais somando ~100, ordem, primário, secundário, intensidade.
   function perfil(percentuais) {
@@ -128,8 +145,8 @@
     {
       id: 'DD', f: function (a, b) { return alto(a.perfil, 'D') && alto(b.perfil, 'D') ? Math.min(intens(a.perfil, 'D'), intens(b.perfil, 'D')) : 0; },
       ajuste: function (f) { return -(22 + 18 * f); },
-      riscos: ['Dois perfis de Dominância alta: disputa por controle, decisões atropeladas e discussões que viram queda de braço.'],
-      sinergias: ['Os dois têm senso de urgência e foco em resultado.'],
+      riscos: ['Dois perfis com Dominância alta: pode surgir disputa por controle, com decisões atropeladas e discussões que tendem a virar queda de braço.'],
+      sinergias: ['Os dois tendem a ter senso de urgência e foco em resultado.'],
       dicas: ['Dividam territórios: cada um com decisões, metas e responsabilidades claramente separadas.',
         'Combinem antes quem decide em caso de empate (ou quem é o árbitro).',
         'Discordâncias em particular e com dados; em público, uma posição única.']
@@ -137,8 +154,8 @@
     {
       id: 'IC', f: function (a, b) { return alto(a.perfil, 'I') && alto(b.perfil, 'C') && a.perfil.primario !== 'C' && b.perfil.primario !== 'I' ? Math.min(intens(a.perfil, 'I'), intens(b.perfil, 'C')) : 0; },
       ajuste: function (f) { return -(10 + 10 * f); },
-      riscos: ['{a}, com Influência alta, e {b}, com Conformidade alta: atrito entre entusiasmo e detalhe — {b} pode achar {a} superficial; {a} pode achar {b} lento(a) e crítico(a).'],
-      sinergias: ['Complementares quando há papéis claros: {a} abre portas e engaja; {b} garante precisão e qualidade.'],
+      riscos: ['{a}, com Influência alta, e {b}, com Conformidade alta: pode haver atrito entre entusiasmo e detalhe — {b} pode achar {a} superficial; {a} pode achar {b} lento(a) e crítico(a).'],
+      sinergias: ['Podem se complementar quando há papéis claros: {a} tende a abrir portas e engajar; {b}, a cuidar da precisão e da qualidade.'],
       dicas: ['{a}: leve dados e registre por escrito o que foi combinado.',
         '{b}: aponte primeiro o que está bom, depois os ajustes — e só os que importam.',
         'Definam juntos o "padrão mínimo de qualidade" antes de começar.']
@@ -147,51 +164,51 @@
       id: 'DS', tipos: ['direto', 'indireto'],
       f: function (a, b) { return alto(a.perfil, 'D') && alto(b.perfil, 'S') && a.perfil.primario !== 'S' && b.perfil.primario !== 'D' ? Math.min(intens(a.perfil, 'D'), intens(b.perfil, 'S')) : 0; },
       ajuste: function (f) { return -(6 + 8 * f); },
-      riscos: ['{a}, com Dominância alta, e {b}, com Estabilidade alta: ritmo diferente — {a} quer velocidade, {b} precisa de previsibilidade e pode se sentir pressionado(a).'],
-      sinergias: ['{a} puxa decisões; {b} dá constância e conclui o que começa.'],
+      riscos: ['{a}, com Dominância alta, e {b}, com Estabilidade alta: ritmos diferentes — {a} tende a querer velocidade e {b}, previsibilidade; {b} pode se sentir pressionado(a).'],
+      sinergias: ['{a} tende a puxar decisões; {b}, a dar constância e concluir o que começa.'],
       dicas: ['{a}: avise mudanças com antecedência e explique o porquê.', '{b}: diga com clareza o prazo que consegue cumprir, em vez de concordar e se sobrecarregar.']
     },
     {
       id: 'DC', tipos: ['direto', 'indireto'],
       f: function (a, b) { return alto(a.perfil, 'D') && alto(b.perfil, 'C') && a.perfil.primario !== 'C' && b.perfil.primario !== 'D' ? Math.min(intens(a.perfil, 'D'), intens(b.perfil, 'C')) : 0; },
       ajuste: function (f) { return -(3 + 5 * f); },
-      riscos: ['{a} quer rapidez; {b} quer certeza — risco de atrito entre prazo e qualidade.'],
-      sinergias: ['Ambos focados em tarefas: dupla forte em resultado com qualidade quando os papéis estão claros.'],
+      riscos: ['{a} tende a querer rapidez e {b}, certeza: pode haver atrito entre prazo e qualidade.'],
+      sinergias: ['Os dois tendem a focar em tarefas: com papéis claros, a dupla pode unir resultado e qualidade.'],
       dicas: ['Combinem prazo e critério de qualidade juntos, no início de cada entrega.']
     },
     {
       id: 'DI', f: function (a, b) { return alto(a.perfil, 'D') && alto(b.perfil, 'I') && a.perfil.primario !== 'I' && b.perfil.primario !== 'D' ? 1 : 0; },
       ajuste: function () { return 3; },
-      riscos: ['Dupla rápida: risco de pular detalhes e disputar protagonismo.'],
-      sinergias: ['Ritmo parecido e gosto por desafio: {a} foca o resultado, {b} engaja as pessoas.'],
+      riscos: ['Dupla de ritmo rápido: pode pular detalhes e disputar protagonismo.'],
+      sinergias: ['Ritmo parecido e gosto por desafio: {a} tende a focar o resultado e {b}, a engajar as pessoas.'],
       dicas: ['Escolham alguém (ou um checklist) para conferir detalhes e prazos.']
     },
     {
       id: 'IS', f: function (a, b) { return alto(a.perfil, 'I') && alto(b.perfil, 'S') ? 1 : 0; },
       ajuste: function () { return 5; },
-      riscos: ['Os dois evitam conflito: problemas podem ficar sem ser ditos.'],
+      riscos: ['Os dois tendem a evitar conflito: problemas podem ficar sem ser ditos.'],
       sinergias: ['Ambos focados em pessoas: tendem a criar bom clima e cooperação.'],
       dicas: ['Reservem um momento fixo para falar do que não está funcionando.']
     },
     {
       id: 'SC', f: function (a, b) { return alto(a.perfil, 'S') && alto(b.perfil, 'C') && a.perfil.primario !== b.perfil.primario ? 1 : 0; },
       ajuste: function () { return 5; },
-      riscos: ['Ritmo cauteloso dos dois: risco de lentidão diante de urgências.'],
-      sinergias: ['Ritmo parecido, organização e constância: execução cuidadosa e confiável.'],
+      riscos: ['Os dois tendem a um ritmo cauteloso: a dupla pode demorar diante de urgências.'],
+      sinergias: ['Ritmo parecido, organização e constância: a execução tende a ser cuidadosa e confiável.'],
       dicas: ['Definam prazos-limite para decisões, para não esperar certeza total.']
     }
   ];
 
   var REGRAS_IGUAIS = {
     D: null, // coberto por DD
-    I: { ajuste: 4, sinergias: ['Os dois são comunicativos e entusiasmados: conexão rápida e muitas ideias.'],
-      riscos: ['Risco de muita conversa e pouca execução; detalhes e prazos podem escapar.'],
+    I: { ajuste: 4, sinergias: ['Os dois tendem a ser comunicativos e entusiasmados: a conexão pode ser rápida e com muitas ideias.'],
+      riscos: ['Pode haver muita conversa e pouca execução; detalhes e prazos podem escapar.'],
       dicas: ['Fechem cada conversa com responsável e data por escrito.'] },
-    S: { ajuste: 10, sinergias: ['Mesmo ritmo e mesmo valor por cooperação: relação estável, de confiança e apoio mútuo.'],
-      riscos: ['Risco de acomodação e de evitar conversas difíceis ou mudanças necessárias.'],
+    S: { ajuste: 10, sinergias: ['Mesmo ritmo e mesmo apreço pela cooperação: a relação tende a ser estável, de confiança e apoio mútuo.'],
+      riscos: ['A dupla pode se acomodar e evitar conversas difíceis ou mudanças necessárias.'],
       dicas: ['Combinem revisões periódicas do que pode melhorar, para não deixar incômodos acumularem.'] },
-    C: { ajuste: 6, sinergias: ['Mesmo padrão de qualidade e organização: entregas precisas e bem documentadas.'],
-      riscos: ['Risco de análise demais e decisões travadas; críticas mútuas de detalhe.'],
+    C: { ajuste: 6, sinergias: ['Mesmo padrão de qualidade e organização: as entregas tendem a ser precisas e bem documentadas.'],
+      riscos: ['Pode haver análise demais e decisões travadas, com críticas mútuas de detalhe.'],
       dicas: ['Definam o "bom o suficiente" e um prazo para decidir com a informação disponível.'] }
   };
 
@@ -200,7 +217,7 @@
       id: 'D>S', f: function (l, s) { return alto(l.perfil, 'D') && alto(s.perfil, 'S') && s.perfil.primario !== 'D' ? Math.min(intens(l.perfil, 'D'), intens(s.perfil, 'S')) + 0.2 : 0; },
       ajuste: function (f) { return -(6 + 8 * f); },
       riscos: ['{a}, com Dominância alta, liderando {b}, com Estabilidade alta: sem previsibilidade, a cobrança rápida tende a gerar pressão e insegurança em {b}.'],
-      sinergias: ['{a} dá direção e metas; {b} entrega com constância e lealdade quando sabe o que esperar.'],
+      sinergias: ['{a} tende a dar direção e metas; {b} tende a entregar com constância e lealdade quando sabe o que esperar.'],
       dicas: ['{a}: antecipe mudanças e explique o porquê antes do "o quê".',
         '{a}: combine prioridades da semana e prazos realistas; evite trocas de rumo de última hora.',
         '{a}: dê feedback em particular, com calma e exemplos concretos.',
@@ -209,15 +226,15 @@
     {
       id: 'D>C', f: function (l, s) { return alto(l.perfil, 'D') && alto(s.perfil, 'C') && s.perfil.primario !== 'D' ? intens(s.perfil, 'C') : 0; },
       ajuste: function (f) { return -(4 + 6 * f); },
-      riscos: ['{a} pode cobrar velocidade onde {b} precisa de tempo para garantir qualidade; {b} pode parecer resistente.'],
-      sinergias: ['Os dois focam em tarefas: {a} decide, {b} assegura precisão.'],
+      riscos: ['{a} pode cobrar velocidade onde {b} precisa de tempo para cuidar da qualidade; {b} pode parecer resistente.'],
+      sinergias: ['Os dois tendem a focar em tarefas: {a} costuma decidir e {b}, cuidar da precisão.'],
       dicas: ['{a}: defina prazo e padrão de qualidade juntos; dê as informações e o contexto completos.', '{b}: traga riscos com dados e proponha alternativas, não só objeções.']
     },
     {
       id: 'D>I', f: function (l, s) { return alto(l.perfil, 'D') && alto(s.perfil, 'I') && s.perfil.primario !== 'D' ? 1 : 0; },
       ajuste: function () { return -2; },
       riscos: ['{b} pode sentir falta de reconhecimento e de espaço para conversar; {a} pode ver dispersão.'],
-      sinergias: ['Ritmo parecido: {a} dá metas ousadas, {b} mobiliza pessoas para atingi-las.'],
+      sinergias: ['Ritmo parecido: {a} tende a propor metas ousadas e {b}, a mobilizar pessoas para atingi-las.'],
       dicas: ['{a}: reconheça conquistas em público e combine metas objetivas com acompanhamento curto.']
     },
     {
@@ -231,35 +248,35 @@
       id: 'I>S', f: function (l, s) { return alto(l.perfil, 'I') && alto(s.perfil, 'S') ? 1 : 0; },
       ajuste: function () { return 2; },
       riscos: ['Mudanças frequentes de ideia podem cansar {b}.'],
-      sinergias: ['{a} valoriza e motiva; {b} se sente acolhido(a) e retribui com dedicação.'],
+      sinergias: ['{a} tende a valorizar e motivar; {b} pode se sentir acolhido(a) e retribuir com dedicação.'],
       dicas: ['{a}: filtre as ideias antes de levá-las a {b} e mantenha as prioridades estáveis.']
     },
     {
       id: 'S>D', f: function (l, s) { return alto(l.perfil, 'S') && alto(s.perfil, 'D') && l.perfil.primario !== 'D' ? intens(s.perfil, 'D') : 0; },
       ajuste: function (f) { return -(4 + 8 * f); },
       riscos: ['{b} pode achar o ritmo lento e passar por cima de {a}; {a} pode evitar o confronto e perder autoridade.'],
-      sinergias: ['{a} dá estabilidade; {b} traz velocidade e iniciativa.'],
+      sinergias: ['{a} tende a dar estabilidade; {b}, velocidade e iniciativa.'],
       dicas: ['{a}: dê autonomia com limites claros de decisão e seja firme quando o limite for ultrapassado.', '{b}: alinhe antes de decidir em nome da equipe.']
     },
     {
       id: 'C>I', f: function (l, s) { return alto(l.perfil, 'C') && alto(s.perfil, 'I') && l.perfil.primario !== 'I' ? intens(s.perfil, 'I') : 0; },
       ajuste: function (f) { return -(3 + 6 * f); },
-      riscos: ['Risco de microgerência e crítica de detalhe; {b} pode se sentir tolhido(a) e desmotivado(a).'],
-      sinergias: ['{a} traz estrutura que ajuda {b} a transformar ideias em entregas.'],
+      riscos: ['Pode haver microgerência e crítica de detalhe; {b} pode se sentir tolhido(a) e desmotivado(a).'],
+      sinergias: ['{a} tende a trazer estrutura que ajuda {b} a transformar ideias em entregas.'],
       dicas: ['{a}: corrija o essencial, reconheça o esforço e dê espaço para {b} se expressar.', '{b}: use checklists simples para atender ao padrão de {a}.']
     },
     {
       id: 'C>D', f: function (l, s) { return alto(l.perfil, 'C') && alto(s.perfil, 'D') && l.perfil.primario !== 'D' ? intens(s.perfil, 'D') : 0; },
       ajuste: function (f) { return -(3 + 6 * f); },
       riscos: ['{b} pode ver burocracia e lentidão nas exigências de {a}; {a} pode ver imprudência.'],
-      sinergias: ['Ambos focados em tarefas: rigor de {a} com a energia de execução de {b}.'],
+      sinergias: ['Os dois tendem a focar em tarefas: o rigor de {a} pode somar com a energia de execução de {b}.'],
       dicas: ['{a}: explique quais regras são inegociáveis e libere o resto.', '{b}: mostre os dados que sustentam suas decisões rápidas.']
     },
     {
       id: 'S>I', f: function (l, s) { return alto(l.perfil, 'S') && alto(s.perfil, 'I') ? 1 : 0; },
       ajuste: function () { return 0; },
       riscos: ['Liderança gentil pode deixar {b} disperso(a) sem acompanhamento.'],
-      sinergias: ['Clima de confiança e cooperação.'],
+      sinergias: ['A relação tende a ter clima de confiança e cooperação.'],
       dicas: ['{a}: combine pontos de acompanhamento curtos e cobre os combinados com leveza.']
     }
   ];
@@ -329,10 +346,10 @@
     if (dFoco >= 60) {
       ajusteTotal -= (dFoco - 40) * 0.1 * peso;
       var tarefa = pa.foco > pb.foco ? a : b, pessoas = tarefa === a ? b : a;
-      addUnico(riscos, tarefa.nome + ' foca mais em tarefas e ' + pessoas.nome + ' em pessoas: um pode achar o outro frio(a) ou disperso(a).');
+      addUnico(riscos, tarefa.nome + ' tende a focar mais em tarefas e ' + pessoas.nome + ', em pessoas: um pode achar o outro frio(a) ou disperso(a).');
       if (tipo !== 'indireto') {
         ajusteTotal += 4;
-        addUnico(sinergias, 'Complementares: um cuida da entrega, o outro das relações — funciona bem com papéis claros.');
+        addUnico(sinergias, 'Podem se complementar: um tende a cuidar da entrega e o outro, das relações — com papéis claros, a diferença ajuda.');
         addUnico(dicas, 'Deixem claro quem é responsável por quê; a diferença vira força quando os papéis estão definidos.');
       }
     }
@@ -356,49 +373,41 @@
   // ------------------------------------------------------------------
   // Equipe
   // ------------------------------------------------------------------
+  // Sem média por fator e sem "harmonia": os percentuais do DISC são relativos dentro de cada pessoa (somam 100%),
+  // então a média do time não diz "quanto" o time tem de cada fator. Só contagens.
   function analisarEquipe(pessoas, pares) {
     var com = pessoas.filter(function (p) { return p.perfil; });
     var distribuicao = { D: 0, I: 0, S: 0, C: 0, equilibrado: 0 };
-    var media = { D: 0, I: 0, S: 0, C: 0 };
     com.forEach(function (p) {
       if (p.perfil.equilibrado) distribuicao.equilibrado++; else distribuicao[p.perfil.primario]++;
-      LETRAS.forEach(function (l) { media[l] += p.perfil.percentuais[l]; });
     });
-    LETRAS.forEach(function (l) { media[l] = com.length ? arred(media[l] / com.length) : null; });
     var falta = [], excesso = [];
     if (com.length) {
       LETRAS.forEach(function (l) {
         var altos = com.filter(function (p) { return alto(p.perfil, l); }).length;
         if (!altos) falta.push({ fator: l, nome: NOMES[l], texto: FALTA[l] });
-        var fracao = distribuicao[l] / com.length;
-        if (media[l] >= 35 || (com.length >= 3 && fracao >= 0.6)) {
-          excesso.push({ fator: l, nome: NOMES[l], texto: EXCESSO[l] + ' (média ' + fmt(media[l]) + '; ' + distribuicao[l] + ' de ' + com.length + ' com perfil principal ' + NOMES[l] + ')' });
+        if (com.length >= PREDOMINA_MINIMO && distribuicao[l] / com.length >= PREDOMINA_FRACAO) {
+          excesso.push({ fator: l, nome: NOMES[l], texto: EXCESSO[l], pessoas: distribuicao[l], total: com.length });
         }
       });
     }
-    var avaliados = pares.filter(function (p) { return p.pontuacao != null; });
-    var somaP = 0, somaV = 0;
-    avaliados.forEach(function (p) { somaP += p.peso; somaV += p.pontuacao * p.peso; });
-    var contagem = { fluido: 0, atencao: 0, tensao: 0, indefinido: 0 };
-    pares.forEach(function (p) { contagem[p.nivel]++; });
+    var leituras = { fluido: 0, combinados: 0, indefinido: 0 };
+    pares.forEach(function (p) { leituras[leitura(p.nivel)]++; });
     var resumo;
     if (!com.length) resumo = 'Nenhuma pessoa com teste concluído ainda.';
     else {
-      resumo = com.length + ' de ' + pessoas.length + ' pessoas com teste. Média: ' +
-        LETRAS.map(function (l) { return l + ' ' + fmt(media[l]); }).join(' · ') + '.';
-      if (falta.length) resumo += ' Lacunas: ' + falta.map(function (f) { return f.nome; }).join(', ') + '.';
-      if (excesso.length) resumo += ' Em excesso: ' + excesso.map(function (f) { return f.nome; }).join(', ') + '.';
+      resumo = com.length + ' de ' + pessoas.length + ' pessoas com teste.';
+      if (falta.length) resumo += ' Pouco presente' + (falta.length > 1 ? 's' : '') + ': ' + falta.map(function (f) { return f.nome; }).join(', ') + '.';
+      if (excesso.length) resumo += ' Predomina: ' + excesso.map(function (f) { return f.nome; }).join(', ') + '.';
     }
     return {
       total: pessoas.length,
       comTeste: com.length,
       distribuicao: distribuicao,
-      media: media,
       falta: falta,
       excesso: excesso,
       semTeste: pessoas.filter(function (p) { return !p.perfil; }).map(function (p) { return { id: p.id, nome: p.nome, cargo: p.cargo }; }),
-      harmonia: somaP ? Math.round(somaV / somaP) : null,
-      niveis: contagem,
+      leituras: leituras,
       resumo: resumo
     };
   }
@@ -457,6 +466,22 @@
     return s ? s.itens.slice(0, n) : [];
   }
 
+  // "Com X, vale combinar desde cedo: <primeira dica>." A dica preferida é a dirigida ao líder (sem o "Nome: " do
+  // começo, porque o lembrete já está no bloco dele); senão a primeira dica para a dupla; senão a primeira de todas.
+  function combinarCedo(nomeLiderado, nomeLider, dicas) {
+    var deLider = nomeLider + ': ', deLiderado = nomeLiderado + ': ';
+    var lista = (dicas || []).filter(function (t) { return typeof t === 'string' && t; });
+    var doLider = lista.filter(function (t) { return t.indexOf(deLider) === 0; })[0];
+    var daDupla = lista.filter(function (t) { return t.indexOf(deLider) !== 0 && t.indexOf(deLiderado) !== 0; })[0];
+    var dica;
+    if (doLider) dica = doLider.slice(deLider.length);
+    else if (daDupla) dica = daDupla;
+    else if (lista[0]) return 'Com ' + nomeLiderado + ', vale combinar desde cedo. ' + lista[0]; // dica dirigida ao liderado
+    else dica = 'combinem papéis, prioridades e a forma de comunicação.';
+    dica = dica.replace(/: /, ', ');
+    return 'Com ' + nomeLiderado + ', vale combinar desde cedo: ' + dica.charAt(0).toLowerCase() + dica.slice(1);
+  }
+
   function analisarLiderancas(porId, pares, org, L) {
     var ids = Object.keys(org.filhos).filter(function (id) { return org.filhos[id].length; });
     // ordem estável: a de entrada das pessoas (nos do organograma seguem a árvore; usamos porId.__ordem)
@@ -472,8 +497,9 @@
         var tendencia;
         if (!lider.perfil) tendencia = lider.nome + ' ainda não fez o teste; não é possível prever o estilo da relação.';
         else if (!liderado.perfil) tendencia = liderado.nome + ' ainda não fez o teste. Estilo de ' + lider.nome + ': ' + ESTILO_LIDERAR[lider.perfil.primario];
-        else tendencia = (par.riscos[0] || par.sinergias[0] || '') + (par.nivel === 'fluido' ? ' A relação tende a fluir.' : par.nivel === 'atencao' ? ' A relação pede combinados claros.' : ' A relação tende a ter tensão sem acordos explícitos.');
-        if (par && par.nivel === 'tensao') alertas.push('Relação com ' + liderado.nome + ' em tensão (' + par.pontuacao + '/100): ' + (par.riscos[0] || '') );
+        else tendencia = (par.riscos[0] || par.sinergias[0] || '') + (par.nivel === 'fluido' ? ' A relação tende a fluir.' : ' A relação pede combinados claros.');
+        // Relação que mais pede combinados: um lembrete prático, sem nota nem rótulo.
+        if (par && par.nivel === 'tensao') alertas.push(combinarCedo(liderado.nome, lider.nome, par.dicas));
         return {
           id: lid,
           nome: liderado.nome,
@@ -489,7 +515,7 @@
       if (!lider.perfil) alertas.push(lider.nome + ' ainda não fez o teste: aplicar para orientar a liderança.');
       var semTeste = liderados.filter(function (x) { return !x.codigo; });
       if (semTeste.length) alertas.push(semTeste.length + ' liderado(s) sem teste: ' + semTeste.map(function (x) { return x.nome; }).join(', ') + '.');
-      if (liderados.length > 8) alertas.push('Amplitude de controle alta (' + liderados.length + ' liderados): risco de pouco acompanhamento individual.');
+      if (liderados.length > 8) alertas.push('Amplitude de controle alta (' + liderados.length + ' liderados): pode faltar tempo para o acompanhamento individual.');
       if (lider.perfil) {
         var sAltos = liderados.filter(function (x) { return x.codigo && alto(porId[x.id].perfil, 'S'); }).length;
         if (alto(lider.perfil, 'D') && sAltos >= 2) alertas.push('Líder com Dominância alta e ' + sAltos + ' liderados de Estabilidade alta: cuidar da previsibilidade (agenda, prioridades e mudanças comunicadas com antecedência).');
@@ -507,9 +533,11 @@
   }
 
   // ------------------------------------------------------------------
-  // Foco: encaixe de um candidato / novo colaborador
+  // Foco: plano de integração de quem foi contratado(a). Ajuda a receber bem a pessoa; não serve para decidir a
+  // contratação. Sem nota de encaixe, sem nível e sem rótulo ("preenche lacuna", "reforça excesso"): só quem
+  // lidera e com quem trabalha, observações e o plano de 90 dias.
   // ------------------------------------------------------------------
-  function analisarFoco(foco, porId, pares, equipe) {
+  function analisarFoco(foco, porId, pares) {
     var p = porId[foco];
     var envolve = pares.filter(function (x) { return x.de === foco || x.para === foco; });
     var comLider = envolve.filter(function (x) { return x.tipo === 'lidera' && x.para === foco; })[0] || null;
@@ -517,7 +545,7 @@
     var diretos = envolve.filter(function (x) { return x.tipo === 'direto'; });
     var indiretos = envolve.filter(function (x) { return x.tipo === 'indireto'; });
     function outro(x) { return x.de === foco ? x.para : x.de; }
-    function resumoPar(x) { return x ? { id: outro(x), nome: porId[outro(x)].nome, tipo: x.tipo, nivel: x.nivel, pontuacao: x.pontuacao } : null; }
+    function resumoPar(x) { return x ? { id: outro(x), nome: porId[outro(x)].nome, tipo: x.tipo } : null; }
 
     var res = {
       id: foco, nome: p.nome, cargo: p.cargo, codigo: p.perfil ? p.perfil.codigo : null,
@@ -525,43 +553,18 @@
       liderados: liderados.map(resumoPar),
       diretos: diretos.map(resumoPar),
       indiretos: indiretos.map(resumoPar),
-      encaixeEquipe: null, pontuacao: null, nivel: 'indefinido',
-      pontosFortes: [], riscos: [], recomendacoes90: []
+      observacoes: [], recomendacoes90: []
     };
     if (!p.perfil) {
-      res.riscos.push(p.nome + ' ainda não fez o teste: aplicar antes de avaliar o encaixe.');
+      res.observacoes.push(p.nome + ' ainda não respondeu ao DISC: o plano de integração aparece quando houver resposta.');
       return res;
     }
     var pf = p.perfil;
-    // Contribuição para a equipe (sem contar a própria pessoa nas lacunas).
-    var outros = Object.keys(porId).filter(function (id) { return id !== foco && porId[id].perfil; }).map(function (id) { return porId[id]; });
-    var preenche = [], reforca = [];
-    LETRAS.forEach(function (l) {
-      if (!alto(pf, l)) return;
-      if (!outros.some(function (o) { return alto(o.perfil, l); })) preenche.push(l);
-      else if (outros.length >= 2 && outros.filter(function (o) { return o.perfil.primario === l; }).length / outros.length >= 0.5 && pf.primario === l) reforca.push(l);
-    });
-    var ajusteEquipe = 0;
-    preenche.forEach(function (l) { ajusteEquipe += 8; res.pontosFortes.push(p.nome + ' ' + FORCA[l] + ' — fator (' + NOMES[l] + ') que hoje falta na equipe.'); });
-    reforca.forEach(function (l) { ajusteEquipe -= 6; res.riscos.push('Reforça um fator que já predomina (' + NOMES[l] + '): ' + EXCESSO[l].charAt(0).toLowerCase() + EXCESSO[l].slice(1)); });
-    res.encaixeEquipe = { preencheLacunas: preenche.map(function (l) { return NOMES[l]; }), reforcaExcesso: reforca.map(function (l) { return NOMES[l]; }) };
-
-    var avaliados = envolve.filter(function (x) { return x.pontuacao != null; });
-    var sp = 0, sv = 0;
-    avaliados.forEach(function (x) { var w = x === comLider ? x.peso * 1.5 : x.peso; sp += w; sv += x.pontuacao * w; });
-    var media = sp ? sv / sp : 65;
-    res.pontuacao = Math.round(limitar(media + ajusteEquipe, 0, 100));
-    res.nivel = res.pontuacao >= 70 ? 'fluido' : res.pontuacao >= 50 ? 'atencao' : 'tensao';
-
-    avaliados.slice().sort(function (a, b) { return b.pontuacao - a.pontuacao; }).forEach(function (x) {
-      if (x.nivel === 'fluido') addUnico(res.pontosFortes, 'Com ' + porId[outro(x)].nome + ': ' + x.sinergias[0]);
-      else addUnico(res.riscos, 'Com ' + porId[outro(x)].nome + ' (' + ({ atencao: 'atenção', tensao: 'tensão' }[x.nivel] || x.nivel) + ', ' + x.pontuacao + '/100): ' + (x.riscos[0] || 'pede combinados claros.'));
-    });
+    var comTeste = envolve.filter(function (x) { return x.pontuacao != null; });
     envolve.filter(function (x) { return x.pontuacao == null; }).forEach(function (x) {
-      addUnico(res.riscos, 'Sem teste de ' + porId[outro(x)].nome + ': encaixe com essa pessoa não avaliado.');
+      addUnico(res.observacoes, porId[outro(x)].nome + ' ainda não respondeu ao DISC: sem sugestões de estilo para essa relação.');
     });
-    if (!res.pontosFortes.length) res.pontosFortes.push(p.nome + ' ' + FORCA[pf.primario] + '.');
-    if (pf.equilibrado) res.riscos.push('Perfil pouco definido: confirmar o estilo em entrevista comportamental.');
+    if (pf.equilibrado) res.observacoes.push('Estilo pouco definido nas respostas: confirme em conversa como ' + p.nome + ' prefere trabalhar.');
 
     // Plano de 90 dias
     var nomeLider = comLider ? porId[comLider.de].nome : 'a liderança';
@@ -575,15 +578,15 @@
     };
     p30.push(INTEG[pf.primario]);
     if (comLider && comLider.dicas.length) p30.push(comLider.dicas[0]);
-    var p60 = ['Conversa de acompanhamento com ' + nomeLider + ': o que está funcionando e o que ajustar na relação.'];
-    var tensos = avaliados.filter(function (x) { return x.nivel !== 'fluido'; });
+    var p60 = ['Conversa de acompanhamento com ' + nomeLider + ': o que está funcionando e o que ajustar na rotina.'];
+    var pedem = comTeste.filter(function (x) { return x.nivel !== 'fluido'; });
     if (comLider && comLider.dicas[1]) p60.push(comLider.dicas[1]);
-    tensos.filter(function (x) { return x !== comLider; }).slice(0, 2).forEach(function (x) {
+    pedem.filter(function (x) { return x !== comLider; }).slice(0, 2).forEach(function (x) {
       p60.push('Combinar com ' + porId[outro(x)].nome + ' — ' + (x.dicas[0] || 'papéis e prioridades.'));
     });
-    preenche.forEach(function (l) { p60.push('Dar a ' + p.nome + ' uma responsabilidade visível que aproveite este ponto forte: ' + FORCA[l] + '.'); });
-    var p90 = ['Avaliação de 90 dias com metas e feedback nos dois sentidos; revisar o encaixe com base no comportamento observado, não só no perfil.'];
-    if (tensos.length) p90.push('Verificar se os combinados com ' + tensos.map(function (x) { return porId[outro(x)].nome; }).join(', ') + ' estão sendo cumpridos.');
+    p60.push('Dar a ' + p.nome + ' uma responsabilidade visível que aproveite o estilo principal descrito (' + NOMES[pf.primario] + '): ' + FORCA[pf.primario].replace(/^traz /, '') + '.');
+    var p90 = ['Conversa dos 90 dias com metas e retorno nos dois sentidos, com base no trabalho do dia a dia, não no perfil.'];
+    if (pedem.length) p90.push('Verificar se os combinados com ' + juntar(pedem.map(function (x) { return porId[outro(x)].nome; })) + ' estão sendo cumpridos.');
     r.push({ periodo: 'Dias 1–30', itens: p30 }, { periodo: 'Dias 31–60', itens: p60 }, { periodo: 'Dias 61–90', itens: p90 });
     return res;
   }
@@ -632,7 +635,7 @@
 
     var foco = null;
     if (dados.foco != null && dados.foco !== '') {
-      if (porId[String(dados.foco)]) foco = analisarFoco(String(dados.foco), porId, pares, equipe);
+      if (porId[String(dados.foco)]) foco = analisarFoco(String(dados.foco), porId, pares);
       else avisos.push('Pessoa em foco não encontrada: ' + texto(dados.foco) + '.');
     }
     if (equipe.semTeste.length) avisos.push(equipe.semTeste.length + ' pessoa(s) sem teste: análises dessas relações ficam indefinidas.');
@@ -659,7 +662,11 @@
     PESO: PESO,
     ALTO: ALTO,
     NOMES: NOMES,
-    AVISOS: AVISOS_LIMITE
+    AVISOS: AVISOS_LIMITE,
+    FALTA: FALTA,
+    EXCESSO: EXCESSO,
+    leitura: leitura,
+    ROTULOS_LEITURA: ROTULOS_LEITURA
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = DISC_COMPATIBILIDADE;
   else root.DISC_COMPATIBILIDADE = DISC_COMPATIBILIDADE;

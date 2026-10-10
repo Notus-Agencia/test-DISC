@@ -1,0 +1,1091 @@
+{
+ "modelo": "equipe",
+ "versao": 1,
+ "titulo": "Relatório de equipe — Empresa Fictícia de Exemplo",
+ "geradoEm": "2026-10-05T12:00:00.000Z",
+ "empresa": {
+  "nome": "Empresa Fictícia de Exemplo",
+  "cidade": "Cidade Exemplo"
+ },
+ "consultor": "Consultor Exemplo",
+ "numeros": {
+  "pessoas": 6,
+  "comTeste": 5,
+  "relacoes": 8,
+  "liderancas": 2,
+  "harmonia": 46
+ },
+ "sumario": {
+  "equilibrio": {
+   "status": "excesso",
+   "rotulo": "Concentrado",
+   "texto": "O time tem todas as forças representadas, mas concentra Dominância. Estilo mais comum: Dominância (3 de 5)."
+  },
+  "harmonia": 46,
+  "harmoniaNivel": "tensao",
+  "niveis": {
+   "fluido": 1,
+   "atencao": 2,
+   "tensao": 4,
+   "indefinido": 1
+  },
+  "resumo": "5 de 6 pessoas com teste. Média: D 30,4% · I 21,6% · S 21% · C 27%. Em excesso: Dominância.",
+  "destaques": [
+   "Bruno E. e Carla E. (80/100): Ritmo parecido, organização e constância: execução cuidadosa e confiável.",
+   "As quatro forças do DISC estão presentes no time: há quem decida, quem engaje, quem sustente a rotina e quem cuide da qualidade.",
+   "Força predominante: Dominância — o time traz senso de urgência, decisão e foco em resultado."
+  ],
+  "alertas": [
+   "Fábio E. e Eva E. em tensão (22/100): Dois perfis de Dominância alta: disputa por controle, decisões atropeladas e discussões que viram queda de braço.",
+   "Ana E. e Fábio E. em tensão (35/100): Dois perfis de Dominância alta: disputa por controle, decisões atropeladas e discussões que viram queda de braço.",
+   "Ana E. e Eva E. em tensão (40/100): Dois perfis de Dominância alta: disputa por controle, decisões atropeladas e discussões que viram queda de braço."
+  ]
+ },
+ "organograma": {
+  "raizes": [
+   {
+    "id": "p1",
+    "nome": "Ana E.",
+    "cargo": "Diretora",
+    "codigo": "DI",
+    "primario": "D",
+    "nivel": 0,
+    "filhos": [
+     {
+      "id": "p2",
+      "nome": "Bruno E.",
+      "cargo": "Gerente",
+      "codigo": "SC",
+      "primario": "S",
+      "nivel": 1,
+      "filhos": [
+       {
+        "id": "p3",
+        "nome": "Carla E.",
+        "cargo": "Analista",
+        "codigo": "CS",
+        "primario": "C",
+        "nivel": 2,
+        "filhos": [],
+        "foto": null
+       },
+       {
+        "id": "p4",
+        "nome": "Davi E.",
+        "cargo": "Vendedor",
+        "codigo": null,
+        "primario": null,
+        "nivel": 2,
+        "filhos": [],
+        "foto": null
+       }
+      ],
+      "foto": null
+     },
+     {
+      "id": "p5",
+      "nome": "Eva E.",
+      "cargo": "Vendedora",
+      "codigo": "DI",
+      "primario": "D",
+      "nivel": 1,
+      "filhos": [],
+      "foto": null
+     },
+     {
+      "id": "p6",
+      "nome": "Fábio E.",
+      "cargo": "Coordenador",
+      "codigo": "DC",
+      "primario": "D",
+      "nivel": 1,
+      "filhos": [],
+      "foto": null
+     }
+    ],
+    "foto": null
+   }
+  ],
+  "profundidade": 2
+ },
+ "equilibrio": {
+  "status": "excesso",
+  "rotulo": "Concentrado",
+  "texto": "O time tem todas as forças representadas, mas concentra Dominância. Estilo mais comum: Dominância (3 de 5).",
+  "media": {
+   "D": 30.4,
+   "I": 21.6,
+   "S": 21,
+   "C": 27
+  },
+  "distribuicao": {
+   "D": 3,
+   "I": 0,
+   "S": 1,
+   "C": 1,
+   "equilibrado": 0
+  },
+  "falta": [],
+  "excesso": [
+   {
+    "fator": "D",
+    "nome": "Dominância",
+    "texto": "Dominância em excesso: risco de disputa por controle, decisões impulsivas e clima de pressão constante. (média 30,4%; 3 de 5 com perfil principal Dominância)"
+   }
+  ],
+  "semTeste": [
+   {
+    "nome": "Davi E.",
+    "cargo": "Vendedor"
+   }
+  ],
+  "total": 6,
+  "comTeste": 5
+ },
+ "pares": [
+  {
+   "de": "p6",
+   "para": "p5",
+   "deNome": "Fábio E.",
+   "paraNome": "Eva E.",
+   "tipo": "direto",
+   "nivel": "tensao",
+   "pontuacao": 22,
+   "codigos": [
+    "DC",
+    "DI"
+   ],
+   "sinergias": [
+    "Os dois têm senso de urgência e foco em resultado.",
+    "Complementares quando há papéis claros: Eva E. abre portas e engaja; Fábio E. garante precisão e qualidade."
+   ],
+   "riscos": [
+    "Dois perfis de Dominância alta: disputa por controle, decisões atropeladas e discussões que viram queda de braço.",
+    "Eva E., com Influência alta, e Fábio E., com Conformidade alta: atrito entre entusiasmo e detalhe — Fábio E. pode achar Eva E. superficial; Eva E. pode achar Fábio E. lento(a) e crítico(a)."
+   ],
+   "dicas": [
+    "Dividam territórios: cada um com decisões, metas e responsabilidades claramente separadas.",
+    "Combinem antes quem decide em caso de empate (ou quem é o árbitro).",
+    "Discordâncias em particular e com dados; em público, uma posição única.",
+    "Eva E.: leve dados e registre por escrito o que foi combinado."
+   ]
+  },
+  {
+   "de": "p1",
+   "para": "p6",
+   "deNome": "Ana E.",
+   "paraNome": "Fábio E.",
+   "tipo": "lidera",
+   "nivel": "tensao",
+   "pontuacao": 35,
+   "codigos": [
+    "DI",
+    "DC"
+   ],
+   "sinergias": [
+    "Os dois têm senso de urgência e foco em resultado."
+   ],
+   "riscos": [
+    "Dois perfis de Dominância alta: disputa por controle, decisões atropeladas e discussões que viram queda de braço."
+   ],
+   "dicas": [
+    "Dividam territórios: cada um com decisões, metas e responsabilidades claramente separadas.",
+    "Combinem antes quem decide em caso de empate (ou quem é o árbitro).",
+    "Discordâncias em particular e com dados; em público, uma posição única."
+   ]
+  },
+  {
+   "de": "p1",
+   "para": "p5",
+   "deNome": "Ana E.",
+   "paraNome": "Eva E.",
+   "tipo": "lidera",
+   "nivel": "tensao",
+   "pontuacao": 40,
+   "codigos": [
+    "DI",
+    "DI"
+   ],
+   "sinergias": [
+    "Os dois têm senso de urgência e foco em resultado.",
+    "Ritmo de trabalho parecido (rápido)."
+   ],
+   "riscos": [
+    "Dois perfis de Dominância alta: disputa por controle, decisões atropeladas e discussões que viram queda de braço."
+   ],
+   "dicas": [
+    "Dividam territórios: cada um com decisões, metas e responsabilidades claramente separadas.",
+    "Combinem antes quem decide em caso de empate (ou quem é o árbitro).",
+    "Discordâncias em particular e com dados; em público, uma posição única."
+   ]
+  },
+  {
+   "de": "p3",
+   "para": "p5",
+   "deNome": "Carla E.",
+   "paraNome": "Eva E.",
+   "tipo": "direto",
+   "nivel": "tensao",
+   "pontuacao": 40,
+   "codigos": [
+    "CS",
+    "DI"
+   ],
+   "sinergias": [
+    "Complementares quando há papéis claros: Eva E. abre portas e engaja; Carla E. garante precisão e qualidade.",
+    "Ambos focados em tarefas: dupla forte em resultado com qualidade quando os papéis estão claros."
+   ],
+   "riscos": [
+    "Eva E., com Influência alta, e Carla E., com Conformidade alta: atrito entre entusiasmo e detalhe — Carla E. pode achar Eva E. superficial; Eva E. pode achar Carla E. lento(a) e crítico(a).",
+    "Eva E. quer rapidez; Carla E. quer certeza — risco de atrito entre prazo e qualidade.",
+    "Ritmos diferentes: Eva E. tende a ser mais rápido(a) e Carla E. mais cauteloso(a)."
+   ],
+   "dicas": [
+    "Eva E.: leve dados e registre por escrito o que foi combinado.",
+    "Carla E.: aponte primeiro o que está bom, depois os ajustes — e só os que importam.",
+    "Definam juntos o \"padrão mínimo de qualidade\" antes de começar.",
+    "Combinem prazo e critério de qualidade juntos, no início de cada entrega."
+   ]
+  },
+  {
+   "de": "p1",
+   "para": "p2",
+   "deNome": "Ana E.",
+   "paraNome": "Bruno E.",
+   "tipo": "lidera",
+   "nivel": "atencao",
+   "pontuacao": 50,
+   "codigos": [
+    "DI",
+    "SC"
+   ],
+   "sinergias": [
+    "Ana E. dá direção e metas; Bruno E. entrega com constância e lealdade quando sabe o que esperar."
+   ],
+   "riscos": [
+    "Ana E., com Dominância alta, liderando Bruno E., com Estabilidade alta: sem previsibilidade, a cobrança rápida tende a gerar pressão e insegurança em Bruno E.",
+    "Ritmos diferentes: Ana E. tende a ser mais rápido(a) e Bruno E. mais cauteloso(a)."
+   ],
+   "dicas": [
+    "Ana E.: antecipe mudanças e explique o porquê antes do \"o quê\".",
+    "Ana E.: combine prioridades da semana e prazos realistas; evite trocas de rumo de última hora.",
+    "Ana E.: dê feedback em particular, com calma e exemplos concretos.",
+    "Bruno E.: peça clareza sobre prioridades e sinalize cedo quando o prazo não couber."
+   ]
+  },
+  {
+   "de": "p6",
+   "para": "p3",
+   "deNome": "Fábio E.",
+   "paraNome": "Carla E.",
+   "tipo": "indireto",
+   "nivel": "atencao",
+   "pontuacao": 65,
+   "codigos": [
+    "DC",
+    "CS"
+   ],
+   "sinergias": [
+    "Ambos focados em tarefas: dupla forte em resultado com qualidade quando os papéis estão claros."
+   ],
+   "riscos": [
+    "Fábio E. quer rapidez; Carla E. quer certeza — risco de atrito entre prazo e qualidade.",
+    "Ritmos diferentes: Fábio E. tende a ser mais rápido(a) e Carla E. mais cauteloso(a)."
+   ],
+   "dicas": [
+    "Combinem prazo e critério de qualidade juntos, no início de cada entrega.",
+    "Fábio E.: dê tempo para Carla E. processar; Carla E.: sinalize cedo quando precisar de mais prazo."
+   ]
+  },
+  {
+   "de": "p2",
+   "para": "p3",
+   "deNome": "Bruno E.",
+   "paraNome": "Carla E.",
+   "tipo": "lidera",
+   "nivel": "fluido",
+   "pontuacao": 80,
+   "codigos": [
+    "SC",
+    "CS"
+   ],
+   "sinergias": [
+    "Ritmo parecido, organização e constância: execução cuidadosa e confiável.",
+    "Ritmo de trabalho parecido (cauteloso)."
+   ],
+   "riscos": [
+    "Ritmo cauteloso dos dois: risco de lentidão diante de urgências."
+   ],
+   "dicas": [
+    "Definam prazos-limite para decisões, para não esperar certeza total."
+   ]
+  },
+  {
+   "de": "p2",
+   "para": "p4",
+   "deNome": "Bruno E.",
+   "paraNome": "Davi E.",
+   "tipo": "lidera",
+   "nivel": "indefinido",
+   "pontuacao": null,
+   "codigos": null,
+   "sinergias": [],
+   "riscos": [],
+   "dicas": [
+    "Aplicar o teste em Davi E. para avaliar esta relação."
+   ]
+  }
+ ],
+ "liderancas": [
+  {
+   "id": "p1",
+   "nome": "Ana E.",
+   "cargo": "Diretora",
+   "codigo": "DI",
+   "estilo": "Tende a liderar de forma direta e orientada a metas: decide rápido, cobra resultado e dá autonomia a quem entrega, mas pode soar impaciente e pouco presente no \"como\".",
+   "alertas": [
+    "Relação com Eva E. em tensão (40/100): Dois perfis de Dominância alta: disputa por controle, decisões atropeladas e discussões que viram queda de braço.",
+    "Relação com Fábio E. em tensão (35/100): Dois perfis de Dominância alta: disputa por controle, decisões atropeladas e discussões que viram queda de braço."
+   ],
+   "liderados": [
+    {
+     "id": "p2",
+     "nome": "Bruno E.",
+     "codigo": "SC",
+     "estiloLiderado": "Colaborador harmonizador",
+     "nivel": "atencao",
+     "pontuacao": 50,
+     "tendencia": "Ana E., com Dominância alta, liderando Bruno E., com Estabilidade alta: sem previsibilidade, a cobrança rápida tende a gerar pressão e insegurança em Bruno E. A relação pede combinados claros.",
+     "comoConduzir": [
+      "Ana E.: antecipe mudanças e explique o porquê antes do \"o quê\".",
+      "Ana E.: combine prioridades da semana e prazos realistas; evite trocas de rumo de última hora.",
+      "Ana E.: dê feedback em particular, com calma e exemplos concretos.",
+      "Fale com calma e cordialidade; demonstre interesse genuíno por Bruno."
+     ]
+    },
+    {
+     "id": "p5",
+     "nome": "Eva E.",
+     "codigo": "DI",
+     "estiloLiderado": "Realizador persuasivo",
+     "nivel": "tensao",
+     "pontuacao": 40,
+     "tendencia": "Dois perfis de Dominância alta: disputa por controle, decisões atropeladas e discussões que viram queda de braço. A relação tende a ter tensão sem acordos explícitos.",
+     "comoConduzir": [
+      "Dividam territórios: cada um com decisões, metas e responsabilidades claramente separadas.",
+      "Combinem antes quem decide em caso de empate (ou quem é o árbitro).",
+      "Discordâncias em particular e com dados; em público, uma posição única.",
+      "Seja rápido(a) e energético(a); conversas longas e muito técnicas perdem a atenção."
+     ]
+    },
+    {
+     "id": "p6",
+     "nome": "Fábio E.",
+     "codigo": "DC",
+     "estiloLiderado": "Estrategista exigente",
+     "nivel": "tensao",
+     "pontuacao": 35,
+     "tendencia": "Dois perfis de Dominância alta: disputa por controle, decisões atropeladas e discussões que viram queda de braço. A relação tende a ter tensão sem acordos explícitos.",
+     "comoConduzir": [
+      "Dividam territórios: cada um com decisões, metas e responsabilidades claramente separadas.",
+      "Combinem antes quem decide em caso de empate (ou quem é o árbitro).",
+      "Discordâncias em particular e com dados; em público, uma posição única.",
+      "Traga números e argumentos lógicos — Fábio questiona decisões sem embasamento."
+     ]
+    }
+   ],
+   "foto": null
+  },
+  {
+   "id": "p2",
+   "nome": "Bruno E.",
+   "cargo": "Gerente",
+   "codigo": "SC",
+   "estilo": "Tende a liderar com calma, apoio e previsibilidade: escuta, protege a equipe e mantém rotinas, mas pode adiar conversas difíceis e mudanças necessárias.",
+   "alertas": [
+    "1 liderado(s) sem teste: Davi E."
+   ],
+   "liderados": [
+    {
+     "id": "p3",
+     "nome": "Carla E.",
+     "codigo": "CS",
+     "estiloLiderado": "Perfeccionista estável",
+     "nivel": "fluido",
+     "pontuacao": 80,
+     "tendencia": "Ritmo cauteloso dos dois: risco de lentidão diante de urgências. A relação tende a fluir.",
+     "comoConduzir": [
+      "Definam prazos-limite para decisões, para não esperar certeza total.",
+      "Dê instruções detalhadas por escrito e tempo para análise antes de decidir.",
+      "Tarefas que exigem precisão, conferência, conformidade e documentação."
+     ]
+    },
+    {
+     "id": "p4",
+     "nome": "Davi E.",
+     "codigo": null,
+     "estiloLiderado": null,
+     "nivel": "indefinido",
+     "pontuacao": null,
+     "tendencia": "Davi E. ainda não fez o teste. Estilo de Bruno E.: Tende a liderar com calma, apoio e previsibilidade: escuta, protege a equipe e mantém rotinas, mas pode adiar conversas difíceis e mudanças necessárias.",
+     "comoConduzir": []
+    }
+   ],
+   "foto": null
+  }
+ ],
+ "colaboradores": [
+  {
+   "id": "p1",
+   "nome": "Ana E.",
+   "cargo": "Diretora",
+   "area": null,
+   "foto": null,
+   "codigo": "DI",
+   "percentuais": {
+    "D": 45,
+    "I": 25,
+    "S": 15,
+    "C": 15
+   },
+   "estilo": "Realizador persuasivo",
+   "resumo": "Ana tende a ser direto(a), rápido(a) nas decisões e movido(a) por desafios e metas.",
+   "secoes": [
+    {
+     "chave": "comunicacao",
+     "titulo": "Como se comunicar",
+     "itens": [
+      "Formato: comece pela conclusão e pela decisão necessária; detalhes só se Ana pedir.",
+      "Ritmo: rápido — conversas curtas, com pauta e fechamento claro."
+     ]
+    },
+    {
+     "chave": "delegar",
+     "titulo": "Como delegar e acompanhar",
+     "itens": [
+      "Dê metas ousadas que exijam mobilizar outras pessoas — é onde Ana mais brilha.",
+      "Delegue o \"o quê\" e o \"até quando\"; deixe o \"como\" com Ana."
+     ]
+    },
+    {
+     "chave": "feedback",
+     "titulo": "Como dar feedback",
+     "itens": [
+      "Positivo: ligue o elogio a um resultado concreto — número, meta batida, problema resolvido.",
+      "Exemplo de frase (positivo): “Você destravou o projeto X em duas semanas; isso liberou o time para fechar a meta do mês.”"
+     ]
+    },
+    {
+     "chave": "motivacao",
+     "titulo": "O que motiva e o que desmotiva",
+     "itens": [
+      "Motiva: Desafios novos, metas ousadas e problemas difíceis para resolver.",
+      "Motiva: Autonomia para decidir o \"como\" e perspectiva de mais responsabilidade."
+     ]
+    },
+    {
+     "chave": "estresse",
+     "titulo": "Sinais de estresse e como agir",
+     "itens": [
+      "Sinais: fica mais impaciente, ríspido(a), centralizador(a) e passa por cima das pessoas.",
+      "Como agir: converse em particular, reconheça a urgência e redirecione o foco para o objetivo comum."
+     ]
+    }
+   ],
+   "combinacao": {
+    "codigo": "DI",
+    "nome": "Mobilizador",
+    "frase": "Coloca metas na mesa e convence as pessoas a correr atrás delas.",
+    "descricao": "Dominância com Influência: você junta foco em resultado com facilidade para engajar. Costuma liderar pelo exemplo e pela energia, abrir frentes novas e atrair gente para elas. Atenção ao acompanhamento dos detalhes e ao tempo de quem tem outro ritmo."
+   },
+   "exigido": {
+    "percentuais": {
+     "D": 30,
+     "I": 20,
+     "S": 20,
+     "C": 30
+    },
+    "codigo": "DC",
+    "indice": 20,
+    "faixa": "alta",
+    "rotulo": "Alto",
+    "maisCobrado": "C",
+    "menosUsado": "D"
+   }
+  },
+  {
+   "id": "p2",
+   "nome": "Bruno E.",
+   "cargo": "Gerente",
+   "area": null,
+   "foto": null,
+   "codigo": "SC",
+   "percentuais": {
+    "D": 15,
+    "I": 20,
+    "S": 45,
+    "C": 20
+   },
+   "estilo": "Especialista confiável",
+   "resumo": "Bruno tende a ser calmo(a), leal, paciente e colaborativo(a).",
+   "secoes": [
+    {
+     "chave": "comunicacao",
+     "titulo": "Como se comunicar",
+     "itens": [
+      "Formato: contexto, motivo e passo a passo; confirme o entendimento no final.",
+      "Ritmo: calmo e sem pressa; avise mudanças com antecedência."
+     ]
+    },
+    {
+     "chave": "delegar",
+     "titulo": "Como delegar e acompanhar",
+     "itens": [
+      "Processos recorrentes, controles, qualidade e rotinas que exigem cuidado.",
+      "Explique o processo completo, com exemplos e a quem recorrer em caso de dúvida."
+     ]
+    },
+    {
+     "chave": "feedback",
+     "titulo": "Como dar feedback",
+     "itens": [
+      "Positivo: reconheça a constância e a ajuda ao time, de forma sincera e em particular.",
+      "Exemplo de frase (positivo): “Percebi o cuidado que você teve com X nas últimas semanas. Isso faz muita diferença para o time.”"
+     ]
+    },
+    {
+     "chave": "motivacao",
+     "titulo": "O que motiva e o que desmotiva",
+     "itens": [
+      "Motiva: Segurança — clareza do papel, rotina previsível e equipe estável.",
+      "Motiva: Sentir que ajuda as pessoas e que o próprio trabalho sustenta o time."
+     ]
+    },
+    {
+     "chave": "estresse",
+     "titulo": "Sinais de estresse e como agir",
+     "itens": [
+      "Sinais: fica calado(a), concorda com tudo, adia decisões, fica mais lento(a) ou resistente a mudanças.",
+      "Como agir: abra espaço seguro para falar, pergunte diretamente o que está incomodando."
+     ]
+    }
+   ],
+   "combinacao": {
+    "codigo": "SC",
+    "nome": "Guardião",
+    "frase": "Preserva o que funciona e garante que nada se perca.",
+    "descricao": "Estabilidade com Conformidade: você une constância a cuidado com regras e qualidade. Costuma ser metódico, fiel aos processos e muito confiável no dia a dia. Atenção a mudanças rápidas, que podem pedir de você mais flexibilidade."
+   },
+   "exigido": {
+    "percentuais": {
+     "D": 40,
+     "I": 30,
+     "S": 10,
+     "C": 20
+    },
+    "codigo": "DI",
+    "indice": 35,
+    "faixa": "muito_alta",
+    "rotulo": "Muito alto",
+    "maisCobrado": "D",
+    "menosUsado": "S"
+   }
+  },
+  {
+   "id": "p3",
+   "nome": "Carla E.",
+   "cargo": "Analista",
+   "area": null,
+   "foto": null,
+   "codigo": "CS",
+   "percentuais": {
+    "D": 10,
+    "I": 15,
+    "S": 25,
+    "C": 50
+   },
+   "estilo": "Perfeccionista estável",
+   "resumo": "Carla tende a ser analítico(a), organizado(a), criterioso(a) e atento(a) aos detalhes.",
+   "secoes": [
+    {
+     "chave": "comunicacao",
+     "titulo": "Como se comunicar",
+     "itens": [
+      "Formato: dados, critérios e lógica, em material organizado e completo.",
+      "Ritmo: dê tempo para análise antes de pedir uma posição."
+     ]
+    },
+    {
+     "chave": "delegar",
+     "titulo": "Como delegar e acompanhar",
+     "itens": [
+      "Tarefas que exigem precisão, conferência, conformidade e documentação.",
+      "Defina critérios de qualidade, padrões e o \"pronto\" de forma explícita."
+     ]
+    },
+    {
+     "chave": "feedback",
+     "titulo": "Como dar feedback",
+     "itens": [
+      "Positivo: seja específico(a) sobre a qualidade técnica, com um exemplo concreto.",
+      "Exemplo de frase (positivo): “A análise de X estava completa e sem erros — usei direto na reunião com a diretoria.”"
+     ]
+    },
+    {
+     "chave": "motivacao",
+     "titulo": "O que motiva e o que desmotiva",
+     "itens": [
+      "Motiva: Padrões claros, tempo para fazer bem feito e autonomia técnica.",
+      "Motiva: Decisões baseadas em dados e espaço para se especializar."
+     ]
+    },
+    {
+     "chave": "estresse",
+     "titulo": "Sinais de estresse e como agir",
+     "itens": [
+      "Sob pressão pode se fechar e travar; reduza a incerteza e acompanhe de perto.",
+      "Sinais: fica mais crítico(a), fechado(a), pessimista, analisa demais e trava decisões."
+     ]
+    }
+   ],
+   "combinacao": {
+    "codigo": "CS",
+    "nome": "Artesão",
+    "frase": "Faz com calma, método e capricho.",
+    "descricao": "Conformidade com Estabilidade: você une atenção aos detalhes a um ritmo constante. Tende a ser cuidadoso, organizado e muito consistente na qualidade do que entrega. Atenção à demora em decidir e à preferência pelo jeito conhecido de fazer."
+   }
+  },
+  {
+   "id": "p4",
+   "nome": "Davi E.",
+   "cargo": "Vendedor",
+   "area": null,
+   "foto": null,
+   "codigo": null,
+   "percentuais": null,
+   "estilo": null,
+   "resumo": null,
+   "secoes": []
+  },
+  {
+   "id": "p5",
+   "nome": "Eva E.",
+   "cargo": "Vendedora",
+   "area": null,
+   "foto": null,
+   "codigo": "DI",
+   "percentuais": {
+    "D": 40,
+    "I": 35,
+    "S": 10,
+    "C": 15
+   },
+   "estilo": "Realizador persuasivo",
+   "resumo": "Eva tende a ser direto(a), rápido(a) nas decisões e movido(a) por desafios e metas.",
+   "secoes": [
+    {
+     "chave": "comunicacao",
+     "titulo": "Como se comunicar",
+     "itens": [
+      "Formato: comece pela conclusão e pela decisão necessária; detalhes só se Eva pedir.",
+      "Ritmo: rápido — conversas curtas, com pauta e fechamento claro."
+     ]
+    },
+    {
+     "chave": "delegar",
+     "titulo": "Como delegar e acompanhar",
+     "itens": [
+      "Dê metas ousadas que exijam mobilizar outras pessoas — é onde Eva mais brilha.",
+      "Delegue o \"o quê\" e o \"até quando\"; deixe o \"como\" com Eva."
+     ]
+    },
+    {
+     "chave": "feedback",
+     "titulo": "Como dar feedback",
+     "itens": [
+      "Positivo: ligue o elogio a um resultado concreto — número, meta batida, problema resolvido.",
+      "Exemplo de frase (positivo): “Você destravou o projeto X em duas semanas; isso liberou o time para fechar a meta do mês.”"
+     ]
+    },
+    {
+     "chave": "motivacao",
+     "titulo": "O que motiva e o que desmotiva",
+     "itens": [
+      "Motiva: Desafios novos, metas ousadas e problemas difíceis para resolver.",
+      "Motiva: Autonomia para decidir o \"como\" e perspectiva de mais responsabilidade."
+     ]
+    },
+    {
+     "chave": "estresse",
+     "titulo": "Sinais de estresse e como agir",
+     "itens": [
+      "Sinais: fica mais impaciente, ríspido(a), centralizador(a) e passa por cima das pessoas.",
+      "Como agir: converse em particular, reconheça a urgência e redirecione o foco para o objetivo comum."
+     ]
+    }
+   ],
+   "combinacao": {
+    "codigo": "DI",
+    "nome": "Mobilizador",
+    "frase": "Coloca metas na mesa e convence as pessoas a correr atrás delas.",
+    "descricao": "Dominância com Influência: você junta foco em resultado com facilidade para engajar. Costuma liderar pelo exemplo e pela energia, abrir frentes novas e atrair gente para elas. Atenção ao acompanhamento dos detalhes e ao tempo de quem tem outro ritmo."
+   }
+  },
+  {
+   "id": "p6",
+   "nome": "Fábio E.",
+   "cargo": "Coordenador",
+   "area": null,
+   "foto": null,
+   "codigo": "DC",
+   "percentuais": {
+    "D": 42,
+    "I": 13,
+    "S": 10,
+    "C": 35
+   },
+   "estilo": "Estrategista exigente",
+   "resumo": "Fábio tende a ser direto(a), rápido(a) nas decisões e movido(a) por desafios e metas.",
+   "secoes": [
+    {
+     "chave": "comunicacao",
+     "titulo": "Como se comunicar",
+     "itens": [
+      "Formato: comece pela conclusão e pela decisão necessária; detalhes só se Fábio pedir.",
+      "Ritmo: rápido — conversas curtas, com pauta e fechamento claro."
+     ]
+    },
+    {
+     "chave": "delegar",
+     "titulo": "Como delegar e acompanhar",
+     "itens": [
+      "Dê problemas complexos para resolver, com autonomia e critérios de qualidade claros.",
+      "Delegue o \"o quê\" e o \"até quando\"; deixe o \"como\" com Fábio."
+     ]
+    },
+    {
+     "chave": "feedback",
+     "titulo": "Como dar feedback",
+     "itens": [
+      "Positivo: ligue o elogio a um resultado concreto — número, meta batida, problema resolvido.",
+      "Exemplo de frase (positivo): “Você destravou o projeto X em duas semanas; isso liberou o time para fechar a meta do mês.”"
+     ]
+    },
+    {
+     "chave": "motivacao",
+     "titulo": "O que motiva e o que desmotiva",
+     "itens": [
+      "Motiva: Desafios novos, metas ousadas e problemas difíceis para resolver.",
+      "Motiva: Autonomia para decidir o \"como\" e perspectiva de mais responsabilidade."
+     ]
+    },
+    {
+     "chave": "estresse",
+     "titulo": "Sinais de estresse e como agir",
+     "itens": [
+      "Sinais: fica mais impaciente, ríspido(a), centralizador(a) e passa por cima das pessoas.",
+      "Como agir: converse em particular, reconheça a urgência e redirecione o foco para o objetivo comum."
+     ]
+    }
+   ],
+   "combinacao": {
+    "codigo": "DC",
+    "nome": "Construtor",
+    "frase": "Transforma objetivos ambiciosos em entregas sólidas.",
+    "descricao": "Dominância com Conformidade: você une ambição a um padrão alto de qualidade. Costuma decidir com base em critérios, cobrar consistência e estruturar o caminho até o resultado. Atenção ao tom com quem não acompanha o mesmo nível de exigência."
+   }
+  }
+ ],
+ "foco": {
+  "nome": "Gabriel E.",
+  "cargo": "Analista",
+  "foto": null,
+  "codigo": "IS",
+  "percentuais": {
+   "D": 20,
+   "I": 40,
+   "S": 25,
+   "C": 15
+  },
+  "pontuacao": 64,
+  "nivel": "atencao",
+  "lider": {
+   "nome": "Bruno E.",
+   "tipo": "lidera",
+   "nivel": "fluido",
+   "pontuacao": 74
+  },
+  "liderados": [],
+  "diretos": [
+   {
+    "nome": "Carla E.",
+    "tipo": "direto",
+    "nivel": "tensao",
+    "pontuacao": 49
+   }
+  ],
+  "indiretos": [],
+  "encaixeEquipe": {
+   "preencheLacunas": [],
+   "reforcaExcesso": []
+  },
+  "pontosFortes": [
+   "Com Bruno E.: Clima de confiança e cooperação."
+  ],
+  "riscos": [
+   "Com Carla E. (tensão, 49/100): Gabriel E., com Influência alta, e Carla E., com Conformidade alta: atrito entre entusiasmo e detalhe — Carla E. pode achar Gabriel E. superficial; Gabriel E. pode achar Carla E. lento(a) e crítico(a)."
+  ],
+  "recomendacoes90": [
+   {
+    "periodo": "Dias 1–30",
+    "itens": [
+     "Reunião de boas-vindas com Bruno E. para combinar expectativas, prioridades e forma de comunicação.",
+     "Apresentar pessoalmente às pessoas-chave e dar espaço para contribuir com ideias, combinando registro por escrito dos acordos.",
+     "Bruno E.: combine pontos de acompanhamento curtos e cobre os combinados com leveza."
+    ]
+   },
+   {
+    "periodo": "Dias 31–60",
+    "itens": [
+     "Conversa de acompanhamento com Bruno E.: o que está funcionando e o que ajustar na relação.",
+     "Reservem um momento fixo para falar do que não está funcionando.",
+     "Combinar com Carla E. — Gabriel E.: leve dados e registre por escrito o que foi combinado."
+    ]
+   },
+   {
+    "periodo": "Dias 61–90",
+    "itens": [
+     "Avaliação de 90 dias com metas e feedback nos dois sentidos; revisar o encaixe com base no comportamento observado, não só no perfil.",
+     "Verificar se os combinados com Carla E. estão sendo cumpridos."
+    ]
+   }
+  ],
+  "organograma": {
+   "raizes": [
+    {
+     "id": "p1",
+     "nome": "Ana E.",
+     "cargo": "Diretora",
+     "codigo": "DI",
+     "primario": "D",
+     "nivel": 0,
+     "filhos": [
+      {
+       "id": "p2",
+       "nome": "Bruno E.",
+       "cargo": "Gerente",
+       "codigo": "SC",
+       "primario": "S",
+       "nivel": 1,
+       "filhos": [
+        {
+         "id": "p3",
+         "nome": "Carla E.",
+         "cargo": "Analista",
+         "codigo": "CS",
+         "primario": "C",
+         "nivel": 2,
+         "filhos": [],
+         "foto": null
+        },
+        {
+         "id": "p4",
+         "nome": "Davi E.",
+         "cargo": "Vendedor",
+         "codigo": null,
+         "primario": null,
+         "nivel": 2,
+         "filhos": [],
+         "foto": null
+        },
+        {
+         "id": "foco",
+         "nome": "Gabriel E.",
+         "cargo": "Analista",
+         "codigo": "IS",
+         "primario": "I",
+         "nivel": 2,
+         "filhos": [],
+         "foco": true,
+         "foto": null
+        }
+       ],
+       "foto": null
+      },
+      {
+       "id": "p5",
+       "nome": "Eva E.",
+       "cargo": "Vendedora",
+       "codigo": "DI",
+       "primario": "D",
+       "nivel": 1,
+       "filhos": [],
+       "foto": null
+      },
+      {
+       "id": "p6",
+       "nome": "Fábio E.",
+       "cargo": "Coordenador",
+       "codigo": "DC",
+       "primario": "D",
+       "nivel": 1,
+       "filhos": [],
+       "foto": null
+      }
+     ],
+     "foto": null
+    }
+   ],
+   "profundidade": 2
+  }
+ },
+ "mapa": {
+  "pontos": [
+   {
+    "id": "p1",
+    "nome": "Ana E.",
+    "codigo": "DI",
+    "natural": {
+     "ritmo": 40,
+     "foco": 20
+    },
+    "exigido": {
+     "ritmo": 0,
+     "foco": 20
+    }
+   },
+   {
+    "id": "p2",
+    "nome": "Bruno E.",
+    "codigo": "SC",
+    "natural": {
+     "ritmo": -30,
+     "foco": -30
+    },
+    "exigido": {
+     "ritmo": 40,
+     "foco": 20
+    }
+   },
+   {
+    "id": "p3",
+    "nome": "Carla E.",
+    "codigo": "CS",
+    "natural": {
+     "ritmo": -50,
+     "foco": 20
+    },
+    "exigido": null
+   },
+   {
+    "id": "p5",
+    "nome": "Eva E.",
+    "codigo": "DI",
+    "natural": {
+     "ritmo": 50,
+     "foco": 10
+    },
+    "exigido": null
+   },
+   {
+    "id": "p6",
+    "nome": "Fábio E.",
+    "codigo": "DC",
+    "natural": {
+     "ritmo": 10,
+     "foco": 54
+    },
+    "exigido": null
+   },
+   {
+    "id": "foco",
+    "nome": "Gabriel E.",
+    "codigo": "IS",
+    "natural": {
+     "ritmo": 20,
+     "foco": -30
+    },
+    "exigido": null,
+    "destaque": true
+   }
+  ]
+ },
+ "decisao": {
+  "ritmo": 4,
+  "foco": 14.8,
+  "ritmoRotulo": "Equilibrado",
+  "focoRotulo": "Tarefas",
+  "base": {
+   "dados": 1,
+   "pessoas": 1,
+   "intuicao": 3
+  },
+  "basePredominante": "intuicao",
+  "bases": [
+   {
+    "chave": "dados",
+    "nome": "Dados e critério",
+    "qtd": 1
+   },
+   {
+    "chave": "pessoas",
+    "nome": "Pessoas e acordo",
+    "qtd": 1
+   },
+   {
+    "chave": "intuicao",
+    "nome": "Intuição e resultado",
+    "qtd": 3
+   }
+  ],
+  "textos": [
+   "O ritmo de decisão do time é equilibrado: há quem acelere e quem peça mais tempo, e isso pode ser uma força se os papéis forem combinados.",
+   "Na hora de decidir, o olhar vai primeiro para a tarefa: prazos, metas e qualidade da entrega.",
+   "Intuição e resultado: boa parte do time decide pela experiência e pelo resultado que quer alcançar, sem esperar ter todas as informações. Para equilibrar, vale reservar um momento curto para checar números e ouvir quem executa antes de fechar decisões grandes."
+  ]
+ },
+ "pressao": {
+  "comExigido": 2,
+  "total": 6,
+  "media": 28,
+  "faixa": "alta",
+  "porFaixa": {
+   "baixa": 0,
+   "moderada": 0,
+   "alta": 1,
+   "muito_alta": 1
+  },
+  "maisCobrado": "D",
+  "pessoas": [
+   {
+    "id": "p2",
+    "nome": "Bruno E.",
+    "indice": 35,
+    "faixa": "muito_alta",
+    "maisCobrado": "D"
+   },
+   {
+    "id": "p1",
+    "nome": "Ana E.",
+    "indice": 20,
+    "faixa": "alta",
+    "maisCobrado": "C"
+   }
+  ],
+  "textos": [
+   "Em média, o trabalho pede um estilo bem diferente do natural das pessoas: vale olhar papéis, rotinas e apoios.",
+   "2 de 2 pessoas com esforço alto ou muito alto: são as primeiras conversas a ter sobre como distribuir tarefas.",
+   "Fator mais cobrado pelo trabalho: Dominância."
+  ]
+ },
+ "avisos": {
+  "limites": [
+   "O DISC descreve estilo de comportamento no trabalho, não competência, inteligência nem caráter; não use como critério único de contratação, promoção ou desligamento.",
+   "Compatibilidade indica onde a convivência tende a fluir ou exigir combinados — não prevê desempenho. Qualquer dupla pode trabalhar bem com papéis e acordos claros.",
+   "As leituras partem do autorrelato de cada pessoa e mudam com contexto, cargo e tempo; confirme em conversa antes de agir."
+  ],
+  "observacoes": [
+   "1 pessoa(s) sem teste: análises dessas relações ficam indefinidas."
+  ]
+ }
+}

@@ -782,6 +782,8 @@ test.describe('Candidato: link de avaliação (API simulada)', () => {
     await expect(page.locator('.subtitulo').first()).toHaveText('Precisamos destes dados para vincular o resultado à avaliação da equipe.');
     await expect(page.locator('.consentimento')).toContainText('na avaliação da equipe da empresa Clínica Exemplo, conduzida pela Gestão sem Caos');
     await expect(page.locator('.consentimento')).toContainText('compartilhado com a empresa');
+    // acréscimo ao consentimento do colaborador (decisão do painel científico)
+    await expect(page.locator('.consentimento')).toContainText('não mede competência e não deve ser usado para decisões de desligamento ou salário');
   });
 
   test('código inexistente, desativado ou mal escrito mostra a tela de link inválido', async ({ page }) => {

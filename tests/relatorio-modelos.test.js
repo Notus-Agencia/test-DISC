@@ -52,7 +52,8 @@ function semSensiveis(dados) {
 test('equipe: formato completo do snapshot', () => {
   const d = M.equipe(entradaEquipe(false), { geradoEm: GERADO });
   assert.equal(d.modelo, 'equipe');
-  assert.equal(d.versao, M.VERSAO);
+  assert.equal(d.versao, M.VERSAO_EQUIPE);
+  assert.equal(M.VERSAO_EQUIPE, 2, 'versão 2: sem harmonia, notas e "tensão"');
   assert.equal(d.geradoEm, GERADO);
   assert.match(d.titulo, /Relatório de equipe — Cartório Exemplo/);
   assert.deepEqual(d.empresa, { nome: 'Cartório Exemplo', cidade: 'Boa Vista' });
@@ -69,25 +70,41 @@ test('equipe: formato completo do snapshot', () => {
   assert.deepEqual(raiz.filhos.map((f) => f.nome), ['Bruno L.', 'Eva N.']);
   assert.deepEqual(raiz.filhos[0].filhos.map((f) => [f.nome, f.codigo]), [['Carla D.', 'CS'], ['Davi R.', null]]);
   assert.equal(raiz.filhos[0].codigo, 'SC', 'código do resultado (não o recalculado)');
-  // sumário: equilíbrio, harmonia, até 3 destaques e 3 alertas
-  assert.ok(d.sumario.equilibrio.rotulo);
-  assert.equal(typeof d.sumario.harmonia, 'number');
-  assert.ok(['fluido', 'atencao', 'tensao'].includes(d.sumario.harmoniaNivel));
+  // Sumário: rótulo dos estilos, até 3 destaques (só de estilo) e até 3 pontos para conversar. A harmonia saiu
+  // (decisão do painel científico, docs/painel-cientifico/decisao.md, seção 4, linhas 1 a 4): era uma média de notas de
+  // dupla sem validação, lida como nota da equipe; o relatório mostra estilos e combinados, nunca uma nota.
+  assert.equal(d.sumario.equilibrio.rotulo, 'Estilos variados');
+  for (const k of ['harmonia', 'harmoniaNivel', 'niveis']) assert.ok(!(k in d.sumario), 'sem sumario.' + k);
+  assert.ok(!('harmonia' in d.numeros));
+  assert.equal(d.numeros.estilosPresentes, 4);
   assert.equal(d.sumario.destaques.length, 3);
-  assert.equal(d.sumario.alertas.length, 3);
-  assert.match(d.sumario.alertas[0], /tensão/);
-  // pares: tensão primeiro; cada um com sinergias, riscos e dicas
-  assert.equal(d.pares[0].nivel, 'tensao');
-  const niveis = d.pares.map((p) => p.nivel);
-  assert.deepEqual(niveis, niveis.slice().sort((a, b) => ['tensao', 'atencao', 'fluido', 'indefinido'].indexOf(a) - ['tensao', 'atencao', 'fluido', 'indefinido'].indexOf(b)));
-  for (const p of d.pares) { assert.ok(Array.isArray(p.sinergias) && Array.isArray(p.riscos) && p.dicas.length >= 1); }
-  // equilíbrio do time
-  assert.deepEqual(Object.keys(d.equilibrio.media), ['D', 'I', 'S', 'C']);
+  assert.match(d.sumario.destaques[1], /^Força predominante: Dominância/);
+  for (const t of d.sumario.destaques) assert.doesNotMatch(t, /\/100|harmonia|tens[aã]o|Ana P\.|Eva N\./i, 'destaque só de estilo: ' + t);
+  // pontos para conversar: nada sobre duplas (o lembrete "Com Eva N., vale combinar desde cedo" fica só no guia da Ana)
+  assert.deepEqual(d.sumario.alertas, ['Bruno L.: 1 liderado(s) sem teste: Davi R.', '1 pessoa sem teste (Davi R.): as relações dela ficam sem sugestões.']);
+  assert.match(d.liderancas[0].alertas[0], /^Com Eva N\., vale combinar desde cedo: /);
+  // pares: dois rótulos sem nota, na ordem lidera → direto → indireto; cada um com sinergias, riscos e dicas
+  for (const p of d.pares) {
+    assert.ok(['fluido', 'combinados', 'indefinido'].includes(p.nivel), p.nivel);
+    assert.ok(!('pontuacao' in p));
+    assert.ok(Array.isArray(p.sinergias) && Array.isArray(p.riscos) && p.dicas.length >= 1);
+  }
+  const tipos = d.pares.map((p) => p.tipo);
+  assert.deepEqual(tipos, tipos.slice().sort((a, b) => ['lidera', 'direto', 'indireto'].indexOf(a) - ['lidera', 'direto', 'indireto'].indexOf(b)));
+  assert.deepEqual(d.pares.filter((p) => p.tipo === 'lidera').map((p) => p.deNome + '>' + p.paraNome), ['Ana P.>Bruno L.', 'Ana P.>Eva N.', 'Bruno L.>Carla D.', 'Bruno L.>Davi R.'], 'ordem registrada dentro do tipo');
+  // estilos do time: só contagens (sem média por fator)
+  assert.ok(!('media' in d.equilibrio));
   assert.deepEqual(d.equilibrio.semTeste, [{ nome: 'Davi R.', cargo: 'Vendedor' }]);
+  for (const f of d.equilibrio.falta) assert.match(f.texto, /^Ninguém do time descreveu .+ como estilo forte\. Vale conferir/);
   // guia por líder: Ana (Bruno, Eva) e Bruno (Carla, Davi)
   assert.deepEqual(d.liderancas.map((l) => l.nome), ['Ana P.', 'Bruno L.']);
   assert.deepEqual(d.liderancas[1].liderados.map((x) => x.nome), ['Carla D.', 'Davi R.']);
   assert.ok(d.liderancas[0].liderados[0].comoConduzir.length >= 1);
+  for (const l of d.liderancas) {
+    for (const x of l.liderados) { assert.ok(!('pontuacao' in x)); assert.ok(['fluido', 'combinados', 'indefinido'].includes(x.nivel)); }
+  }
+  // nenhum número de nota nem "tensão" em lugar nenhum do snapshot
+  assert.doesNotMatch(JSON.stringify(d), /tens[aã]o|\/100|harmonia|"pontuacao"/i);
   // "como liderar" resumido de cada colaborador
   const ana = d.colaboradores[0];
   assert.equal(ana.codigo, 'DI');
@@ -104,16 +121,39 @@ test('equipe: formato completo do snapshot', () => {
   assert.ok(JSON.stringify(d).length < 300 * 1024, 'cabe no limite de 300 KB');
 });
 
-test('equipe com foco: encaixe do candidato e organograma com ele marcado', () => {
+test('equipe: estilo pouco presente vira pergunta; "predomina" conta pessoas (60% com 3 ou mais), sem média', () => {
+  const P = (D, I, S, C) => ({ percentuais: { D, I, S, C } });
+  const time = (rs) => M.equipe({ empresa: { nome: 'X' }, relacoes: [],
+    colaboradores: rs.map((r, i) => ({ pessoaId: 'p' + i, nome: 'Pessoa ' + i + ' Exemplo', status: 'ativo', resultado: r })) }, { geradoEm: GERADO });
+  // 3 de 4 com Dominância principal: predomina; ninguém com Influência forte: pergunta
+  const a = time([P(50, 15, 15, 20), P(45, 10, 20, 25), P(40, 15, 15, 30), P(15, 20, 45, 20)]);
+  assert.deepEqual(a.equilibrio.excesso.map((f) => [f.fator, f.pessoas, f.total]), [['D', 3, 4]]);
+  assert.equal(a.equilibrio.excesso[0].texto, 'Boa parte do time descreve Dominância como estilo principal. Vale combinar como decidir quando houver divergência e quem dá a palavra final.');
+  assert.deepEqual(a.equilibrio.falta.map((f) => f.fator), ['I']);
+  assert.equal(a.equilibrio.falta[0].texto, 'Ninguém do time descreveu Influência como estilo forte. Vale conferir: quem cuida de engajar clientes e outras áreas?');
+  assert.equal(a.equilibrio.rotulo, 'Um estilo predomina e outro está pouco presente');
+  assert.deepEqual(a.sumario.alertas.slice(0, 2), [a.equilibrio.falta[0].texto, a.equilibrio.excesso[0].texto]);
+  assert.equal(a.numeros.estilosPresentes, 3);
+  // média alta de Conformidade, mas só 1 de 3 com C principal: antes era "excesso" (média ≥ 35%); agora não
+  const b = time([P(10, 10, 20, 60), P(30, 35, 15, 20), P(20, 15, 45, 20)]);
+  assert.deepEqual(b.equilibrio.excesso, []);
+  // 2 pessoas: nunca "predomina" (precisa de 3 ou mais)
+  assert.deepEqual(time([P(50, 15, 15, 20), P(45, 10, 20, 25)]).equilibrio.excesso, []);
+  // textos de falta: os quatro em forma de pergunta
+  const nenhum = time([P(25, 25, 25, 25)]);
+  assert.deepEqual(nenhum.equilibrio.falta.map((f) => f.fator), ['D', 'I', 'S', 'C']);
+  for (const f of nenhum.equilibrio.falta) assert.match(f.texto, /^Ninguém do time descreveu \S+ como estilo forte\. Vale conferir(: .+\?| se .+\.)$/);
+});
+
+test('equipe com foco: plano de integração (sem nota, nível nem rótulo de encaixe) e organograma com a pessoa', () => {
   const d = M.equipe(entradaEquipe(true), { geradoEm: GERADO });
   const f = d.foco;
   assert.equal(f.nome, 'Gabriel R.');
   assert.equal(f.codigo, 'IS');
-  assert.equal(typeof f.pontuacao, 'number');
-  assert.equal(f.lider.nome, 'Bruno L.');
-  assert.equal(f.diretos[0].nome, 'Carla D.');
+  assert.deepEqual(Object.keys(f).sort(), ['cargo', 'codigo', 'foto', 'nome', 'observacoes', 'organograma', 'percentuais', 'recomendacoes90']);
   assert.equal(f.recomendacoes90.length, 3);
-  assert.ok(f.riscos.some((t) => /tensão|atenção/.test(t)), 'nível com acento no texto');
+  assert.match(f.recomendacoes90[0].itens[0], /boas-vindas com Bruno L\./);
+  assert.doesNotMatch(JSON.stringify(f), /encaixe|tens[aã]o|\/100|preenche|reforça/i);
   const bruno = f.organograma.raizes[0].filhos[0];
   const cand = bruno.filhos.find((x) => x.foco);
   assert.ok(cand, 'candidato no organograma, abaixo do líder');
@@ -281,6 +321,9 @@ test('equipe: mapa com todos, como o grupo decide, pressão média e combinaçõ
   assert.equal(d.pressao.comExigido, 2);
   assert.ok(d.pressao.media >= 0 && d.pressao.media <= 100);
   assert.equal(d.pressao.pessoas[0].indice >= d.pressao.pessoas[1].indice, true);
+  // distância natural × cargo: retrato do grupo sem apontar pessoas nem falar em "esforço alto"
+  assert.match(d.pressao.textos[0], /^Em média, /);
+  for (const t of d.pressao.textos) assert.doesNotMatch(t, /esforço|alto ou muito alto|primeiras conversas/i);
   assert.ok(d.colaboradores[1].exigido.indice > 0);
   assert.ok(d.mapa.pontos.find((p) => p.id === 'p2').exigido);
   semSensiveis(d);

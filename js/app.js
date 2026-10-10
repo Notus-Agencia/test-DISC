@@ -612,6 +612,8 @@
         ? 'na avaliação da equipe' + daEmpresa + ', conduzida pela Gestão sem Caos, e sei que o meu resultado será compartilhado com a empresa para orientar a liderança'
         : (av ? 'apenas nesta avaliação' + daEmpresa + ', conduzida pela Gestão sem Caos' : 'apenas neste processo seletivo' + daEmpresa),
       fimDados: equipe ? 'excluídos quando eu deixar a empresa ou pedir a exclusão' : (av ? 'excluídos ao final da avaliação' : 'excluídos ao final do processo'),
+      // Equipe: acréscimo ao consentimento (decisão do painel científico, docs/painel-cientifico/decisao.md, 4 e 6.1 e).
+      avisoEstilo: equipe ? 'O seu resultado descreve estilo de comportamento, não mede competência e não deve ser usado para decisões de desligamento ou salário.' : '',
       usoDados: equipe
         ? 'Seu resultado fica no cadastro da equipe da empresa e é compartilhado com ela. Você pode pedir a exclusão a qualquer momento.'
         : av
@@ -2279,7 +2281,8 @@
             '<label class="marcar" for="consentimento">' +
               '<input id="consentimento" name="consentimento" type="checkbox" required aria-describedby="erro-consentimento"' + (estado.consentimento ? ' checked' : '') + '>' +
               '<span>Autorizo o uso dos meus dados (' + escapar(dadosConsentimento(f)) + ') <strong>' + escapar(t.escopo) + '</strong>' +
-                idadeNota + '. Sei que eles serão <strong>' + escapar(t.fimDados) + '</strong>, conforme a LGPD.</span>' +
+                idadeNota + '. Sei que eles serão <strong>' + escapar(t.fimDados) + '</strong>, conforme a LGPD.' +
+                (t.avisoEstilo ? ' ' + escapar(t.avisoEstilo) : '') + '</span>' +
             '</label>' +
             '<p class="campo__erro erro" id="erro-consentimento" role="alert"></p>' +
           '</div>' +

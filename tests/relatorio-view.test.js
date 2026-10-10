@@ -197,7 +197,8 @@ test('organogramaHtml: árvore de cartões com letra e cor DISC, sem teste com t
   assert.match(html, /Sem teste/);
   const comFoco = V.organogramaHtml(d.foco.organograma);
   assert.match(comFoco, /org-cartao--foco/);
-  assert.match(comFoco, /candidato/);
+  assert.match(comFoco, /em integração/);
+  assert.doesNotMatch(comFoco, /candidato/);
   // também aceita o organograma cru do DISC_COMPATIBILIDADE, com focoId
   const C = require('../js/compatibilidade.js');
   const org = C.montar({ pessoas: [{ id: 'x', nome: 'Xis Um', percentuais: RES.CS.percentuais }, { id: 'y', nome: 'Ípsilon Dois', percentuais: null }], relacoes: [] }).organograma;
@@ -383,9 +384,27 @@ test('modelo equipe: seção ritmo e foco com todos no mapa, decisão do grupo e
     relacoes: []
   }, { geradoEm: GERADO });
   const h2 = V.montarHtml(e);
-  assert.match(h2, /Pressão do trabalho sobre o estilo/);
+  assert.ok(!h2.includes('Pressão do trabalho'));
+  assert.match(h2, /Distância entre o estilo natural e o que o cargo pede/);
+  assert.ok(h2.includes(V.esc(V.TEXTOS_EQUIPE.fixos.distancia)), 'aviso: não mede estresse, saúde nem risco psicossocial');
   assert.match(h2, /class="mapa-rf__seta"/);
-  assert.match(h2, /pessoa-doc__esf/);
+  // sem barras nem número por pessoa no capítulo do time e no "como liderar" (só no guia do líder)
+  assert.ok(!h2.includes('pessoa-doc__esf'));
+  const ritmo = h2.slice(h2.indexOf('data-secao="ritmo"'), h2.indexOf('data-secao="relacoes"'));
+  assert.ok(!/barra--esf-|Esforço|\/100/.test(ritmo), 'capítulo do time sem barra por pessoa');
+});
+
+test('modelo equipe: distância natural × cargo por pessoa só no guia do líder', () => {
+  const e = MODELOS.equipe({
+    empresa: { nome: 'X' },
+    colaboradores: [{ pessoaId: 'a', nome: 'Ana Souza', resultado: RES.DI }, { pessoaId: 'b', nome: 'Bia Lima', resultado: RES.SC, exigido: EXIGIDO_DI }],
+    relacoes: [{ de: 'a', para: 'b', tipo: 'lidera' }]
+  }, { geradoEm: GERADO });
+  const html = V.montarHtml(e);
+  const guia = html.slice(html.indexOf('data-secao="lideres"'), html.indexOf('data-secao="pessoas"'));
+  assert.equal((guia.match(/class="liderado-doc__dist"/g) || []).length, 1);
+  assert.match(guia, /Distância do natural ao que o cargo pede/);
+  assert.ok(!/\/100|Esforço/.test(html.replace(/<[^>]+>/g, ' ')));
 });
 
 test('fotos: data:image/jpeg válida vira <img>; inválida ou URL externa vira iniciais; processo sem foto não muda', () => {
@@ -450,4 +469,129 @@ test('título da aba sem "Relatório · Relatório…" e botão "Salvar em PDF" 
   assert.match(h, /id="btn-salvar-pdf"/);
   assert.match(h, /nao-imprimir/);
   assert.ok(!/Notus/i.test(h));
+});
+
+/* ------------------------------------------------------------------ relatório de equipe v2 (decisão do painel científico)
+ * docs/painel-cientifico/decisao.md, seção 4: sem nota de harmonia, de dupla ou de encaixe, sem "tensão", textos de
+ * falta em forma de pergunta, "Pontos para conversar", combinados por relação e o aviso de uso no encerramento.
+ * Relatórios v1 já publicados (tests/fixtures/relatorio-equipe-v1.json, gerado com o motor antigo) também não mostram
+ * nada disso: a view converte os dados antigos na exibição. */
+const C = require('../js/compatibilidade.js');
+const EQUIPE_V1 = require('./fixtures/relatorio-equipe-v1.json');
+const RE_PROIBIDO = /\/\s*100|tens[aã]o|harmonia|Encaixe do candidato|Preenche lacuna|Reforça fator|pedem atenção|Média do time por fator|Pressão do trabalho|Compatibilidade indica|Lacunas e excessos|Equilíbrio do time|Desequilibrado|Concentrado/i;
+function textoVisivel(html) { return html.replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' '); }
+
+function checarEquipeV2(html, rotulo) {
+  const txt = textoVisivel(html);
+  const achado = txt.match(new RegExp('.{0,40}(' + RE_PROIBIDO.source + ').{0,40}', 'i'));
+  assert.equal(achado, null, rotulo + ': não pode aparecer: ' + (achado && achado[0]));
+  assert.doesNotMatch(html, /\/100/, rotulo + ': nenhum "/100" no HTML');
+  assert.doesNotMatch(html, /tens[aã]o/i, rotulo + ': nenhum "tensão" no HTML');
+  assert.ok(html.includes('Pontos para conversar'), rotulo + ': título "Pontos para conversar"');
+  assert.ok(html.includes('Combinados sugeridos por relação'), rotulo);
+  assert.ok(html.includes('Estilos do time') && html.includes('Estilos menos e mais presentes'), rotulo);
+  assert.ok(html.includes(V.esc(V.TEXTOS_EQUIPE.fixos.percentuais)), rotulo + ': nota fixa dos percentuais');
+  assert.ok(html.includes(V.esc(V.TEXTOS_EQUIPE.fixos.relacoes)), rotulo + ': lede das relações');
+  assert.ok(html.includes(V.esc(V.TEXTOS_EQUIPE.fixos.subtitulo)), rotulo + ': subtítulo da capa');
+  assert.ok(html.includes(V.esc(V.TEXTOS_EQUIPE.avisoRelacoes)), rotulo + ': aviso de limite 2 reescrito');
+  assert.ok(html.includes('Não use este relatório para decidir contratação, promoção, desligamento, remanejamento, salário ou bônus.'), rotulo + ': encerramento');
+  assert.ok(html.includes('estilos presentes'), rotulo + ': capa com estilos presentes');
+  assert.ok(!/selo-doc--nv-(atencao|tensao)|par-doc--(atencao|tensao)|barra--nv-/.test(html), rotulo + ': sem classes de nível antigo');
+}
+
+test('equipe v2: nenhum "/100" nem "tensão"; falta em forma de pergunta; aviso de encerramento', () => {
+  // time sem Influência forte e com Dominância predominante (3 de 4), com foco e Parte 2
+  const d = MODELOS.equipe({
+    empresa: { nome: 'Empresa Exemplo' }, consultor: 'Consultor Exemplo',
+    colaboradores: [
+      { pessoaId: 'a', nome: 'Ana Exemplo', cargo: 'Diretora', status: 'ativo', resultado: { percentuais: { D: 50, I: 15, S: 15, C: 20 } }, exigido: EXIGIDO_DI },
+      { pessoaId: 'b', nome: 'Bia Exemplo', cargo: 'Gerente', status: 'ativo', resultado: { percentuais: { D: 45, I: 10, S: 20, C: 25 } }, exigido: EXIGIDO_DI },
+      { pessoaId: 'c', nome: 'Caio Exemplo', cargo: 'Analista', status: 'ativo', resultado: { percentuais: { D: 40, I: 15, S: 15, C: 30 } } },
+      { pessoaId: 'd', nome: 'Davi Exemplo', cargo: 'Analista', status: 'ativo', resultado: RES.SC }
+    ],
+    relacoes: [{ de: 'c', para: 'd', tipo: 'indireto' }, { de: 'b', para: 'c', tipo: 'direto' }, { de: 'a', para: 'b', tipo: 'lidera' }, { de: 'a', para: 'c', tipo: 'lidera' }],
+    foco: { nome: 'Eva Exemplo', cargo: 'Analista', resultado: RES.IS, relacoes: [{ de: 'a', para: 'foco', tipo: 'lidera' }] }
+  }, { geradoEm: GERADO });
+  const html = V.montarHtml(d);
+  checarEquipeV2(html, 'v2');
+  // falta vira pergunta e aparece no sumário e no capítulo de estilos
+  const falta = V.TEXTOS_EQUIPE.falta.I;
+  assert.match(falta, /\?$/);
+  assert.equal((html.match(new RegExp(V.esc(falta).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 2);
+  for (const l of ['D', 'I', 'S']) assert.match(V.TEXTOS_EQUIPE.falta[l], /^Ninguém do time descreveu \S+ como estilo forte\. Vale conferir: .+\?$/);
+  assert.match(V.TEXTOS_EQUIPE.falta.C, /^Ninguém do time descreveu Conformidade como estilo forte\. Vale conferir se /);
+  assert.ok(html.includes('Predomina: Dominância (3 de 4 pessoas)'));
+  // relações: dois rótulos, sem número, na ordem lidera → direto → indireto
+  assert.ok(html.includes('Tende a fluir') || html.includes('Pede combinados'));
+  const tipos = [...html.matchAll(/class="par-doc__tipo">([^<]+)</g)].map((m) => m[1]);
+  assert.deepEqual(tipos, ['lidera', 'lidera', 'trabalha com', 'cruza com']);
+  // guia por líder: "Como conduzir · sugestão de estilo"
+  assert.ok(html.includes('Como conduzir · sugestão de estilo'));
+  // plano de integração no lugar do "encaixe do candidato"
+  const foco = html.slice(html.indexOf('data-secao="foco"'), html.indexOf('data-secao="encerramento"'));
+  assert.ok(foco.includes('Plano de integração'));
+  assert.ok(foco.includes(V.esc(V.TEXTOS_EQUIPE.fixos.integracao)));
+  assert.ok(!/rec__nota|selo-doc--nv-|Pontos fortes do encaixe|Riscos e cuidados|candidato/.test(foco));
+  assert.ok(foco.includes('Plano para os primeiros 90 dias'));
+  // tabelas da view iguais às do motor (a página pública não carrega o motor)
+  assert.deepEqual(V.TEXTOS_EQUIPE.falta, C.FALTA);
+  assert.deepEqual(V.TEXTOS_EQUIPE.excesso, C.EXCESSO);
+  assert.equal(V.TEXTOS_EQUIPE.avisoRelacoes, C.AVISOS[1]);
+  assert.deepEqual(V.TEXTOS_EQUIPE.estilos, MODELOS.ROTULOS_ESTILOS);
+  for (const t of d.pressao.textos.slice(0, 1)) assert.ok(Object.values(V.TEXTOS_EQUIPE.distancia).includes(t), t);
+});
+
+test('equipe v1 já publicada: a view esconde harmonia, notas e "tensão" (mesmo que estejam nos dados)', () => {
+  const d = JSON.parse(JSON.stringify(EQUIPE_V1));
+  // os dados antigos têm mesmo tudo o que saiu
+  assert.equal(d.versao, 1);
+  assert.equal(typeof d.numeros.harmonia, 'number');
+  assert.match(JSON.stringify(d), /tensão/);
+  assert.match(JSON.stringify(d), /\/100/);
+  const html = V.montarHtml(d);
+  checarEquipeV2(html, 'v1');
+  assert.ok(!html.includes('>' + d.numeros.harmonia + '<'), 'número da harmonia não aparece');
+  // alerta do líder reescrito: "Com X, vale combinar desde cedo: <primeira dica>."
+  assert.match(html, /Com Eva E\., vale combinar desde cedo: dividam territórios/);
+  assert.match(html, /A relação pede combinados claros\./);
+  // textos de estilo novos (a partir do fator), rótulo novo e pontos para conversar refeitos
+  assert.ok(html.includes(V.esc(V.TEXTOS_EQUIPE.excesso.D)));
+  assert.ok(!html.includes('Dominância em excesso'));
+  assert.ok(html.includes('Um estilo predomina'));
+  assert.ok(html.includes('1 pessoa sem teste (Davi E.): as relações dela ficam sem sugestões.'));
+  // pares na ordem do tipo de relação e sem barra de nota
+  const tipos = [...html.matchAll(/class="par-doc__tipo">([^<]+)</g)].map((m) => m[1]);
+  assert.deepEqual(tipos, tipos.slice().sort((a, b) => ['lidera', 'trabalha com', 'cruza com'].indexOf(a) - ['lidera', 'trabalha com', 'cruza com'].indexOf(b)));
+  // plano de 90 dias sem "revisar o encaixe"
+  assert.ok(html.includes(V.esc(V.TEXTOS_EQUIPE.fixos.noventa)));
+  // a conversão não altera o objeto recebido
+  assert.deepEqual(d, EQUIPE_V1);
+});
+
+test('equipe v1: "predomina" antigo só pela média (≥ 35%) some; a conversão bate com o motor novo', () => {
+  const d = JSON.parse(JSON.stringify(EQUIPE_V1));
+  d.equilibrio.distribuicao = { D: 1, I: 1, S: 1, C: 2, equilibrado: 0 };
+  d.equilibrio.excesso = [{ fator: 'C', nome: 'Conformidade', texto: 'Conformidade em excesso: risco de perfeccionismo. (média 36%; 2 de 5 com perfil principal Conformidade)' }];
+  d.sumario.alertas = [d.equilibrio.excesso[0].texto];
+  const x = V.equipeV2(d);
+  assert.deepEqual(x.equilibrio.excesso, []);
+  assert.equal(x.equilibrio.rotulo, 'Estilos variados');
+  assert.ok(!x.sumario.alertas.some((t) => /excesso|média/.test(t)));
+  // conversão de um snapshot v2 "envelhecido" devolve os mesmos estilos que o motor novo
+  const novo = MODELOS.equipe({
+    empresa: { nome: 'X' }, relacoes: [],
+    colaboradores: [RES.DI, RES.DI, { percentuais: { D: 40, I: 15, S: 15, C: 30 } }, RES.SC].map((r, i) => ({ pessoaId: 'p' + i, nome: 'P' + i + ' Exemplo', status: 'ativo', resultado: r }))
+  }, { geradoEm: GERADO });
+  const velho = JSON.parse(JSON.stringify(novo));
+  velho.versao = 1;
+  velho.equilibrio.falta.forEach((f) => { f.texto = 'Ninguém com ' + f.nome + ' alta: risco.'; });
+  velho.equilibrio.excesso.forEach((f) => { f.texto = f.nome + ' em excesso: risco. (média 40%)'; delete f.pessoas; delete f.total; });
+  velho.equilibrio.rotulo = 'Desequilibrado';
+  velho.equilibrio.media = { D: 40, I: 20, S: 20, C: 20 };
+  const conv = V.equipeV2(velho);
+  for (const k of ['status', 'rotulo', 'texto', 'falta', 'excesso']) assert.deepEqual(conv.equilibrio[k], novo.equilibrio[k], k);
+  assert.deepEqual(conv.sumario.equilibrio, novo.sumario.equilibrio);
+  assert.equal(conv.numeros.estilosPresentes, novo.numeros.estilosPresentes);
+  // v2 passa direto (só a ordem dos pares é conferida)
+  assert.deepEqual(V.equipeV2(novo).equilibrio, novo.equilibrio);
 });
