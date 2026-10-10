@@ -96,6 +96,10 @@ export function criarDb(sb) {
       const linhas = await dados(sb.from('limites_vendas').select('id').eq('tipo', tipo).eq('chave', c).gte('em', desdeIso).limit(1000));
       return (linhas || []).length;
     },
+    /** Histórico de envios por e-mail (public.envios_email; linha montada por linhaEnvio em email.js). */
+    async envioRegistrar(linha) {
+      await dados(sb.from('envios_email').insert(linha));
+    },
     async adminsListar() {
       return (await dados(sb.from('admins').select('user_id, nome, criado_em, foto').order('criado_em', { ascending: true }))) || [];
     },

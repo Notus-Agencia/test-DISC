@@ -140,7 +140,7 @@ export function criarAsaas(op) {
   };
 }
 
-/** Envio pelo Resend. {configurado, enviar({para, assunto, html, texto})} — lança erro em falha. */
+/** Envio pelo Resend. {configurado, enviar({para, assunto, html, texto}) -> {id} (id do e-mail no Resend, '' se não veio)} — lança erro em falha. */
 export function criarResend(op) {
   const chave = String((op && op.apiKey) || '').trim();
   const remetente = String((op && op.remetente) || '').trim() || 'Gestão sem Caos <onboarding@resend.dev>';
@@ -153,7 +153,12 @@ export function criarResend(op) {
         body: JSON.stringify({ from: remetente, to: [m.para], subject: m.assunto, html: m.html, text: m.texto })
       });
       if (!r.ok) throw new Error('Resend: HTTP ' + r.status);
-      return true;
+      let id = '';
+      try {
+        const j = typeof r.json === 'function' ? await r.json() : null;
+        id = j && typeof j.id === 'string' ? j.id : '';
+      } catch (err) { id = ''; }
+      return { id };
     }
   };
 }

@@ -1321,7 +1321,7 @@ function criarAsaas(op) {
   };
 }
 
-/** Envio pelo Resend. {configurado, enviar({para, assunto, html, texto})} — lança erro em falha. */
+/** Envio pelo Resend. {configurado, enviar({para, assunto, html, texto}) -> {id} (id do e-mail no Resend, '' se não veio)} — lança erro em falha. */
 function criarResend(op) {
   const chave = String((op && op.apiKey) || '').trim();
   const remetente = String((op && op.remetente) || '').trim() || 'Gestão sem Caos <onboarding@resend.dev>';
@@ -1334,7 +1334,12 @@ function criarResend(op) {
         body: JSON.stringify({ from: remetente, to: [m.para], subject: m.assunto, html: m.html, text: m.texto })
       });
       if (!r.ok) throw new Error('Resend: HTTP ' + r.status);
-      return true;
+      let id = '';
+      try {
+        const j = typeof r.json === 'function' ? await r.json() : null;
+        id = j && typeof j.id === 'string' ? j.id : '';
+      } catch (err) { id = ''; }
+      return { id };
     }
   };
 }
@@ -2200,6 +2205,55 @@ function montarEmailRelatorio(d) {
   return { assunto: ASSUNTOS_RELATORIO[modelo], html, texto };
 }
 
+// ---------------------------------------------------------------------------
+// Histórico de envios (public.envios_email, migração 20261016120000_envios_email.sql): o painel mostra
+// "Enviado para … em dd/mm às hh:mm por Nome". Só o combinado: o que (tipo + referência), para quem, quem enviou
+// (nome do administrador ou 'cliente'), quando, resultado e o id no provedor. Nada do conteúdo do e-mail.
+// ---------------------------------------------------------------------------
+
+const TIPOS_ENVIO = ['relatorio', 'pedido'];
+const RE_UUID_ENVIO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Linha de public.envios_email. r = { tipo, referencia, destinatario, enviadoPor? (nome), enviadoPorId? (uuid do admin;
+ * sem ele = 'cliente'), resultado ('ok' | qualquer outro = 'erro'), provedorId?, em? (ISO) }. null se algo essencial
+ * não bater com as regras da tabela (aí nada é gravado).
+ */
+function linhaEnvio(r) {
+  r = r || {};
+  const tipo = TIPOS_ENVIO.indexOf(r.tipo) >= 0 ? r.tipo : '';
+  const referencia = String(r.referencia == null ? '' : r.referencia);
+  const destinatario = String(r.destinatario == null ? '' : r.destinatario).trim().toLowerCase();
+  if (!tipo || !/^[A-Za-z0-9_-]{1,128}$/.test(referencia)) return null;
+  if (destinatario.length < 3 || destinatario.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(destinatario)) return null;
+  const porId = r.enviadoPorId == null || r.enviadoPorId === '' ? '' : String(r.enviadoPorId);
+  if (porId && !RE_UUID_ENVIO.test(porId)) return null;
+  const nome = String(r.enviadoPor == null ? '' : r.enviadoPor).replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim()
+    .substring(0, 120).trim();
+  const provedorId = String(r.provedorId == null ? '' : r.provedorId);
+  return {
+    tipo, referencia, destinatario,
+    enviado_por: porId ? (nome || 'Administrador') : 'cliente',
+    enviado_por_id: porId || null,
+    em: typeof r.em === 'string' && r.em ? r.em : new Date().toISOString(),
+    resultado: r.resultado === 'ok' ? 'ok' : 'erro',
+    provedor_id: /^[A-Za-z0-9_.:-]{1,200}$/.test(provedorId) ? provedorId : null
+  };
+}
+
+/** Grava a tentativa no histórico. NUNCA lança: o e-mail já foi (ou falhou) e o histórico é só para o painel. */
+async function registrarEnvio(db, r) {
+  const linha = linhaEnvio(r);
+  if (!linha || !db || typeof db.envioRegistrar !== 'function') return false;
+  try {
+    await db.envioRegistrar(linha);
+    return true;
+  } catch (err) {
+    try { console.error(err); } catch (e) { /* sem console */ }
+    return false;
+  }
+}
+
 // ======== supabase/funcoes-compartilhadas/admin.js ========
 // Ações da Edge Function "admin" (só administrador). Mesmos nomes, entradas e respostas {ok, ...} das
 // ações do Apps Script (Code.gs/ClickUp.gs/Relatorio.gs), mais usuarios.* do Supabase Auth.
@@ -2424,13 +2478,19 @@ async function acaoRelatorioEnviarEmail(ctx, corpo) {
     remetente = eu ? limparTexto(eu.nome, 80) : '';
   } catch (err) { remetente = ''; }
   const m = montarEmailRelatorio({ modelo, url, nome, mensagem, remetente, titulo: limparTexto(l.dados.titulo, 160) });
+  // Histórico (public.envios_email): cada tentativa no Resend, ok ou erro, com quem enviou.
+  const historico = { tipo: 'relatorio', referencia: l.token, destinatario: para, enviadoPor: remetente, enviadoPorId: ctx.usuario.id };
+  let enviado;
   try {
-    await email.enviar({ para, assunto: m.assunto, html: m.html, texto: m.texto });
+    enviado = await email.enviar({ para, assunto: m.assunto, html: m.html, texto: m.texto });
   } catch (err) {
     try { console.error(err); } catch (e) { /* sem console */ }
+    await registrarEnvio(ctx.db, Object.assign({ resultado: 'erro', em: agoraIso(ctx) }, historico));
     return erro('Não foi possível enviar o e-mail agora (' + limparTexto(err && err.message, 120) + '). Tente de novo em instantes.');
   }
-  return { ok: true, para, enviadoEm: agoraIso(ctx), assunto: m.assunto };
+  const enviadoEm = agoraIso(ctx);
+  await registrarEnvio(ctx.db, Object.assign({ resultado: 'ok', em: enviadoEm, provedorId: enviado && enviado.id }, historico));
+  return { ok: true, para, enviadoEm, assunto: m.assunto, por: remetente || 'Administrador' };
 }
 
 // ---------------------------------------------------------------------------
@@ -2899,6 +2959,10 @@ function criarDb(sb) {
       await dados(sb.from('limites_vendas').insert({ tipo, chave: c, em: agoraIso }));
       const linhas = await dados(sb.from('limites_vendas').select('id').eq('tipo', tipo).eq('chave', c).gte('em', desdeIso).limit(1000));
       return (linhas || []).length;
+    },
+    /** Histórico de envios por e-mail (public.envios_email; linha montada por linhaEnvio em email.js). */
+    async envioRegistrar(linha) {
+      await dados(sb.from('envios_email').insert(linha));
     },
     async adminsListar() {
       return (await dados(sb.from('admins').select('user_id, nome, criado_em, foto').order('criado_em', { ascending: true }))) || [];

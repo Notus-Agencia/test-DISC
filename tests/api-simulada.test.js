@@ -1132,7 +1132,7 @@ test('topoIds do organograma: salvarRelacoes guarda na empresa; listarEquipe dev
   assert.deepEqual((await api.listarEquipe(T, clinica.id)).topoIds, [a.pessoaId]);
   await assert.rejects(api.salvarRelacoes(T, clinica.id, [], { topoIds: 'x' }), /Relações inválidas\./);
 
-  assert.deepEqual(await api.versaoBanco(), { ok: true, versao: 20261015120000, faltando: [] });
+  assert.deepEqual(await api.versaoBanco(), { ok: true, versao: 20261016120000, faltando: [] });
 });
 
 // ---------------------------------------------------------------------------
@@ -1280,14 +1280,25 @@ test('e-mail (prévia): relatorioEnviarEmail simula o envio (só publicado, e-ma
   await assert.rejects(api.relatorioEnviarEmail(T, 'f'.repeat(64), { para: 'a@b.com' }), /Relatório não encontrado/);
   const ok = await api.relatorioEnviarEmail(T, r.token, { para: 'Dono@Cliente.com', nome: 'Dono', mensagem: 'Oi' });
   assert.deepEqual([ok.ok, ok.para, ok.assunto, ok.simulado], [true, 'dono@cliente.com', 'Relatório de equipe — Gestão sem Caos', true]);
+  assert.ok(ok.por, 'quem enviou volta na resposta');
   await assert.rejects(api.relatorioEnviarEmail('', r.token, { para: 'a@b.com' }), (e) => e.sessaoExpirada === true);
+  // Histórico (como a tabela envios_email): o envio fica guardado, com quem enviou; só admin lê.
+  await api.relatorioEnviarEmail(T, r.token, { para: 'socia@cliente.com' });
+  const h = await api.listarEnviosEmail(T, { tipo: 'relatorio', referencias: [r.token, 'f'.repeat(64)] });
+  assert.deepEqual(h.envios.map((x) => [x.referencia, x.para, x.por, x.cliente, x.resultado]),
+    [[r.token, 'socia@cliente.com', ok.por, false, 'ok'], [r.token, 'dono@cliente.com', ok.por, false, 'ok']]);
+  assert.ok(h.envios.every((x) => !('mensagem' in x) && !('nome' in x)), 'nada do conteúdo do e-mail');
+  assert.deepEqual((await api.listarEnviosEmail(T, { tipo: 'pedido', referencias: [r.token] })).envios, []);
+  await assert.rejects(api.listarEnviosEmail('', { referencias: [r.token] }), (e) => e.sessaoExpirada === true);
 
-  const { api: v } = nova({ provedorPagamento: 'asaas' });
+  const { api: v, T: VT } = nova({ provedorPagamento: 'asaas' });
   const e = await v.enviarPessoal(payloadValido({ id: 'pessoal-002', email: 'bia@x.com' }));
   const p = await v.criarPedido(e.tokenResumo, 'completo', '');
   await assert.rejects(v.enviarLinkPorEmail(p.tokenAcesso), /Pedido não encontrado/);
   await v.simularPagamento(p.pedidoId);
   assert.deepEqual(await v.enviarLinkPorEmail(p.tokenAcesso), { ok: true, email: 'b**@x.com' });
+  const hp = await v.listarEnviosEmail(VT, { tipo: 'pedido', referencias: [p.pedidoId] });
+  assert.deepEqual(hp.envios.map((x) => [x.referencia, x.para, x.por, x.cliente]), [[p.pedidoId, 'bia@x.com', '', true]]);
 });
 
 // ---------------------------------------------------------------------------

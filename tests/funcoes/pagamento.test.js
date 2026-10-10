@@ -68,7 +68,7 @@ function criarFetchVendas(op) {
 
 function montar(op) {
   op = op || {};
-  const sb = criarSupabaseFalso({ tabelas: { pedidos: op.pedidos || [pedidoLinha()], limites_vendas: [] } });
+  const sb = criarSupabaseFalso({ tabelas: { pedidos: op.pedidos || [pedidoLinha()], limites_vendas: [], envios_email: [] } });
   const fetch = criarFetchVendas(op.fetch);
   let relogio = AGORA;
   const base = {
@@ -290,4 +290,14 @@ test('enviarLink ("Enviar para meu e-mail"): só pedido pago, vai para o e-mail 
   assert.match((await t.post({ acao: 'enviarLink', tokenAcesso: TOKEN })).json.erro, /daqui a 1 hora/);
   t.avancar(3600 * 1000 + 1000);
   assert.equal((await t.post({ acao: 'enviarLink', tokenAcesso: TOKEN })).json.ok, true);
+  // Histórico (public.envios_email): um registro por e-mail que saiu, como 'cliente', com o id do Resend.
+  const hist = t.sb.st.tabelas.envios_email;
+  assert.equal(hist.length, 4, '3 na primeira hora + 1 depois; o recusado pelo limite não conta');
+  assert.deepEqual(Object.keys(hist[0]).sort(), ['destinatario', 'em', 'enviado_por', 'enviado_por_id', 'provedor_id', 'referencia', 'resultado', 'tipo']);
+  assert.deepEqual([hist[0].tipo, hist[0].referencia, hist[0].destinatario, hist[0].enviado_por, hist[0].enviado_por_id, hist[0].resultado, hist[0].provedor_id],
+    ['pedido', ID, 'bia@exemplo.com', 'cliente', null, 'ok', 'em_1']);
+  // Resend fora: registrado como erro.
+  const f = montar({ pedidos: [pedidoLinha({ status: 'pago' })], fetch: { resendFalha: true } });
+  assert.equal((await f.post({ acao: 'enviarLink', tokenAcesso: TOKEN })).json.ok, false);
+  assert.deepEqual(f.sb.st.tabelas.envios_email.map((e) => [e.resultado, e.provedor_id]), [['erro', null]]);
 });

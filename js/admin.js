@@ -2224,6 +2224,8 @@
     ordenarGrupos: ordenarGrupos,
     STATUS_CONEXAO: STATUS_CONEXAO,
     urlPagamentoStripe: urlPagamentoStripe,
+    dataHoraEnvio: dataHoraEnvio,
+    textoEnvio: textoEnvio,
     urlPagamentosStripe: urlPagamentosStripe,
     pedidoStripeEmTeste: pedidoStripeEmTeste,
     modoStripeDoPedido: modoStripeDoPedido,
@@ -4867,7 +4869,8 @@
         el('div', { classe: 'rel-linha__texto' }, [
           el('span', { classe: 'selo ' + (pub ? 'selo--verde' : ''), texto: pub ? 'Publicado' : 'Rascunho' }),
           el('span', { classe: 'texto-suave t-rotulo tabular', texto: 'Gerado em ' + formatarDataSegundos(r.criadoEm) + (pub && r.publicadoEm ? ' · publicado em ' + formatarData(r.publicadoEm) : '') +
-            (r.atualizadoEm && r.atualizadoEm !== r.criadoEm ? ' · salvo em ' + formatarDataSegundos(r.atualizadoEm) : '') })
+            (r.atualizadoEm && r.atualizadoEm !== r.criadoEm ? ' · salvo em ' + formatarDataSegundos(r.atualizadoEm) : '') }),
+          pub ? blocoEnvios('relatorio', r.token, { classe: 'rel-linha__envio', tag: 'span', max: 1 }) : null
         ]),
         el('div', { classe: 'gestao-card__acoes' }, [
           botao('botao--claro botao--pequeno', 'Abrir no editor', function () { abrirRelatorio(p, r); }, { 'data-acao': 'abrir-relatorio' }),
@@ -5021,13 +5024,91 @@
     return botao('botao--claro', 'Abrir prévia em nova aba', function () { abrirPreviaNovaAba(obterDados()); }, { id: id || 'btn-previa-nova-aba', title: 'Mostra o relatório como quem recebe vai ver, sem publicar' });
   }
 
-  // E-mails enviados nesta sessão do painel (por token do relatório): mostrados ao lado do botão.
-  var enviosEmail = {};
-  function textoEnvios(token) {
-    var l = enviosEmail[token] || [];
+  /* ----- Histórico de envios por e-mail (servidor: tabela envios_email; DISC_API.listarEnviosEmail) -----
+   * Mostrado junto do botão de envio: "Enviado para ana@x.com em 05/10 às 14:32 por Nome". Os blocos levam
+   * data-envios="tipo:referência" e são preenchidos quando o histórico chega (uma consulta por tipo, juntando a tela). */
+  var envios = { cache: {}, pedidos: {}, carregados: {}, timer: null };
+  function chaveEnvio(tipo, ref) { return tipo + ':' + ref; }
+  function enviosDe(tipo, ref) { return envios.cache[chaveEnvio(tipo, ref)] || []; }
+  function temHistoricoEnvios() { return MODO_API && papel() === 'admin' && !!metodoApi('listarEnviosEmail'); }
+  // ISO -> "05/10 às 14:32" (com o ano, "05/10/2025 às 14:32", quando não é o ano corrente).
+  function dataHoraEnvio(iso, agora) {
+    var dt = new Date(iso);
+    if (!iso || isNaN(dt.getTime())) return '';
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    var hoje = agora ? new Date(agora) : new Date();
+    return p(dt.getDate()) + '/' + p(dt.getMonth() + 1) + (dt.getFullYear() !== hoje.getFullYear() ? '/' + dt.getFullYear() : '') +
+      ' às ' + p(dt.getHours()) + ':' + p(dt.getMinutes());
+  }
+  // Uma linha do histórico. e = {para, por, cliente, em, resultado}.
+  function textoEnvio(e, agora) {
+    if (!e) return '';
+    var quando = dataHoraEnvio(e.em, agora);
+    var quem = e.cliente ? 'pelo cliente' : 'por ' + (e.por || 'um administrador');
+    return (e.resultado === 'erro' ? 'Falha ao enviar para ' : 'Enviado para ') + (e.para || '—') + (quando ? ' em ' + quando : '') + ' ' + quem;
+  }
+  // Resumo para listas: o último envio e quantos houve.
+  function textoEnvios(tipo, ref) {
+    var l = enviosDe(tipo, ref);
     if (!l.length) return '';
-    var u = l[l.length - 1];
-    return 'Enviado por e-mail para ' + u.para + ' em ' + formatarData(u.em) + (l.length > 1 ? ' (' + l.length + ' envios nesta sessão)' : '') + '.';
+    return textoEnvio(l[0]) + (l.length > 1 ? ' · ' + l.length + (l.length >= 20 ? '+' : '') + ' envios' : '');
+  }
+  // Bloco ao lado do botão: últimos "max" envios (1 = resumo em uma linha). attrs: id, classe, tag ('div' | 'span').
+  function blocoEnvios(tipo, ref, opcoes) {
+    opcoes = opcoes || {};
+    var n = el(opcoes.tag || 'div', { classe: 'envios ' + (opcoes.classe || ''), id: opcoes.id || null, 'data-envios': chaveEnvio(tipo, ref),
+      'data-max': String(opcoes.max || 3), 'aria-live': 'polite' });
+    preencherEnvios(n);
+    pedirEnvios(tipo, ref);
+    return n;
+  }
+  function preencherEnvios(n) {
+    var partes = String(n.getAttribute('data-envios') || '').split(':');
+    var max = Number(n.getAttribute('data-max')) || 3;
+    var l = enviosDe(partes[0], partes.slice(1).join(':'));
+    limpar(n);
+    n.hidden = !l.length;
+    if (!l.length) return;
+    if (max === 1) { n.appendChild(el('span', { classe: 'texto-suave t-rotulo', texto: textoEnvios(partes[0], partes.slice(1).join(':')) })); return; }
+    n.appendChild(el('ul', { classe: 'envios__lista' }, l.slice(0, max).map(function (e) {
+      return el('li', { classe: 'envios__item t-rotulo' + (e.resultado === 'erro' ? ' envios__item--erro' : ' texto-suave'), 'data-resultado': e.resultado, texto: textoEnvio(e) });
+    })));
+    if (l.length > max) n.appendChild(el('p', { classe: 'texto-suave t-rotulo envios__mais', texto: 'e mais ' + (l.length - max) + (l.length >= 20 ? '+' : '') + ' envio(s) antes' }));
+  }
+  function atualizarBlocosEnvios() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-envios]'), preencherEnvios);
+  }
+  // Junta os pedidos da tela numa consulta por tipo (refs já carregadas não voltam ao servidor, a não ser com "forcar").
+  function pedirEnvios(tipo, ref, forcar) {
+    if (!ref || !temHistoricoEnvios()) return;
+    var k = chaveEnvio(tipo, ref);
+    if (envios.carregados[k] && !forcar) return;
+    envios.carregados[k] = true;
+    (envios.pedidos[tipo] = envios.pedidos[tipo] || []).push(ref);
+    if (envios.timer) return;
+    envios.timer = setTimeout(function () {
+      envios.timer = null;
+      var lotes = envios.pedidos;
+      envios.pedidos = {};
+      Object.keys(lotes).forEach(function (t) {
+        var refs = lotes[t];
+        api('listarEnviosEmail', { tipo: t, referencias: refs }).then(function (resp) {
+          if (resp.semHistorico) return; // banco sem a migração: fica o que esta sessão enviou
+          var novos = {};
+          refs.forEach(function (r) { novos[r] = []; });
+          (resp.envios || []).forEach(function (e) { if (novos[e.referencia]) novos[e.referencia].push(e); });
+          refs.forEach(function (r) { envios.cache[chaveEnvio(t, r)] = novos[r]; });
+          atualizarBlocosEnvios();
+        }, function () { /* sem histórico agora: a tela segue normal */ });
+      });
+    }, 0);
+  }
+  // Envio feito agora: aparece na hora e o histórico do servidor é relido (traz o registro gravado lá).
+  function anotarEnvio(tipo, ref, e) {
+    var k = chaveEnvio(tipo, ref);
+    envios.cache[k] = [e].concat(envios.cache[k] || []);
+    atualizarBlocosEnvios();
+    pedirEnvios(tipo, ref, true);
   }
   function emailDaPessoa(pessoaId) {
     if (!pessoaId) return { email: '', nome: '' };
@@ -5063,7 +5144,8 @@
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(para)) throw new Error('Informe um e-mail válido para o destinatário.');
         var envio = { para: para, nome: $('email-nome').value.trim(), mensagem: $('email-mensagem').value.trim() };
         return api('relatorioEnviarEmail', alvo.token, envio).then(function (resp) {
-          (enviosEmail[alvo.token] = enviosEmail[alvo.token] || []).push({ para: resp.para || para, em: resp.enviadoEm || new Date().toISOString() });
+          anotarEnvio('relatorio', alvo.token, { para: resp.para || para, em: resp.enviadoEm || new Date().toISOString(), resultado: 'ok',
+            cliente: false, por: resp.por || consultorAtual() });
           avisar('Enviado para ' + (resp.para || para) + '.', 'ok');
           if (typeof depois === 'function') depois(resp);
         }, function (e) {
@@ -5214,7 +5296,7 @@
           botaoEnviarEmail({ token: ed.token, modelo: 'processo', titulo: p.nome, para: '', nome: p.contratante || '' }, function () { renderizarProcessos(); }, null, { id: 'btn-enviar-email-relatorio' }),
           el('a', { classe: 'botao botao--claro botao--pequeno', id: 'link-abrir-relatorio', href: ed.url, target: '_blank', rel: 'noopener', texto: 'Abrir relatório' })
         ]),
-        textoEnvios(ed.token) ? el('p', { classe: 'texto-suave t-rotulo rel-envio', id: 'rel-envio', texto: textoEnvios(ed.token) }) : null
+        blocoEnvios('relatorio', ed.token, { id: 'rel-envio', classe: 'rel-envio', max: 3 })
       ]));
     }
 
@@ -6639,7 +6721,7 @@
           botaoEnviarEmail(alvoEmailModelo(rel), function () { redesenharRel(); }, null, { id: 'btn-rel-enviar-email' }),
           el('a', { classe: 'botao botao--claro botao--pequeno', href: rel.url, target: '_blank', rel: 'noopener', texto: 'Abrir relatório' })
         ]),
-        textoEnvios(rel.token) ? el('p', { classe: 'texto-suave t-rotulo rel-envio', id: 'rel-modelo-envio', texto: textoEnvios(rel.token) }) : null
+        blocoEnvios('relatorio', rel.token, { id: 'rel-modelo-envio', classe: 'rel-envio', max: 3 })
       ]));
     }
 
@@ -7132,7 +7214,7 @@
         el('span', { classe: 'selo selo--noite', texto: NOMES_MODELO[r.modelo] || r.modelo }),
         el('span', { classe: 'seminegrito gerado__titulo', texto: r.titulo }),
         el('span', { classe: 'texto-suave t-rotulo', texto: [r.empresa, formatarData(r.data)].filter(function (x) { return x && x !== '—'; }).join(' · ') }),
-        textoEnvios(r.token) ? el('span', { classe: 'texto-suave t-rotulo gerado__envio', texto: textoEnvios(r.token) }) : null
+        pub ? blocoEnvios('relatorio', r.token, { classe: 'gerado__envio', tag: 'span', max: 1 }) : null
       ]),
       el('div', { classe: 'gestao-card__acoes' }, [
         botao(!pub && r.tipo === 'modelo' ? 'botao--principal botao--pequeno' : 'botao--claro botao--pequeno', !pub && r.tipo === 'modelo' ? 'Continuar' : 'Abrir', function () { abrirGerado(r); },
@@ -7848,6 +7930,8 @@
     if (p.status === 'estornado') acesso.appendChild(el('p', { classe: 't-nota texto-suave', texto: p.provedor === 'stripe'
       ? 'Confira se o reembolso foi feito no Stripe (Payments → o pagamento → Refund). O aviso do Stripe marca o pedido sozinho.'
       : (p.provedor === 'infinitepay' ? 'Confira se o estorno foi feito no app da InfinitePay.' : 'Confira se o estorno foi feito no Asaas.') }));
+    // Envios do link por e-mail deste pedido (hoje: "Enviar para meu e-mail" do cliente, na página do relatório).
+    if (p.id) acesso.appendChild(blocoEnvios('pedido', p.id, { id: 'vd-pedido-envios', classe: 'rel-envio', max: 5 }));
     var quem = el('section', { classe: 'caixa', id: 'vd-pedido-resposta' }, [el('h3', { classe: 'caixa__titulo', texto: 'Teste respondido' })]);
     if (resposta) {
       quem.appendChild(el('p', { classe: 't-corpo' }, [

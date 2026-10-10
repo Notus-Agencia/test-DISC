@@ -44,7 +44,7 @@
  *              recuperarAcesso, confirmarRetorno, listarPedidos, atualizarPedido, listarCupons, salvarCupom, excluirCupom, listarPacotes,
  *              salvarPacote, resumoVendas.
  *   Aba Conexões (só Supabase/prévia; aqui também recusam): diagnosticoConexoes, testarConexao.
- *   E-mail (só Supabase/prévia; aqui também recusam): relatorioEnviarEmail, enviarLinkPorEmail.
+ *   E-mail (só Supabase/prévia; aqui também recusam): relatorioEnviarEmail, enviarLinkPorEmail, listarEnviosEmail.
  *   Utilitários: protocoloValido, normalizarProtocolo, normalizarCodigoAvaliacao, codigoAvaliacaoDaUrl.
  */
 (function (root) {
@@ -338,6 +338,7 @@
     // Enviar o link do relatório por e-mail (painel) e "Enviar para meu e-mail" (B2C): só no Supabase (e na prévia).
     relatorioEnviarEmail: soSupabase,
     enviarLinkPorEmail: soSupabase,
+    listarEnviosEmail: soSupabase,
 
     // --- pública: página do relatório para o contratante ---
     relatorioPublico: seguro(function (relatorioToken) {
@@ -353,7 +354,7 @@
     'excluirUsuario', 'redefinirSenha',
     'processosListar', 'processosSalvar', 'processosExcluir', 'processoDados', 'clickupStatus', 'clickupListas',
     'relatorioRascunho', 'relatorioSalvar', 'relatorioPublicar', 'relatorioDespublicar', 'relatoriosListar',
-    'relatorioMelhorarTextos', 'relatorioPublico', 'relatorioEnviarEmail',
+    'relatorioMelhorarTextos', 'relatorioPublico', 'relatorioEnviarEmail', 'listarEnviosEmail',
     'listarEquipe', 'salvarColaborador', 'moverColaborador', 'desligarColaborador', 'salvarRelacoes',
     'salvarRelatorioModelo', 'listarRelatoriosModelo', 'excluirRelatorioModelo', 'abrirRelatorioModelo', 'salvarMinhaFoto', 'removerFoto',
     'moverResposta', 'contratarPessoa', 'versaoBanco',

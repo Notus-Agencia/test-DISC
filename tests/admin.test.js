@@ -1203,6 +1203,20 @@ test('Conexões: cartão "Pagamento — Stripe" (modo pelo prefixo, sem a chave;
   assert.equal(AD.urlPagamentoStripe('javascript:x'), '');
 });
 
+test('histórico de envios: "Enviado para … em dd/mm às hh:mm por Nome" (ou pelo cliente; falha em destaque)', () => {
+  const agora = new Date(2026, 9, 10, 15, 0).getTime();
+  const em = new Date(2026, 9, 5, 14, 32).toISOString();
+  assert.equal(AD.dataHoraEnvio(em, agora), '05/10 às 14:32');
+  assert.equal(AD.dataHoraEnvio(new Date(2025, 11, 31, 9, 5).toISOString(), agora), '31/12/2025 às 09:05', 'outro ano: com o ano');
+  assert.equal(AD.dataHoraEnvio('', agora), '');
+  assert.equal(AD.dataHoraEnvio('lixo', agora), '');
+  assert.equal(AD.textoEnvio({ para: 'ana@x.com', em, por: 'Wellington', resultado: 'ok' }, agora), 'Enviado para ana@x.com em 05/10 às 14:32 por Wellington');
+  assert.equal(AD.textoEnvio({ para: 'bia@x.com', em, cliente: true, resultado: 'ok' }, agora), 'Enviado para bia@x.com em 05/10 às 14:32 pelo cliente');
+  assert.equal(AD.textoEnvio({ para: 'c@x.com', em, por: 'Ana', resultado: 'erro' }, agora), 'Falha ao enviar para c@x.com em 05/10 às 14:32 por Ana');
+  assert.equal(AD.textoEnvio({ para: 'c@x.com', em, por: '', resultado: 'ok' }, agora), 'Enviado para c@x.com em 05/10 às 14:32 por um administrador');
+  assert.equal(AD.textoEnvio(null), '');
+});
+
 test('Abrir no Stripe: pagamento de teste abre /test/payments, o real abre /payments', () => {
   assert.equal(AD.urlPagamentoStripe('pi_3Abc123', true), 'https://dashboard.stripe.com/test/payments/pi_3Abc123');
   assert.equal(AD.urlPagamentoStripe('pi_3Abc123', false), 'https://dashboard.stripe.com/payments/pi_3Abc123');

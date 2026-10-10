@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { criarDbFalso, UUID_ADMIN } from './apoio.js';
 import { atenderAdmin } from '../../supabase/funcoes-compartilhadas/http.js';
 import { LIMITE_EMAILS_HORA, MSG_EMAIL_PAINEL_NAO_CONFIGURADO } from '../../supabase/funcoes-compartilhadas/admin.js';
-import { montarEmailRelatorio, escaparHtml, ASSUNTOS_RELATORIO, LOGO_EMAIL } from '../../supabase/funcoes-compartilhadas/email.js';
+import { montarEmailRelatorio, escaparHtml, ASSUNTOS_RELATORIO, LOGO_EMAIL, linhaEnvio, registrarEnvio } from '../../supabase/funcoes-compartilhadas/email.js';
+import { criarResend } from '../../supabase/funcoes-compartilhadas/asaas.js';
 
 const SITE = 'https://disc.gestaosemcaos.com.br';
 const TOKEN_PUB = 'c'.repeat(64);
@@ -119,4 +120,54 @@ test('montarEmailRelatorio: assunto por modelo, sem nome -> "Olá!", escaparHtml
   assert.ok(m.html.includes('Olá!'));
   assert.ok(m.html.includes('href="https://x/r?a=1&amp;b=&quot;2&quot;"'));
   assert.equal(escaparHtml(`<a href='x'>&</a>`), '&lt;a href=&#39;x&#39;&gt;&amp;&lt;/a&gt;');
+});
+
+test('histórico: cada envio (ok ou erro) vai para envios_email com quem enviou, quando e o id do Resend', async () => {
+  const t = preparar();
+  const r = await t.chamar({ acao: 'relatorio.enviarEmail', relatorioToken: TOKEN_PUB, para: 'Dono@Empresa.com', nome: 'Dono', mensagem: 'segredo' });
+  assert.equal(r.ok, true, r.erro);
+  assert.equal(r.por, 'Wellington Venâncio');
+  assert.deepEqual(t.db.st.envios, [{ tipo: 'relatorio', referencia: TOKEN_PUB, destinatario: 'dono@empresa.com', enviado_por: 'Wellington Venâncio',
+    enviado_por_id: UUID_ADMIN, em: r.enviadoEm, resultado: 'ok', provedor_id: 'em_1' }]);
+  assert.ok(!JSON.stringify(t.db.st.envios).includes('segredo'), 'nada do conteúdo do e-mail');
+  // Falha do Resend: registrada como erro (sem id), e a resposta continua sendo o erro em português.
+  const f = preparar({ resendFalha: true });
+  assert.equal((await f.chamar({ acao: 'relatorio.enviarEmail', relatorioToken: TOKEN_PUB, para: 'a@b.com' })).ok, false);
+  assert.deepEqual(f.db.st.envios.map((e) => [e.resultado, e.provedor_id, e.destinatario]), [['erro', null, 'a@b.com']]);
+  // Recusas antes de chamar o Resend (rascunho, e-mail inválido) não entram no histórico.
+  await f.chamar({ acao: 'relatorio.enviarEmail', relatorioToken: TOKEN_RASC, para: 'a@b.com' });
+  await f.chamar({ acao: 'relatorio.enviarEmail', relatorioToken: TOKEN_PUB, para: 'x' });
+  assert.equal(f.db.st.envios.length, 1);
+  // O banco sem a tabela (migração não aplicada) não atrapalha o envio.
+  const sem = preparar();
+  sem.db.st.envioFalha = true;
+  assert.equal((await sem.chamar({ acao: 'relatorio.enviarEmail', relatorioToken: TOKEN_PUB, para: 'a@b.com' })).ok, true);
+});
+
+test('linhaEnvio / registrarEnvio: só o combinado, validado como na tabela; nunca lança', async () => {
+  const base = { tipo: 'pedido', referencia: '0b6f6a52-6c1e-4c55-9d3b-1d2f0e9a7c11', destinatario: ' Bia@Exemplo.com ', resultado: 'ok', em: '2026-10-06T12:00:00.000Z' };
+  assert.deepEqual(linhaEnvio(base), { tipo: 'pedido', referencia: base.referencia, destinatario: 'bia@exemplo.com', enviado_por: 'cliente',
+    enviado_por_id: null, em: base.em, resultado: 'ok', provedor_id: null });
+  assert.equal(linhaEnvio(Object.assign({}, base, { enviadoPorId: UUID_ADMIN, enviadoPor: '' })).enviado_por, 'Administrador');
+  assert.equal(linhaEnvio(Object.assign({}, base, { enviadoPorId: UUID_ADMIN, enviadoPor: ' Ana\n  Souza ' })).enviado_por, 'Ana Souza');
+  assert.equal(linhaEnvio(Object.assign({}, base, { resultado: 'qualquer' })).resultado, 'erro');
+  assert.equal(linhaEnvio(Object.assign({}, base, { provedorId: '<x>' })).provedor_id, null);
+  assert.equal(linhaEnvio(Object.assign({}, base, { provedorId: '49a3999c-0ce1-4ea6-ab68-afcd6dc2e794' })).provedor_id, '49a3999c-0ce1-4ea6-ab68-afcd6dc2e794');
+  for (const ruim of [{ tipo: 'outro' }, { referencia: 'a b' }, { referencia: '' }, { destinatario: 'sem-arroba' }, { enviadoPorId: 'nao-uuid' }]) {
+    assert.equal(linhaEnvio(Object.assign({}, base, ruim)), null, JSON.stringify(ruim));
+  }
+  assert.equal(await registrarEnvio(null, base), false);
+  assert.equal(await registrarEnvio({ envioRegistrar: async () => { throw new Error('sem tabela'); } }, base), false);
+  const gravadas = [];
+  assert.equal(await registrarEnvio({ envioRegistrar: async (l) => { gravadas.push(l); } }, base), true);
+  assert.equal(gravadas.length, 1);
+});
+
+test('criarResend: devolve o id do e-mail no Resend (vazio se não vier)', async () => {
+  const com = criarResend({ apiKey: 're_x', fetch: async () => new Response('{"id":"49a3999c-0ce1"}', { status: 200 }) });
+  assert.deepEqual(await com.enviar({ para: 'a@b.com', assunto: 'x', html: '<p>x</p>', texto: 'x' }), { id: '49a3999c-0ce1' });
+  const sem = criarResend({ apiKey: 're_x', fetch: async () => new Response('não é json', { status: 200 }) });
+  assert.deepEqual(await sem.enviar({ para: 'a@b.com', assunto: 'x', html: '', texto: '' }), { id: '' });
+  const falha = criarResend({ apiKey: 're_x', fetch: async () => new Response('{}', { status: 422 }) });
+  await assert.rejects(falha.enviar({ para: 'a@b.com', assunto: 'x', html: '', texto: '' }), /Resend: HTTP 422/);
 });
