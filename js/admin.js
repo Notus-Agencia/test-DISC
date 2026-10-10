@@ -8684,9 +8684,10 @@
       var btnOk = janela.form.querySelector('#janela-ok');
       if (btnOk) btnOk.disabled = true;
       var pronto = function () { caixa.removeAttribute('aria-busy'); if (btnOk) btnOk.disabled = false; };
+      // Teste do painel: cartão na frente (a janela orienta o 4242…); o Pix primeiro vale para o checkout do cliente.
       var montar = d.simulado
-        ? Promise.resolve(S.montarSimulado({ el: caixa, aoPronto: pronto, paymentIntent: String(d.clientSecret).split('_secret_')[0] }))
-        : Promise.resolve().then(function () { limpar(caixa); return S.montar({ el: caixa, publicavel: d.publicavel, clientSecret: d.clientSecret, aoPronto: pronto }); });
+        ? Promise.resolve(S.montarSimulado({ el: caixa, aoPronto: pronto, paymentIntent: String(d.clientSecret).split('_secret_')[0], pixPrimeiro: false }))
+        : Promise.resolve().then(function () { limpar(caixa); return S.montar({ el: caixa, publicavel: d.publicavel, clientSecret: d.clientSecret, aoPronto: pronto, pixPrimeiro: false }); });
       montar.then(function (x) { if (document.body.contains(caixa)) sessao = x; else x.destruir(); }, function (e) {
         limpar(caixa);
         caixa.appendChild(el('p', { classe: 'cx-cartao__erro', role: 'alert', texto: (e && e.message) || 'Não foi possível carregar o Stripe.' }));

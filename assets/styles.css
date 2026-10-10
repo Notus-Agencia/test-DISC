@@ -1060,6 +1060,10 @@ body[data-modo="pessoal"] .topo-empresa { background: var(--branco); border: 1px
 /* ---------- Pagamento dentro do site (Stripe Payment Element) ---------- */
 /* Espaço reservado para o formulário: nada pula de lugar enquanto ele carrega. */
 .ck-stripe { margin-top: 18px; }
+/* Selo discreto acima das formas de pagamento: o Pix vem primeiro (paymentMethodOrder). */
+.ck-selo-pix { margin: 0 0 10px; }
+.ck-selo-pix .selo { font-weight: 600; }
+.ck-selo-pix-icone { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .ck-stripe-elemento { min-height: 236px; }
 .ck-stripe-carregando { display: flex; align-items: center; gap: 10px; min-height: 236px; justify-content: center; margin: 0; padding: 16px; border-radius: 16px; background: var(--nevoa); font-size: var(--t-rotulo); color: var(--medio); }
 .ck-pagar { min-height: 52px; }

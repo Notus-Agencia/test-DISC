@@ -5,13 +5,19 @@
  *
  * Módulo UMD (global DISC_STRIPE). Parte PURA (testada no Node):
  *   URL_STRIPE_JS, mensagemErro(erroStripe) (português), pixDoIntent(paymentIntent) -> {qr, copiaECola, expira, instrucoesUrl}|null,
- *   resultadoConfirmacao({error, paymentIntent}) -> {status:'pago'|'pendente'|'erro', mensagem, pix, paymentIntent}
+ *   resultadoConfirmacao({error, paymentIntent}) -> {status:'pago'|'pendente'|'erro', mensagem, pix, paymentIntent},
+ *   ORDEM_PIX_PRIMEIRO (['pix', 'card']), opcoesElemento({pixPrimeiro?}) -> opções do elements.create('payment'):
+ *     Pix em primeiro (paymentMethodOrder) por padrão; pixPrimeiro:false deixa a ordem do Stripe (pagamento de teste do painel).
+ *     Os métodos que não estão na lista (Apple Pay, Google Pay…) vêm depois, na ordem do Stripe.
+ *     SEM desconto para Pix: o valor do PaymentIntent é o mesmo em qualquer método.
  * Parte do navegador:
  *   carregar() -> Promise<Stripe>   injeta https://js.stripe.com/v3/ SÓ quando chamado (obrigatório vir do domínio do
  *                                   Stripe; nunca copiado para o nosso site).
  *   aparencia() -> appearance do Elements com os tokens de assets/notus.css (lidos do :root), fonte Plus Jakarta Sans.
- *   montar({el, publicavel, clientSecret, aoPronto(), aoErro(msg), aoMudar({completo, tipo})}) -> Promise<sessao>
- *   montarSimulado({el, aoPronto(), simularPago() -> Promise, pixFicticio:{qr, copiaECola}, paymentIntent?, aoMudar({tipo}), metodo?: 'pix'})
+ *   montar({el, publicavel, clientSecret, aoPronto(), aoErro(msg), aoMudar({completo, tipo}), pixPrimeiro?}) -> Promise<sessao>
+ *   montarSimulado({el, aoPronto(), simularPago() -> Promise, pixFicticio:{qr, copiaECola}, paymentIntent?, aoMudar({tipo}),
+ *                  metodo?: 'pix'|'cartao', pixPrimeiro?})  (com Pix em primeiro, a aba Pix vem antes e já marcada, como a
+ *                                   primeira aba do Payment Element; avisa aoMudar({tipo:'pix'}) ao montar)
  *                                   -> sessao (prévia/demonstração:
  *                                   campos de cartão FICTÍCIOS + Pix com QR de enfeite; nada vai para o Stripe)
  *   sessao: { confirmar(returnUrl) -> Promise<resultadoConfirmacao>, destruir() }
@@ -87,8 +93,23 @@
     return { status: 'pendente', mensagem: '', pix: null, paymentIntent: id };
   }
 
+  // Ordem das formas de pagamento no Payment Element: Pix primeiro (aprovado na hora, sem taxa de cartão para quem paga).
+  var ORDEM_PIX_PRIMEIRO = ['pix', 'card'];
+  function opcoesElemento(op) {
+    op = op || {};
+    var o = {
+      layout: { type: 'tabs', defaultCollapsed: false },
+      wallets: { applePay: 'auto', googlePay: 'auto' },
+      business: { name: EMPRESA }
+    };
+    if (op.pixPrimeiro !== false) o.paymentMethodOrder = ORDEM_PIX_PRIMEIRO.slice();
+    return o;
+  }
+
   var PURAS = {
     URL_STRIPE_JS: URL_STRIPE_JS,
+    ORDEM_PIX_PRIMEIRO: ORDEM_PIX_PRIMEIRO,
+    opcoesElemento: opcoesElemento,
     EMPRESA: EMPRESA,
     mensagemErro: mensagemErro,
     pixDoIntent: pixDoIntent,
@@ -171,11 +192,7 @@
     return carregar().then(function (StripeFn) {
       var stripe = StripeFn(op.publicavel, { locale: 'pt-BR' });
       var elements = stripe.elements({ clientSecret: op.clientSecret, appearance: aparencia(), fonts: FONTES, locale: 'pt-BR', loader: 'auto' });
-      var pe = elements.create('payment', {
-        layout: { type: 'tabs', defaultCollapsed: false },
-        wallets: { applePay: 'auto', googlePay: 'auto' },
-        business: { name: EMPRESA }
-      });
+      var pe = elements.create('payment', opcoesElemento(op));
       pe.on('ready', function () { if (op.aoPronto) op.aoPronto(); });
       pe.on('change', function (ev) { if (op.aoMudar) op.aoMudar({ completo: !!(ev && ev.complete), tipo: ev && ev.value ? ev.value.type : '' }); });
       pe.on('loaderror', function () { if (op.aoErro) op.aoErro(MSG_CARREGAR); });
@@ -197,12 +214,14 @@
   function montarSimulado(op) {
     op = op || {};
     var el = op.el;
-    var metodo = 'cartao';
+    var pixPrimeiro = op.pixPrimeiro !== false;
+    var metodo = op.metodo === 'pix' || (pixPrimeiro && op.metodo !== 'cartao') ? 'pix' : 'cartao';
+    var abaCartao = '<button type="button" class="pe-sim-aba" role="tab" aria-selected="false" data-pe-metodo="cartao">Cartão</button>';
+    var abaPix = '<button type="button" class="pe-sim-aba" role="tab" aria-selected="false" data-pe-metodo="pix">Pix</button>';
     el.innerHTML = '' +
       '<div class="pe-sim" data-pe-simulado="1">' +
         '<div class="pe-sim-abas" role="tablist" aria-label="Forma de pagamento">' +
-          '<button type="button" class="pe-sim-aba" role="tab" aria-selected="true" data-pe-metodo="cartao">Cartão</button>' +
-          '<button type="button" class="pe-sim-aba" role="tab" aria-selected="false" data-pe-metodo="pix">Pix</button>' +
+          (pixPrimeiro ? abaPix + abaCartao : abaCartao + abaPix) +
         '</div>' +
         '<div class="pe-sim-carteiras" aria-hidden="true"><span class="pe-sim-carteira">Apple Pay</span><span class="pe-sim-carteira">Google Pay</span></div>' +
         '<div class="pe-sim-painel" data-pe-painel="cartao">' +
@@ -224,7 +243,10 @@
     }
     function clique(ev) { var b = ev.target.closest('[data-pe-metodo]'); if (b && el.contains(b)) trocar(b.getAttribute('data-pe-metodo')); }
     el.addEventListener('click', clique);
-    if (op.metodo === 'pix') root.setTimeout(function () { trocar('pix'); }, 0);
+    // Aba inicial marcada já no HTML (nada pula); o aviso aoMudar vai depois, como o "change" do Payment Element.
+    Array.prototype.forEach.call(el.querySelectorAll('[data-pe-metodo]'), function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-pe-metodo') === metodo)); });
+    Array.prototype.forEach.call(el.querySelectorAll('[data-pe-painel]'), function (p) { p.hidden = p.getAttribute('data-pe-painel') !== metodo; });
+    if (metodo === 'pix') root.setTimeout(function () { trocar('pix'); }, 0);
     var id = /^pi_[A-Za-z0-9]+$/.test(String(op.paymentIntent || '')) ? String(op.paymentIntent) : 'pi_previa' + Math.random().toString(36).slice(2, 10);
     if (op.aoPronto) root.setTimeout(op.aoPronto, 0);
     return {
