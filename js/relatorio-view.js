@@ -6,6 +6,7 @@
  * Com dados.modelo = 'equipe' | 'lideranca' | 'pessoa' (js/relatorio-modelos.js) desenha o modelo correspondente.
  * Equipe: equipeV2(dados) converte um snapshot v1 (já publicado, com harmonia/notas/"tensão") no formato v2 antes de
  * desenhar; nenhum relatório de equipe mostra nota de harmonia, de dupla ou de encaixe, nem "tensão".
+ * 'clima' (Pesquisa de Clima da Equipe; snapshot montado pelo banco, textos de js/clima.js) desenha o relatório de clima.
  * organogramaHtml(organograma, {focoId?, rotulo?}) é exportado para o painel reutilizar (estilos: bloco ".org" de relatorio.css).
  *
  * Segurança:
@@ -1787,7 +1788,278 @@
       rodapeModelo(['Relatório de desenvolvimento · resumo', p.nome], 'Documento pessoal. Compartilhe só se quiser.') + '</article>';
   }
 
-  var MODELOS = { equipe: equipeHtml, lideranca: liderancaHtml, pessoa: pessoaHtml };
+
+  /* ------------------------------------------------------------------ RELATÓRIO DE CLIMA (modelo 'clima')
+   * Snapshot montado pelo banco (public.clima_gerar_relatorio): só agregados já suprimidos (k >= 5; distribuição,
+   * comentários e complemento com k >= 10; N4 só na empresa). Os textos (faixas, intervenções, plano, avisos) vêm de
+   * js/clima.js (DISC_CLIMA). Ordem fixa do organograma, sem ranking, sem índice geral. Capítulos: decisao.md 5.3. */
+
+  function CLIMA() {
+    if (root.DISC_CLIMA) return root.DISC_CLIMA;
+    if (typeof require === 'function') { try { return require('./clima.js'); } catch (e) { return null; } }
+    return null;
+  }
+  var FAIXAS_CLIMA = ['favoravel', 'intermediario', 'atencao'];
+  function comPonto(t) { t = String(t || ''); return /[.!?]$/.test(t) ? t : t + '.'; }
+  function faixaSegura(f) { return FAIXAS_CLIMA.indexOf(f) >= 0 ? f : 'intermediario'; }
+  function seloFaixa(C, f) { return selo('fx-' + faixaSegura(f), C.rotuloFaixa(faixaSegura(f))); }
+  // Barra 0–100 com marcas em 50 e 75 (os cortes das faixas); trilho liso.
+  function barraClima(escore, rotulo) {
+    var v = ehNumero(escore) ? Math.max(0, Math.min(100, escore)) : 0;
+    return '<span class="barra barra--clima" role="img" aria-label="' + esc(rotulo) + '">' +
+      '<span class="barra__feito" style="width:' + v + '%"></span><span class="barra-clima__marca" style="left:50%"></span>' +
+      '<span class="barra-clima__marca" style="left:75%"></span></span>';
+  }
+  function linhaDimensao(C, nome, d, comDistribuicao) {
+    if (!d) {
+      return '<li class="clima-dim clima-dim--vazia"><span class="barras__rot">' + esc(nome) + '</span>' +
+        '<span class="barras__val">não aparece</span></li>';
+    }
+    var h = '<li class="clima-dim clima-dim--' + faixaSegura(d.faixa) + '"><span class="barras__rot">' + esc(nome) + '</span>' +
+      '<span class="barras__val"><strong>' + esc(numeroCurto(d.escore)) + '</strong> ' + seloFaixa(C, d.faixa) + '</span>' +
+      barraClima(d.escore, nome + ': ' + d.escore + ' de 100, ' + C.rotuloFaixa(faixaSegura(d.faixa)));
+    var extra = [];
+    if (d.alinhamento) extra.push(C.rotuloAlinhamento(d.alinhamento));
+    if (comDistribuicao && d.distribuicao) {
+      extra.push(d.distribuicao.favoravel + '% favorável · ' + d.distribuicao.intermediario + '% intermediário · ' + d.distribuicao.atencao + '% ponto de atenção');
+    }
+    if (extra.length) h += '<span class="clima-dim__extra">' + esc(extra.join(' · ')) + '</span>';
+    if (d.alinhamento === 'divididas') h += '<span class="clima-dim__extra clima-dim__extra--aviso">' + esc(C.TEXTOS.divididas) + '</span>';
+    return h + '</li>';
+  }
+  function listaDimensoes(C, g, comDistribuicao) {
+    return '<ul class="barras clima-dims">' + C.DIMENSOES.map(function (dim) {
+      return linhaDimensao(C, C.bloco(dim).nome, g.dimensoes ? g.dimensoes[dim] : null, comDistribuicao);
+    }).join('') + '</ul>';
+  }
+
+  function secoesClima(d, res) {
+    var s = [
+      { id: 'como-ler', titulo: 'Como ler este relatório', curto: 'Como ler', meta: 'O que é e o que não é · Faixas · Limites' },
+      { id: 'resumo', titulo: 'Resumo da empresa', curto: 'Resumo', meta: 'Temas no total · Adesão · O que priorizar' },
+      { id: 'grupos', titulo: 'Por área e equipe', curto: 'Por equipe', meta: 'Ordem do organograma · Sem ranking' }
+    ];
+    if (d.rodada && d.rodada.complemento) s.push({ id: 'fatores', titulo: 'Fatores psicossociais do trabalho', curto: 'Fatores psicossociais', meta: 'Apoio ao GRO · Total da empresa e áreas' });
+    if (res.comentarios && res.comentarios.disponivel) s.push({ id: 'comentarios', titulo: 'Temas dos comentários', curto: 'Comentários', meta: 'Escritos pela consultoria · Sem trechos literais' });
+    s.push({ id: 'plano', titulo: 'Plano da empresa', curto: 'Plano', meta: 'Ações recomendadas · 30/60/90 dias' });
+    if (d.rodada && d.rodada.complemento) s.push({ id: 'pgr', titulo: 'Anexo para o responsável pelo PGR', curto: 'Anexo PGR', meta: 'Fatores · Sinais · Campos para preencher' });
+    s.push({ id: 'metodo', titulo: 'Método', curto: 'Método', meta: 'Perguntas · Cálculo · Anonimato · Referências' });
+    s.forEach(function (x, i) { x.n = n2(i); });
+    return s;
+  }
+
+  function climaHtml(d) {
+    var C = CLIMA();
+    if (!C) return erroHtml('Não foi possível carregar o relatório de clima.');
+    var res = d.resultado && typeof d.resultado === 'object' ? d.resultado : {};
+    var emp = d.empresa || {};
+    var rod = d.rodada || {};
+    var grupos = lista(res.grupos);
+    var empresa = grupos.filter(function (g) { return g.tipo === 'empresa'; })[0] || null;
+    var S = secoesClima(d, res);
+    function sec(id) { return S.filter(function (x) { return x.id === id; })[0]; }
+    function alt(id) { return S.indexOf(sec(id)) % 2 === 1; }
+    var taxa = ehNumero(res.taxa) ? res.taxa : 0;
+    var nGrupos = grupos.filter(function (g) { return g.tipo !== 'empresa'; }).length;
+    var periodo = [data(rod.abertaEm), data(rod.encerradaEm)].filter(Boolean).join(' a ');
+
+    var h = capaModelo({
+      meta: 'Pesquisa de clima', sobre: 'Pesquisa de Clima da Equipe · ' + (emp.nome || 'Empresa'),
+      tituloHtml: 'Clima da <em>equipe</em>' + (emp.nome ? '<br>' + esc(emp.nome) : ''),
+      subtitulo: 'Como as pessoas percebem o trabalho, por tema e por equipe, e o que fazer a partir daqui.',
+      numeros: [
+        { valor: numeroCurto(res.respondentes || 0), rotulo: 'respostas' },
+        { valor: numeroCurto(taxa), sufixo: '%', rotulo: 'de adesão', destaque: true },
+        { valor: numeroCurto(C.DIMENSOES.length), rotulo: 'temas' },
+        { valor: numeroCurto(nGrupos), rotulo: nGrupos === 1 ? 'recorte além do total' : 'recortes além do total' }
+      ],
+      rodape: [
+        { rotulo: 'Empresa', linhas: [emp.nome || '—', emp.cidade] },
+        { rotulo: 'Consultoria', linhas: ['Gestão sem Caos', d.consultor] },
+        { rotulo: 'Período', linhas: [periodo || '—'] },
+        { rotulo: 'Emitido em', linhas: [data(d.geradoEm) || '—'] }
+      ]
+    });
+    h += indiceModelo(S, 'Como a equipe percebe o trabalho e por onde começar.', C.TEXTOS.abertura);
+
+    // 01 Como ler
+    var c = '<p class="lede">' + esc(C.TEXTOS.abertura) + '</p>';
+    c += '<div class="duas mt32"><div class="cartao-doc"><div class="rotulo-doc">O que é</div><ul class="itens-doc">' +
+      '<li>' + esc('A percepção coletiva de ' + numeroCurto(res.respondentes || 0) + ' de ' + numeroCurto(res.convidados || 0) + ' pessoas convidadas (' + taxa + '%), sobre 7 temas do dia a dia da equipe.') + '</li>' +
+      '<li>' + esc('Período da pesquisa: ' + (periodo || '—') + '. Nada foi mostrado enquanto ela estava aberta.') + '</li>' +
+      '<li>' + esc('Escala de 0 a 100 por tema (média das respostas de concordância). Não existe nota geral do clima.') + '</li>' +
+      '</ul></div><div class="cartao-doc"><div class="rotulo-doc">O que não é</div><ul class="itens-doc">' +
+      '<li>' + esc('Não avalia pessoas, não é avaliação psicológica e não faz diagnóstico de saúde.') + '</li>' +
+      '<li>' + esc(C.TEXTOS.usoProibido) + '</li>' +
+      '<li>' + esc('Ninguém vê a resposta de ninguém. Um grupo só aparece com 5 respostas ou mais; detalhes e comentários, com 10 ou mais.') + '</li>' +
+      '</ul></div></div>';
+    c += '<h3 class="h3 mt48">Faixas de leitura</h3><ul class="clima-faixas">' + FAIXAS_CLIMA.map(function (f) {
+      var faixaTxt = f === 'favoravel' ? '75 a 100' : (f === 'intermediario' ? '50 a 74' : '0 a 49');
+      return '<li>' + seloFaixa(C, f) + '<span class="clima-faixas__val">' + esc(faixaTxt) + '</span><span>' + esc(C.leituraFaixa(f)) + '</span></li>';
+    }).join('') + '</ul><p class="nota-curta mt16">' + esc(C.TEXTOS.faixas) + '</p>';
+    c += '<h3 class="h3 mt48">Alinhamento da equipe</h3><ul class="itens-doc">' + ['alinhada', 'variadas', 'divididas'].map(function (a) {
+      return '<li><strong>' + esc(C.rotuloAlinhamento(a)) + ':</strong> ' + esc(C.textoAlinhamento(a)) + '</li>';
+    }).join('') + '</ul>';
+    var avisos = [];
+    if ((res.respondentes || 0) > 0 && (res.respondentes || 0) < 10) avisos.push(nota('alerta', 'Margem ampla', C.TEXTOS.margem));
+    if ((res.convidados || 0) > 0 && taxa < C.TAXA_MINIMA) avisos.push(nota('alerta', 'Adesão', C.TEXTOS.adesao(taxa)));
+    avisos.push(nota('info', 'Origem das perguntas', C.TEXTOS.origem));
+    c += '<div class="obs-grade">' + avisos.join('') + '</div>';
+    h += secao(sec('como-ler'), alt('como-ler'), cabecalhoPagina(sec('como-ler'), emp.nome) + c);
+
+    // 02 Resumo
+    if (res.suprimido || !empresa) {
+      c = '<div class="obs obs--alerta"><div class="obs__tit">Respostas insuficientes</div><p>' +
+        esc('Com menos de 5 respostas no total, nenhum resultado pode aparecer sem expor quem respondeu. A consultoria propõe uma conversa facilitada com a equipe.') + '</p></div>';
+    } else {
+      var temas = C.temasOrdenados(empresa);
+      c = '<p class="lede lede--curta">' + esc('Resultado de toda a empresa, por tema. Cada barra vai de 0 a 100; as marcas mostram os cortes de 50 e 75.') + '</p>';
+      c += '<div class="cartao-doc">' + listaDimensoes(C, empresa, true) + '</div>';
+      c += '<div class="duas mt32"><div><h3 class="h3">Temas mais bem avaliados</h3><div class="obs-pilha">' +
+        (temas.melhores.length ? temas.melhores.map(function (dim) {
+          var x = empresa.dimensoes[dim];
+          return '<div class="obs obs--info"><div class="obs__tit">' + esc(C.bloco(dim).nome + ' · ' + x.escore) + '</div><p>' + esc(C.leituraFaixa(x.faixa)) + '</p></div>';
+        }).join('') : '<p class="nota-curta">Poucos temas com respostas suficientes para comparar.</p>') +
+        '</div></div><div><h3 class="h3">Temas para priorizar na conversa</h3><div class="obs-pilha">' +
+        (temas.priorizar.length ? temas.priorizar.map(function (dim) {
+          var x = empresa.dimensoes[dim];
+          return '<div class="obs ' + (x.faixa === 'atencao' ? 'obs--destaque' : 'obs--alerta') + '"><div class="obs__tit">' + esc(C.bloco(dim).nome + ' · ' + x.escore) + '</div><p>' + esc(C.leituraFaixa(x.faixa)) + '</p></div>';
+        }).join('') : '<p class="nota-curta">Poucos temas com respostas suficientes para comparar.</p>') + '</div></div></div>';
+      if (empresa.h1) {
+        c += '<div class="cartao-doc mt32"><div class="rotulo-doc">Indicador de 1 pergunta, à parte dos temas</div><ul class="barras clima-dims">' +
+          linhaDimensao(C, '"No geral, esta equipe consegue entregar o que se espera dela."', empresa.h1, false) + '</ul></div>';
+      }
+    }
+    h += secao(sec('resumo'), alt('resumo'), cabecalhoPagina(sec('resumo'), numeroCurto(res.respondentes || 0) + ' respostas') + c);
+
+    // 03 Por área e equipe
+    var outros = grupos.filter(function (g) { return g.tipo !== 'empresa'; });
+    c = '<p class="lede lede--curta">' + esc(C.TEXTOS.naoRanking) + '</p>';
+    if (!outros.length) {
+      c += '<div class="obs obs--info"><div class="obs__tit">Só o total da empresa</div><p>' +
+        esc('Nenhuma equipe ou área alcançou o mínimo de respostas para aparecer sozinha sem expor um grupo pequeno. O resultado vale para a empresa toda.') + '</p></div>';
+    }
+    c += outros.map(function (g) {
+      var tit = g.tipo === 'outras' ? 'Outras equipes' : g.nome;
+      var sub = [];
+      if (g.tipo === 'area') sub.push('Área');
+      if (g.tipo !== 'outras' && ehNumero(g.taxa)) sub.push(numeroCurto(g.n) + ' de ' + numeroCurto(g.convidados) + ' responderam (' + g.taxa + '%)');
+      else sub.push(numeroCurto(g.n) + ' respostas');
+      if (g.n < 10) sub.push('margem ampla');
+      return '<article class="cartao-doc clima-grupo clima-grupo--' + classeSegura(g.tipo) + ' clima-grupo--nivel' + (g.nivel === 2 ? '2' : '1') + '" data-grupo="' + esc(g.id) + '">' +
+        '<h3 class="h3">' + esc(tit) + '</h3><p class="nota-curta">' + esc(sub.join(' · ')) + '</p>' +
+        (g.tipo === 'outras' || g.tipo === 'area' ? '<p class="nota-curta">' + esc(comPonto((g.tipo === 'outras' ? 'Reúne: ' : 'Equipes: ') + lista(g.equipes).join(', '))) + '</p>' : '') +
+        listaDimensoes(C, g, true) + '</article>';
+    }).join('');
+    var fora = lista(res.equipes).filter(function (e) { return e.situacao !== 'aparece'; });
+    if (fora.length) {
+      c += '<div class="obs obs--info mt32"><div class="obs__tit">Equipes que não aparecem sozinhas</div><p>' +
+        esc(comPonto(fora.map(function (e) { return e.nome + (e.situacao === 'outras' ? ' (em "Outras equipes")' : (e.motivo === 'sem_respostas' ? ' (sem respostas)' : ' (só no total)')); }).join('; '))) +
+        '</p><p>' + esc('Para proteger o anonimato, uma equipe só aparece com 5 respostas ou mais, e nenhuma comparação entre recortes pode isolar menos de 5 pessoas.') + '</p></div>';
+    }
+    h += secao(sec('grupos'), alt('grupos'), cabecalhoPagina(sec('grupos'), numeroCurto(outros.length) + ' recortes') + c);
+
+    // 04 Fatores psicossociais (complemento)
+    if (sec('fatores')) {
+      var comp = res.complemento || {};
+      c = '<p class="lede lede--curta">' + esc(C.TEXTOS.nr1) + '</p>';
+      var gruposN = lista(comp.grupos);
+      if (!gruposN.length) {
+        c += '<div class="obs obs--info"><div class="obs__tit">Sem resultado</div><p>' + esc('O complemento só aparece com 10 respostas ou mais.') + '</p></div>';
+      }
+      c += gruposN.map(function (g) {
+        return '<div class="cartao-doc mt24"><div class="rotulo-doc">' + esc(g.id === 'empresa' ? 'Toda a empresa' : 'Área: ' + g.nome) + '</div><ul class="barras clima-dims">' +
+          C.N_INDICADORES.map(function (id) {
+            var it = C.ITENS_N.filter(function (x) { return x.id === id; })[0];
+            return linhaDimensao(C, it.nome + ' (1 pergunta)', g.itens ? g.itens[id] : null, false);
+          }).join('') + '</ul></div>';
+      }).join('');
+      if (rod.n4Ligado) {
+        var n4 = comp.n4;
+        c += '<div class="obs obs--alerta mt32" data-n4="1"><div class="obs__tit">Relato de tratamento ofensivo (últimos 6 meses)</div>' +
+          (n4 ? '<p>' + esc(n4.pct + '% de quem respondeu a esta pergunta (' + n4.n + ' pessoas) relatou ter sido tratado(a) com grosseria, humilhação ou ameaça uma vez ou mais. É um relato agregado: a apuração é da empresa, pelo próprio canal.') + '</p>'
+            : '<p>' + esc('Menos de 10 respostas a esta pergunta: o resultado não aparece.') + '</p>') +
+          '<p>' + esc('Canal indicado às pessoas: ' + (rod.canalTexto || '—') + '. A pesquisa não é canal de denúncia e não identifica quem respondeu.') + '</p></div>';
+      }
+      h += secao(sec('fatores'), alt('fatores'), cabecalhoPagina(sec('fatores'), 'Apoio ao GRO') + c);
+    }
+
+    // 05 Temas dos comentários
+    if (sec('comentarios')) {
+      var tm = lista(d.temas).filter(function (t) { return typeof t === 'string' && t; });
+      c = '<p class="lede lede--curta">' + esc('Os comentários foram lidos pela consultoria e resumidos por tema. O texto original não é entregue à empresa.') + '</p>';
+      c += tm.length ? '<ol class="plano-doc clima-temas">' + tm.map(function (t, i) {
+        return '<li><span class="plano-doc__prazo">' + n2(i) + '</span><div><p>' + esc(t) + '</p></div></li>';
+      }).join('') + '</ol>' : '<p class="nota-curta">Sem temas registrados pela consultoria.</p>';
+      h += secao(sec('comentarios'), alt('comentarios'), cabecalhoPagina(sec('comentarios'), numeroCurto(tm.length) + ' temas') + c);
+    }
+
+    // 06 Plano da empresa
+    var iv = C.intervencoes(res);
+    c = '<p class="lede lede--curta">' + esc('Ações escolhidas a partir do resultado da empresa, com base em pesquisas sobre equipes. Os responsáveis e as datas são combinados na devolutiva.') + '</p>';
+    c += iv.length ? '<ol class="plano-doc clima-acoes">' + iv.map(function (x, i) {
+      return '<li data-intervencao="' + esc(x.id) + '"><span class="plano-doc__prazo">' + n2(i) + '</span><div><strong>' + esc(x.titulo) + '</strong>' +
+        '<p class="nota-curta">' + esc('Por quê: ' + x.motivo) + '</p><p>' + esc(x.comoFazer) + '</p>' +
+        (x.base ? '<p class="nota-curta">' + esc('Base: ' + x.base + '.') + '</p>' : '') + '</div></li>';
+    }).join('') + '</ol>' : '<div class="obs obs--info"><div class="obs__tit">Manter o que funciona</div><p>' +
+      esc('Nenhum tema da empresa ficou abaixo de 75. Mantenha as rotinas que sustentam esse resultado (por exemplo, a conversa curta depois das entregas) e reaplique no prazo.') + '</p></div>';
+    c += '<p class="nota-curta mt16">' + esc(C.TEXTOS.naoRecomendar) + '</p>';
+    c += '<h3 class="h3 mt48">Plano de 30, 60 e 90 dias</h3><div class="clima-tabela-rolagem"><table class="tabela-doc clima-plano"><thead><tr><th scope="col">Quando</th><th scope="col">O quê</th>' +
+      '<th scope="col">Quem</th><th scope="col">Indicador</th><th scope="col">Responsável e data</th></tr></thead><tbody>' +
+      C.PLANO_30_60_90.map(function (p) {
+        return '<tr><td data-rotulo="Quando"><strong>' + esc(p.momento) + '</strong></td><td data-rotulo="O quê">' + esc(p.oque) + '</td><td data-rotulo="Quem">' + esc(p.quem) +
+          '</td><td data-rotulo="Indicador">' + esc(p.indicador || '—') + '</td><td data-rotulo="Responsável e data" class="clima-preencher"></td></tr>';
+      }).join('') + '</tbody></table></div>';
+    c += '<p class="nota-curta mt16">' + esc('A devolutiva para a equipe faz parte da pesquisa: sem ela, a pesquisa perde o sentido para quem respondeu.') + '</p>';
+    h += secao(sec('plano'), alt('plano'), cabecalhoPagina(sec('plano'), numeroCurto(iv.length) + ' ações') + c);
+
+    // 07 Anexo PGR
+    if (sec('pgr')) {
+      var compl = res.complemento || {};
+      var ce = lista(compl.grupos).filter(function (g) { return g.id === 'empresa'; })[0];
+      function sinal(ind) {
+        if (/^N/.test(ind)) {
+          if (ind === 'N4') return compl.n4 ? compl.n4.pct + '% relatam' : 'sem resultado (menos de 10)';
+          var x = ce && ce.itens ? ce.itens[ind] : null;
+          return x ? x.escore + ' · ' + C.rotuloFaixa(x.faixa) : 'sem resultado';
+        }
+        var y = empresa && empresa.dimensoes ? empresa.dimensoes[ind] : null;
+        return y ? y.escore + ' · ' + C.rotuloFaixa(y.faixa) : 'sem resultado';
+      }
+      c = '<p class="lede lede--curta">' + esc(C.TEXTOS.nr1) + '</p>';
+      c += '<div class="clima-tabela-rolagem"><table class="tabela-doc clima-pgr"><thead><tr><th scope="col">Indicador</th><th scope="col">Fator (Guia MTE)</th><th scope="col">Sinal (empresa)</th>' +
+        '<th scope="col">Severidade</th><th scope="col">Probabilidade</th><th scope="col">Responsável</th><th scope="col">Prazo</th></tr></thead><tbody>' +
+        C.MAPA_PGR.map(function (m) {
+          return '<tr><td data-rotulo="Indicador"><strong>' + esc(m.nome) + '</strong></td><td data-rotulo="Fator">' + esc(m.fator) + '</td><td data-rotulo="Sinal">' + esc(sinal(m.indicador)) +
+            '</td><td data-rotulo="Severidade" class="clima-preencher"></td><td data-rotulo="Probabilidade" class="clima-preencher"></td><td data-rotulo="Responsável" class="clima-preencher"></td><td data-rotulo="Prazo" class="clima-preencher"></td></tr>';
+        }).join('') + '</tbody></table></div>';
+      c += '<h3 class="h3 mt48">O que este material não cobre (fica com a empresa e o responsável técnico)</h3><ul class="itens-doc">' +
+        C.FALTA_PGR.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+      h += secao(sec('pgr'), alt('pgr'), cabecalhoPagina(sec('pgr'), 'Para preencher') + c);
+    }
+
+    // 08 Método
+    c = '<p class="lede lede--curta">' + esc(C.TEXTOS.origem + ' Versão das perguntas: ' + (rod.versaoItens || 'v0') + '.') + '</p>';
+    c += '<div class="duas">' + C.BLOCOS.map(function (b) {
+      return '<div class="cartao-doc"><div class="rotulo-doc">' + esc(b.nome) + '</div><ul class="itens-doc">' + b.itens.map(function (it) {
+        return '<li>' + esc(it.texto + (it.invertido ? ' (frase negativa: conta ao contrário)' : '')) + '</li>';
+      }).join('') + '</ul></div>';
+    }).join('') + '</div>';
+    c += '<h3 class="h3 mt48">Como o número é calculado</h3><ul class="itens-doc">' +
+      ['Escala de 5 pontos, todos com rótulo (de "Discordo totalmente" a "Concordo totalmente"). Nenhuma pergunta é obrigatória.',
+        'Frases negativas contam ao contrário (6 − resposta). O tema de cada pessoa é a média das perguntas respondidas, se ela respondeu pelo menos metade delas; depois vira 0 a 100 ((média − 1) × 25).',
+        'O número do grupo é a média das pessoas, sem a resposta da liderança. Alinhamento: concordância dentro do grupo (rwg, com 0,70 e 0,50 como cortes de convenção).',
+        'Anonimato: um grupo só aparece com 5 respostas ou mais; distribuição, comentários e o complemento de fatores psicossociais, com 10 ou mais; o relato de tratamento ofensivo, só no total da empresa. Nenhuma diferença entre recortes isola menos de 5 pessoas; equipes pequenas entram em "Outras equipes". Os grupos foram congelados no encerramento.',
+        'As respostas brutas são apagadas ou viram números de grupo no prazo combinado depois da entrega. A empresa nunca recebe respostas individuais nem a lista de quem respondeu.'
+      ].map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+    c += '<h3 class="h3 mt48">Referências dos temas</h3><ul class="itens-doc clima-refs">' + C.REFERENCIAS.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+    h += secao(sec('metodo'), alt('metodo'), cabecalhoPagina(sec('metodo'), 'Versão ' + (rod.versaoItens || 'v0')) + c);
+
+    return '<article class="doc doc--clima" data-modelo="clima">' + h +
+      rodapeModelo(['Pesquisa de Clima da Equipe', emp.nome], C.TEXTOS.usoProibido) + '</article>';
+  }
+
+  var MODELOS = { equipe: equipeHtml, lideranca: liderancaHtml, pessoa: pessoaHtml, clima: climaHtml };
 
   /* ------------------------------------------------------------------ montagem */
 

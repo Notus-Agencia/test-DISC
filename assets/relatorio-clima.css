@@ -1,0 +1,52 @@
+/*
+ * Relatório de Clima (dados.modelo = 'clima', js/relatorio-view.js climaHtml): peças próprias sobre assets/relatorio.css.
+ * Variante editorial (docs/IDENTIDADE-VISUAL.md, "Documentos"): papel creme, cartões brancos, barras com trilho liso.
+ * Celular primeiro (tabelas viram cartões) e impressão A4.
+ */
+
+/* Faixas: favorável (azul-escuro), intermediário (âmbar suave), ponto de atenção ("olhe aqui": contorno laranja). */
+.selo-doc--fx-favoravel { background: var(--tinta); color: var(--branco-doc); }
+.selo-doc--fx-intermediario { background: rgba(255,159,64,.22); color: var(--preto); }
+.selo-doc--fx-atencao { background: var(--branco-doc); color: var(--notus-forte); box-shadow: inset 0 0 0 1px rgba(243,68,5,.45); }
+
+.barra--clima { height: 12px; }
+.barra-clima__marca { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--papel); }
+
+.clima-dims .barras__val { display: inline-flex; align-items: center; gap: 8px; }
+.clima-dims .barras__val strong { font-family: var(--ff-titulo); font-size: var(--f-forte); }
+.clima-dim__extra { grid-column: 1 / -1; font-size: var(--f-nota); color: var(--mudo); line-height: 1.45; }
+.clima-dim__extra--aviso { color: var(--tinta); }
+.clima-dim--vazia .barras__val { font-style: italic; }
+
+.clima-faixas { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.clima-faixas li { display: grid; grid-template-columns: 150px 72px minmax(0, 1fr); gap: 12px; align-items: center; font-size: var(--f-corpo); line-height: 1.45; }
+.clima-faixas__val { font-family: var(--ff-mono); font-size: var(--f-nota); color: var(--mudo); }
+
+.clima-grupo { margin-top: 16px; }
+.clima-grupo .h3 { margin-bottom: 4px; }
+.clima-grupo .nota-curta + .clima-dims, .clima-grupo .nota-curta + .nota-curta { margin-top: 8px; }
+.clima-grupo .clima-dims { margin-top: 18px; }
+.clima-grupo--nivel2 { margin-left: 24px; border-left: 3px solid var(--linha-doc); }
+.clima-grupo--outras { background: var(--papel); }
+
+.clima-tabela-rolagem { margin-top: 12px; }
+.clima-preencher { min-width: 96px; height: 40px; }
+.clima-plano td, .clima-pgr td { font-size: var(--f-rotulo); line-height: 1.45; vertical-align: top; }
+.clima-refs li { font-size: var(--f-rotulo); }
+
+@media (max-width: 639px) {
+  .clima-faixas li { grid-template-columns: auto minmax(0, 1fr); }
+  .clima-faixas li > span:last-child { grid-column: 1 / -1; }
+  .clima-grupo--nivel2 { margin-left: 0; }
+  /* Tabelas largas viram cartões no celular */
+  .clima-plano thead, .clima-pgr thead { display: none; }
+  .clima-plano tr, .clima-pgr tr { display: block; padding: 12px 0; border-bottom: 1px solid var(--linha-doc); }
+  .clima-plano td, .clima-pgr td { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; padding: 4px 0; border: 0; }
+  .clima-plano td::before, .clima-pgr td::before { content: attr(data-rotulo); font-family: var(--ff-mono); font-size: var(--f-eixo); letter-spacing: .1em; text-transform: uppercase; color: var(--mudo); }
+  .clima-preencher { height: 32px; border-bottom: 1px solid var(--linha-doc) !important; }
+}
+
+@media print {
+  .clima-grupo, .clima-plano tr, .clima-pgr tr, .clima-dims li { break-inside: avoid; }
+  .barra--clima .barra__feito { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}

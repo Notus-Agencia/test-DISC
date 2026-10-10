@@ -70,13 +70,21 @@
  * Só na prévia: simularPagamento(pedidoId) -> {ok, status:'pago'} (DISC_API.simularPagamento). Cupons da prévia: PREVIA100
  * (100%, libera sem pagar) e LANCA10 (10%). Os limites anti-abuso por e-mail não valem aqui.
  *
+ * Pesquisa de Clima da Equipe (como a migração 20261017120000_clima.sql; cálculo e supressão de js/clima.js, o MESMO do banco):
+ * climaPublica, climaEnviar (públicas, pelo token do link) e, no painel, climaListar, climaCriarRodada, climaEncerrar,
+ * climaResultado, climaComentarios, climaGerarRelatorio, climaExcluirRodada, climaApagarBrutas. Mesmas regras e mensagens
+ * (equipes do organograma pelas relações "lidera", convidados, mínimo de 5, 1 rodada aberta por empresa, nada antes do
+ * encerramento, resultado congelado, relatório só com o que o cliente vê). Semente: a Clínica Exemplo já tem uma rodada
+ * ENCERRADA ("Pesquisa de clima · set/2026": Equipe de Diego 11 respostas, de Paulo 6, de Marta 2 — a de Marta fica abaixo do
+ * mínimo e leva a de Paulo para "Outras equipes"; complemento NR-1 ligado) e o relatório publicado relatorio.html#r-exemplo-clima.
+ *
  * No Node (testes): require('./js/api-simulada.js').criar({ armazenamento, scoring, latenciaMs: 0, semente: false }).
  * Opcional: { motor, fixture } para trocar o motor do relatório e os dados do processo de exemplo.
  */
 (function (root) {
   'use strict';
 
-  var VERSAO_BANCO = 20261016120000;                     // última migração (supabase/migrations)
+  var VERSAO_BANCO = 20261017120000;                     // última migração (supabase/migrations)
   var CHAVE_ARMAZENAMENTO = 'disc_planilha_simulada';     // respostas (mesma chave das versões anteriores)
   var CHAVES = {
     usuarios: 'disc_simulada_usuarios',
@@ -95,7 +103,12 @@
     pacotes: 'disc_simulada_pacotes',
     cupons: 'disc_simulada_cupons',
     pedidos: 'disc_simulada_pedidos',
-    envios: 'disc_simulada_envios'      // histórico de envios por e-mail (como public.envios_email)
+    envios: 'disc_simulada_envios',     // histórico de envios por e-mail (como public.envios_email)
+    climaRodadas: 'disc_simulada_clima_rodadas',     // Pesquisa de clima (como public.clima_rodadas / clima_equipes /
+    climaEquipes: 'disc_simulada_clima_equipes',     // clima_respostas / clima_recebidos): respostas SEM nada que
+    climaRespostas: 'disc_simulada_clima_respostas', // identifique a pessoa (nem horário)
+    climaRecebidos: 'disc_simulada_clima_recebidos',
+    sementeClima: 'disc_simulada_semente_clima'
   };
   var CHAVE_ADMIN = 'previa';
   var LATENCIA_MS = 400;
@@ -105,7 +118,9 @@
     gestor: { email: 'gestor@previa.com', senha: 'previa123' },
     avaliacoes: ['SEL1', 'EQP1', 'ATD1'],
     processo: { id: 'ava_previa_cartorio', codigo: 'CRT1', nome: 'Cartório Exemplo — Escrevente' },
-    relatorioToken: 'exemplo-cartorio'
+    relatorioToken: 'exemplo-cartorio',
+    climaRelatorioToken: 'exemplo-clima',   // relatório de clima JÁ PUBLICADO da Clínica Exemplo (relatorio.html#r-exemplo-clima)
+    climaRodadaId: 'clima_previa_set2026'
   };
 
   // Avatares FICTÍCIOS da prévia (iniciais sobre a cor do fator principal do DISC, JPEG 192 px gerado por código;
@@ -1735,7 +1750,7 @@
       var empresaId = limparTexto(filtro.empresaId, 40);
       var pessoaId = limparTexto(filtro.pessoaId, 40);
       var lista = relatoriosSalvos().filter(function (r) {
-        return r.modelo && r.modelo !== 'processo' && (!empresaId || r.empresaId === empresaId) && (!pessoaId || r.pessoaId === pessoaId);
+        return r.modelo && r.modelo !== 'processo' && r.modelo !== 'clima' && (!empresaId || r.empresaId === empresaId) && (!pessoaId || r.pessoaId === pessoaId);
       }).map(relModeloPublico).sort(function (a, b) { return String(b.criadoEm).localeCompare(String(a.criadoEm)); });
       return { ok: true, relatorios: lista };
     }
@@ -1744,7 +1759,7 @@
     function acaoRelatorioModeloAbrir(idBruto) {
       var id = limparTexto(idBruto, 40);
       var reg = id && buscarPor(relatoriosSalvos(), 'id', id);
-      if (!reg || !reg.modelo || reg.modelo === 'processo') return erro('Relatório não encontrado.');
+      if (!reg || !reg.modelo || reg.modelo === 'processo' || reg.modelo === 'clima') return erro('Relatório não encontrado.');
       var r = relModeloPublico(reg);
       r.dados = copiar(reg.relatorio || {});
       return { ok: true, relatorio: r };
@@ -1754,7 +1769,7 @@
       var id = limparTexto(idBruto, 40);
       var lista = relatoriosSalvos();
       var reg = id && buscarPor(lista, 'id', id);
-      if (!reg || !reg.modelo || reg.modelo === 'processo') return erro('Relatório não encontrado.');
+      if (!reg || !reg.modelo || reg.modelo === 'processo' || reg.modelo === 'clima') return erro('Relatório não encontrado.');
       gravarChave(CHAVES.relatorios, lista.filter(function (r) { return r !== reg; }));
       return { ok: true, id: id };
     }
@@ -1920,7 +1935,7 @@
     /* ----- relatórios (mesmas regras e mensagens do Relatorio.gs) ----- */
 
     function relTokenValido(t) {
-      return typeof t === 'string' && (/^[0-9a-f]{40,128}$/.test(t) || t === PREVIA.relatorioToken);
+      return typeof t === 'string' && (/^[0-9a-f]{40,128}$/.test(t) || t === PREVIA.relatorioToken || t === PREVIA.climaRelatorioToken);
     }
 
     // "Maria da Silva" -> "Maria S." (igual ao relNomeCurto_ do servidor).
@@ -2150,7 +2165,7 @@
       if (!lido || lido.reg.status !== 'publicado') return erro(MSG_REL_NAO_ENCONTRADO);
       var relatorio = copiar(lido.reg.relatorio);
       if (relatorio && relatorio.processo) delete relatorio.processo.clickupListId;
-      var modelo = MODELOS_RELATORIO.indexOf(lido.reg.modelo) >= 0 ? lido.reg.modelo : 'processo';
+      var modelo = MODELOS_RELATORIO.indexOf(lido.reg.modelo) >= 0 || lido.reg.modelo === 'clima' ? lido.reg.modelo : 'processo';
       return { ok: true, modelo: modelo, relatorio: relatorio, publicadoEm: lido.reg.publicadoEm };
     }
 
@@ -2387,6 +2402,14 @@
       'relatorio.melhorarTextos': { soAdmin: true, fn: function (u, c) { return acaoRelatorioMelhorarTextos(c.relatorioToken, c.ids); } },
       'relatorio.enviarEmail': { soAdmin: true, fn: function (u, c) { return acaoRelatorioEnviarEmail(c, u); } },
       'envios.listar': { soAdmin: true, fn: function (u, c) { return acaoEnviosListar(c); } },
+      'clima.listar': { soAdmin: true, fn: function (u, c) { return acaoClimaListar(c.empresaId); } },
+      'clima.criar': { soAdmin: true, fn: function (u, c) { return acaoClimaCriar(c.dados); } },
+      'clima.encerrar': { soAdmin: true, fn: function (u, c) { return acaoClimaEncerrar(c.rodadaId); } },
+      'clima.resultado': { soAdmin: true, fn: function (u, c) { return acaoClimaResultado(c.rodadaId); } },
+      'clima.comentarios': { soAdmin: true, fn: function (u, c) { return acaoClimaComentarios(c.rodadaId); } },
+      'clima.relatorio': { soAdmin: true, fn: function (u, c) { return acaoClimaGerarRelatorio(c.rodadaId, c.opcoes); } },
+      'clima.excluir': { soAdmin: true, fn: function (u, c) { return acaoClimaExcluir(c.rodadaId); } },
+      'clima.apagarBrutas': { soAdmin: true, fn: function (u, c) { return acaoClimaApagarBrutas(c.opcoes); } },
       'usuarios.listar': {
         soAdmin: true,
         fn: function () {
@@ -2427,12 +2450,362 @@
       if (acao === 'pessoal.parte2') return acaoSalvarParte2(corpo.tokenAcesso, corpo.exigido);
       if (acao === 'acesso.recuperar') return acaoRecuperarAcesso(corpo.email);
       if (acao === 'pessoal.enviarLink') return acaoEnviarLinkPessoal(corpo.tokenAcesso);
+      if (acao === 'clima.publica') return acaoClimaPublica(corpo.tokenClima);
+      if (acao === 'clima.enviar') return acaoClimaEnviar(corpo.tokenClima, corpo.respostas);
       if (typeof acao !== 'string' || !Object.prototype.hasOwnProperty.call(ACOES_COM_SESSAO, acao)) return erro('Ação desconhecida.');
       var sessao = validarSessao(corpo.token);
       if (!sessao.ok) return sessao;
       var regra = ACOES_COM_SESSAO[acao];
       if (regra.soAdmin && sessao.usuario.papel !== 'admin') return erro(MSG_SEM_PERMISSAO);
       return regra.fn(sessao.usuario, corpo, sessao.token);
+    }
+
+    /* ----- Pesquisa de Clima da Equipe: como a migração 20261017120000_clima.sql (regras e mensagens) ----- */
+    // O cálculo e a supressão são os de js/clima.js (a mesma regra do banco, conferida em tests/supabase/clima.test.js).
+    var MSG_CLIMA_LINK = 'Link inválido ou pesquisa encerrada. Fale com quem enviou o link.';
+    var MSG_CLIMA_ENCERRADA = 'Esta pesquisa já foi encerrada. Obrigado pelo interesse!';
+    function CLx() { return opcoes.clima || exigirModulo('DISC_CLIMA', './clima.js'); }
+    function temClima() { try { CLx(); return true; } catch (e) { return false; } }
+    function climaRodadas() { return lerLista(CHAVES.climaRodadas); }
+    function climaEquipes() { return lerLista(CHAVES.climaEquipes); }
+    function climaRespostas() { return lerLista(CHAVES.climaRespostas); }
+    function tokenClima(t) { var x = String(t == null ? '' : t).trim().toLowerCase(); return /^[0-9a-f]{64}$/.test(x) ? x : ''; }
+    function equipeDoToken(t) {
+      var tk = tokenClima(t);
+      if (!tk) return null;
+      var eqs = climaEquipes();
+      for (var i = 0; i < eqs.length; i++) {
+        if (eqs[i].tokenEquipe === tk) return { equipe: eqs[i], papel: 'membro' };
+        if (eqs[i].tokenLider === tk) return { equipe: eqs[i], papel: 'lider' };
+      }
+      return null;
+    }
+    function climaRodadaPublica(r) {
+      var eqs = climaEquipes().filter(function (e) { return e.rodadaId === r.id; }).sort(function (a, b) { return a.ordem - b.ordem; });
+      var resps = climaRespostas().filter(function (x) { return x.rodadaId === r.id && x.papel === 'membro'; });
+      var apagadas = !!r.brutasApagadasEm;
+      var doResultado = {};
+      ((r.resultado && r.resultado.equipes) || []).forEach(function (e) { doResultado[e.id] = e.respondentes || 0; });
+      var rel = buscarPor(relatoriosSalvos(), 'climaRodadaId', r.id);
+      var conv = 0; eqs.forEach(function (e) { conv += e.convidados; });
+      var saida = { id: r.id, empresaId: r.empresaId, nome: r.nome, status: r.status, complemento: !!r.complemento,
+        n4: !!r.complemento && !!r.canalTexto, canalTexto: r.canalTexto || '', canalUrl: r.canalUrl || '', contatoDados: r.contatoDados || '',
+        versaoItens: r.versaoItens || 'v0', retencaoDias: r.retencaoDias || 90, abertaEm: r.abertaEm || '', encerradaEm: r.encerradaEm || '',
+        entregueEm: r.entregueEm || '', brutasApagadasEm: r.brutasApagadasEm || '', convidados: conv,
+        respondentes: apagadas ? ((r.resultado && r.resultado.respondentes) || 0) : resps.length,
+        equipes: eqs.map(function (e) {
+          return { id: e.id, nome: e.nome, area: e.area, ordem: e.ordem, convidados: e.convidados,
+            respondentes: apagadas ? (doResultado[e.id] || 0) : resps.filter(function (x) { return x.equipeId === e.id; }).length,
+            tokenEquipe: e.tokenEquipe, tokenLider: e.tokenLider };
+        }),
+        relatorio: null };
+      if (rel) {
+        saida.relatorio = { id: rel.id, token: rel.token, status: rel.status === 'publicado' ? 'publicado' : 'rascunho',
+          publicadoEm: rel.publicadoEm || '', atualizadoEm: rel.atualizadoEm || '',
+          temas: rel.relatorio && Array.isArray(rel.relatorio.temas) ? rel.relatorio.temas.slice() : [] };
+        if (saida.relatorio.status === 'publicado') saida.relatorio.url = urlRelatorio(rel.token);
+      }
+      return saida;
+    }
+
+    function acaoClimaPublica(t) {
+      var x = equipeDoToken(t);
+      if (!x) return erro(MSG_CLIMA_LINK);
+      var r = buscarPor(climaRodadas(), 'id', x.equipe.rodadaId);
+      if (!r) return erro(MSG_CLIMA_LINK);
+      if (r.status !== 'aberta') return erro(MSG_CLIMA_ENCERRADA, { encerrada: true });
+      var emp = buscarPor(empresas(), 'id', r.empresaId);
+      return { ok: true, papel: x.papel, empresaNome: emp ? emp.nome : '', equipeNome: x.equipe.nome, complemento: !!r.complemento,
+        n4: !!r.complemento && !!r.canalTexto, canalTexto: r.canalTexto || '', canalUrl: r.canalUrl || '', contatoDados: r.contatoDados || '',
+        retencaoDias: r.retencaoDias || 90, versaoItens: r.versaoItens || 'v0' };
+    }
+
+    function acaoClimaEnviar(t, corpo) {
+      var x = equipeDoToken(t);
+      if (!x) return erro(MSG_CLIMA_LINK);
+      var r = buscarPor(climaRodadas(), 'id', x.equipe.rodadaId);
+      if (!r) return erro(MSG_CLIMA_LINK);
+      if (r.status !== 'aberta') return erro(MSG_CLIMA_ENCERRADA, { encerrada: true });
+      var v = CLx().validarEnvio(corpo, x.papel, { complemento: !!r.complemento, n4: !!r.complemento && !!r.canalTexto });
+      if (!v.ok) return erro(v.erro);
+      var hash = sha256Hex(r.id + ':' + v.chave);
+      var recebidos = lerLista(CHAVES.climaRecebidos);
+      if (recebidos.some(function (y) { return y.rodadaId === r.id && y.chave === hash; })) return { ok: true, duplicado: true };
+      var resps = climaRespostas();
+      if (x.papel === 'lider') {
+        if (resps.some(function (y) { return y.equipeId === x.equipe.id && y.papel === 'lider'; })) return erro('A resposta da liderança desta equipe já foi registrada.');
+      } else if (resps.filter(function (y) { return y.equipeId === x.equipe.id && y.papel === 'membro'; }).length >= x.equipe.convidados) {
+        return erro('Esta equipe já recebeu todas as respostas esperadas. Se você ainda não respondeu, fale com quem enviou o link.');
+      }
+      // Sem id, sem horário e sem nada da pessoa (como public.clima_respostas). Posição sorteada na lista.
+      var nova = { rodadaId: r.id, equipeId: x.equipe.id, papel: x.papel, versaoItens: r.versaoItens || 'v0', itens: v.itens,
+        comentario: v.comentario, segundos: v.segundos };
+      resps.splice(Math.floor(Math.random() * (resps.length + 1)), 0, nova);
+      gravarChave(CHAVES.climaRespostas, resps);
+      recebidos.push({ rodadaId: r.id, chave: hash });
+      gravarChave(CHAVES.climaRecebidos, recebidos);
+      return { ok: true };
+    }
+
+    function acaoClimaListar(empresaIdBruto) {
+      var id = limparTexto(empresaIdBruto, 60);
+      var lista = climaRodadas().filter(function (r) { return r.empresaId === id; })
+        .sort(function (a, b) { return String(b.abertaEm).localeCompare(String(a.abertaEm)); });
+      return { ok: true, rodadas: lista.map(climaRodadaPublica) };
+    }
+
+    function acaoClimaCriar(d) {
+      if (!d || typeof d !== 'object' || Array.isArray(d)) return erro('Dados da pesquisa ausentes.');
+      var empId = limparTexto(d.empresaId, 60);
+      var emp = empId && buscarPor(empresas(), 'id', empId);
+      if (!emp) return erro('Empresa não encontrada.');
+      var rodadas = climaRodadas();
+      if (rodadas.some(function (r) { return r.empresaId === empId && r.status === 'aberta'; })) {
+        return erro('Já existe uma pesquisa de clima aberta nesta empresa. Encerre-a antes de criar outra.');
+      }
+      var compl = d.complemento === true;
+      var canal = limparTexto(d.canalTexto, 200);
+      var url = String(d.canalUrl == null ? '' : d.canalUrl).trim();
+      if (url && (url.length > 300 || !/^(https:\/\/|mailto:|tel:)[^\s<>"]+$/.test(url))) return erro('Link do canal de escuta inválido: use um endereço https://, mailto: ou tel:.');
+      if (url && !canal) return erro('Diga também o nome do canal de escuta.');
+      var ret = 90;
+      if (d.retencaoDias !== undefined && d.retencaoDias !== null) {
+        if (typeof d.retencaoDias !== 'number' || Math.floor(d.retencaoDias) !== d.retencaoDias || d.retencaoDias < 30 || d.retencaoDias > 365) {
+          return erro('Prazo de retenção inválido: de 30 a 365 dias.');
+        }
+        ret = d.retencaoDias;
+      }
+      if (!Array.isArray(d.equipes) || !d.equipes.length) return erro('Escolha pelo menos uma equipe do organograma.');
+      if (d.equipes.length > 60) return erro('Equipes demais numa pesquisa (máximo 60).');
+      var ativos = {};
+      vinculos().forEach(function (v) { if (v.empresaId === empId && v.status === 'ativo') ativos[v.pessoaId] = v; });
+      var rels = relacoesTodas().filter(function (x) { return x.empresaId === empId && x.tipo === 'lidera'; });
+      var fichas = mapaPessoas();
+      var vistos = {}, novas = [], total = 0;
+      for (var i = 0; i < d.equipes.length; i++) {
+        var q = d.equipes[i] || {};
+        var lid = limparTexto(q.liderId, 60);
+        if (!lid || vistos[lid]) return erro('Equipe inválida ou repetida.');
+        vistos[lid] = true;
+        if (!ativos[lid]) return erro('Quem lidera a equipe precisa ser colaborador(a) ativo(a) desta empresa.');
+        var diretos = rels.filter(function (x) { return x.de === lid && ativos[x.para]; }).length;
+        if (!diretos) return erro('Uma das pessoas escolhidas não lidera ninguém no organograma.');
+        var conv = diretos;
+        if (q.convidados !== undefined && q.convidados !== null) {
+          if (typeof q.convidados !== 'number' || Math.floor(q.convidados) !== q.convidados || q.convidados < diretos || q.convidados > 500) {
+            return erro('Convidados de uma equipe: de ' + diretos + ' (liderados no organograma) a 500.');
+          }
+          conv = q.convidados;
+        }
+        var ficha = fichas[lid] || {};
+        novas.push({ liderPessoaId: lid, nome: 'Equipe de ' + CLx().nomeCurto(ficha.nome || ''), area: limparTexto(ativos[lid].area, 120),
+          ordem: i, convidados: conv });
+        total += conv;
+      }
+      if (total < 5) return erro('Com menos de 5 pessoas convidadas a pesquisa não pode ser aplicada: ninguém teria anonimato. Ofereça uma conversa facilitada pela consultoria.');
+      var t = agoraIso();
+      var nome = limparTexto(d.nome, 120);
+      if (!nome) { var dt = new Date(agora() - 3 * 3600000); nome = 'Pesquisa de clima · ' + ('0' + (dt.getUTCMonth() + 1)).slice(-2) + '/' + dt.getUTCFullYear(); }
+      var r = { id: novoId('clima'), empresaId: empId, nome: nome, status: 'aberta', complemento: compl, canalTexto: compl ? canal : '',
+        canalUrl: compl ? url : '', contatoDados: limparTexto(d.contatoDados, 200), versaoItens: 'v0', retencaoDias: ret,
+        abertaEm: t, encerradaEm: '', entregueEm: '', brutasApagadasEm: '', resultado: null };
+      rodadas.push(r);
+      gravarChave(CHAVES.climaRodadas, rodadas);
+      var eqs = climaEquipes();
+      novas.forEach(function (n) {
+        eqs.push(Object.assign({ id: novoId('clq'), rodadaId: r.id, tokenEquipe: hexAleatorio(32), tokenLider: hexAleatorio(32) }, n));
+      });
+      gravarChave(CHAVES.climaEquipes, eqs);
+      return { ok: true, rodada: climaRodadaPublica(r) };
+    }
+
+    function rodadaDoPainel(idBruto) { var id = limparTexto(idBruto, 60); return id ? buscarPor(climaRodadas(), 'id', id) : null; }
+    function calcularRodada(r) {
+      var eqs = climaEquipes().filter(function (e) { return e.rodadaId === r.id; });
+      return CLx().calcular({
+        equipes: eqs.map(function (e) { return { id: e.id, nome: e.nome, area: e.area, ordem: e.ordem, convidados: e.convidados }; }),
+        respostas: climaRespostas().filter(function (x) { return x.rodadaId === r.id; }).map(function (x) {
+          return { equipeId: x.equipeId, papel: x.papel, itens: x.itens, comentario: x.comentario, segundos: x.segundos };
+        }),
+        complemento: !!r.complemento, n4: !!r.complemento && !!r.canalTexto });
+    }
+
+    function acaoClimaEncerrar(id) {
+      var lista = climaRodadas();
+      var r = buscarPor(lista, 'id', limparTexto(id, 60));
+      if (!r) return erro('Pesquisa não encontrada.');
+      if (r.status === 'encerrada') return erro('Esta pesquisa já foi encerrada.');
+      r.resultado = calcularRodada(r);
+      r.status = 'encerrada';
+      r.encerradaEm = agoraIso();
+      gravarChave(CHAVES.climaRodadas, lista);
+      return { ok: true, rodada: climaRodadaPublica(r), resultado: copiar(r.resultado) };
+    }
+
+    function acaoClimaResultado(id) {
+      var r = rodadaDoPainel(id);
+      if (!r) return erro('Pesquisa não encontrada.');
+      if (r.status !== 'encerrada' || !r.resultado) return erro('Os resultados só aparecem depois que a pesquisa é encerrada.');
+      return { ok: true, rodada: climaRodadaPublica(r), resultado: copiar(r.resultado) };
+    }
+
+    function acaoClimaComentarios(id) {
+      var r = rodadaDoPainel(id);
+      if (!r) return erro('Pesquisa não encontrada.');
+      if (r.status !== 'encerrada') return erro('Os comentários só aparecem depois que a pesquisa é encerrada.');
+      if (r.brutasApagadasEm) return { ok: true, disponivel: false, apagados: true, comentarios: [] };
+      if (((r.resultado && r.resultado.respondentes) || 0) < 10) return { ok: true, disponivel: false, apagados: false, comentarios: [] };
+      var cs = climaRespostas().filter(function (x) { return x.rodadaId === r.id && x.papel === 'membro' && String(x.comentario || '').trim(); })
+        .map(function (x) { return x.comentario; });
+      for (var i = cs.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var tmp = cs[i]; cs[i] = cs[j]; cs[j] = tmp; }
+      return { ok: true, disponivel: true, apagados: false, comentarios: cs };
+    }
+
+    // Mesmo snapshot de public.clima_gerar_relatorio: só a visão do cliente do resultado congelado + temas do consultor.
+    function acaoClimaGerarRelatorio(id, opcoesRel, tokenFixo) {
+      var lista = climaRodadas();
+      var r = buscarPor(lista, 'id', limparTexto(id, 60));
+      if (!r) return erro('Pesquisa não encontrada.');
+      if (r.status !== 'encerrada' || !r.resultado) return erro('Encerre a pesquisa antes de gerar o relatório.');
+      var o = opcoesRel && typeof opcoesRel === 'object' ? opcoesRel : {};
+      var emp = buscarPor(empresas(), 'id', r.empresaId) || { nome: r.empresaNome || '', cidade: '' };
+      var temas = [];
+      if (r.resultado.comentarios && r.resultado.comentarios.disponivel && Array.isArray(o.temas)) {
+        temas = o.temas.filter(function (x) { return typeof x === 'string' && x.trim(); }).slice(0, 6).map(function (x) { return limparTexto(x, 300); });
+      }
+      var dados = { modelo: 'clima', versao: 1, titulo: 'Pesquisa de clima · ' + (emp.nome || ''), geradoEm: agoraIso(),
+        empresa: { nome: emp.nome || '', cidade: emp.cidade || '' }, consultor: limparTexto(o.consultor, 80),
+        rodada: { nome: r.nome, abertaEm: r.abertaEm, encerradaEm: r.encerradaEm, complemento: !!r.complemento,
+          n4Ligado: !!r.complemento && !!r.canalTexto, canalTexto: r.canalTexto || '', canalUrl: r.canalUrl || '', versaoItens: r.versaoItens || 'v0' },
+        resultado: CLx().visaoCliente(r.resultado), temas: temas };
+      var rels = relatoriosSalvos();
+      var reg = buscarPor(rels, 'climaRodadaId', r.id);
+      var t = agoraIso();
+      if (!reg) {
+        reg = { id: novoId('rel'), token: tokenFixo || hexAleatorio(32), modelo: 'clima', empresaId: r.empresaId, pessoaId: '', climaRodadaId: r.id,
+          criadoEm: t, status: 'rascunho', publicadoEm: '' };
+        rels.push(reg);
+      }
+      reg.relatorio = dados;
+      reg.atualizadoEm = t;
+      if (o.publicar === true) { if (reg.status !== 'publicado') reg.publicadoEm = t; reg.status = 'publicado'; }
+      else if (o.publicar === false) reg.status = 'rascunho';
+      gravarChave(CHAVES.relatorios, rels);
+      if (reg.status === 'publicado' && !r.entregueEm) { r.entregueEm = t; gravarChave(CHAVES.climaRodadas, lista); }
+      var saida = { id: reg.id, token: reg.token, status: reg.status, modelo: 'clima', publicadoEm: reg.publicadoEm || '' };
+      if (reg.status === 'publicado') saida.url = urlRelatorio(reg.token);
+      return { ok: true, relatorio: saida };
+    }
+
+    function acaoClimaExcluir(id) {
+      var r = rodadaDoPainel(id);
+      if (!r) return erro('Pesquisa não encontrada.');
+      gravarChave(CHAVES.climaRodadas, climaRodadas().filter(function (x) { return x.id !== r.id; }));
+      gravarChave(CHAVES.climaEquipes, climaEquipes().filter(function (x) { return x.rodadaId !== r.id; }));
+      gravarChave(CHAVES.climaRespostas, climaRespostas().filter(function (x) { return x.rodadaId !== r.id; }));
+      gravarChave(CHAVES.climaRecebidos, lerLista(CHAVES.climaRecebidos).filter(function (x) { return x.rodadaId !== r.id; }));
+      gravarChave(CHAVES.relatorios, relatoriosSalvos().filter(function (x) { return x.climaRodadaId !== r.id; }));
+      return { ok: true, id: r.id };
+    }
+
+    function acaoClimaApagarBrutas(o) {
+      o = o && typeof o === 'object' ? o : {};
+      var alvo = o.rodadaId ? limparTexto(o.rodadaId, 60) : '';
+      var lista = climaRodadas();
+      var dia = 24 * 3600 * 1000;
+      var ids = lista.filter(function (r) {
+        if (r.status !== 'encerrada' || r.brutasApagadasEm || (alvo && r.id !== alvo)) return false;
+        if (o.agora === true && alvo) return true;
+        var desde = Date.parse(r.entregueEm || r.encerradaEm);
+        return isFinite(desde) && agora() >= desde + (r.retencaoDias || 90) * dia;
+      }).map(function (r) { return r.id; });
+      var antes = climaRespostas();
+      var ficam = antes.filter(function (x) { return ids.indexOf(x.rodadaId) === -1; });
+      gravarChave(CHAVES.climaRespostas, ficam);
+      gravarChave(CHAVES.climaRecebidos, lerLista(CHAVES.climaRecebidos).filter(function (x) { return ids.indexOf(x.rodadaId) === -1; }));
+      var t = agoraIso();
+      lista.forEach(function (r) {
+        if (ids.indexOf(r.id) === -1) return;
+        r.brutasApagadasEm = t;
+        if (r.resultado) { r.resultado.lideres = []; r.resultado.lideresApagados = true; }
+      });
+      gravarChave(CHAVES.climaRodadas, lista);
+      return { ok: true, rodadas: ids.length, respostas: antes.length - ficam.length };
+    }
+
+    // Semente: rodada ENCERRADA da Clínica Exemplo (respostas fictícias geradas por um sorteio fixo) e o relatório publicado.
+    // Só precisa do js/clima.js (não depende das outras sementes), para relatorio.html#r-exemplo-clima abrir em qualquer prévia.
+    function semearClima() {
+      if (!temClima()) return;
+      var CL = CLx();
+      var EMP = 'emp_previa_clinica';
+      if (buscarPor(climaRodadas(), 'id', PREVIA.climaRodadaId)) { gravarChave(CHAVES.sementeClima, 1); return; }
+      var t = agora();
+      var dia = 24 * 3600 * 1000;
+      var semente = 20260915;
+      function sorteio() {   // mulberry32 (sempre as mesmas respostas fictícias)
+        semente = (semente + 0x6d2b79f5) | 0;
+        var x = Math.imul(semente ^ (semente >>> 15), 1 | semente);
+        x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x;
+        return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+      }
+      var equipes = [
+        { id: 'clq_previa_marta', nome: 'Equipe de Marta E.', area: 'Diretoria', ordem: 0, convidados: 3, n: 2,
+          base: { A: 4.2, B: 4.0, C: 4.3, D: 4.0, E: 3.8, F: 4.2, G: 3.2, H1: 4.2 } },
+        { id: 'clq_previa_diego', nome: 'Equipe de Diego E.', area: 'Comercial', ordem: 1, convidados: 12, n: 11,
+          base: { A: 3.5, B: 2.3, C: 4.1, D: 3.2, E: 3.1, F: 4.0, G: 2.4, H1: 3.7 } },
+        { id: 'clq_previa_paulo', nome: 'Equipe de Paulo M.', area: 'Atendimento', ordem: 2, convidados: 8, n: 6,
+          base: { A: 3.9, B: 3.6, C: 4.3, D: 3.9, E: 3.4, F: 3.6, G: 3.0, H1: 4.0 } }
+      ];
+      function valor(media) { return Math.max(1, Math.min(5, Math.round(media + (sorteio() - 0.5) * 1.8))); }
+      var respostas = [];
+      var comentarios = ['Reuniões mais curtas e com pauta.', 'Mais clareza sobre o que é prioridade na semana.', 'Ferramenta de agenda que não trave.',
+        'Saber antes quando muda a escala.', 'Dividir melhor os atendimentos do fim do dia.'];
+      equipes.forEach(function (e) {
+        for (var j = 0; j < e.n; j++) {
+          var itens = {};
+          CL.BLOCOS.forEach(function (b) {
+            b.itens.forEach(function (it) {
+              if (sorteio() < 0.04) return;           // pulou
+              var v = valor(e.base[b.id]);
+              itens[it.id] = it.invertido ? 6 - v : v;
+            });
+          });
+          itens.H1 = valor(e.base.H1);
+          itens.N1 = valor(3.5); itens.N2 = valor(3.3); itens.N3 = valor(2.7); itens.N5 = valor(4.0);
+          var n4 = sorteio();
+          itens.N4 = n4 < 0.1 ? 2 : (n4 < 0.15 ? 0 : 1);
+          respostas.push({ rodadaId: PREVIA.climaRodadaId, equipeId: e.id, papel: 'membro', versaoItens: 'v0', itens: itens,
+            comentario: sorteio() < 0.35 ? comentarios[Math.floor(sorteio() * comentarios.length)] : '', segundos: 180 + Math.floor(sorteio() * 300) });
+        }
+        if (e.ordem > 0) {
+          var lider = {};
+          CL.telas('lider').forEach(function (tela) { tela.itens.forEach(function (id) { lider[id] = valor(4.1); }); });
+          respostas.push({ rodadaId: PREVIA.climaRodadaId, equipeId: e.id, papel: 'lider', versaoItens: 'v0', itens: lider, comentario: '', segundos: 240 });
+        }
+      });
+      var r = { id: PREVIA.climaRodadaId, empresaId: EMP, empresaNome: 'Clínica Exemplo', nome: 'Pesquisa de clima · set/2026', status: 'aberta',
+        complemento: true, canalTexto: 'o RH da Clínica Exemplo (canal de escuta)', canalUrl: '', contatoDados: '', versaoItens: 'v0',
+        retencaoDias: 90, abertaEm: new Date(t - 25 * dia).toISOString(), encerradaEm: '', entregueEm: '', brutasApagadasEm: '', resultado: null };
+      var lr = climaRodadas(); lr.push(r); gravarChave(CHAVES.climaRodadas, lr);
+      var le = climaEquipes();
+      equipes.forEach(function (e) {
+        le.push({ id: e.id, rodadaId: r.id, liderPessoaId: '', nome: e.nome, area: e.area, ordem: e.ordem, convidados: e.convidados,
+          tokenEquipe: hexAleatorio(32), tokenLider: hexAleatorio(32) });
+      });
+      gravarChave(CHAVES.climaEquipes, le);
+      gravarChave(CHAVES.climaRespostas, climaRespostas().concat(respostas));
+      r.resultado = calcularRodada(r);
+      r.status = 'encerrada';
+      r.encerradaEm = new Date(t - 11 * dia).toISOString();
+      gravarChave(CHAVES.climaRodadas, lr);
+      acaoClimaGerarRelatorio(r.id, { publicar: true, consultor: 'Consultor Exemplo',
+        temas: ['Reuniões longas e sem pauta tomam o tempo de atendimento.', 'A prioridade da semana nem sempre é a mesma para todo o time.',
+          'Mudanças de escala chegam em cima da hora.'] }, PREVIA.climaRelatorioToken);
+      var lr2 = climaRodadas();
+      var r2 = buscarPor(lr2, 'id', r.id);
+      if (r2) { r2.entregueEm = new Date(t - 10 * dia).toISOString(); gravarChave(CHAVES.climaRodadas, lr2); }
+      gravarChave(CHAVES.sementeClima, 1);
     }
 
     /* ----- venda direta (B2C): como a migração 20261011120000_vendas.sql + Edge Function "pagamento" ----- */
@@ -2931,7 +3304,8 @@
       var equipe = !!lerChave(CHAVES.sementeEquipe, null);
       var parte2 = !!lerChave(CHAVES.sementeParte2, null);
       var fotos = !!lerChave(CHAVES.sementeFotos, null);
-      if (base && rel && equipe && parte2 && fotos) return;
+      var clima = !!lerChave(CHAVES.sementeClima, null);
+      if (base && rel && equipe && parte2 && fotos && clima) return;
       semeando = true;
       try {
         if (!base && temScoring()) { semear(); base = true; } // sem scoring.js (página do relatório) fica para a próxima página
@@ -2939,6 +3313,7 @@
         if (base && !equipe && temScoring()) { semearEquipe(); equipe = true; } // e a equipe da Clínica Exemplo
         if (base && equipe && !parte2) semearParte2(); // e a Parte 2 (perfil exigido) no EQP1
         if (base && equipe && !fotos) semearFotos(); // e os avatares fictícios
+        if (!clima) semearClima(); // e a pesquisa de clima encerrada da Clínica Exemplo (precisa só do js/clima.js)
       } finally { semeando = false; }
     }
 
@@ -3249,6 +3624,11 @@
     // Como o DISC_API real: Promise que resolve com o JSON (ok === true) ou rejeita com Error em pt-BR
     // (com erro.sessaoExpirada e erro.resposta, iguais aos do js/api.js).
     function prepararDependencias(acao) {
+      var clima = (String(acao || '').indexOf('clima.') === 0 || (comSemente && !lerChave(CHAVES.sementeClima, null))) && !opcoes.clima
+        ? carregarScript('clima.js', 'DISC_CLIMA') : null;
+      return Promise.all([clima, prepararMotor(acao)]);
+    }
+    function prepararMotor(acao) {
       var semearExemplo = comSemente && !lerChave(CHAVES.sementeRelatorio, null); // a semente usa a fixture
       if ((ACOES_COM_MOTOR.indexOf(acao) === -1 && !semearExemplo) || (opcoes.motor && opcoes.fixture)) return Promise.resolve();
       return Promise.all([
@@ -3307,13 +3687,16 @@
       ler: ler,
       limpar: function () {
         gravar([]); gravarPessoas([]); gravarChave(CHAVES.vinculos, []); gravarChave(CHAVES.relacoes, []); gravarChave(CHAVES.pedidos, []);
+        [CHAVES.climaRodadas, CHAVES.climaEquipes, CHAVES.climaRespostas, CHAVES.climaRecebidos].forEach(function (k) { gravarChave(k, []); });
       },
       // Volta a prévia ao estado inicial (apaga tudo e recria a semente).
       reiniciar: function () {
         [CHAVE_ARMAZENAMENTO, CHAVES.usuarios, CHAVES.empresas, CHAVES.avaliacoes, CHAVES.sessoes, CHAVES.relatorios, CHAVES.pessoas,
-          CHAVES.vinculos, CHAVES.relacoes, CHAVES.pedidos].forEach(function (k) {
+          CHAVES.vinculos, CHAVES.relacoes, CHAVES.pedidos, CHAVES.climaRodadas, CHAVES.climaEquipes, CHAVES.climaRespostas,
+          CHAVES.climaRecebidos].forEach(function (k) {
           gravarChave(k, k === CHAVES.sessoes ? {} : []);
         });
+        gravarChave(CHAVES.sementeClima, 0);
         gravarChave(CHAVES.pacotes, null);
         gravarChave(CHAVES.cupons, null);
         gravarChave(CHAVES.semente, 0);
@@ -3553,7 +3936,21 @@
         exigirToken(token);
         exigir(id, 'Relatório não informado.');
         return comSessao('relatorioModelo.abrir', token, { id: id });
-      })
+      }),
+      // --- Pesquisa de clima: mesmo contrato do js/api-supabase.js ---
+      climaPublica: seguro(function (t) { return chamar({ acao: 'clima.publica', tokenClima: String(t == null ? '' : t) }); }),
+      climaEnviar: seguro(function (t, respostas) { return chamar({ acao: 'clima.enviar', tokenClima: String(t == null ? '' : t), respostas: respostas }); }),
+      climaListar: seguro(function (token, empresaId) { return comSessao('clima.listar', token, { empresaId: empresaId }); }),
+      climaCriarRodada: seguro(function (token, dados) { return comSessao('clima.criar', token, { dados: dados || {} }); }),
+      climaEncerrar: seguro(function (token, id) { exigirToken(token); exigir(id, 'Pesquisa não informada.'); return comSessao('clima.encerrar', token, { rodadaId: id }); }),
+      climaResultado: seguro(function (token, id) { exigirToken(token); exigir(id, 'Pesquisa não informada.'); return comSessao('clima.resultado', token, { rodadaId: id }); }),
+      climaComentarios: seguro(function (token, id) { exigirToken(token); exigir(id, 'Pesquisa não informada.'); return comSessao('clima.comentarios', token, { rodadaId: id }); }),
+      climaGerarRelatorio: seguro(function (token, id, opcoes) {
+        exigirToken(token); exigir(id, 'Pesquisa não informada.');
+        return comSessao('clima.relatorio', token, { rodadaId: id, opcoes: opcoes || {} });
+      }),
+      climaExcluirRodada: seguro(function (token, id) { exigirToken(token); exigir(id, 'Pesquisa não informada.'); return comSessao('clima.excluir', token, { rodadaId: id }); }),
+      climaApagarBrutas: seguro(function (token, opcoes) { return comSessao('clima.apagarBrutas', token, { opcoes: opcoes || {} }); })
     };
   }
 
@@ -3570,7 +3967,9 @@
     'pacotesPublicos', 'enviarPessoal', 'resumoPessoal', 'criarPedido', 'iniciarPagamento', 'statusPedido', 'relatorioPessoal',
     'salvarParte2Pessoal', 'recuperarAcesso', 'enviarLinkPorEmail', 'confirmarRetorno',
     'listarPedidos', 'atualizarPedido', 'listarCupons', 'salvarCupom', 'excluirCupom', 'listarPacotes', 'salvarPacote', 'resumoVendas',
-    'diagnosticoConexoes', 'testarConexao'];
+    'diagnosticoConexoes', 'testarConexao',
+    'climaPublica', 'climaEnviar', 'climaListar', 'climaCriarRodada', 'climaEncerrar', 'climaResultado', 'climaComentarios',
+    'climaGerarRelatorio', 'climaExcluirRodada', 'climaApagarBrutas'];
 
   // Liga no lugar do DISC_API real quando CONFIG.API_URL === 'simulada' (o objeto continua o mesmo).
   function instalar(alvo, cfg, opcoes) {

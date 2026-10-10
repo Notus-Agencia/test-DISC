@@ -66,6 +66,22 @@
  *   listarEnviosEmail(token, {tipo:'relatorio'|'pedido', referencias:[token do relatório | id do pedido]}) -> {envios:[{tipo,
  *     referencia, para, por (nome de quem enviou; '' = o cliente), cliente, em, resultado:'ok'|'erro', provedorId}]}
  *     (mais novos primeiro; até 20 por referência). Banco sem a migração: {envios: [], semHistorico: true}.
+ * Pesquisa de Clima da Equipe (migração 20261017120000_clima.sql; regras em js/clima.js e docs/painel-cientifico/decisao.md).
+ * Toda a agregação e a supressão ficam no banco: o navegador nunca recebe resposta bruta (só o consultor lê os comentários,
+ * com a rodada encerrada e 10+ respostas). Links: clima.html?t=<token de 64 hex> (equipe = coletivo e anônimo; líder = papel).
+ *   Públicas: climaPublica(tokenClima) -> {papel:'membro'|'lider', empresaNome, equipeNome, complemento, n4, canalTexto, canalUrl,
+ *     contatoDados, retencaoDias, versaoItens} (rodada encerrada: rejeita com erro.resposta.encerrada) ·
+ *     climaEnviar(tokenClima, {itens:{A1: 1..5, …, N4: 0..3}, comentario, segundos, chave: 32 hex}) -> {ok, duplicado?}
+ *   Painel (só admin): climaListar(token, empresaId) -> {rodadas:[rodada]} · climaCriarRodada(token, {empresaId, nome, complemento,
+ *     canalTexto, canalUrl, contatoDados, retencaoDias, equipes:[{liderId, convidados?}]}) -> {rodada} · climaEncerrar(token, rodadaId)
+ *     -> {rodada, resultado} · climaResultado(token, rodadaId) -> {rodada, resultado} (só encerrada) · climaComentarios(token,
+ *     rodadaId) -> {disponivel, apagados, comentarios:[texto]} · climaGerarRelatorio(token, rodadaId, {publicar?, consultor?,
+ *     temas?}) -> {relatorio:{id, token, status, modelo:'clima', url?}} · climaExcluirRodada(token, rodadaId) -> {id} ·
+ *     climaApagarBrutas(token, {rodadaId?, agora?}) -> {rodadas, respostas} (retenção).
+ *   rodada = {id, empresaId, nome, status:'aberta'|'encerrada', complemento, n4, canalTexto, canalUrl, contatoDados, versaoItens,
+ *     retencaoDias, abertaEm, encerradaEm, entregueEm, brutasApagadasEm, convidados, respondentes, equipes:[{id, nome, area, ordem,
+ *     convidados, respondentes, tokenEquipe, tokenLider}], relatorio:{id, token, status, publicadoEm, atualizadoEm, temas, url?}|null}
+ *   O relatório de clima (modelo 'clima') não aparece em listarRelatoriosModelo/abrirRelatorioModelo/excluirRelatorioModelo.
  * Fotos (data URL "data:image/jpeg;base64,/9j/…", até 40 000 caracteres, guardada no banco; fotoValida(str)):
  *   enviar: payload.foto ('' = sem foto), conforme formulario.campos.foto ('obrigatorio'|'opcional'|'oculto').
  *   listar: item.foto (da resposta, '' sem foto) e item.pessoa.foto (da ficha). listarEquipe: colaborador.foto
@@ -185,6 +201,7 @@
   var MSG_ADMIN_DESATUALIZADA = 'A função admin está desatualizada: publique de novo.';
   var MSG_ADMIN_AUSENTE = 'A função admin não está publicada no Supabase.';
   var MSG_BANCO_DESATUALIZADO = 'O banco de dados está desatualizado. Peça para aplicar as migrações (veja docs/SUPABASE.md).';
+  var MSG_CLIMA_LINK = 'Link inválido ou pesquisa encerrada. Fale com quem enviou o link.';
   // Migrações (supabase/migrations), na ordem, e como conferir cada uma sem a função versao_banco.
   var MIGRACOES = [
     { nome: '20261005120000_disc', descricao: 'base (processos, respostas, relatórios)' },
@@ -199,9 +216,10 @@
     { nome: '20261013120000_conexoes', descricao: 'aba Conexões (pedido de teste fora das vendas)', tabela: 'pedidos', coluna: 'teste' },
     { nome: '20261014120000_stripe', descricao: 'Stripe (pagamento dentro do site)' },
     { nome: '20261015120000_minimo_cobranca', descricao: 'preço mínimo de R$ 0,50 em cupons e pacotes conferido no banco' },
-    { nome: '20261016120000_envios_email', descricao: 'histórico de envios por e-mail' }
+    { nome: '20261016120000_envios_email', descricao: 'histórico de envios por e-mail' },
+    { nome: '20261017120000_clima', descricao: 'Pesquisa de Clima da Equipe (rodadas, respostas anônimas e relatório)' }
   ];
-  var VERSAO_ATUAL = 20261016120000;
+  var VERSAO_ATUAL = 20261017120000;
   var MSG_PRIMEIRO_ACESSO = 'Com o Supabase não há chave de primeiro acesso: crie o seu usuário no painel do Supabase ' +
     '(Authentication > Users > Add user) e entre com esse e-mail e senha. O primeiro login vira administrador.';
   var MSG_REDEFINIR = 'Com o Supabase cada pessoa cria a própria senha nova pelo "Esqueci minha senha", na tela de entrada.';
@@ -1308,6 +1326,30 @@
       });
     }
 
+    // ---- Pesquisa de clima ----
+    function tokenClimaValido(v) { var t = String(v == null ? '' : v).trim().toLowerCase(); return /^[0-9a-f]{64}$/.test(t) ? t : ''; }
+    function rodadaClima(r) {
+      r = r && typeof r === 'object' ? r : {};
+      var rel = r.relatorio && typeof r.relatorio === 'object' ? r.relatorio : null;
+      var saida = Object.assign({}, r, { equipes: Array.isArray(r.equipes) ? r.equipes : [], relatorio: null });
+      if (rel) {
+        saida.relatorio = { id: String(rel.id || ''), token: String(rel.token || ''), status: rel.status === 'publicado' ? 'publicado' : 'rascunho',
+          publicadoEm: iso(rel.publicadoEm), atualizadoEm: iso(rel.atualizadoEm),
+          temas: (Array.isArray(rel.temas) ? rel.temas : []).filter(function (t) { return typeof t === 'string'; }) };
+        if (saida.relatorio.status === 'publicado' && saida.relatorio.token) saida.relatorio.url = urlRelatorio(saida.relatorio.token);
+      }
+      return saida;
+    }
+    function climaRodadaRpc(token, rodadaIdBruto, funcao, extra) {
+      exigirToken(token);
+      exigir(rodadaIdBruto, 'Pesquisa não informada.');
+      var id = idValido(rodadaIdBruto);
+      return exigirSessao(token).then(function () {
+        if (!id) throw recusa('Pesquisa não encontrada.');
+        return rpcOk(funcao, Object.assign({ p_rodada: id }, extra || {}));
+      });
+    }
+
     var linkAtual = { tipo: linkInicial.tipo, erro: linkInicial.erro };
 
     var api = {
@@ -1883,7 +1925,7 @@
         return exigirSessao(token).then(function () {
           if ((empresaId && !RE_UUID.test(empresaId)) || (pessoaId && !RE_UUID.test(pessoaId))) return [];
           return consulta(function (c) {
-            var q = c.from('relatorios').select(COLUNAS_REL_MODELO).neq('modelo', 'processo');
+            var q = c.from('relatorios').select(COLUNAS_REL_MODELO).neq('modelo', 'processo').neq('modelo', 'clima');
             if (empresaId) q = q.eq('empresa_id', empresaId);
             if (pessoaId) q = q.eq('pessoa_id', pessoaId);
             return q.order('criado_em', { ascending: false });
@@ -1900,7 +1942,7 @@
         var id = idValido(idBruto);
         return exigirSessao(token).then(function () {
           if (!id) throw recusa('Relatório não encontrado.');
-          return consulta(function (c) { return c.from('relatorios').delete().eq('id', id).neq('modelo', 'processo').select('id'); });
+          return consulta(function (c) { return c.from('relatorios').delete().eq('id', id).neq('modelo', 'processo').neq('modelo', 'clima').select('id'); });
         }).then(function (linhas) {
           if (!Array.isArray(linhas) || !linhas.length) throw recusa('Relatório não encontrado.');
           return { ok: true, id: id };
@@ -1913,7 +1955,7 @@
         var id = idValido(idBruto);
         return exigirSessao(token).then(function () {
           if (!id) throw recusa('Relatório não encontrado.');
-          return consulta(function (c) { return c.from('relatorios').select(COLUNAS_REL_MODELO + ', dados').eq('id', id).neq('modelo', 'processo').limit(1); });
+          return consulta(function (c) { return c.from('relatorios').select(COLUNAS_REL_MODELO + ', dados').eq('id', id).neq('modelo', 'processo').neq('modelo', 'clima').limit(1); });
         }).then(function (linhas) {
           var l = Array.isArray(linhas) ? linhas[0] : linhas;
           if (!l) throw recusa('Relatório não encontrado.');
@@ -2065,6 +2107,78 @@
         });
       }),
 
+      // --- Pesquisa de clima (migração 20261017120000_clima.sql): tudo pelas funções do banco ---
+      climaPublica: seguro(function (tokenClima) {
+        var t = tokenClimaValido(tokenClima);
+        if (!t) throw recusa(MSG_CLIMA_LINK);
+        return rpcOk('clima_publica', { p_token: t });
+      }),
+      climaEnviar: seguro(function (tokenClima, respostas) {
+        var t = tokenClimaValido(tokenClima);
+        if (!t) throw recusa(MSG_CLIMA_LINK);
+        if (!respostas || typeof respostas !== 'object' || Array.isArray(respostas)) throw recusa('Respostas em formato inválido.');
+        return rpcOk('clima_enviar', { p_token: t, p_respostas: respostas }).then(function (r) {
+          var x = { ok: true };
+          if (r.duplicado) x.duplicado = true;
+          return x;
+        });
+      }),
+      climaListar: seguro(function (token, empresaIdBruto) {
+        exigirToken(token);
+        var id = idValido(empresaIdBruto);
+        return exigirSessao(token).then(function () {
+          if (!id) throw recusa('Empresa não encontrada.');
+          return rpcOk('clima_listar', { p_empresa: id });
+        }).then(function (r) { return { ok: true, rodadas: (Array.isArray(r.rodadas) ? r.rodadas : []).map(rodadaClima) }; });
+      }),
+      climaCriarRodada: seguro(function (token, dados) {
+        exigirToken(token);
+        if (!dados || typeof dados !== 'object') throw recusa('Dados da pesquisa ausentes.');
+        return exigirSessao(token).then(function () { return rpcOk('clima_criar_rodada', { p_dados: dados }); })
+          .then(function (r) { return { ok: true, rodada: rodadaClima(r.rodada) }; });
+      }),
+      climaEncerrar: seguro(function (token, rodadaId) {
+        return climaRodadaRpc(token, rodadaId, 'clima_encerrar').then(function (r) {
+          return { ok: true, rodada: rodadaClima(r.rodada), resultado: r.resultado || null };
+        });
+      }),
+      climaResultado: seguro(function (token, rodadaId) {
+        return climaRodadaRpc(token, rodadaId, 'clima_resultado').then(function (r) {
+          return { ok: true, rodada: rodadaClima(r.rodada), resultado: r.resultado || null };
+        });
+      }),
+      climaComentarios: seguro(function (token, rodadaId) {
+        return climaRodadaRpc(token, rodadaId, 'clima_comentarios').then(function (r) {
+          return { ok: true, disponivel: r.disponivel === true, apagados: r.apagados === true,
+            comentarios: (Array.isArray(r.comentarios) ? r.comentarios : []).map(function (c) { return String(c); }) };
+        });
+      }),
+      climaGerarRelatorio: seguro(function (token, rodadaId, opcoes) {
+        var o = opcoes && typeof opcoes === 'object' ? opcoes : {};
+        var p = {};
+        if (o.publicar === true || o.publicar === false) p.publicar = o.publicar;
+        if (o.consultor !== undefined) p.consultor = limparTexto(o.consultor, 80);
+        if (Array.isArray(o.temas)) p.temas = o.temas.slice(0, 6).map(function (t) { return limparTexto(t, 300); }).filter(Boolean);
+        return climaRodadaRpc(token, rodadaId, 'clima_gerar_relatorio', { p_opcoes: p }).then(function (r) {
+          var rel = r.relatorio || {};
+          var x = { id: String(rel.id || ''), token: String(rel.token || ''), status: rel.status === 'publicado' ? 'publicado' : 'rascunho',
+            modelo: 'clima', publicadoEm: iso(rel.publicadoEm) };
+          if (x.status === 'publicado' && x.token) x.url = urlRelatorio(x.token);
+          return { ok: true, relatorio: x };
+        });
+      }),
+      climaExcluirRodada: seguro(function (token, rodadaId) {
+        return climaRodadaRpc(token, rodadaId, 'clima_excluir_rodada').then(function (r) { return { ok: true, id: String(r.id || rodadaId) }; });
+      }),
+      climaApagarBrutas: seguro(function (token, opcoes) {
+        exigirToken(token);
+        var o = opcoes && typeof opcoes === 'object' ? opcoes : {};
+        var id = o.rodadaId ? idValido(o.rodadaId) : '';
+        if (o.rodadaId && !id) throw recusa('Pesquisa não encontrada.');
+        return exigirSessao(token).then(function () { return rpcOk('clima_apagar_brutas', { p_rodada: id || null, p_agora: o.agora === true && !!id }); })
+          .then(function (r) { return { ok: true, rodadas: numero(r.rodadas), respostas: numero(r.respostas) }; });
+      }),
+
       // --- aba Conexões (só admin): banco testado aqui; o resto pela Edge Function "admin" (nunca valores de segredos) ---
       diagnosticoConexoes: seguro(function (token) {
         return exigirSessao(token).then(function (sessao) {
@@ -2195,7 +2309,9 @@
     'pacotesPublicos', 'enviarPessoal', 'resumoPessoal', 'criarPedido', 'iniciarPagamento', 'statusPedido', 'relatorioPessoal',
     'salvarParte2Pessoal', 'recuperarAcesso', 'enviarLinkPorEmail', 'confirmarRetorno',
     'listarPedidos', 'atualizarPedido', 'listarCupons', 'salvarCupom', 'excluirCupom', 'listarPacotes', 'salvarPacote', 'resumoVendas',
-    'diagnosticoConexoes', 'testarConexao'];
+    'diagnosticoConexoes', 'testarConexao',
+    'climaPublica', 'climaEnviar', 'climaListar', 'climaCriarRodada', 'climaEncerrar', 'climaResultado', 'climaComentarios',
+    'climaGerarRelatorio', 'climaExcluirRodada', 'climaApagarBrutas'];
 
   var DISC_API_SUPABASE = {
     METODOS: METODOS,
