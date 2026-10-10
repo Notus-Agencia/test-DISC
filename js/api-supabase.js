@@ -80,7 +80,7 @@
  *     climaApagarBrutas(token, {rodadaId?, agora?}) -> {rodadas, respostas} (retenção).
  *   rodada = {id, empresaId, nome, status:'aberta'|'encerrada', complemento, n4, canalTexto, canalUrl, contatoDados, versaoItens,
  *     retencaoDias, abertaEm, encerradaEm, entregueEm, brutasApagadasEm, convidados, respondentes, equipes:[{id, nome, area, ordem,
- *     convidados, respondentes, tokenEquipe, tokenLider}], relatorio:{id, token, status, publicadoEm, atualizadoEm, url?}|null}
+ *     convidados, respondentes, tokenEquipe, tokenLider}], relatorio:{id, token, status, publicadoEm, atualizadoEm, temas, url?}|null}
  *   O relatório de clima (modelo 'clima') não aparece em listarRelatoriosModelo/abrirRelatorioModelo/excluirRelatorioModelo.
  * Fotos (data URL "data:image/jpeg;base64,/9j/…", até 40 000 caracteres, guardada no banco; fotoValida(str)):
  *   enviar: payload.foto ('' = sem foto), conforme formulario.campos.foto ('obrigatorio'|'opcional'|'oculto').
@@ -1334,7 +1334,8 @@
       var saida = Object.assign({}, r, { equipes: Array.isArray(r.equipes) ? r.equipes : [], relatorio: null });
       if (rel) {
         saida.relatorio = { id: String(rel.id || ''), token: String(rel.token || ''), status: rel.status === 'publicado' ? 'publicado' : 'rascunho',
-          publicadoEm: iso(rel.publicadoEm), atualizadoEm: iso(rel.atualizadoEm) };
+          publicadoEm: iso(rel.publicadoEm), atualizadoEm: iso(rel.atualizadoEm),
+          temas: (Array.isArray(rel.temas) ? rel.temas : []).filter(function (t) { return typeof t === 'string'; }) };
         if (saida.relatorio.status === 'publicado' && saida.relatorio.token) saida.relatorio.url = urlRelatorio(saida.relatorio.token);
       }
       return saida;

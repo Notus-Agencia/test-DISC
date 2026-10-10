@@ -822,7 +822,8 @@ returns jsonb language sql stable security definer set search_path = '' as $$
                   'tokenEquipe', e.token_equipe, 'tokenLider', e.token_lider) order by e.ordem), '[]'::jsonb)
                 from public.clima_equipes e where e.rodada_id = r.id),
     'relatorio', (select jsonb_build_object('id', rel.id, 'token', rel.token, 'status', rel.status,
-                    'publicadoEm', disc_interno.iso(rel.publicado_em), 'atualizadoEm', disc_interno.iso(rel.atualizado_em))
+                    'publicadoEm', disc_interno.iso(rel.publicado_em), 'atualizadoEm', disc_interno.iso(rel.atualizado_em),
+                    'temas', case when jsonb_typeof(rel.dados -> 'temas') = 'array' then rel.dados -> 'temas' else '[]'::jsonb end)
                     from public.relatorios rel where rel.clima_rodada_id = r.id limit 1))
   from public.clima_rodadas r where r.id = p_id;
 $$;

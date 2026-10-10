@@ -2501,7 +2501,8 @@
         relatorio: null };
       if (rel) {
         saida.relatorio = { id: rel.id, token: rel.token, status: rel.status === 'publicado' ? 'publicado' : 'rascunho',
-          publicadoEm: rel.publicadoEm || '', atualizadoEm: rel.atualizadoEm || '' };
+          publicadoEm: rel.publicadoEm || '', atualizadoEm: rel.atualizadoEm || '',
+          temas: rel.relatorio && Array.isArray(rel.relatorio.temas) ? rel.relatorio.temas.slice() : [] };
         if (saida.relatorio.status === 'publicado') saida.relatorio.url = urlRelatorio(rel.token);
       }
       return saida;

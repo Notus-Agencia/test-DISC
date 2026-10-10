@@ -46,3 +46,5 @@
 .clima-conv-campo { display: flex; align-items: center; gap: 8px; flex: none; }
 .clima-conv { width: 88px; }
 .clima-canal-campos { display: grid; gap: 4px; margin: 6px 0 4px 30px; }
+#janela-clima-nova.janela__caixa { max-width: 720px; }
+#janela-clima-comentarios.janela__caixa { max-width: 640px; }

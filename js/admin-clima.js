@@ -188,7 +188,7 @@
   function cartaoAberta(ctx, r) {
     var el = ctx.el, botao = ctx.botao;
     var c = el('article', { classe: 'clima-rodada', 'data-rodada': r.id, 'data-status': 'aberta' }, [cabecalhoRodada(ctx, r)]);
-    c.appendChild(el('p', { classe: 'clima-total tabular', id: 'clima-taxa-total', texto: (r.respondentes || 0) + ' de ' + (r.convidados || 0) + ' convidados responderam (' + pct(r.respondentes, r.convidados) + '%)' }));
+    c.appendChild(el('p', { classe: 'clima-total clima-taxa-total tabular', texto: (r.respondentes || 0) + ' de ' + (r.convidados || 0) + ' convidados responderam (' + pct(r.respondentes, r.convidados) + '%)' }));
     c.appendChild(el('p', { classe: 'texto-suave t-nota', texto: 'Só a contagem por equipe: ninguém (nem a Gestão sem Caos) vê quem respondeu. Os resultados aparecem depois do encerramento.' }));
     c.appendChild(el('ul', { classe: 'clima-equipes' }, r.equipes.map(function (e) {
       var lEq = linkClima(ctx.href, e.tokenEquipe), lLi = linkClima(ctx.href, e.tokenLider);
@@ -214,7 +214,7 @@
       ]);
     })));
     var avisos = avisosAberta(r);
-    if (avisos.length) c.appendChild(el('ul', { classe: 'clima-avisos', id: 'clima-avisos' }, avisos.map(function (t) { return el('li', { classe: 't-rotulo', texto: t }); })));
+    if (avisos.length) c.appendChild(el('ul', { classe: 'clima-avisos' }, avisos.map(function (t) { return el('li', { classe: 't-rotulo', texto: t }); })));
     c.appendChild(el('div', { classe: 'gestao-card__acoes' }, [
       botao('botao--laranja', 'Encerrar pesquisa', function () {
         ctx.confirmar({ titulo: 'Encerrar a pesquisa?', texto: 'Ninguém mais consegue responder e as equipes ficam congeladas. O resultado é calculado agora, já com as regras de anonimato.',
@@ -277,11 +277,11 @@
     var C = CL();
     c.appendChild(el('p', { classe: 'clima-total tabular', texto: res.respondentes + ' de ' + res.convidados + ' convidados responderam (' + res.taxa + '%)' }));
     if (res.suprimido) {
-      c.appendChild(el('p', { classe: 'aviso', id: 'clima-suprimido', texto: 'Menos de 5 respostas no total: nenhum resultado pode aparecer (anonimato). Ofereça uma conversa facilitada pela consultoria.' }));
+      c.appendChild(el('p', { classe: 'aviso clima-suprimido', texto: 'Menos de 5 respostas no total: nenhum resultado pode aparecer (anonimato). Ofereça uma conversa facilitada pela consultoria.' }));
     }
     // Situação de cada equipe (avisos de mínimo e de complemento).
     c.appendChild(el('h4', { classe: 'clima-sub', texto: 'Equipes' }));
-    c.appendChild(el('ul', { classe: 'clima-situacoes', id: 'clima-situacoes' }, (res.equipes || []).map(function (e) {
+    c.appendChild(el('ul', { classe: 'clima-situacoes' }, (res.equipes || []).map(function (e) {
       return el('li', { classe: 'clima-situacao clima-situacao--' + e.situacao, 'data-equipe': e.id, 'data-situacao': e.situacao }, [
         el('span', { classe: 'seminegrito', texto: e.nome }),
         el('span', { classe: 'texto-suave t-rotulo tabular', texto: e.respondentes + ' de ' + e.convidados }),
@@ -300,7 +300,7 @@
         return el('tr', { 'data-dim': d }, [el('th', { scope: 'row', texto: C.bloco(d).nome })].concat(grupos.map(function (g) { return celulaDim(el, g.dimensoes[d]); })));
       });
       linhas.push(el('tr', { 'data-dim': 'H1' }, [el('th', { scope: 'row', texto: 'Entrega da equipe (1 pergunta)' })].concat(grupos.map(function (g) { return celulaDim(el, g.h1); }))));
-      c.appendChild(el('div', { classe: 'clima-quadro-rolagem' }, el('table', { classe: 'clima-quadro', id: 'clima-quadro' }, [el('thead', null, cab), el('tbody', null, linhas)])));
+      c.appendChild(el('div', { classe: 'clima-quadro-rolagem' }, el('table', { classe: 'clima-quadro clima-quadro--temas' }, [el('thead', null, cab), el('tbody', null, linhas)])));
       // Visão líder × equipe (só consultor e o próprio líder).
       if ((res.lideres || []).length) {
         c.appendChild(el('h4', { classe: 'clima-sub', texto: 'Visão do líder × equipe (só para o consultor e o próprio líder)' }));
@@ -324,7 +324,7 @@
       if (res.complemento && res.complemento.ligado) {
         var ce = (res.complemento.grupos || [])[0];
         var partes = C.N_INDICADORES.map(function (id) { var x = ce && ce.itens[id]; return id + ' ' + (x ? x.escore : '—'); });
-        c.appendChild(el('p', { classe: 't-rotulo', id: 'clima-complemento', texto: 'Fatores psicossociais (toda a empresa, mínimo de 10): ' + partes.join(' · ') +
+        c.appendChild(el('p', { classe: 't-rotulo clima-res-complemento', texto: 'Fatores psicossociais (toda a empresa, mínimo de 10): ' + partes.join(' · ') +
           (res.complemento.n4 ? ' · relatos de tratamento ofensivo: ' + res.complemento.n4.pct + '% de ' + res.complemento.n4.n : (res.complemento.n4Ligado ? ' · tratamento ofensivo: menos de 10 respostas' : '')) }));
       }
     }
@@ -334,7 +334,9 @@
     // Comentários e relatório.
     var com = res.comentarios || {};
     var temas = el('textarea', { id: 'clima-temas-' + r.id, classe: 'entrada clima-temas', rows: '4', placeholder: 'Um tema por linha. Escreva com as suas palavras, sem trechos literais e sem nomes.' });
-    temas.value = (cache[ctx.emp.id].temas && cache[ctx.emp.id].temas[r.id]) || '';
+    var digitados = cache[ctx.emp.id].temas && cache[ctx.emp.id].temas[r.id];
+    // Sem nada digitado nesta tela, começa com os temas do relatório já gerado (para não perdê-los ao atualizar).
+    temas.value = typeof digitados === 'string' ? digitados : ((r.relatorio && r.relatorio.temas) || []).join('\n');
     temas.addEventListener('input', function () { var e = cache[ctx.emp.id]; e.temas = e.temas || {}; e.temas[r.id] = temas.value; });
     function listaTemas() { return temas.value.split(/\n+/).map(function (t) { return t.trim(); }).filter(Boolean).slice(0, 6); }
     c.appendChild(el('h4', { classe: 'clima-sub', texto: 'Comentários e relatório' }));
@@ -359,12 +361,12 @@
       }).catch(ctx.falhou);
     }
     var url = rel && rel.status === 'publicado' ? (rel.url || linkRelatorio(ctx.href, rel.token)) : '';
-    c.appendChild(el('div', { classe: 'gestao-card__acoes', id: 'clima-acoes-relatorio' }, [
+    c.appendChild(el('div', { classe: 'gestao-card__acoes clima-acoes-relatorio' }, [
       botao('botao--claro', 'Abrir prévia em nova aba', function () { ctx.abrirPrevia(snapshotPrevia(r, res, ctx.emp, listaTemas(), ctx.consultor)); }, { 'data-acao': 'clima-previa' }),
       res.suprimido ? null : botao(url ? 'botao--claro' : 'botao--laranja', url ? 'Atualizar relatório publicado' : 'Publicar relatório', function () {
         gerar(true, url ? 'Relatório atualizado.' : 'Relatório publicado. Copie o link para enviar.');
       }, { 'data-acao': 'clima-publicar' }),
-      url ? el('code', { classe: 'av-link clima-link', id: 'clima-link-relatorio', texto: url }) : null,
+      url ? el('code', { classe: 'av-link clima-link clima-link-relatorio', texto: url }) : null,
       url ? botao('botao--claro botao--pequeno', 'Copiar link', function () { ctx.copiar(url, 'Link do relatório copiado.'); }, { 'data-acao': 'clima-copiar-relatorio' }) : null,
       url ? el('a', { classe: 'botao botao--claro botao--pequeno', href: ctx.linkWhatsApp('Olá! Segue o relatório da Pesquisa de Clima da Equipe da ' + ctx.emp.nome + ', preparado pela Gestão sem Caos:\n' + url), target: '_blank', rel: 'noopener', texto: 'WhatsApp' }) : null,
       url ? el('a', { classe: 'botao botao--claro botao--pequeno', href: url, target: '_blank', rel: 'noopener', 'data-acao': 'clima-abrir-relatorio', texto: 'Abrir' }) : null,
