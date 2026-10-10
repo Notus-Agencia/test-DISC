@@ -119,6 +119,7 @@ test('prévia: resposta anônima pelo link, nada antes do encerramento, resultad
   assert.deepEqual((await api.listarRelatoriosModelo(T, { empresaId: o.emp })).relatorios, []);
   assert.ok((await api.climaListar(T, o.emp)).rodadas[0].entregueEm);
   assert.equal((await api.climaListar(T, o.emp)).rodadas[0].relatorio.status, 'publicado');
+  assert.deepEqual((await api.climaListar(T, o.emp)).rodadas[0].relatorio.temas, ['Pausas', 'Escala']);
   // Retenção: "apagar já" tira as brutas e a visão do líder.
   assert.deepEqual(await api.climaApagarBrutas(T, { rodadaId: r.id, agora: true }), { ok: true, rodadas: 1, respostas: 17 });
   assert.deepEqual((await api.climaResultado(T, r.id)).resultado.lideres, []);

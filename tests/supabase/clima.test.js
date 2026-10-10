@@ -367,6 +367,7 @@ test('relatório de clima: só agregados suprimidos no snapshot; temas só com 1
   d.resultado.equipes.forEach((e) => { if (e.situacao !== 'aparece') assert.equal(e.respondentes, undefined); });
   // A rodada ganhou a data de entrega.
   assert.ok((await rpcAdmin('clima_listar', o.emp)).rodadas[0].entregueEm);
+  assert.deepEqual((await rpcAdmin('clima_listar', o.emp)).rodadas[0].relatorio.temas, ['Reuniões longas', 'Ferramentas'], 'o painel recebe os temas já publicados');
   // O painel não grava o snapshot direto; só publica/despublica.
   await rejeita(admin(`update public.relatorios set dados = '{"modelo":"clima"}' where token = $1`, [g.relatorio.token]), /só é montado pelo servidor/);
   await rejeita(admin(`insert into public.relatorios (modelo, empresa_id, clima_rodada_id, dados) values ('clima', $1, $2, '{}')`, [o.emp, cr.rodada.id]), /só é montado pelo servidor/);

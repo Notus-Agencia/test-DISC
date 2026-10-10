@@ -288,7 +288,8 @@ test('nenhuma palavra ou promessa proibida (decisao.md 6.3/6.4) nos textos do m�
   juntar([C.BLOCOS, C.ITENS_LIDER, C.ITEM_H1, C.ITEM_H2, C.ITENS_N, C.ESCALA, C.ESCALA_N4, C.INTERVENCOES, C.PLANO_30_60_90, C.MAPA_PGR,
     C.FALTA_PGR, C.REFERENCIAS, C.AVISO_LIDER, C.textoN4('RH'), C.avisoRespondente({ empresa: 'X', complemento: true }), C.TEXTOS]);
   const tela = fs.readFileSync(path.join(__dirname, '..', 'js', 'clima-resposta.js'), 'utf8') + fs.readFileSync(path.join(__dirname, '..', 'clima.html'), 'utf8');
-  const tudo = (textos.join('\n') + '\n' + tela).toLowerCase();
+  // O arquivo de estilos assets/notus.css não é texto de tela (nome interno do sistema visual).
+  const tudo = (textos.join('\n') + '\n' + tela.replace(/assets\/notus\.css/g, '')).toLowerCase();
   C.PALAVRAS_PROIBIDAS.forEach((p) => assert.ok(tudo.indexOf(p) === -1, 'palavra proibida: ' + p));
   assert.ok(!/estrela|icone\.svg/i.test(tela), 'a estrela da Notus não vai em tela pública');
 });
