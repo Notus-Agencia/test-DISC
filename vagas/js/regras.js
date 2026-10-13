@@ -5,7 +5,7 @@
  * que vagas_interno.conferir_texto / normalizar / cnpj_valido / normalizar_whatsapp.
  *
  *   Listas fechadas (id + rótulo): MODALIDADES, TURNOS, ESCOLARIDADES, CNH, UNIDADES, PONTOS_FORTES, VINCULOS, MOTIVOS_DENUNCIA,
- *     STATUS_CANDIDATURA, STATUS_ANUNCIO, STATUS_EMPRESA, STATUS_REFERENCIA.
+ *     STATUS_CANDIDATURA, STATUS_ANUNCIO, STATUS_EMPRESA, STATUS_REFERENCIA, STATUS_REFERENCIA_EMPRESA.
  *   Filtro de textos: PADROES, tiposDoContexto(ctx), mensagemTexto(tipo, trecho, ctx), conferirTexto(texto, ctx) -> null | {tipo, trecho, erro}
  *     ctx: 'anuncio' | 'empresa' | 'mensagem' | 'referencia' | 'cartao' | 'perfil'.
  *   normalizar(texto) · normalizarCnpj · cnpjValido · formatarCnpj · normalizarWhatsapp · whatsappCelularValido · whatsappEmpresaValido
@@ -34,20 +34,27 @@
     ['superior_incompleto', 'Superior incompleto'], ['superior', 'Superior completo'], ['pos', 'Pós-graduação']]);
   var CNH = ['A', 'B', 'C', 'D', 'E'];
   var UNIDADES = { mes: 'por mês', hora: 'por hora', dia: 'por dia', servico: 'por serviço' };
-  // Lista fechada de pontos fortes da referência profissional (comportamentos observáveis; revisável pela psicologia aqui e
-  // em vagas_interno.pontos_fortes()).
-  var PONTOS_FORTES = lista([['pontualidade', 'Pontualidade e assiduidade'], ['atendimento', 'Atendimento ao cliente'],
-    ['organizacao', 'Organização'], ['equipe', 'Trabalho em equipe'], ['aprende_rapido', 'Aprende rápido'],
-    ['cuidado_caixa', 'Cuidado com o caixa e os valores'], ['comunicacao', 'Comunicação clara'], ['iniciativa', 'Iniciativa']]);
+  // Lista fechada de pontos fortes da referência profissional: os 12 comportamentos observáveis da psicologia (evidencias.md
+  // §4A.4; a empresa marca até 3). Mesma lista, na mesma ordem, em vagas_interno.pontos_fortes() (o teste do banco confere).
+  var PONTOS_FORTES = lista([['pontualidade', 'Chega no horário e avisa quando não pode'], ['atendimento', 'Atende bem o cliente'],
+    ['caixa_certo', 'Caixa fecha certo'], ['organizacao', 'Mantém o posto organizado'], ['equipe', 'Ajuda os colegas quando precisa'],
+    ['aprende_rapido', 'Aprende uma tarefa nova em poucos dias'], ['regras_seguranca', 'Segue as regras e a segurança do trabalho'],
+    ['comunicacao', 'Passa recado e informação de forma clara'], ['iniciativa', 'Resolve o que vê sem esperar ordem'],
+    ['cuidado_material', 'Cuida do material, do equipamento e do ambiente'], ['vendas', 'Vende bem e oferece o produto certo'],
+    ['situacao_dificil', 'Resolve reclamação ou situação difícil com calma']]);
   var MOTIVOS_DENUNCIA = lista([['golpe', 'Parece golpe'], ['cobranca', 'Pediram dinheiro'], ['discriminacao', 'Discriminação'],
     ['falsa', 'Vaga falsa'], ['ofensa', 'Ofensa ou assédio'], ['contato', 'Pediram contato fora da plataforma'], ['outro', 'Outro motivo']]);
-  var STATUS_CANDIDATURA = lista([['enviada', 'Enviada'], ['conversar', 'A empresa quer conversar'], ['agora_nao', 'Agora não'],
+  // Rótulos para a PESSOA (docs/VAGAS-TELAS.md): "agora_nao" aparece como "Encerrada" (nunca "a empresa disse não").
+  var STATUS_CANDIDATURA = lista([['enviada', 'Enviada'], ['conversar', 'Responder'], ['agora_nao', 'Encerrada'],
     ['combinou', 'Combinou'], ['contratada', 'Contratada'], ['recusada', 'Você recusou'], ['retirada', 'Retirada']]);
   var STATUS_ANUNCIO = lista([['rascunho', 'Rascunho'], ['em_revisao', 'Em revisão'], ['publicado', 'No ar'], ['pausado', 'Pausada'],
     ['encerrado', 'Encerrada'], ['suspenso', 'Fora do ar (denúncias)'], ['removido', 'Removida pela moderação']]);
   var STATUS_EMPRESA = lista([['em_analise', 'Em análise'], ['ativa', 'Verificada'], ['suspensa', 'Suspensa']]);
   var STATUS_REFERENCIA = lista([['pendente', 'Esperando o seu aceite'], ['aceita', 'Aparece no seu perfil'], ['ocultada', 'Oculta'],
     ['recusada', 'Recusada'], ['removida', 'Removida']]);
+  // Para a EMPRESA ("Referências dadas"): o banco nunca devolve "ocultada" para ela (veto P2 da psicologia).
+  var STATUS_REFERENCIA_EMPRESA = lista([['pendente', 'Esperando a pessoa aceitar'], ['aceita', 'Aceita'], ['recusada', 'Não aceita'],
+    ['removida', 'Removida pela moderação']]);
 
   var MSG = {
     SESSAO: 'Sessão expirada. Entre de novo.',
@@ -481,7 +488,8 @@
   var VAGAS_REGRAS = {
     VERSAO_TERMOS: VERSAO_TERMOS, MODALIDADES: MODALIDADES, VINCULOS: VINCULOS, TURNOS: TURNOS, ESCOLARIDADES: ESCOLARIDADES, CNH: CNH,
     UNIDADES: UNIDADES, PONTOS_FORTES: PONTOS_FORTES, MOTIVOS_DENUNCIA: MOTIVOS_DENUNCIA, STATUS_CANDIDATURA: STATUS_CANDIDATURA,
-    STATUS_ANUNCIO: STATUS_ANUNCIO, STATUS_EMPRESA: STATUS_EMPRESA, STATUS_REFERENCIA: STATUS_REFERENCIA, MSG: MSG,
+    STATUS_ANUNCIO: STATUS_ANUNCIO, STATUS_EMPRESA: STATUS_EMPRESA, STATUS_REFERENCIA: STATUS_REFERENCIA,
+    STATUS_REFERENCIA_EMPRESA: STATUS_REFERENCIA_EMPRESA, MSG: MSG,
     PADROES: PADROES, tiposDoContexto: tiposDoContexto, mensagemTexto: mensagemTexto, conferirTexto: conferirTexto, normalizar: normalizar,
     normalizarCnpj: normalizarCnpj, cnpjValido: cnpjValido, formatarCnpj: formatarCnpj, normalizarWhatsapp: normalizarWhatsapp,
     whatsappCelularValido: whatsappCelularValido, whatsappEmpresaValido: whatsappEmpresaValido, normalizarEmail: normalizarEmail,

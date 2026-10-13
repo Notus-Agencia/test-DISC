@@ -1,0 +1,26 @@
+/*
+ * Vagas sem Caos — estilos próprios do site (por cima de comum/notus.css; só tokens da identidade: docs/IDENTIDADE-VISUAL.md).
+ * Por enquanto só a página "em construção" (index.html). As telas (docs/VAGAS-TELAS.md) acrescentam aqui as classes vg-*.
+ */
+
+.vg-espera { min-height: 100vh; display: flex; flex-direction: column; }
+.vg-espera__envoltorio { width: 100%; max-width: 640px; margin: 0 auto; padding: 0 16px; }
+
+.vg-espera__topo { position: sticky; top: 0; z-index: 2; padding: 14px 0; }
+.vg-espera__marca { display: flex; align-items: center; gap: 12px; }
+.vg-espera__fio { width: 1px; height: 22px; background: var(--cinza-claro); flex: none; }
+.vg-espera__produto { font-size: var(--t-rotulo); font-weight: 600; color: var(--tinta); white-space: nowrap; }
+
+.vg-espera__principal { flex: 1; padding-top: 40px; padding-bottom: 40px; display: flex; flex-direction: column; gap: 16px; }
+.vg-espera__titulo { font-size: var(--t-pagina); color: var(--tinta); }
+.vg-espera__texto { color: var(--medio); }
+.vg-espera__caixa { margin-top: 8px; }
+
+.vg-espera__golpe { background: var(--branco); border: 1px solid var(--linha); color: var(--medio); }
+.vg-espera__golpe strong { color: var(--notus-forte); font-weight: 600; }
+
+.vg-espera__rodape { padding: 20px 0 28px; font-size: var(--t-nota); color: var(--suave); }
+
+@media (min-width: 640px) {
+  .vg-espera__principal { padding-top: 64px; }
+}

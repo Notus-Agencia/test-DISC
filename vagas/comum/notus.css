@@ -1,0 +1,245 @@
+/* CÓPIA GERADA por scripts/montar-vagas.mjs a partir de assets/notus.css. NÃO EDITE AQUI: edite assets/notus.css e rode o script. */
+/*
+ * Identidade visual Notus (nova, out/2026) — base compartilhada: tokens + peças.
+ * Fonte da verdade: BI da Clínica Isabella Eleutério, branch ajuste/reestruturacao-visual
+ * (frontend/src/index.css, lib/cores.ts, componentes/ui.tsx, caixas.tsx, Logo.tsx, paginas/Login.tsx).
+ * Regras completas em docs/IDENTIDADE-VISUAL.md. Cor e tamanho de fonte só por estes tokens.
+ */
+
+@font-face {
+  font-family: 'Plus Jakarta Sans Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url(fonts/plus-jakarta-sans-latin-ext-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url(fonts/plus-jakarta-sans-latin-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+:root {
+  /* Paleta da marca (só estas) */
+  --notus: #f34405;        /* laranja principal: "olhe aqui" (destaque, selecionado, número em foco). Nunca série de gráfico. */
+  --laranja: #f2762e;      /* laranja médio */
+  --ambar: #ff9f40;        /* âmbar: 2ª série (preenchimento); texto de destaque sobre azul-escuro */
+  --ardosia: #324e73;      /* azul acinzentado */
+  --tinta: #13283f;        /* azul-escuro: texto, botão principal, moldura (login, menu) */
+  --preto: #141414;
+  --fundo: #f2f2f2;        /* fundo da página; cards brancos */
+  --branco: #ffffff;
+
+  /* Tons funcionais (permitidos) */
+  --notus-forte: #c43803;  /* laranja para TEXTO pequeno sobre claro (5,4:1) */
+  --sobre-notus: #141414;  /* texto sobre o laranja */
+  --ardosia-clara: #8a97ab;
+  --ardosia-media: #5d7699;
+  --cinza-claro: #c5ccd6;
+  --nevoa: #eaeef4;        /* fundo suave de card */
+  --linha: #e2e6ec;
+  --suave: #6b7586;        /* rótulos e textos descritivos */
+  --medio: #46546a;
+  --trilho: #e9ecef;       /* o que falta numa barra: liso, sem listras */
+  --erro: #dc2626;
+  --erro-fundo: #fef2f2;
+  --ok: #047857;
+  --ok-fundo: #ecfdf5;
+
+  /* Escala de fontes (só estas) */
+  --t-eixo: 11px;          /* selos, eixos, legendas */
+  --t-nota: 12px;          /* dicas, notas */
+  --t-rotulo: 13px;        /* rótulos, botões, tabelas */
+  --t-corpo: 15px;         /* texto corrido, itens, título de card (seminegrito) */
+  --t-titulo: 18px;        /* título de seção e de janela */
+  --t-indicador: 24px;
+  --t-pagina: 28px;        /* título da página */
+  --t-numero: 32px;
+  --t-numero-grande: 44px;
+  --t-campo: 16px;         /* campos no celular (evita zoom do iPhone) */
+
+  --raio-caixa: 24px;
+  --raio-campo: 12px;
+  --raio-pilula: 999px;
+  --fonte: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --curva: cubic-bezier(.2, .7, .2, 1);
+
+  /* Séries DISC = ordem da paleta de preenchimento do BI (sem o laranja principal) */
+  --disc-D: var(--tinta);
+  --disc-I: var(--ambar);
+  --disc-S: var(--ardosia-clara);
+  --disc-C: var(--ardosia);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--tinta);
+  font-family: var(--fonte);
+  font-size: var(--t-corpo);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+/* Três pesos: 400, 600 (títulos de card), 700 (números de destaque) */
+h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+a { color: inherit; text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--notus); outline-offset: 2px; }
+table, ul, ol, .tabular { font-variant-numeric: tabular-nums; }
+
+/* Escala como classe */
+.t-eixo { font-size: var(--t-eixo); } .t-nota { font-size: var(--t-nota); } .t-rotulo { font-size: var(--t-rotulo); }
+.t-corpo { font-size: var(--t-corpo); } .t-titulo { font-size: var(--t-titulo); } .t-indicador { font-size: var(--t-indicador); }
+.t-pagina { font-size: var(--t-pagina); letter-spacing: -0.02em; } .t-numero { font-size: var(--t-numero); font-weight: 700; letter-spacing: -0.02em; }
+.t-numero-grande { font-size: var(--t-numero-grande); font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.seminegrito { font-weight: 600; } .negrito { font-weight: 700; }
+.texto-suave { color: var(--suave); } .texto-medio { color: var(--medio); } .texto-destaque { color: var(--notus-forte); }
+/* Sobretítulo (como o "sobre" do Cabecalho do BI) */
+.sobretitulo { font-size: var(--t-nota); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--notus-forte); }
+
+/* ---------- Cards (minimalistas: nada de bloco de cor sólida em área de informação) ---------- */
+.caixa { position: relative; overflow: hidden; background: var(--branco); color: var(--tinta); border-radius: var(--raio-caixa); padding: 24px; }
+@media (min-width: 640px) { .caixa { padding: 28px; } }
+.caixa--compacta { padding: 16px; }
+@media (min-width: 640px) { .caixa--compacta { padding: 20px; } }
+.caixa--ampla { padding: 28px; }
+@media (min-width: 640px) { .caixa--ampla { padding: 36px; } }
+.caixa--suave { background: var(--nevoa); }                                               /* "Azul suave" */
+.caixa--destaque { background: var(--branco); box-shadow: inset 0 0 0 1px rgba(243, 68, 5, .25); } /* número em laranja */
+.caixa--destaque .valor-destaque { color: var(--notus); }
+/* "Vidro": brilho quente discreto — SÓ UM POR TELA */
+.caixa--vidro {
+  background: linear-gradient(150deg, rgba(255,255,255,.92), rgba(255,255,255,.62));
+  -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255,255,255,.9);
+  box-shadow: 0 18px 40px -22px rgba(19,40,63,.28);
+}
+.caixa--vidro::before {
+  content: ''; position: absolute; right: -120px; top: -140px; width: 420px; height: 320px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,159,64,.28) 0%, rgba(243,68,5,.08) 45%, rgba(243,68,5,0) 70%);
+  filter: blur(30px); pointer-events: none;
+}
+.caixa--vidro > * { position: relative; }
+.caixa__titulo { font-size: var(--t-corpo); font-weight: 600; margin-bottom: 12px; }
+
+/* Moldura (login, entrada, menu): azul-escuro + laranja são permitidos aqui — é moldura, não informação */
+.moldura-noite { background: var(--tinta); color: #fff; }
+.moldura-laranja { position: relative; overflow: hidden; background: var(--notus); color: var(--sobre-notus); }
+.moldura-laranja::before, .moldura-laranja::after { content: ''; position: absolute; border-radius: 50%; filter: blur(48px); pointer-events: none; }
+.moldura-laranja::before { left: -160px; top: -160px; width: 720px; height: 620px; background: radial-gradient(circle, rgba(255,226,214,.85) 0%, rgba(255,159,64,.35) 40%, rgba(243,68,5,0) 70%); }
+.moldura-laranja::after { right: -190px; bottom: -180px; width: 640px; height: 560px; background: radial-gradient(circle, rgba(243,68,5,.55) 0%, rgba(243,68,5,0) 70%); }
+.moldura-laranja > * { position: relative; z-index: 1; }
+
+/* ---------- Botões (pílula) ---------- */
+.botao {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 40px; padding: 8px 18px;
+  border-radius: var(--raio-pilula); border: 1px solid transparent;
+  font: inherit; font-size: var(--t-rotulo); font-weight: 600;
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background-color .15s, border-color .15s, filter .15s, opacity .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.botao:disabled { opacity: .5; cursor: not-allowed; }
+.botao--principal { background: var(--tinta); color: #fff; }                          /* = "preto" do BI */
+.botao--principal:hover:not(:disabled) { background: #0c1a2a; }
+.botao--laranja { background: var(--notus); color: var(--sobre-notus); }              /* destaque: um por tela */
+.botao--laranja:hover:not(:disabled) { filter: brightness(.95); }
+.botao--claro { background: var(--branco); color: var(--tinta); border-color: var(--linha); }
+.botao--claro:hover:not(:disabled) { border-color: rgba(19,40,63,.3); }
+.botao--contorno { background: var(--branco); color: var(--notus-forte); border-color: rgba(243,68,5,.35); }
+.botao--contorno:hover:not(:disabled) { background: rgba(243,68,5,.06); border-color: rgba(243,68,5,.6); }
+.botao--branco { background: #fff; color: var(--tinta); }                             /* sobre moldura azul-escura */
+.botao--perigo { background: var(--branco); color: var(--erro); border-color: #fecaca; }
+.botao--perigo:hover:not(:disabled) { background: var(--erro-fundo); }
+.botao--link { background: none; border: 0; color: var(--medio); padding: 8px 4px; min-height: 0; text-decoration: underline; font-weight: 400; }
+.botao--grande { min-height: 48px; padding: 12px 24px; font-size: var(--t-corpo); }
+.botao--bloco { width: 100%; }
+.botao--icone { width: 40px; padding: 0; }
+.giro { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: girar .7s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+
+/* ---------- Campos ---------- */
+.campo { display: block; }
+.campo__rotulo { display: block; font-size: var(--t-rotulo); margin-bottom: 6px; }
+.campo__ajuda { display: block; font-size: var(--t-eixo); color: var(--suave); margin-top: 4px; }
+.campo__erro { display: block; font-size: var(--t-rotulo); color: var(--erro); margin-top: 6px; }
+.entrada {
+  width: 100%; font: inherit; font-size: var(--t-campo); color: var(--tinta);
+  background: var(--branco); border: 1px solid var(--linha); border-radius: var(--raio-campo);
+  padding: 11px 14px; outline: none; transition: border-color .15s;
+}
+.entrada::placeholder { color: rgba(107,117,134,.7); }
+.entrada:focus { border-color: rgba(19,40,63,.4); }
+.entrada--principal { border-color: rgba(243,68,5,.45); }       /* campo principal guiado pelo laranja */
+.entrada[aria-invalid="true"] { border-color: var(--erro); }
+textarea.entrada { resize: vertical; min-height: 96px; }
+@media (min-width: 640px) { .entrada { font-size: var(--t-corpo); } }
+.moldura-noite .entrada { background: rgba(255,255,255,.06); color: #fff; border-color: transparent; }
+.moldura-noite .entrada:focus { border-color: rgba(255,255,255,.25); }
+.moldura-noite .entrada::placeholder { color: rgba(255,255,255,.3); }
+
+.marcar { display: flex; gap: 10px; align-items: flex-start; font-size: var(--t-corpo); cursor: pointer; }
+.marcar input { appearance: none; -webkit-appearance: none; flex: none; width: 20px; height: 20px; margin: 1px 0 0; border: 1.5px solid var(--ardosia-clara); border-radius: 6px; background: var(--branco); cursor: pointer; display: grid; place-content: center; }
+.marcar input:checked { background: var(--notus); border-color: var(--notus); }
+.marcar input:checked::after { content: ''; width: 10px; height: 6px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+
+/* ---------- Selos e avisos ---------- */
+.selo { display: inline-flex; align-items: center; gap: 4px; border-radius: var(--raio-pilula); padding: 2px 10px; font-size: var(--t-eixo); white-space: nowrap; background: var(--fundo); color: var(--medio); }
+.selo--laranja { background: var(--notus); color: var(--sobre-notus); }
+.selo--noite { background: var(--tinta); color: #fff; }
+.selo--verde { background: var(--ok-fundo); color: var(--ok); }
+.selo--vermelho { background: var(--erro-fundo); color: var(--erro); }
+.aviso { border-radius: 16px; padding: 12px 16px; font-size: var(--t-rotulo); background: var(--fundo); color: var(--medio); }
+.aviso--erro { background: var(--erro-fundo); color: #b91c1c; }
+.aviso--ok { background: var(--ok-fundo); color: #065f46; }
+
+/* ---------- DISC ---------- */
+.disc-D { background: var(--disc-D); color: #fff; }
+.disc-I { background: var(--disc-I); color: var(--preto); }
+.disc-S { background: var(--disc-S); color: var(--preto); }
+.disc-C { background: var(--disc-C); color: #fff; }
+.letra-disc { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; font-size: var(--t-rotulo); font-weight: 700; flex: none; }
+
+/* Trilho (o que falta): cinza claro liso; dentro de card suave, branco */
+.trilho { background-color: var(--trilho); }
+.caixa--suave .trilho { background-color: #fff; }
+
+/* Vidro */
+.vidro-claro { background: linear-gradient(145deg, rgba(255,255,255,.7), rgba(255,255,255,.35)); -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%); border: 1px solid rgba(19,40,63,.08); }
+.vidro-escuro { background: linear-gradient(145deg, rgba(50,78,115,.6), rgba(19,40,63,.72)); -webkit-backdrop-filter: blur(6px) saturate(120%); backdrop-filter: blur(6px) saturate(120%); border: 1px solid rgba(255,255,255,.16); }
+.vidro-cabecalho { background: rgba(255,255,255,.55); -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%); border-bottom: 1px solid rgba(255,255,255,.7); box-shadow: 0 1px 0 rgba(19,40,63,.06); }
+/* Janela por cima de dado: quase opaca */
+.vidro-janela { background: linear-gradient(160deg, rgba(255,255,255,.97), rgba(246,247,249,.96)); -webkit-backdrop-filter: blur(22px) saturate(160%); backdrop-filter: blur(22px) saturate(160%); border: 1px solid rgba(255,255,255,.65); box-shadow: 0 30px 80px rgba(19,40,63,.30), inset 0 1px 0 rgba(255,255,255,.8); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vidro-janela { background: rgba(250,251,252,.98); }
+  .vidro-cabecalho { background: rgba(255,255,255,.96); }
+}
+
+/* ---------- Logo da Gestão sem Caos (assets/marca/; docs/IDENTIDADE-VISUAL.md, seção Logo) ----------
+   Desenho original, sem recolorir nem distorcer. A altura manda; a largura acompanha (proporção 7,1:1).
+   Fundo claro: gsc-logo.svg · fundo azul-escuro: gsc-logo-negativo.svg · moldura laranja: gsc-logo-preto.svg.
+   <img class="logo-gsc" src="assets/marca/gsc-logo.svg" alt="Gestão sem Caos" width="199" height="28">
+   Respiro: o logo nunca encosta em outro elemento (no mínimo metade da altura dele em volta).
+   Tamanho mínimo: 20px de altura (horizontal) e 16px (só o símbolo). */
+.logo-gsc { display: block; height: 28px; width: auto; max-width: 100%; flex: none; }
+.logo-gsc--pequeno { height: 22px; }
+.logo-gsc--grande { height: 36px; }
+.logo-gsc-simbolo { display: block; width: 32px; height: 32px; flex: none; }
+
+@keyframes surgir { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.surgir { animation: surgir .45s var(--curva) both; }
+@media (prefers-reduced-motion: reduce) { .surgir, .giro { animation: none; } * { transition: none !important; } }
+
+.visualmente-oculto { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Faixa do modo demonstração (js/demo.js; ?demo=1). Moldura azul-escura, destaque em âmbar. */
+.faixa-demo { background: var(--tinta); color: var(--branco); font-size: 13px; line-height: 1.45; padding: 8px 16px; text-align: center; }
+.faixa-demo strong { color: var(--ambar); font-weight: 600; }
+.faixa-demo a { color: var(--ambar); }

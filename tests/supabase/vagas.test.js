@@ -257,15 +257,15 @@ test('guardas: RLS em todas as tabelas vagas_*, nenhuma política "true", nada d
     .map((x) => x.relname);
   assert.deepEqual(leituraAnon, ['vagas_cidades', 'vagas_zonas']);
   for (const t of ['vagas_candidaturas', 'vagas_conversas', 'vagas_mensagens', 'vagas_lista_espera', 'vagas_limites', 'vagas_referencias',
-    'vagas_referencia_convites', 'vagas_referencia_historico']) {
+    'vagas_referencia_convites', 'vagas_referencia_historico', 'vagas_anuncio_vistas']) {
     assert.equal((await db.query(`select has_table_privilege('authenticated', 'public.${t}', 'SELECT') as x`)).rows[0].x, false, t);
   }
   // anon executa exatamente as funções públicas do Vagas; as de serviço só a service_role; internas fechadas.
   const anonVagas = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname like 'vagas\\_%' and has_function_privilege('anon', p.oid, 'execute') order by 1`)).rows
     .map((x) => x.proname);
-  assert.deepEqual(anonVagas, ['vagas_anuncio_publico', 'vagas_anuncios_publicos', 'vagas_cidades_publicas', 'vagas_denunciar',
-    'vagas_lista_espera_entrar', 'vagas_referencias_publicas']);
+  assert.deepEqual(anonVagas, ['vagas_anuncio_publico', 'vagas_anuncio_vista', 'vagas_anuncios_publicos', 'vagas_cidades_publicas',
+    'vagas_denunciar', 'vagas_lista_espera_entrar', 'vagas_referencias_publicas']);
   for (const fn of ['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar', 'vagas_conta_quem']) {
     const r = (await db.query(`select bool_or(has_function_privilege('authenticated', p.oid, 'execute')) a, bool_or(has_function_privilege('anon', p.oid, 'execute')) b,
       bool_and(has_function_privilege('service_role', p.oid, 'execute')) s from pg_proc p where p.proname = $1`, [fn])).rows[0];
@@ -400,14 +400,14 @@ test('pessoa: cadastro valida cidade ativa, zona, 18+, WhatsApp; chaves proibida
   // O cartão cego (como a empresa vê): sem nome, contato, "sobre", empregador, foto, idade.
   const c = r.cartao;
   assert.deepEqual(Object.keys(c).sort(), ['cargos', 'cidade', 'cnh', 'cursos', 'escolaridade', 'experienciaTotalMeses', 'experiencias',
-    'modalidades', 'pretensaoCentavos', 'referencias', 'selos', 'turnos', 'zona']);
+    'modalidades', 'pretensaoCentavos', 'selos', 'temReferencia', 'turnos', 'zona']);
   const txt = JSON.stringify(c);
   for (const v of ['Maria', 'Souza', '99123', '5595', '@', 'Loja Antiga', 'Mercadinho', 'aprendo rápido']) assert.ok(!txt.includes(v), v);
   assert.deepEqual(c.zona, { slug: 'zona-oeste', nome: 'Zona Oeste' });
   assert.deepEqual(c.experiencias[0], { funcao: 'Atendente', meses: 18, atual: false, informal: false });
   assert.equal(c.experiencias[1].atual, true);
   assert.deepEqual(c.selos, []);
-  assert.deepEqual(c.referencias, { total: 0, pontosFortes: [] });
+  assert.equal(c.temReferencia, false);
   assert.equal((await de(p)('vagas_eu')).pessoa.completo, true);
   assert.deepEqual((await de(p)('vagas_eu')).pessoa.cidades, ['boa-vista-rr', 'mucajai-rr']);
   S.pessoa = p;
@@ -769,27 +769,38 @@ test('denúncias: 3 contas diferentes tiram o anúncio do ar; sem login não con
   erro(await de(S.moderador)('vagas_op_denuncia_decidir', dm.id, { decisao: 'procedente', motivo: 'x', suspenderEmpresa: true }), 'Sem permissão.');
 });
 
-test('referência profissional: só empresa verificada, só depois do aceite, cartão cego só com contagem e pontos fortes', async () => {
+test('referência profissional: só empresa verificada, só depois do aceite; no cartão cego só "tem referência" (veto P1)', async () => {
   exigirBanco();
   const emp = de(S.empresaConta);
   const base = { empresaId: S.empresa, funcao: 'Atendente', vinculo: 'clt', inicio: '2024-01', fim: '2025-06',
     pontosFortes: ['pontualidade', 'atendimento'], recomendaPara: ['Atendente', 'Caixa'], texto: 'Sempre chegou no horário e tratou bem os clientes.',
     declaracao: true };
+  // A lista fechada é a da psicologia (12; "caixa_certo", nada de "honestidade").
+  assert.deepEqual((await db.query(`select vagas_interno.pontos_fortes() p`)).rows[0].p, REGRAS.PONTOS_FORTES.map((x) => x.id));
+  assert.equal(REGRAS.PONTOS_FORTES.length, 12);
   // Empresa não verificada não dá referência.
   erro(await emp('vagas_referencia_oferecer', Object.assign({}, base, { empresaId: S.empresa2, candidaturaId: S.cand })),
     'Só empresa verificada pela Gestão sem Caos pode dar referência.');
   erro(await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand, declaracao: false })),
     'Confirme a declaração de que a pessoa trabalhou na empresa no período informado.');
   erro(await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand, pontosFortes: [] })), 'Escolha de 1 a 3 pontos fortes.');
+  erro(await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand, pontosFortes: ['honestidade', 'cuidado_caixa'] })),
+    'Escolha de 1 a 3 pontos fortes.');
   erro(await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand, texto: 'Ótima, apesar dos filhos.' })), /a referência não pode falar de/);
   erro(await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand, texto: 'Ligue 95 99876-5432' })), /^Tire o telefone/);
-  // Pela candidatura (depois do Combinou).
+  await rejeita(db.query(`insert into public.vagas_referencias (empresa_id, pessoa_id, funcao, vinculo, inicio, pontos_fortes, declaracao)
+    values ($1, $2, 'Caixa', 'clt', '2024-01-01', array['honestidade'], true)`, [S.empresa, S.pessoa2]), /check constraint/);
+  // Pela candidatura (depois do Combinou). Enquanto a pessoa não responde, a empresa ainda pode corrigir.
   const r = ok(await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand })));
   assert.equal(r.referencia.status, 'pendente');
   assert.equal(r.referencia.textoStatus, 'pendente');
   const refId = r.referencia.id;
+  const corrigida = ok(await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand, pontosFortes: ['pontualidade', 'caixa_certo'] })));
+  assert.equal(corrigida.referencia.id, refId);
+  assert.deepEqual(corrigida.referencia.pontosFortes, ['pontualidade', 'caixa_certo']);
+  assert.equal((await db.query(`select count(*)::int n from public.vagas_referencias where pessoa_id = $1`, [S.pessoa])).rows[0].n, 1);
   // Pendente: invisível para todos menos a pessoa (e a empresa autora vê o que deu).
-  assert.deepEqual((await de(S.pessoa)('vagas_pessoa_minha')).cartao.referencias, { total: 0, pontosFortes: [] });
+  assert.equal((await de(S.pessoa)('vagas_pessoa_minha')).cartao.temReferencia, false);
   const minhas = ok(await de(S.pessoa)('vagas_referencias_minhas'));
   assert.equal(minhas.referencias.length, 1);
   assert.equal(minhas.referencias[0].empresa.nome, 'Mercado Bom Dia');
@@ -808,15 +819,18 @@ test('referência profissional: só empresa verificada, só depois do aceite, ca
   ok(await de(contaB)('vagas_empresa_decidir', kB, 'conversar'));
   ok(await de(S.pessoa)('vagas_combinar', kB));
   assert.deepEqual(ok(await de(contaB)('vagas_contato_pessoa', kB)).pessoa.referencias, [], 'pendente não aparece para outra empresa');
-  assert.deepEqual(ok(await de(contaB)('vagas_cartoes', anB, {})).cartoes[0].cartao.referencias, { total: 0, pontosFortes: [] });
-  // Aceita: cartão cego mostra só contagem e pontos fortes; depois do Combinou, a completa (texto só depois da moderação).
+  assert.equal(ok(await de(contaB)('vagas_cartoes', anB, {})).cartoes[0].cartao.temReferencia, false);
+  // Aceita: o cartão cego mostra SÓ "tem referência" — sem contagem, pontos fortes, empresa ou texto (veto P1).
   ok(await de(S.pessoa)('vagas_referencia_responder', refId, 'aceitar'));
   const cartaoB = ok(await de(contaB)('vagas_cartoes', anB, {})).cartoes[0].cartao;
-  assert.deepEqual(cartaoB.referencias, { total: 1, pontosFortes: [{ ponto: 'pontualidade', vezes: 1 }, { ponto: 'atendimento', vezes: 1 }] });
-  assert.ok(!JSON.stringify(cartaoB).includes('Bom Dia') && !JSON.stringify(cartaoB).includes('horário'));
+  assert.equal(cartaoB.temReferencia, true);
+  assert.deepEqual(Object.keys(cartaoB).filter((k) => /refer/i.test(k)), ['temReferencia']);
+  for (const v of ['Bom Dia', 'horário', 'pontualidade', 'caixa_certo', 'pontosFortes', 'total']) assert.ok(!JSON.stringify(cartaoB).includes(v), v);
+  // Depois do Combinou, a completa (texto só depois da moderação).
   let completa = ok(await de(contaB)('vagas_contato_pessoa', kB)).pessoa.referencias;
   assert.equal(completa.length, 1);
   assert.equal(completa[0].empresa.nome, 'Mercado Bom Dia');
+  assert.deepEqual(completa[0].pontosFortes, ['pontualidade', 'caixa_certo']);
   assert.equal(completa[0].texto, '', 'texto ainda não moderado');
   // A operação modera só o texto (vê função, empresa e texto; nada da pessoa).
   const fila = ok(await de(S.moderador)('vagas_op_referencias', {}));
@@ -826,21 +840,22 @@ test('referência profissional: só empresa verificada, só depois do aceite, ca
   ok(await de(S.moderador)('vagas_op_referencia_decidir', refId, 'aprovar_texto', ''));
   completa = ok(await de(contaB)('vagas_contato_pessoa', kB)).pessoa.referencias;
   assert.equal(completa[0].texto, 'Sempre chegou no horário e tratou bem os clientes.');
-  // 1 por empresa por pessoa: oferecer de novo atualiza e volta a pendente (precisa de novo aceite).
-  const de2 = ok(await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand, pontosFortes: ['organizacao'], texto: '' })));
-  assert.equal(de2.referencia.id, refId);
-  assert.equal(de2.referencia.status, 'pendente');
-  assert.equal((await db.query(`select count(*)::int n from public.vagas_referencias where pessoa_id = $1`, [S.pessoa])).rows[0].n, 1);
-  ok(await de(S.pessoa)('vagas_referencia_responder', refId, 'aceitar'));
-  // Ocultar some do cartão; mostrar volta; remover apaga o texto e impede outra oferta sem pedido.
+  // 1 por empresa por pessoa: depois da resposta, só um novo pedido da pessoa reabre.
+  const jaDeu = 'Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.';
+  erro(await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand, pontosFortes: ['organizacao'], texto: '' })), jaDeu);
+  // Ocultar some do cartão e do contato para as OUTRAS empresas; mostrar volta; remover tira de vez.
   ok(await de(S.pessoa)('vagas_referencia_responder', refId, 'ocultar'));
-  assert.equal((await de(contaB)('vagas_cartoes', anB, {})).cartoes[0].cartao.referencias.total, 0);
+  assert.equal((await de(contaB)('vagas_cartoes', anB, {})).cartoes[0].cartao.temReferencia, false);
+  assert.deepEqual(ok(await de(contaB)('vagas_contato_pessoa', kB)).pessoa.referencias, []);
   ok(await de(S.pessoa)('vagas_referencia_responder', refId, 'mostrar'));
+  assert.equal((await de(contaB)('vagas_cartoes', anB, {})).cartoes[0].cartao.temReferencia, true);
   erro(await de(S.pessoa)('vagas_referencia_responder', refId, 'aceitar'), 'Ação inválida para esta referência.');
   ok(await de(S.pessoa)('vagas_referencia_responder', refId, 'remover'));
-  erro(await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand })), 'Esta pessoa não pode receber outra referência da sua empresa agora.');
+  assert.equal((await de(contaB)('vagas_cartoes', anB, {})).cartoes[0].cartao.temReferencia, false);
+  assert.equal(ok(await de(S.pessoa)('vagas_referencias_minhas')).referencias.length, 0);
+  erro(await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand })), jaDeu);
   const hist = (await db.query(`select acao, por from public.vagas_referencia_historico where referencia_id = $1 order by id`, [refId])).rows;
-  assert.deepEqual(hist.map((h) => h.acao), ['oferecida', 'aceita', 'texto_aprovado', 'oferecida', 'aceita', 'ocultada', 'mostrada', 'removida']);
+  assert.deepEqual(hist.map((h) => h.acao), ['oferecida', 'oferecida', 'aceita', 'texto_aprovado', 'ocultada', 'mostrada', 'removida']);
   // Pedido da pessoa (convite por link): só a empresa escolhida abre; a oferta pelo convite reabre a referência removida.
   erro(await de(S.pessoa)('vagas_referencia_pedir', { cnpj: '11.222.333/0001-82' }), 'CNPJ inválido. Confira os números.');
   const conv = ok(await de(S.pessoa)('vagas_referencia_pedir', { cnpj: '11.222.333/0001-81' })).convite;
@@ -851,6 +866,7 @@ test('referência profissional: só empresa verificada, só depois do aceite, ca
   assert.equal(ok(await emp('vagas_referencia_convite', conv.token)).convite.pessoa.nome, 'Maria Fernanda Souza');
   const viaConvite = ok(await emp('vagas_referencia_oferecer', Object.assign({}, base, { conviteToken: conv.token })));
   assert.equal(viaConvite.referencia.status, 'pendente');
+  assert.equal(viaConvite.referencia.id, refId);
   erro(await emp('vagas_referencia_oferecer', Object.assign({}, base, { conviteToken: conv.token })), 'Convite inválido ou vencido. Peça um link novo à pessoa.');
   // Pelo e-mail: resposta neutra; só aparece para a empresa depois do aceite.
   const neutroExiste = await de(contaB)('vagas_referencia_oferecer', Object.assign({}, base, { empresaId: empB, email: 'pessoa' + 99 + '@nao-existe.teste' }));
@@ -875,9 +891,126 @@ test('referência profissional: só empresa verificada, só depois do aceite, ca
   erro(await anon('vagas_referencias_publicas', token), 'Página não encontrada.');
   // Empresa suspensa: as referências dela somem.
   ok(await de(S.operador)('vagas_op_empresa_decidir', empB, 'suspender', 'Teste'));
-  assert.equal(ok(await de(S.pessoa2)('vagas_pessoa_minha')).cartao.referencias.total, 0);
+  assert.equal(ok(await de(S.pessoa2)('vagas_pessoa_minha')).cartao.temReferencia, false);
   ok(await de(S.operador)('vagas_op_empresa_decidir', empB, 'reativar', ''));
-  S.empresaB = { conta: contaB, id: empB };
+  assert.equal(ok(await de(S.pessoa2)('vagas_pessoa_minha')).cartao.temReferencia, true);
+  // Veto P3: nenhuma RPC aceita filtro "tem referência" (cartões ignoram a chave; nenhuma função tem o parâmetro).
+  assert.equal(ok(await de(contaB)('vagas_cartoes', anB, { temReferencia: true })).total, 1, 'filtro "tem referência" é ignorado');
+  const comFiltro = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname in ('public', 'vagas_interno') and p.proname like 'vagas%' and p.prosrc ~* $1`,
+    ["->>?\\s*'(temReferencia|comReferencia|referencia|referencias)'"])).rows;
+  assert.deepEqual(comFiltro, []);
+  S.empresaB = { conta: contaB, id: empB, anuncio: anB, cand: kB };
+  S.refId = refId;
+});
+
+test('referência — veto P2: a empresa autora NÃO descobre por nenhuma RPC que a pessoa ocultou ou removeu', async () => {
+  exigirBanco();
+  const emp = de(S.empresaConta);
+  const anuncioA = (await db.query(`select anuncio_id from public.vagas_candidaturas where id = $1`, [S.cand])).rows[0].anuncio_id;
+  const emailP = (await db.query(`select email from auth.users where id = $1`, [S.pessoa])).rows[0].email;
+  const token = ok(await de(S.pessoa)('vagas_referencias_publicar', true)).caminho.split('t=')[1];
+  const base = { empresaId: S.empresa, funcao: 'Caixa', vinculo: 'clt', inicio: '2024-01', fim: '', pontosFortes: ['caixa_certo'],
+    recomendaPara: [], texto: '', declaracao: true };
+  assert.equal((await db.query(`select status from public.vagas_referencias where id = $1`, [S.refId])).rows[0].status, 'aceita');
+  // Tudo o que a empresa autora consegue perguntar ao banco sobre a pessoa e a referência.
+  const sem = (o, chaves) => { const c = JSON.parse(JSON.stringify(o)); for (const k of chaves) delete c[k]; return c; };
+  const foto = async () => ({
+    conversa: await emp('vagas_conversa', S.cand),   // primeiro: marca como lidas (o resto não muda entre as fotos)
+    dadas: await emp('vagas_referencias_empresa', S.empresa),
+    cartoes: await emp('vagas_cartoes', anuncioA, {}),
+    contato: await emp('vagas_contato_pessoa', S.cand),
+    publica: await emp('vagas_referencias_publicas', token),
+    ofertaDeNovo: await emp('vagas_referencia_oferecer', Object.assign({}, base, { candidaturaId: S.cand })),
+    ofertaEmail: await emp('vagas_referencia_oferecer', Object.assign({}, base, { email: emailP })),
+    denunciar: await emp('vagas_denunciar', { alvo: 'referencia', id: S.refId, motivo: 'falsa' }),
+    conversas: await emp('vagas_conversas_empresa', S.empresa),
+    numeros: await emp('vagas_anuncio_numeros', anuncioA),
+    anuncios: await emp('vagas_anuncios_empresa', S.empresa),
+    eu: await emp('vagas_eu'),
+    exportar: sem(await emp('vagas_exportar_meus_dados'), ['geradoEm'])
+  });
+  const contar = async () => (await db.query(`select (select count(*) from public.vagas_mensagens) m, (select count(*) from public.vagas_moderacao) d,
+    (select count(*) from public.vagas_denuncias) x`)).rows[0];
+  const antes = await foto();
+  const linhas = await contar();
+  assert.equal(antes.dadas.referencias.find((x) => x.id === S.refId).status, 'aceita');
+  assert.equal(antes.cartoes.cartoes[0].cartao.temReferencia, true);
+  assert.ok(antes.contato.pessoa.referencias.some((x) => x.id === S.refId));
+  assert.ok(antes.publica.referencias.some((x) => x.id === S.refId));
+  erro(antes.denunciar, 'Referência não encontrada.');
+  for (const acao of ['ocultar', 'mostrar', 'ocultar', 'remover']) {
+    ok(await de(S.pessoa)('vagas_referencia_responder', S.refId, acao));
+    assert.deepEqual(await foto(), antes, 'depois de ' + acao + ': a empresa vê exatamente o mesmo');
+    assert.deepEqual(await contar(), linhas, 'depois de ' + acao + ': nenhuma mensagem, registro ou aviso novo');
+    // Para os outros, a ocultação vale (controle).
+    const outros = acao === 'mostrar';
+    assert.equal(ok(await de(S.empresaB.conta)('vagas_cartoes', S.empresaB.anuncio, {})).cartoes[0].cartao.temReferencia, outros, acao);
+    assert.equal(ok(await anon('vagas_referencias_publicas', token)).referencias.some((x) => x.id === S.refId), outros, acao);
+  }
+  // A operação também não vê "ocultada" (a moderação só precisa do texto).
+  const op = ok(await de(S.moderador)('vagas_op_referencias', { textoStatus: ['pendente', 'aprovado', 'recusado'] }));
+  assert.ok(!JSON.stringify(op).includes('ocultada'));
+  ok(await de(S.pessoa)('vagas_referencias_publicar', false));
+});
+
+test('números da vaga (só totais) e "cortar acesso": a pessoa tira o contato da empresa e pode liberar de novo', async () => {
+  exigirBanco();
+  const emp = de(S.empresaConta);
+  const conf = S.anuncios.conf;
+  const cod = (await db.query(`select codigo from public.vagas_anuncios where id = $1`, [conf])).rows[0].codigo;
+  // Vistas: 1 por origem (ou conta) por dia; a própria empresa não conta; vaga inexistente/fora do ar não conta.
+  const vista = (papel, uid, opcoes) => rpcComo(papel, uid, 'vagas_anuncio_vista', [cod], opcoes);
+  assert.equal(ok(await vista('anon', null, ip(60))).contada, true);
+  assert.equal(ok(await vista('anon', null, ip(60))).contada, false);
+  assert.equal(ok(await vista('anon', null, ip(61))).contada, true);
+  assert.equal(ok(await vista('authenticated', S.pessoa2)).contada, true);
+  assert.equal(ok(await vista('authenticated', S.pessoa2)).contada, false);
+  assert.equal(ok(await vista('authenticated', S.empresaConta)).contada, false);
+  erro(await anon('vagas_anuncio_vista', 'ZZZZZZ'), 'Vaga não encontrada ou já encerrada.');
+  const n = ok(await emp('vagas_anuncio_numeros', conf));
+  assert.deepEqual(n.numeros, { vistas: 3, quero: 1, comSelo: 0, conversas: 1, combinou: 1, contratadas: 1 });
+  assert.ok(!JSON.stringify(n).includes(S.pessoa) && !JSON.stringify(n).includes('Maria'));
+  erro(await de(S.empresaB.conta)('vagas_anuncio_numeros', conf), 'Vaga não encontrada.');
+  erro(await de(S.pessoa)('vagas_anuncio_numeros', conf), 'Esta área é para empresas.');
+  assert.equal((await db.query(`select count(*)::int n from public.vagas_anuncio_vistas`)).rows[0].n >= 1, true);
+  // Cortar acesso: só a dona da candidatura, só depois do Combinou.
+  const k1 = (await db.query(`select id from public.vagas_candidaturas where pessoa_id = $1 and status = 'agora_nao' limit 1`, [S.pessoa2])).rows[0].id;
+  erro(await de(S.pessoa2)('vagas_cortar_acesso', k1), 'Seu contato não foi liberado para esta empresa.');
+  erro(await de(S.pessoa2)('vagas_cortar_acesso', S.cand), 'Candidatura não encontrada.');
+  erro(await emp('vagas_cortar_acesso', S.cand), 'Esta área é para quem procura emprego.');
+  const c = ok(await de(S.pessoa)('vagas_cortar_acesso', S.cand));
+  assert.ok(c.candidatura.contatoCortadoEm);
+  assert.equal(c.duplicado, false);
+  assert.equal(ok(await de(S.pessoa)('vagas_cortar_acesso', S.cand)).duplicado, true);
+  // A empresa não abre mais o contato nem escreve; o cartão mostra o corte.
+  const semContato = await emp('vagas_contato_pessoa', S.cand);
+  erro(semContato, 'A pessoa deixou de compartilhar o contato com a sua empresa.');
+  assert.equal(semContato.contatoCortado, true);
+  const conv = ok(await emp('vagas_conversa', S.cand));
+  assert.equal(conv.podeEscrever, false);
+  assert.equal(conv.contatoCortado, true);
+  assert.equal(conv.mensagens[conv.mensagens.length - 1].texto, 'A pessoa encerrou a conversa e deixou de compartilhar o contato.');
+  erro(await emp('vagas_mensagem_enviar', S.cand, 'Por que cortou?', null), 'A pessoa encerrou a conversa e deixou de compartilhar o contato com a sua empresa.');
+  erro(await de(S.pessoa)('vagas_mensagem_enviar', S.cand, 'Oi', null), 'Esta conversa foi encerrada.');
+  assert.equal(ok(await emp('vagas_cartoes', conf, {})).cartoes[0].contatoCortado, true);
+  erro(await emp('vagas_referencia_oferecer', { empresaId: S.empresa, candidaturaId: S.cand, funcao: 'Caixa', vinculo: 'clt', inicio: '2024-01',
+    pontosFortes: ['caixa_certo'], declaracao: true }), 'Candidatura não encontrada.');
+  // "Quem viu meu contato" mostra a candidatura, o corte e o que dá para fazer.
+  let viu = ok(await de(S.pessoa)('vagas_quem_viu_meu_contato')).acessos.find((a) => a.candidaturaId === S.cand);
+  assert.ok(viu.cortadoEm);
+  assert.equal(viu.podeCortar, false);
+  assert.equal(viu.empresa, 'Mercado Bom Dia');
+  // Liberar de novo = Combinou outra vez.
+  const de2 = ok(await de(S.pessoa)('vagas_combinar', S.cand));
+  assert.equal(de2.duplicado, false);
+  assert.equal(de2.candidatura.contatoCortadoEm, '');
+  assert.equal(ok(await emp('vagas_contato_pessoa', S.cand)).pessoa.nome, 'Maria Fernanda Souza');
+  assert.equal(ok(await emp('vagas_conversa', S.cand)).podeEscrever, true);
+  viu = ok(await de(S.pessoa)('vagas_quem_viu_meu_contato')).acessos.find((a) => a.candidaturaId === S.cand);
+  assert.equal(viu.podeCortar, true);
+  assert.equal(viu.cortadoEm, '');
+  assert.equal(ok(await de(S.pessoa)('vagas_combinar', S.cand)).duplicado, true);
 });
 
 test('limites: Quero 30/dia, mensagens, contas (por origem, por e-mail, total) — sem revelar nada', async () => {
