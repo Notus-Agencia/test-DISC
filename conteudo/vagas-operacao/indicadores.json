@@ -1,0 +1,246 @@
+{
+  "_sobre": "Números do painel da praça do Vagas sem Caos. Fonte: proposta aprovada (seção 9) e manual docs/VAGAS-OPERACAO.md (seção 6). Dinheiro em centavos; tempos em horas ou dias; porcentagens de 0 a 100. Tudo filtrado por cidade_id da praça. 'origem' descreve as tabelas/colunas esperadas no contrato da fundação (tabelas vagas_*); se um nome de coluna for diferente, vale o da migração. Alvos: 'boaVista' e 'cidadePequena' (20 a 40 mil hab.). hipotese=true quando o alvo ou o indicador não tem fonte na proposta.",
+  "versao": 1,
+  "data": "2026-10-13",
+  "cores": {
+    "verde": "atingiu o alvo",
+    "amarelo": "70% ou mais do alvo (para 'menor é melhor': até 1,3x do alvo)",
+    "vermelho": "abaixo disso"
+  },
+  "indicadores": [
+    {
+      "chave": "vagas_ativas",
+      "nome": "Vagas ativas",
+      "definicao": "Anúncios publicados e dentro do prazo na praça, de qualquer modalidade (CLT, temporário, diária, freelancer, estágio).",
+      "formula": "count(vagas_anuncios where cidade_id = praça and status = 'publicado' and (expira_em is null or expira_em > now()))",
+      "origem": "vagas_anuncios",
+      "unidade": "vagas",
+      "periodo": "agora",
+      "direcao": "maior_melhor",
+      "alvo": { "boaVista": 150, "cidadePequena": 20 },
+      "alvoLancamento": { "boaVista": 30, "cidadePequena": 15 },
+      "hipotese": false,
+      "fonte": "proposta §5 metas; §9"
+    },
+    {
+      "chave": "pessoas_com_selo_por_funcao",
+      "nome": "Pessoas com selo, por teste",
+      "definicao": "Pessoas distintas da praça com selo válido (12 meses), separadas por teste: atendimento, vendas, administrativo, caixa, portugues. Inclui o total de pessoas com ao menos um selo.",
+      "formula": "para cada teste: count(distinct user_id) from vagas_selos join vagas_pessoas using (user_id) where cidade da pessoa = praça and valido_ate > now(); total = count(distinct user_id) de todos os testes",
+      "origem": "vagas_selos, vagas_pessoas",
+      "unidade": "pessoas",
+      "periodo": "agora",
+      "direcao": "maior_melhor",
+      "alvo": { "boaVista": { "porTeste": 40, "total": 3000 }, "cidadePequena": { "porTeste": null, "total": 400 } },
+      "alvoLancamento": { "boaVista": { "porTeste": 40 }, "cidadePequena": { "total": 150 } },
+      "hipotese": false,
+      "fonte": "proposta §4 (40 por função), §5 (3.000 / 400 / 150)"
+    },
+    {
+      "chave": "vagas_3_interessados_72h",
+      "nome": "Vagas com 3 interessados testados em 72 h",
+      "definicao": "Entre os anúncios publicados há pelo menos 72 h (7 dias na cidade pequena), a porcentagem que recebeu 3 ou mais candidaturas de pessoas com selo válido dentro da janela.",
+      "formula": "100 * count(anuncios where candidaturas_com_selo_na_janela >= 3) / count(anuncios publicados há >= janela); candidatura conta se criada_em <= publicado_em + janela e a pessoa tinha selo válido naquele momento (vagas_interno.selos_cartao). Janela: 72 h em Boa Vista; 7 dias na cidade pequena. Base: últimos 30 dias.",
+      "origem": "vagas_anuncios.publicado_em, vagas_candidaturas.criada_em, vagas_selos",
+      "unidade": "%",
+      "periodo": "30 dias",
+      "direcao": "maior_melhor",
+      "alvo": { "boaVista": 70, "cidadePequena": 70 },
+      "janela": { "boaVista": "72h", "cidadePequena": "7d" },
+      "hipotese": false,
+      "fonte": "proposta §5 metas (cidade pequena: HIPÓTESE da proposta)"
+    },
+    {
+      "chave": "vagas_combinou_7d",
+      "nome": "Vagas com Combinou em 7 dias",
+      "definicao": "Entre os anúncios publicados há pelo menos 7 dias, a porcentagem com ao menos uma candidatura que chegou a 'combinou' (ou 'contratada') até 7 dias depois da publicação.",
+      "formula": "100 * count(anuncios where exists candidatura with status in ('combinou','contratada') and combinou_em <= publicado_em + 7d) / count(anuncios publicados há >= 7d). Base: últimos 30 dias.",
+      "origem": "vagas_anuncios, vagas_candidaturas (status, combinou_em)",
+      "unidade": "%",
+      "periodo": "30 dias",
+      "direcao": "maior_melhor",
+      "alvo": { "boaVista": 60, "cidadePequena": 60 },
+      "hipotese": true,
+      "fonte": "proposta §9: 'medir (HIPÓTESE: 60%)'"
+    },
+    {
+      "chave": "primeira_resposta_empresa_dias",
+      "nome": "Primeira resposta da empresa",
+      "definicao": "Mediana, em dias, do tempo entre a candidatura ('enviada') e a primeira decisão da empresa ('conversar' ou 'agora_nao').",
+      "formula": "median(decidida_em - criada_em) em dias, sobre vagas_candidaturas da praça com decisão nos últimos 30 dias; candidaturas sem decisão há mais de 7 dias contam como 7+ (mostrar também a % sem resposta em 7 dias).",
+      "origem": "vagas_candidaturas (criada_em, decidida_em, status)",
+      "unidade": "dias",
+      "periodo": "30 dias",
+      "direcao": "menor_melhor",
+      "alvo": { "boaVista": 7, "cidadePequena": 7 },
+      "hipotese": false,
+      "fonte": "proposta §5 e §9"
+    },
+    {
+      "chave": "contratacoes",
+      "nome": "Contratações",
+      "definicao": "Candidaturas marcadas como 'contratada' pela empresa, acumuladas desde a abertura e no mês.",
+      "formula": "count(vagas_candidaturas where status = 'contratada' and cidade = praça); separar acumulado e mês atual (contratada_em).",
+      "origem": "vagas_candidaturas (status, contratada_em)",
+      "unidade": "contratações",
+      "periodo": "acumulado e mês",
+      "direcao": "maior_melhor",
+      "alvo": { "boaVista": 10, "cidadePequena": 3 },
+      "hipotese": false,
+      "fonte": "proposta §5 metas 'antes de cobrar' (cidade pequena: HIPÓTESE da proposta)"
+    },
+    {
+      "chave": "empresas_ativas_mes",
+      "nome": "Empresas ativas por mês",
+      "definicao": "Empresas com status 'ativa' que fizeram ao menos uma ação no mês: publicar/renovar anúncio, decidir candidatura ou enviar mensagem.",
+      "formula": "count(distinct empresa_id) entre: vagas_anuncios (publicado_em ou renovado_em no mês) ∪ vagas_candidaturas (decidida_em no mês) ∪ vagas_mensagens de membro de empresa (criada_em no mês), empresa na praça e status 'ativa'",
+      "origem": "vagas_empresas, vagas_anuncios, vagas_candidaturas, vagas_mensagens",
+      "unidade": "empresas",
+      "periodo": "mês",
+      "direcao": "maior_melhor",
+      "alvo": { "boaVista": 80, "cidadePequena": 15 },
+      "alvoLancamento": { "boaVista": 30, "cidadePequena": 10 },
+      "hipotese": false,
+      "fonte": "proposta §5 metas"
+    },
+    {
+      "chave": "empresas_buscando_semana",
+      "nome": "Empresas buscando no banco por semana",
+      "definicao": "Empresas distintas que usaram a busca no banco de talentos na semana. Fase 2 (passe do banco); até lá vale 0 e o painel mostra 'ainda não existe'.",
+      "formula": "count(distinct empresa_id) de registros de busca no banco na semana (tabela/evento a definir na fase 2; sugestão: vagas_buscas_banco)",
+      "origem": "a definir na fase 2",
+      "unidade": "empresas",
+      "periodo": "semana",
+      "direcao": "maior_melhor",
+      "alvo": { "boaVista": 20, "cidadePequena": null },
+      "hipotese": false,
+      "fonte": "proposta §4 (liberar Perfil em evidência: 20 por semana por 8 semanas) e §9"
+    },
+    {
+      "chave": "empresas_pagantes",
+      "nome": "Empresas pagantes (mês)",
+      "definicao": "Empresas distintas com ao menos um pedido pago no mês, na praça.",
+      "formula": "count(distinct empresa_id) from pedidos where status = 'pago' and cidade_id = praça and pago_em no mês",
+      "origem": "pedidos (produto vagas, cidade_id)",
+      "unidade": "empresas",
+      "periodo": "mês",
+      "direcao": "maior_melhor",
+      "alvo": { "boaVista": 25, "cidadePequena": 5 },
+      "hipotese": false,
+      "fonte": "proposta §5 metas"
+    },
+    {
+      "chave": "receita_liquida_centavos",
+      "nome": "Receita líquida (mês)",
+      "definicao": "Valor pago menos estornos menos taxas do meio de pagamento, no mês, na praça. Base do repasse ao parceiro.",
+      "formula": "sum(pago) - sum(estorno) - sum(taxa) em centavos, pedidos da praça no mês",
+      "origem": "pedidos; tabela repasses (cidade, mês, receita líquida, %, valor, status) [Prod]",
+      "unidade": "centavos",
+      "periodo": "mês",
+      "direcao": "maior_melhor",
+      "alvo": { "boaVista": null, "cidadePequena": null },
+      "hipotese": false,
+      "fonte": "proposta §4 (divisão com o parceiro) e §9"
+    },
+    {
+      "chave": "denuncia_tempo_decisao_h",
+      "nome": "Tempo para decidir uma denúncia",
+      "definicao": "Mediana, em horas, entre a criação da denúncia e a decisão do operador, nas últimas 30 denúncias da praça. Mostrar também quantas estão abertas há mais de 24 h.",
+      "formula": "median(decidida_em - criada_em) em horas; abertas_24h = count(where decidida_em is null and criada_em < now() - 24h)",
+      "origem": "vagas_denuncias (criada_em, decidida_em)",
+      "unidade": "horas",
+      "periodo": "últimas 30",
+      "direcao": "menor_melhor",
+      "alvo": { "boaVista": 24, "cidadePequena": 24 },
+      "hipotese": true,
+      "fonte": "proposta §9 (24 h, HIPÓTESE)"
+    },
+    {
+      "chave": "emails_mes",
+      "nome": "E-mails enviados no mês",
+      "definicao": "Total de e-mails do produto vagas enviados no mês (todas as praças), para não estourar o limite do plano gratuito do provedor (~3 mil).",
+      "formula": "count(envios_email where produto = 'vagas' and enviado_em no mês)",
+      "origem": "envios_email",
+      "unidade": "e-mails",
+      "periodo": "mês",
+      "direcao": "menor_melhor",
+      "alvo": { "boaVista": 3000, "cidadePequena": 3000 },
+      "alerta": 2500,
+      "hipotese": false,
+      "fonte": "proposta §9; produto.md §8 (Resend ~3 mil/mês)"
+    },
+    {
+      "chave": "fila_moderacao",
+      "nome": "Esperando moderação há mais de 24 h",
+      "definicao": "Anúncios em revisão, empresas em análise e referências profissionais (com texto livre) que esperam decisão do operador há mais de 24 h.",
+      "formula": "count(vagas_anuncios where status = 'em_revisao' and enviado_em < now() - 24h) + count(vagas_empresas where status = 'em_analise' and criada_em < now() - 24h) + count(vagas_referencias where moderacao pendente and criada_em < now() - 24h)",
+      "origem": "vagas_anuncios, vagas_empresas, vagas_referencias",
+      "unidade": "itens",
+      "periodo": "agora",
+      "direcao": "menor_melhor",
+      "alvo": { "boaVista": 0, "cidadePequena": 0 },
+      "hipotese": true,
+      "fonte": "manual §3.1 (moderação em até 24 h)"
+    },
+    {
+      "chave": "lista_espera",
+      "nome": "Pessoas na lista de espera",
+      "definicao": "Interessados cadastrados na lista de espera de uma cidade ainda não aberta (gatilho para abrir a próxima praça: 200).",
+      "formula": "count(vagas_lista_espera where cidade_id = cidade seguinte); separar perfil pessoa/empresa",
+      "origem": "vagas_lista_espera",
+      "unidade": "pessoas",
+      "periodo": "agora",
+      "direcao": "maior_melhor",
+      "alvo": { "boaVista": 200, "cidadePequena": 200 },
+      "hipotese": true,
+      "fonte": "proposta §5 'abrir a próxima cidade' (HIPÓTESE da proposta)"
+    },
+    {
+      "chave": "cadastros_assistidos_confirmados",
+      "nome": "Cadastros assistidos confirmados",
+      "definicao": "Contas criadas pela ação 'assistido' (mutirão ou balcão) que a pessoa confirmou pelo e-mail. Mostrar por mutirão (código do evento) e no mês.",
+      "formula": "count(vagas_contas where origem = 'assistido' and status = 'ativa' and confirmada_em no período) agrupado por codigo_evento",
+      "origem": "vagas_contas (origem, codigo_evento, confirmada_em) — campos sugeridos à fundação",
+      "unidade": "contas",
+      "periodo": "por mutirão e mês",
+      "direcao": "maior_melhor",
+      "alvo": { "boaVista": 60, "cidadePequena": 60 },
+      "hipotese": true,
+      "fonte": "roteiro do mutirão (meta por mutirão, HIPÓTESE)"
+    }
+  ],
+  "gatilhos": [
+    {
+      "chave": "antes_de_cobrar",
+      "nome": "Pode começar a cobrar a empresa",
+      "regra": "Boa Vista: pessoas_com_selo_por_funcao.porTeste >= 40 para todos os 5 testes E vagas_ativas >= 5 por função (30 no total) E empresas_ativas_mes >= 30 E vagas_3_interessados_72h >= 70 E contratacoes >= 10. Cidade pequena: vagas_ativas >= 15 E empresas_ativas_mes >= 10 E pessoas_com_selo_por_funcao.total >= 150 E vagas_3_interessados_72h (janela 7d) >= 70 E contratacoes >= 3.",
+      "fonte": "proposta §5 metas"
+    },
+    {
+      "chave": "praca_viva",
+      "nome": "Praça viva (6 meses)",
+      "regra": "vagas_ativas >= alvo E pessoas_com_selo_por_funcao.total >= alvo E empresas_ativas_mes >= alvo E empresas_pagantes >= alvo E primeira_resposta_empresa_dias <= 7, no mesmo mês.",
+      "fonte": "proposta §5 (cidade-pequena.md)"
+    },
+    {
+      "chave": "abrir_proxima",
+      "nome": "Abrir a próxima praça",
+      "regra": "praca_viva verdadeiro em 2 meses seguidos E lista_espera (da próxima) >= 200 E parceiro assinado (marcação manual pela equipe).",
+      "hipotese": true,
+      "fonte": "proposta §5"
+    },
+    {
+      "chave": "trocar_parceiro",
+      "nome": "Trocar o parceiro",
+      "regra": "90 dias desde o contrato sem concluir os passos 3 a 8 do manual (marcação manual) OU falta grave (acesso indevido, cobrança de pessoa, uso da base). Aviso formal aos 60 dias.",
+      "fonte": "proposta §5; cidade-pequena.md §5"
+    },
+    {
+      "chave": "liberar_perfil_em_evidencia",
+      "nome": "Liberar o Perfil em evidência (só Boa Vista)",
+      "regra": "parecer escrito do(a) advogado(a) E vagas_ativas >= 150 E empresas_buscando_semana >= 20 por 8 semanas seguidas E tela 'quem viu meu contato' no ar; não antes do mês 9.",
+      "hipotese": true,
+      "fonte": "proposta §4"
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+# Boletim diário, post semanal e spot de rádio · modelos e regras
+
+*Gestão sem Caos · Vagas sem Caos · v1 (13/10/2026). Os textos finais de marca são alinhados com `conteudo/vagas-textos/` (agente de textos); este arquivo fixa a estrutura, as regras e um modelo de cada peça para a operação usar desde o dia 1.*
+
+## Regras (valem para as três peças)
+
+1. **Só vaga verificada:** empresa `ativa` (CNPJ conferido) e anúncio `publicado`. Nunca vaga "que alguém mandou no grupo".
+2. **Nunca pedir dinheiro, Pix, documento ou dado bancário** em nenhuma peça; toda peça traz a frase: *"Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe."*
+3. **Sem dados sensíveis e sem filtro proibido:** nada de idade, sexo, "boa aparência", estado civil, nacionalidade, foto (CLT art. 373-A; Lei 9.029/1995).
+4. **Sem telefone de empresa** no boletim: o contato é pelo link da vaga (protege a empresa de spam e a pessoa de golpe).
+5. **Salário ou diária sempre** (é obrigatório no anúncio).
+6. **Sem promessa:** nada de "garantido", "chance maior", "perfil ideal", "aprovado".
+7. **Marca:** "Vagas sem Caos · uma ferramenta da Gestão sem Caos". Nunca "Tinder", "match", nome de agência.
+8. **Postagem à mão** no Canal e nos grupos parceiros (botão "Copiar boletim do dia" no painel [Prod]); nenhum disparador não oficial.
+9. **Horário:** boletim até 9h em dia útil; post semanal na segunda; rádio na terça (entrega) e veiculação conforme a rádio.
+10. **Correção:** vaga retirada do ar (golpe, encerrada) → editar/avisar no Canal no mesmo dia: "A vaga X saiu do ar."
+
+## 1. Boletim diário (WhatsApp / Canal)
+
+Estrutura: título com data → até 10 vagas novas (as mais antigas ficam no site) → diárias "para hoje" em bloco separado → rodapé fixo. Cada vaga em 2 linhas: função · bairro/zona · tipo · salário/diária → link curto.
+
+**Modelo:**
+
+```
+*Vagas sem Caos · Boa Vista · ter 21/10*
+Vagas novas, todas de empresas conferidas (CNPJ ativo):
+
+1. *Atendente de loja* · Centro · CLT · R$ 1.600 a R$ 1.900
+   vagas.gestaosemcaos.com.br/v/K7M2QX
+2. *Operador(a) de caixa* · Zona Oeste · CLT · R$ 1.550
+   vagas.gestaosemcaos.com.br/v/A3B9ZT
+3. *Auxiliar administrativo(a)* · Caçari · CLT · R$ 1.800 + VT
+   vagas.gestaosemcaos.com.br/v/P8Q1LM
+4. *Estágio em vendas* · Centro · 6 h/dia · R$ 900
+   vagas.gestaosemcaos.com.br/v/R2S7VN
+
+*Para hoje (diária):*
+• *Ajudante de evento* · Zona Norte · qua 22/10, 14h–22h · R$ 150 o dia
+  vagas.gestaosemcaos.com.br/v/D5E6FG
+
+Candidatura é grátis, sempre. Faça o teste da função no celular e ganhe o selo.
+Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.
+Todas as vagas: vagas.gestaosemcaos.com.br/boa-vista-rr
+_Vagas sem Caos · uma ferramenta da Gestão sem Caos_
+```
+
+Variações: sem vaga nova no dia → não publicar "nada hoje"; publicar "3 vagas ainda abertas" (reaproveitar as de maior interesse). Praça pequena: incluir as vagas do entorno com o nome da cidade ("· Mucajaí ·").
+
+## 2. Post semanal ("vaga da semana", segunda-feira)
+
+Formato: 1 imagem (modelo da identidade visual: laranja + azul-escuro, logo da Gestão sem Caos) + legenda curta. Uma vaga em destaque (a de maior salário ou mais interessante) + número da semana.
+
+**Legenda modelo:**
+
+```
+Vaga da semana em Boa Vista: *Auxiliar administrativo(a)*, CLT, R$ 1.800 + VT, bairro Caçari.
+Para se candidatar: faça o teste de rotina administrativa no celular (15 min, grátis) e toque em "Quero".
+A empresa vê seu cartão sem nome e sem foto; o contato só aparece quando os dois querem conversar.
+
+Esta semana: 23 vagas novas · 6 empresas novas · 41 pessoas com selo.
+Link na bio · vagas.gestaosemcaos.com.br/boa-vista-rr
+Candidatura é grátis, sempre. Nunca pague para se candidatar; se alguém pedir em nosso nome, é golpe.
+Vagas sem Caos · uma ferramenta da Gestão sem Caos
+```
+
+Para a empresa (versão alternada, a cada 2 semanas) [Marca]:
+
+```
+Contratou e, em 15 dias, a pessoa não sabia dar o troco? No Vagas sem Caos, quem se candidata já fez o teste do básico da função. Você vê o resultado, chama só quem também quer a vaga e decide na entrevista. Anunciar é grátis no lançamento. Uma ferramenta da Gestão sem Caos.
+```
+
+## 3. Spot de rádio (30 segundos)
+
+Locução neutra, ritmo normal (~75 palavras). Trocar [cidade] e o número.
+
+**Versão lançamento (para quem procura emprego):**
+
+```
+Procurando emprego em [cidade]? O Vagas sem Caos reúne vagas de empresas daqui, conferidas uma a uma.
+Você faz um teste rápido no celular, ganha o selo e aparece para quem está contratando.
+É grátis para se candidatar, sempre. Nunca pague para concorrer a uma vaga: se alguém pedir dinheiro em nosso nome, é golpe.
+Entre em vagas ponto gestão sem caos ponto com ponto be erre.
+Vagas sem Caos, uma ferramenta da Gestão sem Caos.
+```
+
+**Versão "boletim da semana" (lido pelo locutor):**
+
+```
+Vagas da semana em [cidade], pelo Vagas sem Caos: atendente de loja no Centro, operador de caixa na Zona Oeste, auxiliar administrativo no Caçari e diária de ajudante de evento na quarta. Salário na vaga, empresa conferida.
+Para se candidatar, grátis, entre em vagas ponto gestão sem caos ponto com ponto be erre.
+Nunca pague para se candidatar. Vagas sem Caos, uma ferramenta da Gestão sem Caos.
+```
+
+**Versão empresa (semanas 9–12):**
+
+```
+Sua empresa em [cidade] precisa contratar? No Vagas sem Caos, quem se candidata já fez o teste do básico da função.
+Anuncie em 5 minutos pelo WhatsApp e converse só com quem também quer a vaga. Grátis no lançamento.
+Vagas ponto gestão sem caos ponto com ponto be erre. Uma ferramenta da Gestão sem Caos.
+```
+
+## 4. Lista de checagem antes de publicar (operador)
+
+- [ ] Todas as vagas estão `publicado` e a empresa `ativa` (olhei no painel hoje)
+- [ ] Salário/diária em todas
+- [ ] Nenhum telefone, Pix, "taxa", link encurtado de terceiros
+- [ ] Nenhuma palavra proibida (idade, sexo, aparência, estado civil, nacionalidade)
+- [ ] Frase anti-golpe presente
+- [ ] Links curtos abrem (testei 2)
+- [ ] Assinatura "uma ferramenta da Gestão sem Caos"
