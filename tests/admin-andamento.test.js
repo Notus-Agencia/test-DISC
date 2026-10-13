@@ -195,13 +195,11 @@ test('quadro inteiro: linha por pessoa sem nada de clima; bloco do clima só com
   assert.deepEqual(q3.linhas.map((l) => l.disc.parte2), ['feita', 'feita', 'feita', 'sem_link', 'sem_link', 'feita', 'sem_link', 'sem_link']);
 });
 
-test('lembretes: link do teste da equipe, só os nomes de quem falta (primeiro nome + inicial) e a marca certa', () => {
+test('lembretes: o do grupo vai SEM nomes (decisão do dono); o pessoal chama pelo primeiro nome; a marca certa', () => {
   const g = AN.mensagemLembrete({ empresa: 'Clínica Exemplo', link: 'https://x/index.html?a=EQP1', nomes: ['Tiago Modelo Sem Teste', 'Lucas Fictício Exemplo', 'Bia de Souza'], minutos: 15 });
   assert.match(g, /^Olá, pessoal! Lembrete da avaliação de perfil da equipe da Clínica Exemplo, conduzida pela Gestão sem Caos\./);
-  assert.match(g, /Ainda falta a resposta de: Tiago M\., Lucas F\. e Bia S\. Responda pelo link abaixo:\nhttps:\/\/x\/index\.html\?a=EQP1\n\nLeva cerca de 15 minutos/);
-  assert.ok(!/Modelo|Fictício|Souza/.test(g), 'sobrenome completo não vai para o grupo');
-  assert.doesNotMatch(AN.mensagemLembrete({ link: 'L', nomes: [] }), /falta/);
-  assert.match(AN.mensagemLembrete({ link: 'L', nomes: ['Ana'] }), /de: Ana\. Responda/);
+  assert.match(g, /Se você ainda não respondeu, responda pelo link abaixo:\nhttps:\/\/x\/index\.html\?a=EQP1\n\nLeva cerca de 15 minutos/);
+  assert.ok(!/Tiago|Lucas|Bia|Modelo|Fictício|Souza|falta a resposta de/.test(g), 'nenhum nome vai para o grupo');
   const p = AN.mensagemPessoal({ empresa: 'Clínica Exemplo', nome: 'Tiago Modelo Sem Teste', link: 'https://x/index.html?a=EQP1', minutos: 10 });
   assert.match(p, /^Olá, Tiago! Lembrete: a Clínica Exemplo está fazendo uma avaliação de perfil da equipe, conduzida pela Gestão sem Caos, e ainda falta a sua resposta\./);
   assert.match(p, /\nhttps:\/\/x\/index\.html\?a=EQP1\n\nLeva cerca de 10 minutos/);

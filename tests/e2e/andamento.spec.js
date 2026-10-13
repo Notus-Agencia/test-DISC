@@ -103,9 +103,9 @@ test('prévia: resumo, quadro por pessoa na ordem do organograma, lembretes do D
   expect(await page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/index\.html\?a=EQP1$/);
   await page.click('#btn-and-lembrete');
   const lembrete = await page.evaluate(() => navigator.clipboard.readText());
-  expect(lembrete).toContain('Ainda falta a resposta de: Tiago M. Responda pelo link abaixo:');
+  expect(lembrete).toContain('Se você ainda não respondeu, responda pelo link abaixo:');
   expect(lembrete).toMatch(/index\.html\?a=EQP1/);
-  for (const nome of ORDEM.filter((n) => !n.startsWith('Tiago'))) expect(lembrete).not.toContain(nome.split(' ')[0]);
+  for (const nome of ORDEM) expect(lembrete).not.toContain(nome.split(' ')[0]); // sem nomes no lembrete do grupo
 
   // Clima por equipe: só contagens e o aviso de anonimato
   const rodada = page.locator('#and-clima .and-clima-rodada');

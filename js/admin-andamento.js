@@ -29,7 +29,7 @@
  *   modeloF360(ciclo) -> {id, nome, status, aberto, encerramentoPrevisto, respondidos, formularios, nAvaliados, comRelatorio,
  *     devolutivas, avaliados: {pessoaId: situação}, links: {pessoaId: n} (só aberto)}
  *   textoResumoF360(modelo) -> "Feedback 360 · ago/2026: encerrado · 2 de 3 líderes com relatório liberado · 2 devolutivas feitas"
- *   mensagemLembrete({empresa, link, nomes, minutos}) -> texto para o grupo (nomes = primeiro nome + inicial de quem falta)
+ *   mensagemLembrete({empresa, link, minutos}) -> texto para o grupo, SEM nomes (decisão do dono, 13/10: não expor quem falta)
  *   mensagemPessoal({empresa, nome, link, minutos}) -> texto para a pessoa que falta
  *   montarQuadro({colaboradores, relacoes, topoIds, processo, rodadas, ciclos, agora}) -> o modelo inteiro da tela
  * DOM: bloco(ctx) -> <div id="emp-andamento">. ctx = { el, botao, api, copiar, avisar, href, emp, eq, colabs, proc, linkTeste,
@@ -228,22 +228,17 @@
       (m.devolutivas === 1 ? '1 devolutiva feita' : m.devolutivas + ' devolutivas feitas');
   }
 
-  function listaNomes(nomes) {
-    var l = (nomes || []).filter(Boolean);
-    if (l.length <= 1) return l.join('');
-    return l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1];
-  }
   function rodapeTempo(minutos) {
     return '\n\nLeva cerca de ' + (num(minutos) || 10) + ' minutos e não existe resposta certa ou errada. Faça com calma, num lugar tranquilo.';
   }
 
-  // Lembrete para o grupo da equipe: o link coletivo e só os nomes de quem ainda não fez o teste DISC (dado identificado).
+  // Lembrete para o grupo da equipe: só o link coletivo, SEM nomes (decisão do dono, 13/10: cobrar alguém na frente do grupo
+  // expõe a pessoa; para cobrar uma pessoa, o WhatsApp individual da linha dela).
   function mensagemLembrete(o) {
     o = o || {};
     var emp = String(o.empresa || '').trim();
-    var nomes = listaNomes((o.nomes || []).map(nomeCurto));
     return 'Olá, pessoal! Lembrete da avaliação de perfil da equipe' + (emp ? ' da ' + emp : '') + ', conduzida pela Gestão sem Caos. ' +
-      (nomes ? 'Ainda falta a resposta de: ' + nomes + (/\.$/.test(nomes) ? ' ' : '. ') : '') + 'Responda pelo link abaixo:\n' + String(o.link || '') + rodapeTempo(o.minutos);
+      'Se você ainda não respondeu, responda pelo link abaixo:\n' + String(o.link || '') + rodapeTempo(o.minutos);
   }
 
   function mensagemPessoal(o) {
@@ -370,8 +365,9 @@
     var acoesDisc = ctx.proc && ctx.proc.ativa === false ? [
       botao('botao--contorno botao--pequeno', 'Abrir o processo para ativar o link', function () { ctx.abrirProcesso(); }, { id: 'btn-and-abrir-processo' })
     ] : ctx.proc ? [
-      botao('botao--principal botao--pequeno', 'Copiar lembrete para quem falta', function () {
-        ctx.copiar(mensagemLembrete({ empresa: nomeEmpresa(ctx), link: ctx.linkTeste, nomes: nomes, minutos: ctx.minutos }), 'Lembrete copiado. Cole no grupo da equipe no WhatsApp.');
+      botao('botao--principal botao--pequeno', 'Copiar lembrete para o grupo (sem nomes)', function () {
+        ctx.copiar(mensagemLembrete({ empresa: nomeEmpresa(ctx), link: ctx.linkTeste, minutos: ctx.minutos }),
+          'Lembrete copiado, sem nomes. Cole no grupo da equipe; para cobrar uma pessoa, use o WhatsApp da linha dela.');
       }, { id: 'btn-and-lembrete', disabled: nomes.length ? null : true, title: nomes.length ? null : 'Todos os colaboradores já responderam' }),
       botao('botao--claro botao--pequeno', 'Copiar link do teste', function () { ctx.copiar(ctx.linkTeste, 'Link do teste copiado.'); }, { id: 'btn-and-copiar-link' })
     ] : [
