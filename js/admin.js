@@ -5931,6 +5931,8 @@
     }
     return M.bloco({ el: el, botao: botao, api: api, avisar: avisar, falhou: falhou, confirmar: confirmar, abrirJanela: abrirJanela, copiar: copiar,
       formatarData: formatarData, linkWhatsApp: linkWhatsAppTexto, abrirPrevia: abrirPreviaNovaAba, href: root.location.href,
+      // Link pessoal: abre a conversa com o número do cadastro (sem número, o WhatsApp pede o contato).
+      linkWhatsAppPara: function (tel, texto) { var b = linkWhatsApp(tel); return b ? b + '?text=' + encodeURIComponent(String(texto || '')) : linkWhatsAppTexto(texto); },
       consultor: consultorAtual(), emp: emp, eq: eq, colabs: colabs,
       redesenhar: function () {
         if (estado.aba === 'empresas' && estado.emp.tela === 'pagina' && estado.emp.id === emp.id && estado.emp.subaba === 'clima') renderizarEmpresas();
@@ -6396,15 +6398,21 @@
   }
 
   function janelaEditarColaborador(emp, c) {
+    // Pesquisa de clima com identificação (js/admin-clima.js): e-mail e CPF/data opcionais (o CPF/data vira hash no servidor).
+    var M = root.DISC_ADMIN_CLIMA;
+    var conf = M && M.camposColaborador && metodoApi('climaSalvarColaborador')
+      ? M.camposColaborador({ el: el, api: api, empresaId: emp.id, pessoaId: c.pessoaId }) : null;
     abrirJanela({
       id: 'janela-editar-colaborador',
       titulo: 'Editar ' + c.nome,
       corpo: [
         campoCom('colab-cargo', 'Cargo', c.cargo, { maxlength: 120 }),
-        campoCom('colab-area', 'Área', c.area, { maxlength: 120 })
+        campoCom('colab-area', 'Área', c.area, { maxlength: 120 }),
+        conf ? conf.no : null
       ],
       aoConfirmar: function () {
-        return api('salvarColaborador', { empresaId: emp.id, pessoaId: c.pessoaId, cargo: $('colab-cargo').value.trim(), area: $('colab-area').value.trim() })
+        return Promise.resolve().then(function () { return conf ? conf.salvar() : null; })
+          .then(function () { return api('salvarColaborador', { empresaId: emp.id, pessoaId: c.pessoaId, cargo: $('colab-cargo').value.trim(), area: $('colab-area').value.trim() }); })
           .then(function () { return depoisDeMudarEquipe(emp.id, 'Colaborador salvo.'); });
       }
     });

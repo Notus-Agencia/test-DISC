@@ -1,15 +1,24 @@
 /*
  * Tela de resposta da Pesquisa de Clima da Equipe · Gestão sem Caos (clima.html?t=<token>), celular primeiro.
  *
- * Fluxo: aviso ao respondente (decisao.md 6.1, versão anônima; com o texto do líder no link do líder) -> uma tela por bloco
+ * Fluxo: aviso ao respondente (decisao.md 6.1; com o texto do líder no link do líder) -> uma tela por bloco
  * (botões grandes com o rótulo da escala, "Pular esta pergunta", barra de progresso) -> envio -> agradecimento.
  * Nenhuma resposta é obrigatória. Itens e textos vêm de js/clima.js (DISC_CLIMA); a API é DISC_API.climaPublica/climaEnviar.
+ *
+ * Modos de identificação (migração 20261018120000_clima_identificacao.sql): no LINK PESSOAL das pesquisas "identificação
+ * opcional" e "identificada" o aviso diz quem vê o nome (só a Gestão sem Caos, nunca a empresa) e há uma última etapa,
+ * "Identificação": no modo opcional a pessoa escolhe "Quero me identificar" ou "Prefiro manter o anonimato" (vai como o
+ * link coletivo, sem marcar nada); para se identificar, confirma que é ela com um código (e-mail; WhatsApp quando houver
+ * provedor: DISC_API.climaPedirCodigo) ou com os 3 últimos dígitos do CPF + dia e mês de nascimento cadastrados pela
+ * empresa. Sem nenhuma dessas formas, o link pessoal (de uso único) basta. O código e os dados vão só no envio (o banco
+ * confere, com validade e tentativas limitadas) e nunca ficam guardados no aparelho.
  *
  * Privacidade: as respostas ficam só na memória desta aba até o envio (nada em localStorage/sessionStorage). Depois de enviar,
  * o aparelho guarda só uma marca curta do link ("disc_clima_respondido": hash do token, sem o token nem as respostas), para
  * não responder duas vezes no mesmo aparelho. O link de clima não usa nada do teste DISC (sessão ou armazenamento).
  *
- * No Node (testes): require('./js/clima-resposta.js') -> { tokenDaUrl, marcaDoToken, montarEnvio, rotuloProgresso }.
+ * No Node (testes): require('./js/clima-resposta.js') -> { tokenDaUrl, marcaDoToken, montarEnvio, rotuloProgresso,
+ *   montarIdentificacao, mascararNascimento }.
  */
 (function (root) {
   'use strict';
@@ -50,6 +59,42 @@
     return c;
   }
 
+  // Parte da identificação no corpo do envio (link pessoal). id = {modo, metodos, escolha:'identificar'|'anonimo'|'',
+  // metodo, codigo, cpf3, nascimento} -> {ok, extra:{identificar?, confirmacao?}} | {ok:false, erro}. Confere só o formato
+  // (o banco confere o resto); no modo opcional sem escolha pede a escolha.
+  function montarIdentificacao(id) {
+    id = id || {};
+    var metodos = Array.isArray(id.metodos) ? id.metodos : [];
+    if (id.modo === 'opcional') {
+      if (id.escolha === 'anonimo') return { ok: true, extra: { identificar: false } };
+      if (id.escolha !== 'identificar') return { ok: false, erro: 'Escolha se quer se identificar ou manter o anonimato.' };
+    } else if (id.modo !== 'identificada') {
+      return { ok: true, extra: {} };
+    }
+    var extra = { identificar: true };
+    if (!metodos.length) return { ok: true, extra: extra };
+    var metodo = metodos.indexOf(id.metodo) >= 0 ? id.metodo : '';
+    if (!metodo) return { ok: false, erro: 'Escolha como confirmar que é você.' };
+    if (metodo === 'dados') {
+      var C = root.DISC_CLIMA || (typeof require === 'function' ? require('./clima.js') : null);
+      var n = C.normalizarConferencia(id.cpf3, id.nascimento);
+      if (!n.ok) return { ok: false, erro: n.erro };
+      extra.confirmacao = { metodo: 'dados', cpf3: String(id.cpf3).trim(), nascimento: String(id.nascimento).trim() };
+      return { ok: true, extra: extra };
+    }
+    var cod = String(id.codigo == null ? '' : id.codigo).replace(/\D/g, '');
+    if (!id.codigoPedido) return { ok: false, erro: 'Peça o código e digite os 6 números que chegarem.' };
+    if (!/^[0-9]{6}$/.test(cod)) return { ok: false, erro: 'Digite os 6 números do código.' };
+    extra.confirmacao = { metodo: metodo, codigo: cod };
+    return { ok: true, extra: extra };
+  }
+
+  // "1508" -> "15/08" enquanto a pessoa digita (só números; no máximo DD/MM).
+  function mascararNascimento(v) {
+    var d = String(v == null ? '' : v).replace(/\D/g, '').slice(0, 4);
+    return d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d;
+  }
+
   function rotuloProgresso(i, total) { return 'Parte ' + (i + 1) + ' de ' + total; }
 
   /* ------------------------------------------------------------------ tela */
@@ -61,7 +106,8 @@
     var CL = root.DISC_CLIMA;
     var api = root.DISC_API;
     var token = tokenDaUrl(root.location.search, root.location.hash);
-    var estado = { info: null, telas: [], tela: -1, respostas: {}, pulados: {}, comentario: '', inicio: 0, chave: gerarChave(), enviando: false };
+    var estado = { info: null, telas: [], tela: -1, respostas: {}, pulados: {}, comentario: '', inicio: 0, chave: gerarChave(), enviando: false,
+      pessoal: false, id: { escolha: '', metodo: '', codigo: '', codigoPedido: false, codigoPrevia: '', destino: '', cpf3: '', nascimento: '' } };
 
     function el(tag, attrs, filhos) {
       var n = doc.createElement(tag);
@@ -128,16 +174,27 @@
     Promise.resolve().then(function () { return api.climaPublica(token); }).then(function (info) {
       estado.info = info;
       estado.telas = CL.telas(info.papel, { complemento: info.complemento === true, n4: info.n4 === true });
+      estado.pessoal = info.pessoal === true && CL.comIdentificacao(info.modo);
+      var metodos = Array.isArray(info.metodos) ? info.metodos : [];
+      estado.id.metodo = metodos.length === 1 ? metodos[0] : '';
       selo(info.empresaNome);
       if (jaRespondeu()) return telaJaRespondeu();
       telaAviso();
     }, function (e) {
       var r = e && e.resposta;
       if (r && r.encerrada) telaMensagem('Pesquisa encerrada', 'Esta pesquisa já foi encerrada. Obrigado pelo interesse!');
+      else if (r && r.usado && jaRespondeu()) telaMensagem('Você já respondeu', 'Suas respostas já foram enviadas por este aparelho. Obrigado!');
+      else if (r && r.usado) telaMensagem('Link já usado', 'Este link pessoal já foi usado para responder. Obrigado!');
       else telaMensagem('Link inválido', (e && e.message) || MSG_LINK);
     });
 
+    function totalPartes() { return estado.telas.length + (estado.pessoal ? 1 : 0); }
+
     function telaJaRespondeu() {
+      if (estado.pessoal) {
+        telaMensagem('Você já respondeu', 'Suas respostas já foram enviadas por este aparelho. Obrigado!');
+        return;
+      }
       telaMensagem('Você já respondeu', 'Suas respostas já foram enviadas por este aparelho. Obrigado!', [
         el('p', { classe: 'clima-nota', texto: 'A resposta não fica ligada a você: nem quem conduz a pesquisa sabe quem respondeu.' }),
         el('div', { classe: 'acoes' }, el('button', { type: 'button', classe: 'botao botao--claro', 'data-acao': 'outra-pessoa', texto: 'Outra pessoa vai responder neste aparelho',
@@ -145,11 +202,11 @@
       ]);
     }
 
-    // 2) aviso (6.1) + aceite
+    // 2) aviso (6.1, conforme o modo) + aceite
     function telaAviso() {
       var info = estado.info;
       var aviso = CL.avisoRespondente({ empresa: info.empresaNome, complemento: info.complemento, retencaoDias: info.retencaoDias,
-        contatoDados: info.contatoDados, baseLegal: root.CONFIG && root.CONFIG.CLIMA_BASE_LEGAL });
+        contatoDados: info.contatoDados, baseLegal: root.CONFIG && root.CONFIG.CLIMA_BASE_LEGAL, modo: info.modo, pessoal: info.pessoal === true });
       var lider = info.papel === 'lider';
       var marcar = el('input', { id: 'clima-aceite', type: 'checkbox' });
       var comecar = el('button', { type: 'button', classe: 'botao botao--principal botao--grande', 'data-acao': 'comecar', disabled: true, texto: 'Começar' });
@@ -159,10 +216,11 @@
         if (!estado.inicio) estado.inicio = Date.now();
         irPara(0);
       });
-      trocar(el('section', { classe: 'caixa clima-aviso surgir', 'aria-labelledby': 'clima-aviso-titulo' }, [
-        el('p', { classe: 'sobretitulo', texto: 'Anônima e voluntária · cerca de 5 minutos' }),
+      trocar(el('section', { classe: 'caixa clima-aviso surgir', 'aria-labelledby': 'clima-aviso-titulo', 'data-modo': estado.pessoal ? info.modo : 'anonima' }, [
+        el('p', { classe: 'sobretitulo', texto: aviso.sobretitulo }),
         el('h1', { classe: 'titulo-pagina', id: 'clima-aviso-titulo', texto: aviso.titulo }),
         el('p', { classe: 'clima-equipe', texto: (lider ? 'Você responde como líder da ' : 'Você responde sobre a ') + String(info.equipeNome || '').replace(/\.$/, '') + '.' }),
+        aviso.destaque ? el('div', { classe: 'clima-quem-ve', 'data-quem-ve': '1' }, [el('strong', { texto: 'Quem vê o seu nome. ' }), aviso.destaque]) : null,
         lider ? el('div', { classe: 'clima-lider' }, [el('strong', { texto: 'Sua parte como líder. ' }), CL.AVISO_LIDER.replace(/^Sua parte como líder\.\s*/, '')]) : null,
         el('ul', { classe: 'clima-aviso__lista' }, aviso.paragrafos.map(function (p) {
           return el('li', null, [el('strong', { texto: p.rotulo + ' ' }), p.texto]);
@@ -180,7 +238,7 @@
     }
 
     function progresso(i) {
-      var total = estado.telas.length;
+      var total = totalPartes();
       var pct = Math.round((i / total) * 100);
       var visivel = Math.max(pct, 6);
       var feito = el('span', { classe: 'progresso-feito' });
@@ -224,7 +282,7 @@
         var info = estado.info;
         var canal = String(info.canalTexto || '').trim();
         var url = String(info.canalUrl || '').trim();
-        extra = el('p', { classe: 'clima-canal', 'data-canal': 'n4' }, [CL.textoN4(canal)]);
+        extra = el('p', { classe: 'clima-canal', 'data-canal': 'n4' }, [CL.textoN4(canal, estado.pessoal)]);
         if (/^(https:\/\/|mailto:|tel:)/.test(url)) {
           extra.appendChild(doc.createTextNode(' '));
           extra.appendChild(el('a', { href: url, target: '_blank', rel: 'noopener', texto: 'Abrir o canal' }));
@@ -238,10 +296,18 @@
       ]);
     }
 
+    function barraNav(dica, voltar, seguir) {
+      return el('div', { classe: 'barra-nav' }, [
+        el('p', { classe: 'barra-dica', texto: dica }),
+        el('div', { classe: 'barra-botoes' }, [voltar, seguir])
+      ]);
+    }
+
     function telaBloco() {
       var i = estado.tela;
       var t = estado.telas[i];
       var ultimo = i === estado.telas.length - 1;
+      var enviaAqui = ultimo && !estado.pessoal;
       var lista = el('ol', { classe: 'clima-perguntas' }, t.itens.map(pergunta));
       var comentario = null;
       if (t.comentario) {
@@ -257,9 +323,13 @@
       }
       var erro = el('p', { classe: 'campo__erro clima-erro', id: 'clima-erro', role: 'alert' });
       var voltar = el('button', { type: 'button', classe: 'botao botao--claro botao--grande', 'data-acao': 'voltar', texto: 'Voltar' });
-      var seguir = el('button', { type: 'button', classe: 'botao botao--principal botao--grande', 'data-acao': ultimo ? 'enviar' : 'proximo', texto: ultimo ? 'Enviar respostas' : 'Continuar' });
+      var seguir = el('button', { type: 'button', classe: 'botao botao--principal botao--grande', 'data-acao': enviaAqui ? 'enviar' : 'proximo', texto: enviaAqui ? 'Enviar respostas' : 'Continuar' });
       voltar.addEventListener('click', function () { if (i === 0) telaAviso(); else irPara(i - 1); });
-      seguir.addEventListener('click', function () { if (ultimo) enviar(seguir, erro); else irPara(i + 1); });
+      seguir.addEventListener('click', function () {
+        if (enviaAqui) enviar(seguir, erro, {});
+        else if (ultimo) telaIdentificacao();
+        else irPara(i + 1);
+      });
       // Sem a animação "surgir" aqui: o transform que ela deixa prenderia a barra fixa (Voltar/Continuar) dentro do cartão.
       trocar(el('section', { classe: 'caixa clima-bloco', 'data-tela': t.id, 'aria-labelledby': 'clima-bloco-titulo' }, [
         progresso(i),
@@ -269,16 +339,152 @@
         lista,
         comentario,
         erro,
-        el('div', { classe: 'barra-nav' }, [
-          el('p', { classe: 'barra-dica', texto: ultimo ? 'Confira e envie quando quiser.' : 'Suas respostas ficam só neste aparelho até o envio.' }),
-          el('div', { classe: 'barra-botoes' }, [voltar, seguir])
-        ])
+        barraNav(enviaAqui ? 'Confira e envie quando quiser.' : 'Suas respostas ficam só neste aparelho até o envio.', voltar, seguir)
       ]), 'bloco');
-      avisarLeitor(rotuloProgresso(i, estado.telas.length) + ': ' + t.titulo);
+      avisarLeitor(rotuloProgresso(i, totalPartes()) + ': ' + t.titulo);
     }
 
-    // 4) envio
-    function enviar(botaoEnviar, erro) {
+    // 4) identificação (só no link pessoal dos modos opcional e identificado)
+    function telaIdentificacao() {
+      var info = estado.info;
+      var TI = CL.TEXTOS_IDENTIFICACAO;
+      var opcional = info.modo === 'opcional';
+      var i = estado.telas.length;
+      var erro = el('p', { classe: 'campo__erro clima-erro', id: 'clima-erro', role: 'alert' });
+      var confirmar = el('div', { classe: 'clima-confirmar', id: 'clima-confirmar' });
+      var escolhas = [];
+      function escolha(valor, titulo, ajuda) {
+        var b = el('button', { type: 'button', classe: 'clima-opcao clima-opcao--larga', 'data-escolha': valor, 'aria-pressed': String(estado.id.escolha === valor) }, [
+          el('span', { classe: 'escolha-marca', 'aria-hidden': 'true' }),
+          el('span', { classe: 'clima-opcao__texto' }, [el('strong', { texto: titulo }), el('span', { classe: 'clima-opcao__ajuda', texto: ajuda })])
+        ]);
+        b.addEventListener('click', function () {
+          estado.id.escolha = valor;
+          erro.textContent = '';
+          escolhas.forEach(function (x) { x.setAttribute('aria-pressed', String(x.getAttribute('data-escolha') === valor)); });
+          montarConfirmacao();
+        });
+        escolhas.push(b);
+        return b;
+      }
+      function montarConfirmacao() {
+        while (confirmar.firstChild) confirmar.removeChild(confirmar.firstChild);
+        confirmar.hidden = opcional && estado.id.escolha !== 'identificar';
+        if (confirmar.hidden) return;
+        var metodos = Array.isArray(info.metodos) ? info.metodos : [];
+        if (opcional) confirmar.appendChild(el('h2', { classe: 'clima-confirmar__titulo', texto: TI.confirmar }));
+        if (!metodos.length) {
+          confirmar.appendChild(el('p', { classe: 'clima-nota', 'data-confirmar': 'link', texto: TI.soLink }));
+          return;
+        }
+        if (metodos.length > 1) {
+          var botoes = [];
+          confirmar.appendChild(el('div', { classe: 'clima-opcoes clima-opcoes--metodos', role: 'group', 'aria-label': 'Como confirmar' }, metodos.map(function (m) {
+            var sub = m === 'email' ? (info.emailMascarado || 'e-mail do cadastro') : (m === 'whatsapp' ? 'número com final ' + (info.whatsappFinal || '••')
+              : 'dados que a empresa cadastrou');
+            var b = el('button', { type: 'button', classe: 'clima-opcao clima-opcao--larga', 'data-metodo': m, 'aria-pressed': String(estado.id.metodo === m) }, [
+              el('span', { classe: 'escolha-marca', 'aria-hidden': 'true' }),
+              el('span', { classe: 'clima-opcao__texto' }, [el('strong', { texto: CL.METODOS_INFO[m].rotulo }), el('span', { classe: 'clima-opcao__ajuda', texto: sub })])
+            ]);
+            b.addEventListener('click', function () {
+              if (estado.id.metodo !== m) { estado.id.metodo = m; estado.id.codigoPedido = false; estado.id.codigo = ''; estado.id.codigoPrevia = ''; }
+              erro.textContent = '';
+              montarConfirmacao();
+            });
+            botoes.push(b);
+            return b;
+          })));
+        }
+        var m = estado.id.metodo;
+        var area = el('div', { classe: 'clima-confirmar__campos', 'data-metodo-ativo': m || '' });
+        confirmar.appendChild(area);
+        if (!m) return;
+        if (m === 'dados') {
+          var cpf = el('input', { id: 'clima-cpf3', classe: 'entrada clima-entrada-curta', type: 'text', inputmode: 'numeric', maxlength: '3', autocomplete: 'off',
+            'aria-describedby': 'clima-dados-ajuda' });
+          cpf.value = estado.id.cpf3;
+          cpf.addEventListener('input', function () { cpf.value = cpf.value.replace(/\D/g, '').slice(0, 3); estado.id.cpf3 = cpf.value; });
+          var nasc = el('input', { id: 'clima-nascimento', classe: 'entrada clima-entrada-curta', type: 'text', inputmode: 'numeric', maxlength: '5', autocomplete: 'off',
+            placeholder: 'DD/MM' });
+          nasc.value = estado.id.nascimento;
+          nasc.addEventListener('input', function () { nasc.value = mascararNascimento(nasc.value); estado.id.nascimento = nasc.value; });
+          area.appendChild(el('p', { classe: 'clima-nota', id: 'clima-dados-ajuda', texto: 'Os mesmos dados que a empresa informou no seu cadastro. Eles só servem para conferir que é você e não ficam guardados neste aparelho.' }));
+          area.appendChild(el('div', { classe: 'clima-campos' }, [
+            el('label', { classe: 'campo', for: 'clima-cpf3' }, [el('span', { classe: 'campo__rotulo', texto: '3 últimos dígitos do CPF' }), cpf]),
+            el('label', { classe: 'campo', for: 'clima-nascimento' }, [el('span', { classe: 'campo__rotulo', texto: 'Dia e mês de nascimento' }), nasc])
+          ]));
+          return;
+        }
+        // código por e-mail ou WhatsApp
+        var destino = estado.id.destino || (m === 'email' ? info.emailMascarado : 'final ' + (info.whatsappFinal || ''));
+        var pedir = el('button', { type: 'button', classe: 'botao ' + (estado.id.codigoPedido ? 'botao--claro botao--pequeno' : 'botao--contorno'), 'data-acao': 'pedir-codigo',
+          texto: estado.id.codigoPedido ? 'Pedir outro código' : 'Enviar código' });
+        pedir.addEventListener('click', function () { pedirCodigo(pedir, erro); });
+        if (!estado.id.codigoPedido) {
+          area.appendChild(el('p', { classe: 'clima-nota', texto: 'Vamos enviar um código de 6 números ' + (m === 'email' ? 'para o e-mail ' : 'pelo WhatsApp, para o número com ') + destino + '.' }));
+          area.appendChild(el('div', { classe: 'acoes' }, pedir));
+          return;
+        }
+        var cod = el('input', { id: 'clima-codigo', classe: 'entrada clima-entrada-curta clima-codigo', type: 'text', inputmode: 'numeric', maxlength: '7',
+          autocomplete: 'one-time-code', 'aria-describedby': 'clima-codigo-ajuda' });
+        cod.value = estado.id.codigo;
+        cod.addEventListener('input', function () { cod.value = cod.value.replace(/[^0-9 ]/g, '').slice(0, 7); estado.id.codigo = cod.value; });
+        area.appendChild(el('label', { classe: 'campo', for: 'clima-codigo' }, [el('span', { classe: 'campo__rotulo', texto: 'Código de 6 números' }), cod]));
+        area.appendChild(el('p', { classe: 'clima-nota', id: 'clima-codigo-ajuda', texto: 'Enviado para ' + destino + '. Vale por ' + CL.CODIGO_MINUTOS +
+          ' minutos. Não chegou? Confira a caixa de spam ou peça outro.' }));
+        if (estado.id.codigoPrevia) {
+          area.appendChild(el('p', { classe: 'clima-previa-codigo', 'data-codigo-previa': estado.id.codigoPrevia,
+            texto: 'Prévia: nenhum e-mail é enviado. Use o código ' + estado.id.codigoPrevia + '.' }));
+        }
+        area.appendChild(el('div', { classe: 'acoes' }, pedir));
+      }
+      function pedirCodigo(botao, erroEl) {
+        if (botao.disabled) return;
+        botao.disabled = true;
+        erroEl.textContent = '';
+        var canal = estado.id.metodo;
+        Promise.resolve().then(function () { return api.climaPedirCodigo(token, canal); }).then(function (r) {
+          estado.id.codigoPedido = true;
+          estado.id.codigo = '';
+          estado.id.destino = r.destino || '';
+          estado.id.codigoPrevia = r.simulado && r.codigoPrevia ? String(r.codigoPrevia) : '';
+          montarConfirmacao();
+          var c = doc.getElementById('clima-codigo');
+          if (c) c.focus();
+          avisarLeitor('Código enviado.');
+        }, function (e) {
+          botao.disabled = false;
+          erroEl.textContent = (e && e.message) || 'Não foi possível enviar o código agora. Tente de novo em instantes.';
+        });
+      }
+      var voltar = el('button', { type: 'button', classe: 'botao botao--claro botao--grande', 'data-acao': 'voltar', texto: 'Voltar' });
+      var seguir = el('button', { type: 'button', classe: 'botao botao--principal botao--grande', 'data-acao': 'enviar', texto: 'Enviar respostas' });
+      voltar.addEventListener('click', function () { irPara(estado.telas.length - 1); });
+      seguir.addEventListener('click', function () {
+        var r = montarIdentificacao({ modo: info.modo, metodos: info.metodos, escolha: estado.id.escolha, metodo: estado.id.metodo, codigo: estado.id.codigo,
+          codigoPedido: estado.id.codigoPedido, cpf3: estado.id.cpf3, nascimento: estado.id.nascimento });
+        if (!r.ok) { erro.textContent = r.erro; return; }
+        enviar(seguir, erro, r.extra);
+      });
+      trocar(el('section', { classe: 'caixa clima-bloco clima-identificacao', 'data-tela': 'identificacao', 'data-modo': info.modo, 'aria-labelledby': 'clima-bloco-titulo' }, [
+        progresso(i),
+        el('h1', { classe: 'clima-bloco__titulo', id: 'clima-bloco-titulo', texto: opcional ? 'Você quer se identificar?' : 'Confirme que é você' }),
+        el('p', { classe: 'clima-bloco__topo', texto: opcional ? TI.escolher
+          : 'Esta pesquisa é identificada. O seu nome fica só com a consultoria (Gestão sem Caos); a empresa só vê resultados de grupo.' }),
+        opcional ? el('div', { classe: 'clima-opcoes clima-opcoes--escolha', role: 'group', 'aria-label': 'Identificação' }, [
+          escolha('identificar', TI.quero, TI.queroAjuda),
+          escolha('anonimo', TI.anonimo, TI.anonimoAjuda)
+        ]) : null,
+        confirmar,
+        erro,
+        barraNav('O código e os dados servem só para conferir que é você.', voltar, seguir)
+      ]), 'identificacao');
+      montarConfirmacao();
+      avisarLeitor(rotuloProgresso(i, totalPartes()) + ': identificação');
+    }
+
+    // 5) envio
+    function enviar(botaoEnviar, erro, extra) {
       if (estado.enviando) return;
       var segundos = estado.inicio ? (Date.now() - estado.inicio) / 1000 : null;
       var corpo = montarEnvio(estado.respostas, estado.comentario, segundos, estado.chave);
@@ -286,30 +492,36 @@
         erro.textContent = 'Responda pelo menos uma pergunta antes de enviar.';
         return;
       }
+      Object.keys(extra || {}).forEach(function (k) { corpo[k] = extra[k]; });
       estado.enviando = true;
       botaoEnviar.disabled = true;
       botaoEnviar.textContent = 'Enviando…';
       erro.textContent = '';
-      Promise.resolve().then(function () { return api.climaEnviar(token, corpo); }).then(function () {
+      Promise.resolve().then(function () { return api.climaEnviar(token, corpo); }).then(function (r) {
         marcarRespondido();
         estado.respostas = {}; estado.pulados = {}; estado.comentario = '';
-        telaMensagem('Respostas enviadas. Obrigado!', 'Sua resposta não fica ligada a você. A empresa só vê resultados de grupo, depois que a pesquisa terminar.', [
+        estado.id.codigo = ''; estado.id.cpf3 = ''; estado.id.nascimento = '';
+        var identificada = !!(r && r.identificada) || corpo.identificar === true;
+        var TI = CL.TEXTOS_IDENTIFICACAO;
+        telaMensagem('Respostas enviadas. Obrigado!', identificada ? TI.fimIdentificada : TI.fimAnonima, [
           el('p', { classe: 'clima-nota', texto: 'Pode fechar esta página.' })
         ]);
         doc.body.setAttribute('data-etapa', 'fim');
+        doc.body.setAttribute('data-identificada', identificada ? 'sim' : 'nao');
       }, function (e) {
         estado.enviando = false;
         botaoEnviar.disabled = false;
         botaoEnviar.textContent = 'Tentar enviar de novo';
         var r = e && e.resposta;
         if (r && r.encerrada) { telaMensagem('Pesquisa encerrada', 'Esta pesquisa já foi encerrada antes do envio. Obrigado pelo interesse!'); return; }
+        if (r && r.usado) { telaMensagem('Link já usado', 'Este link pessoal já foi usado para responder. Obrigado!'); return; }
         erro.textContent = (e && e.message) || 'Não foi possível enviar. Verifique a internet e tente de novo.';
       });
     }
   }
 
   var DISC_CLIMA_RESPOSTA = { tokenDaUrl: tokenDaUrl, marcaDoToken: marcaDoToken, montarEnvio: montarEnvio, rotuloProgresso: rotuloProgresso,
-    CHAVE_FEITO: CHAVE_FEITO, iniciar: iniciar };
+    montarIdentificacao: montarIdentificacao, mascararNascimento: mascararNascimento, CHAVE_FEITO: CHAVE_FEITO, iniciar: iniciar };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DISC_CLIMA_RESPOSTA;
   else {

@@ -46,7 +46,9 @@
  *   Aba Conexões (só Supabase/prévia; aqui também recusam): diagnosticoConexoes, testarConexao.
  *   E-mail (só Supabase/prévia; aqui também recusam): relatorioEnviarEmail, enviarLinkPorEmail, listarEnviosEmail.
  *   Pesquisa de clima (só Supabase/prévia; aqui também recusam): climaPublica, climaEnviar, climaListar, climaCriarRodada,
- *              climaEncerrar, climaResultado, climaComentarios, climaGerarRelatorio, climaExcluirRodada, climaApagarBrutas.
+ *              climaEncerrar, climaResultado, climaComentarios, climaGerarRelatorio, climaExcluirRodada, climaApagarBrutas,
+ *              climaPedirCodigo, climaEnvios, climaIdentificacao, climaDesidentificar, climaRenovarConvite,
+ *              climaColaboradoresDados, climaSalvarColaborador.
  *   Utilitários: protocoloValido, normalizarProtocolo, normalizarCodigoAvaliacao, codigoAvaliacaoDaUrl.
  */
 (function (root) {
@@ -352,6 +354,13 @@
     climaGerarRelatorio: soSupabase,
     climaExcluirRodada: soSupabase,
     climaApagarBrutas: soSupabase,
+    climaPedirCodigo: soSupabase,
+    climaEnvios: soSupabase,
+    climaIdentificacao: soSupabase,
+    climaDesidentificar: soSupabase,
+    climaRenovarConvite: soSupabase,
+    climaColaboradoresDados: soSupabase,
+    climaSalvarColaborador: soSupabase,
 
     // --- pública: página do relatório para o contratante ---
     relatorioPublico: seguro(function (relatorioToken) {
@@ -376,7 +385,8 @@
     'listarPedidos', 'atualizarPedido', 'listarCupons', 'salvarCupom', 'excluirCupom', 'listarPacotes', 'salvarPacote', 'resumoVendas',
     'diagnosticoConexoes', 'testarConexao',
     'climaPublica', 'climaEnviar', 'climaListar', 'climaCriarRodada', 'climaEncerrar', 'climaResultado', 'climaComentarios',
-    'climaGerarRelatorio', 'climaExcluirRodada', 'climaApagarBrutas'];
+    'climaGerarRelatorio', 'climaExcluirRodada', 'climaApagarBrutas', 'climaPedirCodigo', 'climaEnvios', 'climaIdentificacao',
+    'climaDesidentificar', 'climaRenovarConvite', 'climaColaboradoresDados', 'climaSalvarColaborador'];
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DISC_API;
   else root.DISC_API = DISC_API;

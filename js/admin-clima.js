@@ -12,8 +12,18 @@
  *   avisosAberta(rodada) -> [texto] (equipes ainda abaixo do mínimo, adesão baixa, total abaixo de 5)
  *   textoSituacao(equipe, grupos) -> texto da situação da equipe no resultado ("aparece", "fundida em Outras equipes"…)
  *   snapshotPrevia(rodada, resultado, empresa, temas, consultor) -> o MESMO formato do snapshot montado pelo banco
+ *   mensagemPessoal(empresa, nome, link, modo) -> texto do link PESSOAL (modos com identificação) para o WhatsApp
+ *   avisosPessoais(rodada) -> [texto] (links pessoais sem forma de confirmação)
+ * Modos de identificação (migração 20261018120000_clima_identificacao.sql): a janela "Nova pesquisa" escolhe o modo
+ * (anônima | identificação opcional | identificada, com o alerta de que as respostas tendem a ser menos sinceras) e as
+ * formas de confirmação (e-mail só com o envio configurado; WhatsApp só com provedor). Os links pessoais ficam na equipe
+ * ("uso interno da consultoria"), com Copiar, WhatsApp (wa.me com o número do cadastro) e "Novo link". A tela "Uso
+ * interno da consultoria" (DISC_API.climaIdentificacao) registra cada abertura (quem e quando) no servidor.
+ * camposColaborador(ctx) -> {no, salvar(empresaId, pessoaId)}: e-mail e CPF/data (só hash no servidor) na janela
+ *   "Editar colaborador" do js/admin.js.
  * DOM: bloco(ctx) -> <section id="emp-clima">. ctx = { el, botao, api, avisar, falhou, confirmar, abrirJanela, copiar,
- *   formatarData, linkWhatsApp(texto), abrirPrevia(dados), href, consultor, emp, eq, colabs, redesenhar() }.
+ *   formatarData, linkWhatsApp(texto), linkWhatsAppPara(telefone, texto), abrirPrevia(dados), href, consultor, emp, eq,
+ *   colabs, redesenhar() }.
  */
 (function (root) {
   'use strict';
@@ -71,6 +81,25 @@
       'É anônima e voluntária: ninguém vê a sua resposta, só resultados de grupo, depois que a pesquisa terminar. Leva cerca de 5 minutos.\n' + link;
   }
 
+  // Link PESSOAL (modos com identificação): diz quem vê o nome (só a Gestão sem Caos) e que o link não se encaminha.
+  function mensagemPessoal(empresa, nome, link, modo) {
+    var emp = String(empresa || '').trim();
+    var primeiro = String(nome || '').trim().split(/\s+/)[0] || '';
+    var quem = modo === 'identificada'
+      ? 'Esta pesquisa é identificada: só a Gestão sem Caos vê o seu nome junto com as respostas; a empresa só recebe resultados de grupo.'
+      : 'No fim, você escolhe se quer se identificar (só a Gestão sem Caos vê o seu nome; a empresa só recebe resultados de grupo) ou manter o anonimato.';
+    return 'Olá' + (primeiro ? ', ' + primeiro : '') + '! Este é o seu link pessoal da Pesquisa de Clima da Equipe' + (emp ? ' da ' + emp : '') +
+      ', conduzida pela Gestão sem Caos. ' + quem + ' Leva cerca de 5 minutos. O link é só seu: não encaminhe.\n' + link;
+  }
+
+  function avisosPessoais(r) {
+    var semForma = 0;
+    (r && r.equipes || []).forEach(function (e) { (e.convites || []).forEach(function (c) { if (!(c.metodos || []).length) semForma += 1; }); });
+    if (!semForma) return [];
+    return [semForma + (semForma === 1 ? ' link pessoal sem forma de confirmação' : ' links pessoais sem forma de confirmação') +
+      ' (sem e-mail e sem CPF/data no cadastro): o link sozinho identifica a pessoa. Mande só para ela.'];
+  }
+
   function pct(n, d) { return d ? Math.min(100, Math.round(100 * n / d)) : 0; }
 
   // Avisos enquanto a pesquisa está aberta (o painel só vê contagens agregadas).
@@ -115,7 +144,7 @@
       modelo: 'clima', versao: 1, titulo: 'Pesquisa de clima · ' + String((empresa && empresa.nome) || ''), geradoEm: new Date().toISOString(),
       empresa: { nome: String((empresa && empresa.nome) || ''), cidade: String((empresa && empresa.cidade) || '') }, consultor: String(consultor || ''),
       rodada: { nome: r.nome || '', abertaEm: r.abertaEm || '', encerradaEm: r.encerradaEm || '', complemento: !!r.complemento, n4Ligado: !!r.n4,
-        canalTexto: r.canalTexto || '', canalUrl: r.canalUrl || '', versaoItens: r.versaoItens || 'v0' },
+        canalTexto: r.canalTexto || '', canalUrl: r.canalUrl || '', versaoItens: r.versaoItens || 'v0', modo: r.modo || 'anonima' },
       resultado: c.visaoCliente(resultado || {}),
       temas: disponivel ? (temas || []).filter(function (t) { return String(t).trim(); }).slice(0, 6) : []
     };
@@ -130,7 +159,7 @@
     var sec = el('section', { classe: 'caixa emp-bloco clima-painel', id: 'emp-clima' }, [
       el('h3', { classe: 'caixa__titulo', texto: 'Pesquisa de Clima da Equipe' }),
       el('p', { classe: 'form-secao__texto', texto: 'Perguntas próprias da Gestão sem Caos sobre o clima de cada equipe do organograma (o líder e quem ele lidera direto). ' +
-        'É anônima: a empresa só vê resultados de grupo, com 5 ou mais respostas, e só depois do encerramento.' })
+        'Em qualquer modo, a empresa só vê resultados de grupo, com 5 ou mais respostas, e só depois do encerramento.' })
     ]);
     if (!est) {
       sec.appendChild(el('p', { classe: 'texto-suave t-rotulo', texto: 'Carregando…' }));
@@ -157,8 +186,12 @@
 
   function carregar(ctx) {
     var id = ctx.emp.id;
-    ctx.api('climaListar', id).then(function (resp) {
-      cache[id] = { rodadas: resp.rodadas || [], resultados: {} };
+    // O que está ligado para mandar código (e-mail/WhatsApp): sem a função publicada, as duas formas ficam desligadas.
+    var envios = Promise.resolve().then(function () { return ctx.api('climaEnvios'); })
+      .then(function (r) { return { email: r.email === true, whatsapp: r.whatsapp === true, simulado: r.simulado === true }; },
+        function () { return { email: false, whatsapp: false, falhou: true }; });
+    Promise.all([ctx.api('climaListar', id), envios]).then(function (res) {
+      cache[id] = { rodadas: res[0].rodadas || [], resultados: {}, envios: res[1] };
     }, function (e) {
       if (e && e.tratado) return;
       cache[id] = { rodadas: [], resultados: {}, erro: (e && e.message) || 'Não foi possível carregar as pesquisas de clima.' };
@@ -174,7 +207,10 @@
         el('p', { classe: 'texto-suave t-rotulo tabular', texto: 'Aberta em ' + ctx.formatarData(r.abertaEm) + (r.encerradaEm ? ' · encerrada em ' + ctx.formatarData(r.encerradaEm) : '') +
           (r.complemento ? ' · complemento NR-1' + (r.n4 ? ' (com canal de escuta)' : ' (sem canal: sem a pergunta de tratamento ofensivo)') : '') })
       ]),
-      el('span', { classe: 'selo ' + (aberta ? 'selo--laranja' : 'selo--noite'), texto: aberta ? 'Aberta' : 'Encerrada' })
+      el('div', { classe: 'clima-rodada__selos' }, [
+        el('span', { classe: 'selo clima-selo-modo', 'data-modo': r.modo || 'anonima', texto: CL().MODOS_INFO[CL().modoValido(r.modo)].curto }),
+        el('span', { classe: 'selo ' + (aberta ? 'selo--laranja' : 'selo--noite'), texto: aberta ? 'Aberta' : 'Encerrada' })
+      ])
     ]);
   }
 
@@ -189,7 +225,11 @@
     var el = ctx.el, botao = ctx.botao;
     var c = el('article', { classe: 'clima-rodada', 'data-rodada': r.id, 'data-status': 'aberta' }, [cabecalhoRodada(ctx, r)]);
     c.appendChild(el('p', { classe: 'clima-total clima-taxa-total tabular', texto: (r.respondentes || 0) + ' de ' + (r.convidados || 0) + ' convidados responderam (' + pct(r.respondentes, r.convidados) + '%)' }));
-    c.appendChild(el('p', { classe: 'texto-suave t-nota', texto: 'Só a contagem por equipe: ninguém (nem a Gestão sem Caos) vê quem respondeu. Os resultados aparecem depois do encerramento.' }));
+    var modo = CL().modoValido(r.modo);
+    var comId = CL().comIdentificacao(modo);
+    c.appendChild(el('p', { classe: 'texto-suave t-nota', texto: comId
+      ? 'Só a contagem por equipe. ' + (r.identificadas || 0) + (r.identificadas === 1 ? ' resposta veio' : ' respostas vieram') + ' com identificação até agora (os nomes só na tela de uso interno). Os resultados aparecem depois do encerramento.'
+      : 'Só a contagem por equipe: ninguém (nem a Gestão sem Caos) vê quem respondeu. Os resultados aparecem depois do encerramento.' }));
     c.appendChild(el('ul', { classe: 'clima-equipes' }, r.equipes.map(function (e) {
       var lEq = linkClima(ctx.href, e.tokenEquipe), lLi = linkClima(ctx.href, e.tokenLider);
       return el('li', { classe: 'clima-equipe', 'data-equipe': e.id }, [
@@ -199,8 +239,8 @@
           el('span', { classe: 'clima-equipe__taxa tabular', 'data-taxa': e.id, texto: (e.respondentes || 0) + ' de ' + e.convidados + ' (' + pct(e.respondentes, e.convidados) + '%)' }),
           barraTaxa(el, e.respondentes || 0, e.convidados)
         ]),
-        el('div', { classe: 'clima-links' }, [
-          el('span', { classe: 't-rotulo texto-suave', texto: 'Equipe (link coletivo e anônimo)' }),
+        modo === 'identificada' ? null : el('div', { classe: 'clima-links' }, [
+          el('span', { classe: 't-rotulo texto-suave', texto: modo === 'opcional' ? 'Equipe (link coletivo e anônimo, para quem preferir)' : 'Equipe (link coletivo e anônimo)' }),
           el('code', { classe: 'av-link clima-link', 'data-link': 'equipe', texto: lEq }),
           botao('botao--claro botao--pequeno', 'Copiar link', function () { ctx.copiar(lEq, 'Link da equipe copiado.'); }, { 'data-acao': 'copiar-link-equipe' }),
           el('a', { classe: 'botao botao--claro botao--pequeno', href: ctx.linkWhatsApp(mensagemConvite(ctx.emp.nome, lEq, 'membro')), target: '_blank', rel: 'noopener', 'data-acao': 'whatsapp-equipe', texto: 'WhatsApp' })
@@ -210,12 +250,14 @@
           el('code', { classe: 'av-link clima-link', 'data-link': 'lider', texto: lLi }),
           botao('botao--claro botao--pequeno', 'Copiar link', function () { ctx.copiar(lLi, 'Link do líder copiado.'); }, { 'data-acao': 'copiar-link-lider' }),
           el('a', { classe: 'botao botao--claro botao--pequeno', href: ctx.linkWhatsApp(mensagemConvite(ctx.emp.nome, lLi, 'lider')), target: '_blank', rel: 'noopener', 'data-acao': 'whatsapp-lider', texto: 'WhatsApp' })
-        ])
+        ]),
+        comId ? linksPessoais(ctx, r, e) : null
       ]);
     })));
-    var avisos = avisosAberta(r);
+    var avisos = avisosAberta(r).concat(comId ? avisosPessoais(r) : []);
     if (avisos.length) c.appendChild(el('ul', { classe: 'clima-avisos' }, avisos.map(function (t) { return el('li', { classe: 't-rotulo', texto: t }); })));
     c.appendChild(el('div', { classe: 'gestao-card__acoes' }, [
+      comId ? botao('botao--claro', 'Identificação (uso interno)', function () { abrirIdentificacao(ctx, r); }, { 'data-acao': 'clima-uso-interno' }) : null,
       botao('botao--laranja', 'Encerrar pesquisa', function () {
         ctx.confirmar({ titulo: 'Encerrar a pesquisa?', texto: 'Ninguém mais consegue responder e as equipes ficam congeladas. O resultado é calculado agora, já com as regras de anonimato.',
           botao: 'Encerrar pesquisa', classeBotao: 'botao--principal', botaoVoltar: 'Continuar aberta' }).then(function (ok) {
@@ -258,8 +300,126 @@
     }
     if (res === null) { c.appendChild(el('p', { classe: 'texto-suave t-rotulo', texto: 'Carregando o resultado…' })); return c; }
     if (res.erro) { c.appendChild(el('p', { classe: 'aviso aviso--erro', texto: res.erro })); return c; }
+    if (CL().comIdentificacao(r.modo)) {
+      c.appendChild(el('div', { classe: 'gestao-card__acoes clima-acoes-interno' }, [
+        ctx.botao('botao--claro', 'Respostas identificadas (uso interno)', function () { abrirIdentificacao(ctx, r); }, { 'data-acao': 'clima-uso-interno' }),
+        el('span', { classe: 'texto-suave t-nota', texto: (r.identificadas || 0) + (r.identificadas === 1 ? ' resposta identificada' : ' respostas identificadas') +
+          '. Só para a consultoria; o relatório da empresa não muda.' })
+      ]));
+    }
     resultadoHtml(ctx, c, r, res);
     return c;
+  }
+
+  // Links pessoais de uma equipe (modos com identificação): uso interno da consultoria; cada um vai só para a pessoa.
+  function linksPessoais(ctx, r, e) {
+    var el = ctx.el, botao = ctx.botao;
+    var tel = {};
+    (ctx.colabs || []).forEach(function (c) { tel[String(c.pessoaId)] = c.telefone || ''; });
+    var convites = e.convites || [];
+    var info = CL().METODOS_INFO;
+    return el('details', { classe: 'clima-pessoais', 'data-pessoais': e.id }, [
+      el('summary', { classe: 't-rotulo seminegrito', texto: 'Links pessoais (' + convites.length + ') · uso interno da consultoria' }),
+      el('p', { classe: 'texto-suave t-nota', texto: 'Um link por pessoa, de uso único. Mande cada um só para a própria pessoa (o botão WhatsApp abre a conversa com o número do cadastro).' }),
+      el('ul', { classe: 'clima-pessoais__lista' }, convites.map(function (cv) {
+        var link = linkClima(ctx.href, cv.token);
+        var msg = mensagemPessoal(ctx.emp.nome, cv.nome, link, r.modo);
+        var wa = ctx.linkWhatsAppPara ? ctx.linkWhatsAppPara(tel[String(cv.pessoaId)], msg) : ctx.linkWhatsApp(msg);
+        return el('li', { classe: 'clima-pessoal', 'data-convite': cv.id }, [
+          el('div', { classe: 'clima-pessoal__quem' }, [
+            el('span', { classe: 'seminegrito clima-pessoal__nome', texto: cv.nome }),
+            el('span', { classe: 'clima-pessoal__metodos t-nota texto-suave', texto: (cv.metodos || []).length
+              ? 'Confirma por: ' + cv.metodos.map(function (m) { return info[m] ? info[m].curto : m; }).join(' ou ') : 'Sem forma de confirmação: só o link' })
+          ]),
+          el('code', { classe: 'av-link clima-link', 'data-link': 'pessoal', texto: link }),
+          el('div', { classe: 'clima-pessoal__acoes' }, [
+          botao('botao--claro botao--pequeno', 'Copiar link', function () { ctx.copiar(link, 'Link pessoal copiado.'); }, { 'data-acao': 'copiar-link-pessoal' }),
+          el('a', { classe: 'botao botao--claro botao--pequeno', href: wa, target: '_blank', rel: 'noopener', 'data-acao': 'whatsapp-pessoal', texto: 'WhatsApp' }),
+          botao('botao--claro botao--pequeno', 'Novo link', function () {
+            ctx.confirmar({ titulo: 'Gerar um novo link para ' + cv.nome + '?', texto: 'O link atual deixa de funcionar (use se ele foi perdido, encaminhado por engano ou bloqueado por tentativas). Só vale para quem ainda não respondeu com identificação.',
+              botao: 'Gerar novo link', classeBotao: 'botao--principal', botaoVoltar: 'Voltar' }).then(function (ok) {
+              if (!ok) return;
+              ctx.api('climaRenovarConvite', cv.id).then(function () { delete cache[ctx.emp.id]; ctx.avisar('Novo link gerado. Envie de novo para a pessoa.', 'ok'); ctx.redesenhar(); }).catch(ctx.falhou);
+            });
+          }, { 'data-acao': 'renovar-link-pessoal' })
+          ])
+        ]);
+      }))
+    ]);
+  }
+
+  var ROTULO_ACESSO = { abrir: 'abriu esta tela', desidentificar: 'tirou o nome de uma resposta' };
+  var ROTULO_N4 = { 0: 'Prefiro não responder', 1: 'Nunca', 2: 'Uma ou duas vezes', 3: 'Três vezes ou mais' };
+
+  // Tela "Uso interno da consultoria": cada abertura fica registrada no servidor (quem e quando).
+  function abrirIdentificacao(ctx, r) {
+    var el = ctx.el;
+    var C = CL();
+    ctx.api('climaIdentificacao', r.id).then(function (d) {
+      var ultimo = (d.acessos || [])[0];
+      var corpo = [el('p', { classe: 'clima-interno-aviso', 'data-uso-interno': '1' }, [
+        el('strong', { texto: 'Uso interno da consultoria. ' }),
+        'Só administradores da Gestão sem Caos. Não mostre, não copie e não envie à empresa: ela só recebe resultados de grupo.' +
+        (ultimo ? ' Este acesso ficou registrado: ' + (ultimo.nome || 'administrador') + ' em ' + ctx.formatarData(ultimo.em) + '.' : '')
+      ])];
+      if (!d.respostasDisponiveis) {
+        corpo.push(el('p', { classe: 'texto-suave t-rotulo', texto: d.motivo === 'apagadas'
+          ? 'As respostas brutas e as identificações já foram apagadas (retenção).'
+          : 'As respostas identificadas aparecem depois do encerramento. Por enquanto, só quem já respondeu com identificação (para lembrar quem falta).' }));
+        if ((d.convites || []).length) {
+          corpo.push(el('table', { classe: 'clima-quadro clima-quadro--pessoais' }, [
+            el('thead', null, el('tr', null, ['Pessoa', 'Equipe', 'Confirmação', 'Situação'].map(function (t) { return el('th', { scope: 'col', texto: t }); }))),
+            el('tbody', null, d.convites.map(function (cv) {
+              return el('tr', { 'data-convite': cv.id }, [
+                el('th', { scope: 'row', texto: cv.nome }), el('td', { texto: cv.equipeNome }),
+                el('td', { texto: (cv.metodos || []).length ? cv.metodos.map(function (m) { return C.METODOS_INFO[m].curto; }).join(', ') : 'só o link' }),
+                el('td', { texto: cv.usado ? 'Resposta identificada' : (d.rodada.modo === 'opcional' ? 'Sem resposta identificada' : 'Ainda não respondeu') })
+              ]);
+            }))
+          ]));
+        }
+      } else if (!(d.respostas || []).length) {
+        corpo.push(el('p', { classe: 'texto-suave t-rotulo', texto: 'Nenhuma resposta veio com identificação.' }));
+      } else {
+        corpo.push(el('div', { classe: 'clima-identificadas' }, d.respostas.map(function (x) {
+          var dims = C.DIMENSOES.map(function (dim) {
+            var v = x.escores ? x.escores[dim] : null;
+            return el('tr', null, [el('th', { scope: 'row', texto: C.bloco(dim).nome }), el('td', { classe: 'tabular', texto: v === null || v === undefined ? '—' : String(v) })]);
+          });
+          dims.push(el('tr', null, [el('th', { scope: 'row', texto: 'Entrega da equipe (1 pergunta)' }), el('td', { classe: 'tabular', texto: x.escores && x.escores.H1 !== null && x.escores.H1 !== undefined ? String(x.escores.H1) : '—' })]));
+          var comp = Object.keys(x.complemento || {});
+          var cartao = el('article', { classe: 'clima-identificada', 'data-resposta': x.respostaId }, [
+            el('p', { classe: 'seminegrito', texto: x.nome }),
+            el('p', { classe: 'texto-suave t-nota', texto: x.equipeNome + ' · confirmou por ' + (C.METODOS_INFO[x.confirmadoPor] ? C.METODOS_INFO[x.confirmadoPor].curto : x.confirmadoPor) }),
+            el('table', { classe: 'clima-quadro clima-quadro--pessoa' }, [el('thead', null, el('tr', null, [el('th', { scope: 'col', texto: 'Tema' }), el('th', { scope: 'col', texto: '0 a 100' })])), el('tbody', null, dims)]),
+            comp.length ? el('p', { classe: 't-nota clima-identificada__compl', texto: 'Condições de trabalho: ' + comp.map(function (k) {
+              var it = C.ITENS_N.filter(function (n) { return n.id === k; })[0];
+              var v = x.complemento[k];
+              return (it ? it.nome : k) + ': ' + (k === 'N4' ? (ROTULO_N4[v] || v) : (C.ESCALA[v - 1] ? C.ESCALA[v - 1].rotulo : v));
+            }).join(' · ') }) : null,
+            x.comentario ? el('p', { classe: 't-rotulo clima-identificada__comentario', texto: 'Comentário: ' + x.comentario }) : null,
+            ctx.botao('botao--perigo botao--pequeno', 'Tirar o nome desta resposta', function () {
+              ctx.confirmar({ titulo: 'Tirar o nome desta resposta?', texto: 'Use quando a pessoa pedir. A resposta continua nos resultados de grupo, sem nome. Não dá para desfazer.',
+                botao: 'Tirar o nome' }).then(function (ok) {
+                if (!ok) return;
+                ctx.api('climaDesidentificar', r.id, x.respostaId).then(function () {
+                  if (cartao.parentNode) cartao.parentNode.removeChild(cartao);
+                  delete cache[ctx.emp.id];
+                  ctx.avisar('Nome tirado da resposta.', 'ok');
+                }).catch(ctx.falhou);
+              });
+            }, { 'data-acao': 'clima-desidentificar' })
+          ]);
+          return cartao;
+        })));
+      }
+      corpo.push(el('h4', { classe: 'clima-sub', texto: 'Acessos registrados' }));
+      corpo.push(el('ul', { classe: 'clima-acessos' }, (d.acessos || []).map(function (a) {
+        return el('li', { classe: 't-nota tabular', texto: (a.nome || 'administrador') + ' ' + (ROTULO_ACESSO[a.acao] || a.acao) + ' em ' + ctx.formatarData(a.em) });
+      })));
+      ctx.abrirJanela({ id: 'janela-clima-identificacao', titulo: 'Uso interno da consultoria', botao: 'Fechar',
+        texto: r.nome + ' · ' + C.MODOS_INFO[C.modoValido(r.modo)].rotulo, corpo: corpo, aoConfirmar: function () { return true; } });
+    }).catch(ctx.falhou);
   }
 
   function celulaDim(el, d) {
@@ -427,6 +587,44 @@
         el('label', { classe: 'clima-conv-campo', for: conv.id }, [el('span', { classe: 't-rotulo texto-suave', texto: 'Convidados' }), conv])
       ]) };
     });
+    // Modo de identificação (travado depois de criada) e formas de confirmação.
+    var C = CL();
+    var envios = (cache[ctx.emp.id] && cache[ctx.emp.id].envios) || { email: false, whatsapp: false };
+    var modos = C.MODOS.map(function (m) {
+      var info = C.MODOS_INFO[m];
+      var radio = el('input', { type: 'radio', name: 'clima-modo', id: 'clima-modo-' + m, value: m, checked: m === 'anonima' });
+      radio.addEventListener('change', atualizarModo);
+      return { m: m, radio: radio, no: el('label', { classe: 'clima-modo', for: radio.id, 'data-modo': m }, [radio, el('span', null, [
+        el('strong', { texto: info.rotulo + (info.recomendado ? ' (recomendado)' : '') }), el('span', { classe: 'clima-modo__texto', texto: info.texto })])]) };
+    });
+    var alerta = el('p', { classe: 'clima-alerta-modo', id: 'clima-alerta-modo', role: 'note', hidden: true, texto: C.ALERTA_IDENTIFICACAO });
+    function metodoCheck(m, ligado, rotulo, ajuda) {
+      var ck = el('input', { type: 'checkbox', id: 'clima-metodo-' + m, 'data-metodo': m, checked: ligado ? true : null, disabled: ligado ? null : true });
+      return { m: m, ck: ck, no: el('label', { classe: 'marcar clima-metodo', for: ck.id }, [ck, el('span', null, [el('strong', { texto: rotulo }), ajuda ? el('span', { classe: 'texto-suave t-nota', texto: ' ' + ajuda }) : null])]) };
+    }
+    var metodosUi = [metodoCheck('email', envios.email, 'Código de 6 números por e-mail', envios.email ? 'Para quem tem e-mail no cadastro.'
+      : 'O envio de e-mail não está configurado (veja Conexões); por enquanto esta forma fica desligada.')];
+    if (envios.whatsapp) metodosUi.push(metodoCheck('whatsapp', true, 'Código de 6 números pelo WhatsApp', 'Para o número do cadastro.'));
+    metodosUi.push(metodoCheck('dados', true, '3 últimos dígitos do CPF + dia e mês de nascimento', 'Informados pela empresa em cada colaborador (Editar colaborador); guardados só como código, nunca o número.'));
+    var blocoMetodos = el('div', { classe: 'clima-metodos', id: 'clima-metodos', hidden: true }, [
+      el('span', { classe: 'campo__rotulo', texto: 'Como cada pessoa confirma que é ela' }),
+      el('div', { classe: 'clima-metodos__lista' }, metodosUi.map(function (x) { return x.no; })),
+      el('span', { classe: 'campo__ajuda', texto: 'Quem não tiver nenhuma dessas formas responde só com o link pessoal (de uso único). Fraco contra quem já conhece a pessoa: é uma barreira contra troca casual.' })
+    ]);
+    function modoEscolhido() { var x = modos.filter(function (y) { return y.radio.checked; })[0]; return x ? x.m : 'anonima'; }
+    function atualizarModo() {
+      var m = modoEscolhido();
+      alerta.hidden = m === 'anonima';
+      blocoMetodos.hidden = m === 'anonima';
+      linhas.forEach(function (x) {
+        if (m === 'identificada') { x.conv.value = String(x.l.liderados); x.conv.disabled = true; }
+        else x.conv.disabled = false;
+      });
+      notaIdentificada.hidden = m !== 'identificada';
+      atualizar();
+    }
+    var notaIdentificada = el('p', { classe: 'texto-suave t-nota', id: 'clima-nota-identificada', hidden: true,
+      texto: 'Na pesquisa identificada só responde quem está no cadastro: cada liderado direto recebe um link pessoal (sem link coletivo).' });
     var compl = el('input', { type: 'checkbox', id: 'clima-complemento' });
     var canal = el('input', { id: 'clima-canal', classe: 'entrada', type: 'text', maxlength: '200', autocomplete: 'off', placeholder: 'Ex.: o RH da empresa pelo canal de escuta' });
     var url = el('input', { id: 'clima-canal-url', classe: 'entrada', type: 'text', maxlength: '300', autocomplete: 'off', placeholder: 'https://… ou mailto:… (opcional)' });
@@ -454,7 +652,14 @@
       texto: 'Cada líder com quem ele lidera direto vira uma equipe. Convidados = liderados no organograma; aumente se a equipe tiver gente que ainda não está no cadastro.',
       corpo: [
         el('label', { classe: 'campo', for: nome.id }, [el('span', { classe: 'campo__rotulo', texto: 'Nome da pesquisa' }), nome]),
-        el('div', { classe: 'campo' }, [el('span', { classe: 'campo__rotulo', texto: 'Equipes do organograma' }), el('ul', { classe: 'clima-escolhas', id: 'clima-escolhas' }, linhas.map(function (x) { return x.no; })), total]),
+        el('fieldset', { classe: 'campo clima-modos', id: 'clima-modos' }, [
+          el('legend', { classe: 'campo__rotulo', texto: 'Como as pessoas respondem' }),
+          el('div', { classe: 'clima-modos__lista' }, modos.map(function (x) { return x.no; })),
+          alerta,
+          el('span', { classe: 'campo__ajuda', texto: 'Em todos os modos a empresa só vê resultados de grupo (mínimo de 5; detalhes com 10) e nunca nomes. O modo não muda depois de criada.' })
+        ]),
+        blocoMetodos,
+        el('div', { classe: 'campo' }, [el('span', { classe: 'campo__rotulo', texto: 'Equipes do organograma' }), el('ul', { classe: 'clima-escolhas', id: 'clima-escolhas' }, linhas.map(function (x) { return x.no; })), notaIdentificada, total]),
         el('label', { classe: 'marcar', for: compl.id }, [compl, el('span', { texto: 'Incluir o complemento "Pesquisa de Fatores Psicossociais do Trabalho (apoio ao GRO)": 5 perguntas a mais, mostradas só no total da empresa ou da área, com 10 ou mais respostas.' })]),
         blocoCanal,
         el('label', { classe: 'campo', for: contato.id }, [el('span', { classe: 'campo__rotulo', texto: 'Contato da empresa para dúvidas sobre dados (opcional)' }), contato]),
@@ -465,20 +670,70 @@
         var eqs = escolhidas();
         if (!eqs.length) throw new Error('Escolha pelo menos uma equipe do organograma.');
         var r = Number(ret.value);
+        var modoNovo = modoEscolhido();
+        var metodosNovos = modoNovo === 'anonima' ? [] : metodosUi.filter(function (x) { return x.ck.checked && !x.ck.disabled; }).map(function (x) { return x.m; });
         return ctx.api('climaCriarRodada', { empresaId: ctx.emp.id, nome: nome.value.trim(), equipes: eqs, complemento: compl.checked,
           canalTexto: compl.checked ? canal.value.trim() : '', canalUrl: compl.checked ? url.value.trim() : '', contatoDados: contato.value.trim(),
-          retencaoDias: isFinite(r) ? Math.floor(r) : 90 }).then(function () {
+          retencaoDias: isFinite(r) ? Math.floor(r) : 90, modo: modoNovo, metodos: metodosNovos }).then(function () {
           delete cache[ctx.emp.id];
-          ctx.avisar('Pesquisa criada. Envie o link de cada equipe e o link de cada líder.', 'ok');
+          ctx.avisar(modoNovo === 'anonima' ? 'Pesquisa criada. Envie o link de cada equipe e o link de cada líder.'
+            : 'Pesquisa criada. Envie a cada pessoa o link pessoal dela e o link de cada líder.', 'ok');
           ctx.redesenhar();
         });
       } });
   }
 
+  // E-mail (para o código) e CPF/data (só hash com sal no servidor) do colaborador. ctx = {el, api, empresaId, pessoaId}.
+  function camposColaborador(ctx) {
+    var el = ctx.el;
+    var email = el('input', { id: 'colab-email-clima', classe: 'entrada', type: 'email', maxlength: '120', autocomplete: 'off', placeholder: 'nome@empresa.com.br' });
+    var cpf = el('input', { id: 'colab-cpf3', classe: 'entrada clima-conv', type: 'text', inputmode: 'numeric', maxlength: '3', autocomplete: 'off', placeholder: '000' });
+    var nasc = el('input', { id: 'colab-nascimento', classe: 'entrada clima-conv', type: 'text', inputmode: 'numeric', maxlength: '5', autocomplete: 'off', placeholder: 'DD/MM' });
+    var apagar = el('input', { type: 'checkbox', id: 'colab-conf-apagar' });
+    var situacao = el('p', { classe: 'texto-suave t-nota', id: 'colab-conf-situacao', texto: 'Carregando…' });
+    var linhaApagar = el('label', { classe: 'marcar', for: apagar.id, hidden: true }, [apagar, el('span', { texto: 'Apagar os dados de confirmação cadastrados' })]);
+    var emailOriginal = null;
+    cpf.addEventListener('input', function () { cpf.value = cpf.value.replace(/\D/g, '').slice(0, 3); });
+    nasc.addEventListener('input', function () { var d = nasc.value.replace(/\D/g, '').slice(0, 4); nasc.value = d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d; });
+    Promise.resolve().then(function () { return ctx.api('climaColaboradoresDados', ctx.empresaId); }).then(function (r) {
+      var p = (r.pessoas || []).filter(function (x) { return String(x.pessoaId) === String(ctx.pessoaId); })[0] || { email: '', conferencia: false };
+      emailOriginal = p.email || '';
+      if (!email.value) email.value = emailOriginal;
+      situacao.textContent = p.conferencia ? 'CPF e data já cadastrados (guardados só como código). Preencha de novo para trocar.' : 'Nenhum CPF/data cadastrado.';
+      linhaApagar.hidden = !p.conferencia;
+    }, function () { situacao.textContent = 'Não foi possível ver o que já está cadastrado.'; });
+    var no = el('fieldset', { classe: 'form-secao clima-conf', id: 'colab-clima-conf' }, [
+      el('legend', { classe: 'campo__rotulo', texto: 'Pesquisa de clima com identificação (opcional)' }),
+      el('p', { classe: 'texto-suave t-nota', texto: 'Servem só para a pessoa confirmar que é ela no link pessoal da pesquisa de clima. O CPF e a data viram um código (hash) no servidor, nunca ficam guardados como número, e são apagados junto com as respostas da pesquisa.' }),
+      el('label', { classe: 'campo', for: email.id }, [el('span', { classe: 'campo__rotulo', texto: 'E-mail (para o código de confirmação)' }), email]),
+      el('div', { classe: 'form-grade' }, [
+        el('label', { classe: 'campo', for: cpf.id }, [el('span', { classe: 'campo__rotulo', texto: '3 últimos dígitos do CPF' }), cpf]),
+        el('label', { classe: 'campo', for: nasc.id }, [el('span', { classe: 'campo__rotulo', texto: 'Dia e mês de nascimento' }), nasc])
+      ]),
+      situacao,
+      linhaApagar
+    ]);
+    function salvar() {
+      var d = { empresaId: ctx.empresaId, pessoaId: ctx.pessoaId };
+      var mudou = false;
+      if (emailOriginal !== null && email.value.trim().toLowerCase() !== emailOriginal) { d.email = email.value.trim(); mudou = true; }
+      if (apagar.checked) { d.apagarConferencia = true; mudou = true; }
+      else if (cpf.value || nasc.value) {
+        var n = CL().normalizarConferencia(cpf.value, nasc.value);
+        if (!n.ok) return Promise.reject(new Error(n.erro));
+        d.cpf3 = cpf.value; d.nascimento = nasc.value; mudou = true;
+      }
+      if (!mudou) return Promise.resolve({ ok: true, semMudanca: true });
+      return ctx.api('climaSalvarColaborador', d);
+    }
+    return { no: no, salvar: salvar };
+  }
+
   function esquecer(empresaId) { if (empresaId) delete cache[empresaId]; else cache = {}; }
 
   var DISC_ADMIN_CLIMA = { linkClima: linkClima, lideresDoOrganograma: lideresDoOrganograma, mensagemConvite: mensagemConvite,
-    avisosAberta: avisosAberta, textoSituacao: textoSituacao, snapshotPrevia: snapshotPrevia, bloco: bloco, esquecer: esquecer };
+    mensagemPessoal: mensagemPessoal, avisosAberta: avisosAberta, avisosPessoais: avisosPessoais, textoSituacao: textoSituacao,
+    snapshotPrevia: snapshotPrevia, camposColaborador: camposColaborador, bloco: bloco, esquecer: esquecer };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DISC_ADMIN_CLIMA;
   else root.DISC_ADMIN_CLIMA = DISC_ADMIN_CLIMA;

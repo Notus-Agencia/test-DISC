@@ -22,8 +22,13 @@
  *   visaoCliente(resultado) -> o mesmo sem o que é só do consultor (lideres, qualidade, AD, contagens de quem não aparece)
  *   faixa(escore), rotuloFaixa, leituraFaixa, rotuloAlinhamento, textoAlinhamento
  *   temasOrdenados(grupo) -> {melhores:[dim], priorizar:[dim]} · intervencoes(resultado) -> [{id, titulo, ...}]
- *   PLANO_30_60_90, avisoRespondente({empresa, complemento, retencaoDias, contatoDados}), AVISO_LIDER, textoN4(canal),
- *   TEXTOS (fixos do relatório, 6.2), REFERENCIAS, PALAVRAS_PROIBIDAS (6.4), nomeCurto(nome)
+ *   PLANO_30_60_90, avisoRespondente({empresa, complemento, retencaoDias, contatoDados, baseLegal, modo, pessoal})
+ *     -> {titulo, sobretitulo, destaque, paragrafos:[{rotulo, texto}], aceite}, AVISO_LIDER, textoN4(canal, identificada),
+ *   TEXTOS (fixos do relatório, 6.2; + identificada/opcional), REFERENCIAS, PALAVRAS_PROIBIDAS (6.4), nomeCurto(nome)
+ * Modos de identificação (migração 20261018120000_clima_identificacao.sql): MODOS ('anonima' | 'opcional' | 'identificada'),
+ *   MODOS_INFO, ALERTA_IDENTIFICACAO, METODOS_CONFIRMACAO ('email' | 'whatsapp' | 'dados'), METODOS_INFO, CODIGO_MINUTOS,
+ *   TEXTOS_IDENTIFICACAO, modoValido(m), comIdentificacao(m), normalizarConferencia(cpf3, nascimento) -> {ok, valor:'ccc:DDMM'}
+ *   | {ok:false, erro}, mascararEmail(email). A identificação nunca muda o cálculo, a supressão nem o relatório do cliente.
  *
  * Resultado (o que o banco congela no encerramento da rodada):
  *   { versao:1, versaoItens, k, kDetalhe, convidados, respondentes, taxa (0–100), suprimido (empresa com menos de k),
@@ -639,37 +644,130 @@
 
   /* ------------------------------------------------------------------ textos obrigatórios (decisao.md 6.1 e 6.2) */
 
-  // Aviso ao respondente (link coletivo, anônimo). Os trechos entre colchetes da decisão viram dados da rodada; o que
-  // depende do advogado (base legal) só aparece quando estiver definido (CONFIG.CLIMA_BASE_LEGAL).
+  /* ------------------------------------------------------------------ modos de identificação (combinado com o dono) */
+  // anonima: como a versão 1 (link coletivo por equipe). opcional: link pessoal; no fim a pessoa escolhe se identificar
+  // (só para a consultoria) ou manter o anonimato (a resposta vai como no link coletivo, sem marcar nada). identificada:
+  // todos se identificam pelo link pessoal. Em NENHUM modo a empresa vê nomes: o relatório e as regras de mínimo (5/10)
+  // são os mesmos. O modo e as formas de confirmação ficam travados depois de criada a rodada.
+  var MODOS = ['anonima', 'opcional', 'identificada'];
+  var MODOS_INFO = {
+    anonima: { rotulo: 'Anônima', curto: 'Anônima', recomendado: true,
+      texto: 'Link coletivo por equipe. Ninguém se identifica: nem a Gestão sem Caos sabe quem respondeu.' },
+    opcional: { rotulo: 'Identificação opcional', curto: 'Identificação opcional',
+      texto: 'Cada colaborador recebe um link pessoal e, no fim, escolhe se quer se identificar (só para a Gestão sem Caos). O link coletivo da equipe continua valendo para quem preferir.' },
+    identificada: { rotulo: 'Identificada', curto: 'Identificada',
+      texto: 'Cada colaborador responde pelo link pessoal e confirma a própria identidade. Os nomes ficam só com a Gestão sem Caos. Sem link coletivo.' }
+  };
+  var ALERTA_IDENTIFICACAO = 'Nos modos com identificação as respostas tendem a ser menos sinceras, principalmente sobre liderança. Recomende o modo anônimo.';
+  // Formas de confirmação ("ninguém se passa por outro"), nesta ordem. WhatsApp só com provedor contratado.
+  var METODOS_CONFIRMACAO = ['email', 'whatsapp', 'dados'];
+  var METODOS_INFO = {
+    email: { rotulo: 'Código por e-mail', curto: 'e-mail' },
+    whatsapp: { rotulo: 'Código por WhatsApp', curto: 'WhatsApp' },
+    dados: { rotulo: 'CPF e data de nascimento', curto: 'CPF e data' },
+    link: { rotulo: 'Só o link pessoal', curto: 'link pessoal' }
+  };
+  var CODIGO_MINUTOS = 10;
+  function modoValido(m) { return MODOS.indexOf(m) >= 0 ? m : 'anonima'; }
+  function comIdentificacao(m) { return m === 'opcional' || m === 'identificada'; }
+
+  // "3 últimos dígitos do CPF" + "dia e mês de nascimento" -> {ok, valor:'ccc:DDMM'} (o valor só vira hash com sal; igual
+  // a disc_interno.clima_dados_norm). Nascimento: "DD/MM", "D/M", "DD-MM", "DD.MM" ou "DDMM"; 29/02 vale.
+  var DIAS_MES = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  function normalizarConferencia(cpf3, nascimento) {
+    var c = String(cpf3 == null ? '' : cpf3).trim();
+    if (!/^[0-9]{3}$/.test(c)) return { ok: false, erro: 'Informe os 3 últimos dígitos do CPF.' };
+    var n = String(nascimento == null ? '' : nascimento).trim();
+    var m = /^([0-9]{1,2}) *[/.-] *([0-9]{1,2})$/.exec(n) || /^([0-9]{2})([0-9]{2})$/.exec(n);
+    var dia = m ? Number(m[1]) : 0;
+    var mes = m ? Number(m[2]) : 0;
+    if (!m || mes < 1 || mes > 12 || dia < 1 || dia > DIAS_MES[mes - 1]) return { ok: false, erro: 'Informe o dia e o mês de nascimento (DD/MM).' };
+    return { ok: true, valor: c + ':' + ('0' + dia).slice(-2) + ('0' + mes).slice(-2) };
+  }
+  // "ana.souza@empresa.com.br" -> "a***@e***.com.br" (igual a disc_interno.clima_mascarar_email).
+  function mascararEmail(email) {
+    var s = String(email == null ? '' : email).trim().toLowerCase();
+    var m = /^([^@\s]+)@([^@\s]+)$/.exec(s);
+    if (!m) return '';
+    var i = m[2].indexOf('.');
+    return m[1].charAt(0) + '***@' + m[2].charAt(0) + '***' + (i >= 0 ? m[2].slice(i) : '');
+  }
+
+  // Aviso ao respondente (decisao.md 6.1). Os trechos entre colchetes da decisão viram dados da rodada; o que depende do
+  // advogado (base legal) só aparece quando estiver definido (CONFIG.CLIMA_BASE_LEGAL).
+  // o = {empresa, complemento, retencaoDias, contatoDados, baseLegal, modo, pessoal}. Sem modo (ou anônima) = versão 1.
+  // Nos modos com identificação o aviso diz exatamente quem vê o nome: SÓ a Gestão sem Caos, nunca a empresa.
   function avisoRespondente(o) {
     o = o || {};
     var emp = String(o.empresa || '').trim() || 'a empresa';
     var dias = inteiro(o.retencaoDias) && o.retencaoDias > 0 ? o.retencaoDias : 90;
     var contato = String(o.contatoDados || '').trim();
     var baseLegal = String(o.baseLegal || '').trim();
+    var modo = modoValido(o.modo);
+    var pessoal = o.pessoal === true && comIdentificacao(modo);
+    var variante = pessoal ? modo : 'anonima';
+    var duvidas = 'Dúvidas sobre dados: ' + (contato ? contato + ' ou ' : '') + 'a Gestão sem Caos.' +
+      (baseLegal ? ' Base legal: ' + baseLegal + ', conforme a LGPD (Lei 13.709/2018).' : ' Tratamento conforme a LGPD (Lei 13.709/2018).');
+    var grupo = { rotulo: 'A empresa só vê resultados de grupo.', texto: 'Um grupo só aparece no relatório com pelo menos 5 respostas. Detalhes e comentários, só com 10 ou mais. Ninguém da empresa vê a sua resposta nem sabe se você respondeu. Nada aparece antes do fim da pesquisa.' };
+    var p = [
+      { rotulo: 'O que é:', texto: 'perguntas sobre como você percebe o seu trabalho: organização das tarefas, liderança, apoio do time e liberdade para falar. Leva cerca de 5 minutos. Pesquisa para maiores de 18 anos.' },
+      { rotulo: 'Quem conduz:', texto: emp + ' é a responsável pela pesquisa. A Gestão sem Caos cuida da coleta e do relatório em nome dela.' },
+      { rotulo: 'É voluntário.', texto: 'Você pode pular perguntas ou parar no meio. Nada muda para você por isso.' + (variante === 'identificada' ? ' Se não quiser se identificar, você pode não responder.' : '') }
+    ];
+    if (variante === 'opcional') {
+      p.push({ rotulo: 'Você escolhe se quer se identificar.', texto: 'No fim, você escolhe entre "Quero me identificar" e "Prefiro manter o anonimato". Em nenhum caso guardamos endereço de internet junto com a resposta.' });
+      p.push({ rotulo: 'Se você se identificar:', texto: 'só a consultoria (Gestão sem Caos) vê o seu nome junto com as suas respostas. A empresa (dono, RH e liderança) nunca vê o seu nome nem as suas respostas. Para confirmar que é você, pedimos um código ou dados que a empresa cadastrou.' });
+      p.push({ rotulo: 'Se preferir o anonimato:', texto: 'a resposta vai como no link coletivo da equipe: não fica ligada a você, e ninguém, nem a Gestão sem Caos, sabe se você respondeu.' });
+    } else if (variante === 'identificada') {
+      p.push({ rotulo: 'Esta pesquisa é identificada.', texto: 'Para responder, você confirma que é você, com um código ou com dados que a empresa cadastrou. Não guardamos endereço de internet junto com a resposta.' });
+      p.push({ rotulo: 'Quem vê o seu nome:', texto: 'só a consultoria (Gestão sem Caos), junto com as suas respostas. A empresa (dono, RH e liderança) nunca vê o seu nome nem as suas respostas.' });
+    } else {
+      p.push({ rotulo: 'Não pedimos o seu nome.', texto: 'A resposta não fica ligada a você: não guardamos nome, telefone, e-mail nem endereço de internet junto com ela.' });
+    }
+    p.push(grupo);
+    p.push({ rotulo: 'Comentários:', texto: 'não escreva nomes de pessoas nem informações sobre a sua saúde. A empresa recebe os comentários resumidos por tema, sem o texto original.' });
+    p.push({ rotulo: 'Para que serve:', texto: 'orientar melhorias no ambiente de trabalho' + (o.complemento ? ' e apoiar a identificação de fatores psicossociais no programa de gerenciamento de riscos da empresa (NR-1)' : '') + '. Não serve para avaliar ninguém individualmente.' });
+    p.push({ rotulo: 'Não é avaliação psicológica', texto: 'e não avalia a sua saúde.' });
+    if (variante === 'anonima') {
+      p.push({ rotulo: 'Por quanto tempo:', texto: 'as respostas são apagadas ou viram números de grupo em até ' + dias + ' dias depois da entrega do relatório.' });
+      p.push({ rotulo: 'Seus direitos:', texto: 'como a resposta não fica ligada a você, depois de enviada não é possível encontrá-la para corrigir ou apagar. ' + duvidas });
+      if (modo === 'opcional') p.push({ rotulo: 'Quer se identificar?', texto: 'Use o link pessoal que você recebeu. Por este link, a resposta é anônima.' });
+    } else {
+      p.push({ rotulo: 'Por quanto tempo:', texto: 'as respostas' + (variante === 'opcional' ? ' (e o seu nome, se você se identificar)' : ' e o seu nome') + ' são apagados ou viram números de grupo em até ' + dias + ' dias depois da entrega do relatório.' });
+      p.push({ rotulo: 'Seus direitos:', texto: (variante === 'opcional' ? 'se você se identificar, ' : '') + 'enquanto a resposta não for apagada, você pode pedir à Gestão sem Caos para vê-la ou para tirar o seu nome dela (ela continua, sem nome, nos resultados de grupo).' +
+        (variante === 'opcional' ? ' Se preferir o anonimato, depois de enviada não é possível encontrá-la.' : '') + ' ' + duvidas });
+    }
     return {
       titulo: 'Pesquisa de Clima da Equipe · ' + (String(o.empresa || '').trim() || 'Gestão sem Caos'),
-      paragrafos: [
-        { rotulo: 'O que é:', texto: 'perguntas sobre como você percebe o seu trabalho: organização das tarefas, liderança, apoio do time e liberdade para falar. Leva cerca de 5 minutos. Pesquisa para maiores de 18 anos.' },
-        { rotulo: 'Quem conduz:', texto: emp + ' é a responsável pela pesquisa. A Gestão sem Caos cuida da coleta e do relatório em nome dela.' },
-        { rotulo: 'É voluntário.', texto: 'Você pode pular perguntas ou parar no meio. Nada muda para você por isso.' },
-        { rotulo: 'Não pedimos o seu nome.', texto: 'A resposta não fica ligada a você: não guardamos nome, telefone, e-mail nem endereço de internet junto com ela.' },
-        { rotulo: 'A empresa só vê resultados de grupo.', texto: 'Um grupo só aparece no relatório com pelo menos 5 respostas. Detalhes e comentários, só com 10 ou mais. Ninguém da empresa vê a sua resposta nem sabe se você respondeu. Nada aparece antes do fim da pesquisa.' },
-        { rotulo: 'Comentários:', texto: 'não escreva nomes de pessoas nem informações sobre a sua saúde. A empresa recebe os comentários resumidos por tema, sem o texto original.' },
-        { rotulo: 'Para que serve:', texto: 'orientar melhorias no ambiente de trabalho' + (o.complemento ? ' e apoiar a identificação de fatores psicossociais no programa de gerenciamento de riscos da empresa (NR-1)' : '') + '. Não serve para avaliar ninguém individualmente.' },
-        { rotulo: 'Não é avaliação psicológica', texto: 'e não avalia a sua saúde.' },
-        { rotulo: 'Por quanto tempo:', texto: 'as respostas são apagadas ou viram números de grupo em até ' + dias + ' dias depois da entrega do relatório.' },
-        { rotulo: 'Seus direitos:', texto: 'como a resposta não fica ligada a você, depois de enviada não é possível encontrá-la para corrigir ou apagar. Dúvidas sobre dados: ' +
-          (contato ? contato + ' ou ' : '') + 'a Gestão sem Caos.' + (baseLegal ? ' Base legal: ' + baseLegal + ', conforme a LGPD (Lei 13.709/2018).' : ' Tratamento conforme a LGPD (Lei 13.709/2018).') }
-      ],
+      sobretitulo: variante === 'opcional' ? 'Identificação opcional · cerca de 5 minutos'
+        : (variante === 'identificada' ? 'Pesquisa identificada · cerca de 5 minutos' : 'Anônima e voluntária · cerca de 5 minutos'),
+      destaque: variante === 'anonima' ? '' : (variante === 'opcional'
+        ? 'Se você se identificar, o seu nome fica só com a consultoria (Gestão sem Caos). A empresa nunca vê o seu nome nem as suas respostas.'
+        : 'O seu nome fica só com a consultoria (Gestão sem Caos). A empresa nunca vê o seu nome nem as suas respostas: só resultados de grupo.'),
+      paragrafos: p,
       aceite: 'Li este aviso e quero responder.'
     };
   }
   var AVISO_LIDER = 'Sua parte como líder. Você responde às mesmas perguntas sobre a sua equipe e a três perguntas sobre o seu jeito de liderar. A sua resposta não entra na média da equipe. Você verá a sua visão ao lado da visão da equipe, por tema, e só você e o consultor da Gestão sem Caos veem essa comparação. Ela serve para o seu desenvolvimento e não pode ser usada em avaliação de desempenho, bônus ou ranking de líderes.';
-  function textoN4(canal) {
+  // identificada = true quando a resposta vai com o nome (só para a consultoria): o texto não pode prometer anonimato.
+  function textoN4(canal, identificada) {
     var t = String(canal || '').trim();
-    return 'Se você está passando por isso, procure ' + (t || 'o canal de escuta da empresa') + '. Esta pesquisa não é canal de denúncia e não identifica quem respondeu.';
+    return 'Se você está passando por isso, procure ' + (t || 'o canal de escuta da empresa') + '. ' +
+      (identificada ? 'Esta pesquisa não é canal de denúncia: a empresa não recebe o seu nome junto com esta resposta.'
+        : 'Esta pesquisa não é canal de denúncia e não identifica quem respondeu.');
   }
+  // Textos da etapa de identificação (link pessoal) e do fim.
+  var TEXTOS_IDENTIFICACAO = {
+    escolher: 'Você escolhe se quer se identificar. Em qualquer caso, a empresa só vê resultados de grupo.',
+    quero: 'Quero me identificar',
+    queroAjuda: 'Só a consultoria (Gestão sem Caos) vê o seu nome. A empresa nunca vê.',
+    anonimo: 'Prefiro manter o anonimato',
+    anonimoAjuda: 'A resposta vai sem o seu nome, como no link coletivo da equipe.',
+    confirmar: 'Confirme que é você',
+    soLink: 'Este link é pessoal e vale para uma resposta. Ao enviar, a sua resposta fica ligada ao seu nome só para a consultoria (Gestão sem Caos).',
+    fimIdentificada: 'Sua resposta ficou ligada ao seu nome só para a consultoria (Gestão sem Caos). A empresa só vê resultados de grupo, depois que a pesquisa terminar.',
+    fimAnonima: 'Sua resposta não fica ligada a você. A empresa só vê resultados de grupo, depois que a pesquisa terminar.'
+  };
   var TEXTOS = {
     abertura: 'Clima é a percepção coletiva do ambiente de trabalho. Este relatório não avalia pessoas, não faz diagnóstico de saúde e não é avaliação psicológica.',
     faixas: 'Faixas de referência provisórias, definidas pela escala de resposta. Não são normas nem comparação com outras empresas.',
@@ -680,7 +778,10 @@
     nr1: 'Este material apoia a identificação de fatores psicossociais e a consulta aos trabalhadores prevista no gerenciamento de riscos ocupacionais (NR-1). Não substitui o PGR, a avaliação de riscos nem o plano de ação, que são do empregador e do responsável técnico.',
     usoProibido: 'Não use este relatório para decidir contratação, promoção, desligamento, remanejamento, salário ou bônus.',
     naoRanking: 'Os grupos aparecem na ordem do organograma, sem ordenar do melhor para o pior. Comparar equipes ou lideranças entre si não é o objetivo e não deve virar ranking, bônus ou avaliação de desempenho.',
-    naoRecomendar: NAO_RECOMENDAR
+    naoRecomendar: NAO_RECOMENDAR,
+    // Transparência sobre o modo (o relatório em si não muda: os mesmos mínimos de 5 e 10, nenhum nome).
+    identificada: 'Pesquisa identificada: cada pessoa confirmou a identidade para responder. Os nomes ficam só com a consultoria (Gestão sem Caos) e não aparecem neste relatório; os mínimos de 5 e 10 respostas valem do mesmo jeito. Respostas identificadas tendem a ser menos sinceras, principalmente sobre liderança: leia com essa cautela.',
+    opcional: 'Identificação opcional: cada pessoa escolheu se queria se identificar, só para a consultoria (Gestão sem Caos). Os nomes não aparecem neste relatório; os mínimos de 5 e 10 respostas valem do mesmo jeito.'
   };
   var TAXA_MINIMA = 60;
 
@@ -736,7 +837,10 @@
     faixa: faixa, rotuloFaixa: rotuloFaixa, leituraFaixa: leituraFaixa, rotuloAlinhamento: rotuloAlinhamento, textoAlinhamento: textoAlinhamento,
     temasOrdenados: temasOrdenados, intervencoes: intervencoes, INTERVENCOES: INTERVENCOES, PLANO_30_60_90: PLANO_30_60_90,
     avisoRespondente: avisoRespondente, AVISO_LIDER: AVISO_LIDER, textoN4: textoN4, TEXTOS: TEXTOS, MAPA_PGR: MAPA_PGR, FALTA_PGR: FALTA_PGR,
-    REFERENCIAS: REFERENCIAS, PALAVRAS_PROIBIDAS: PALAVRAS_PROIBIDAS, nomeCurto: nomeCurto, arred: arred, arred2: arred2
+    REFERENCIAS: REFERENCIAS, PALAVRAS_PROIBIDAS: PALAVRAS_PROIBIDAS, nomeCurto: nomeCurto, arred: arred, arred2: arred2,
+    MODOS: MODOS, MODOS_INFO: MODOS_INFO, ALERTA_IDENTIFICACAO: ALERTA_IDENTIFICACAO, METODOS_CONFIRMACAO: METODOS_CONFIRMACAO,
+    METODOS_INFO: METODOS_INFO, CODIGO_MINUTOS: CODIGO_MINUTOS, TEXTOS_IDENTIFICACAO: TEXTOS_IDENTIFICACAO, modoValido: modoValido,
+    comIdentificacao: comIdentificacao, normalizarConferencia: normalizarConferencia, mascararEmail: mascararEmail
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DISC_CLIMA;

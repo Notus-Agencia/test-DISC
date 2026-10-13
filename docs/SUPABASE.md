@@ -168,6 +168,7 @@ O sistema tem três funções. Cada uma é **um arquivo só**, já pronto, na pa
 | `admin` | `dist/funcoes/admin/index.ts` | Painel: ClickUp, relatórios, IA e usuários (só administradores) | **Ligado** |
 | `disc-sync` | `dist/funcoes/disc-sync/index.ts` | Leva o resultado do candidato para a tarefa dele no ClickUp | **Ligado** (desligue só se usou a Publishable key no passo 2) |
 | `clickup-webhook` | `dist/funcoes/clickup-webhook/index.ts` | Recebe o aviso do ClickUp quando o briefing vai para "gerar relatório" | **Desligado** |
+| `clima` | `dist/funcoes/clima/index.ts` | Pesquisa de clima com identificação: manda o código de confirmação do link pessoal (e-mail pelo Resend) | **Desligado** |
 
 Para **cada** linha da tabela:
 
@@ -198,6 +199,7 @@ Segredos são senhas que **só as funções** enxergam; nunca vão para o site.
 | `ANTHROPIC_API_KEY` | a chave da Anthropic (`sk-ant-…`) | Opcional — sem ela, o botão "Melhorar textos com IA" não aparece |
 | `CLICKUP_WEBHOOK_SECRET` | o `secret` devolvido pelo ClickUp no passo 13 | Só depois do passo 13 |
 
+- Pesquisa de clima com identificação: o código por e-mail usa os mesmos `RESEND_API_KEY` e `EMAIL_REMETENTE` (docs/EMAILS.md). `WHATSAPP_PROVEDOR` fica **sem criar** até existir um provedor de WhatsApp contratado (sem ele, a opção "Código por WhatsApp" não aparece).
 - **Não** crie `SUPABASE_URL`, `SUPABASE_ANON_KEY` nem `SUPABASE_SERVICE_ROLE_KEY`: o Supabase já fornece esses sozinho (eles aparecem na lista com um cadeado).
 - Trocou um segredo? Não precisa reimplantar: vale na próxima chamada.
 

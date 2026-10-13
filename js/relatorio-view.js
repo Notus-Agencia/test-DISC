@@ -1862,9 +1862,12 @@
     var taxa = ehNumero(res.taxa) ? res.taxa : 0;
     var nGrupos = grupos.filter(function (g) { return g.tipo !== 'empresa'; }).length;
     var periodo = [data(rod.abertaEm), data(rod.encerradaEm)].filter(Boolean).join(' a ');
+    // Modo de identificação (transparência): o relatório é o mesmo; só diz como as pessoas responderam. Nunca nomes.
+    var modo = C.modoValido ? C.modoValido(rod.modo) : 'anonima';
+    var comId = modo === 'opcional' || modo === 'identificada';
 
     var h = capaModelo({
-      meta: 'Pesquisa de clima', sobre: 'Pesquisa de Clima da Equipe · ' + (emp.nome || 'Empresa'),
+      meta: modo === 'identificada' ? 'Pesquisa de clima · identificada' : 'Pesquisa de clima', sobre: 'Pesquisa de Clima da Equipe · ' + (emp.nome || 'Empresa'),
       tituloHtml: 'Clima da <em>equipe</em>' + (emp.nome ? '<br>' + esc(emp.nome) : ''),
       subtitulo: 'Como as pessoas percebem o trabalho, por tema e por equipe, e o que fazer a partir daqui.',
       numeros: [
@@ -1891,7 +1894,8 @@
       '</ul></div><div class="cartao-doc"><div class="rotulo-doc">O que não é</div><ul class="itens-doc">' +
       '<li>' + esc('Não avalia pessoas, não é avaliação psicológica e não faz diagnóstico de saúde.') + '</li>' +
       '<li>' + esc(C.TEXTOS.usoProibido) + '</li>' +
-      '<li>' + esc('Ninguém vê a resposta de ninguém. Um grupo só aparece com 5 respostas ou mais; detalhes e comentários, com 10 ou mais.') + '</li>' +
+      '<li>' + esc((comId ? 'A empresa não vê a resposta de ninguém nem quem respondeu.' : 'Ninguém vê a resposta de ninguém.') +
+        ' Um grupo só aparece com 5 respostas ou mais; detalhes e comentários, com 10 ou mais.') + '</li>' +
       '</ul></div></div>';
     c += '<h3 class="h3 mt48">Faixas de leitura</h3><ul class="clima-faixas">' + FAIXAS_CLIMA.map(function (f) {
       var faixaTxt = f === 'favoravel' ? '75 a 100' : (f === 'intermediario' ? '50 a 74' : '0 a 49');
@@ -1903,6 +1907,7 @@
     var avisos = [];
     if ((res.respondentes || 0) > 0 && (res.respondentes || 0) < 10) avisos.push(nota('alerta', 'Margem ampla', C.TEXTOS.margem));
     if ((res.convidados || 0) > 0 && taxa < C.TAXA_MINIMA) avisos.push(nota('alerta', 'Adesão', C.TEXTOS.adesao(taxa)));
+    if (modo === 'identificada') avisos.push(nota('info', 'Pesquisa identificada', C.TEXTOS.identificada).replace('class="obs ', 'data-modo="identificada" class="obs '));
     avisos.push(nota('info', 'Origem das perguntas', C.TEXTOS.origem));
     c += '<div class="obs-grade">' + avisos.join('') + '</div>';
     h += secao(sec('como-ler'), alt('como-ler'), cabecalhoPagina(sec('como-ler'), emp.nome) + c);
@@ -1979,7 +1984,8 @@
         c += '<div class="obs obs--alerta mt32" data-n4="1"><div class="obs__tit">Relato de tratamento ofensivo (últimos 6 meses)</div>' +
           (n4 ? '<p>' + esc(n4.pct + '% de quem respondeu a esta pergunta (' + n4.n + ' pessoas) relatou ter sido tratado(a) com grosseria, humilhação ou ameaça uma vez ou mais. É um relato agregado: a apuração é da empresa, pelo próprio canal.') + '</p>'
             : '<p>' + esc('Menos de 10 respostas a esta pergunta: o resultado não aparece.') + '</p>') +
-          '<p>' + esc('Canal indicado às pessoas: ' + (rod.canalTexto || '—') + '. A pesquisa não é canal de denúncia e não identifica quem respondeu.') + '</p></div>';
+          '<p>' + esc('Canal indicado às pessoas: ' + (rod.canalTexto || '—') + '. A pesquisa não é canal de denúncia e ' +
+            (comId ? 'este relatório não identifica quem respondeu.' : 'não identifica quem respondeu.')) + '</p></div>';
       }
       h += secao(sec('fatores'), alt('fatores'), cabecalhoPagina(sec('fatores'), 'Apoio ao GRO') + c);
     }
@@ -2027,6 +2033,7 @@
         return y ? y.escore + ' · ' + C.rotuloFaixa(y.faixa) : 'sem resultado';
       }
       c = '<p class="lede lede--curta">' + esc(C.TEXTOS.nr1) + '</p>';
+      if (modo === 'identificada') c += '<div class="obs-grade">' + nota('info', 'Pesquisa identificada', C.TEXTOS.identificada).replace('class="obs ', 'data-modo="identificada" class="obs ') + '</div>';
       c += '<div class="clima-tabela-rolagem"><table class="tabela-doc clima-pgr"><thead><tr><th scope="col">Indicador</th><th scope="col">Fator (Guia MTE)</th><th scope="col">Sinal (empresa)</th>' +
         '<th scope="col">Severidade</th><th scope="col">Probabilidade</th><th scope="col">Responsável</th><th scope="col">Prazo</th></tr></thead><tbody>' +
         C.MAPA_PGR.map(function (m) {
@@ -2051,7 +2058,7 @@
         'O número do grupo é a média das pessoas, sem a resposta da liderança. Alinhamento: concordância dentro do grupo (rwg, com 0,70 e 0,50 como cortes de convenção).',
         'Anonimato: um grupo só aparece com 5 respostas ou mais; distribuição, comentários e o complemento de fatores psicossociais, com 10 ou mais; o relato de tratamento ofensivo, só no total da empresa. Nenhuma diferença entre recortes isola menos de 5 pessoas; equipes pequenas entram em "Outras equipes". Os grupos foram congelados no encerramento.',
         'As respostas brutas são apagadas ou viram números de grupo no prazo combinado depois da entrega. A empresa nunca recebe respostas individuais nem a lista de quem respondeu.'
-      ].map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+      ].concat(comId ? [C.TEXTOS[modo]] : []).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
     c += '<h3 class="h3 mt48">Referências dos temas</h3><ul class="itens-doc clima-refs">' + C.REFERENCIAS.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
     h += secao(sec('metodo'), alt('metodo'), cabecalhoPagina(sec('metodo'), 'Versão ' + (rod.versaoItens || 'v0')) + c);
 
