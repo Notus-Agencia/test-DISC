@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="assets/admin-clima.css">
   <link rel="stylesheet" href="assets/admin-feedback360.css">
   <link rel="stylesheet" href="assets/admin-andamento.css">
+  <link rel="stylesheet" href="assets/admin-vagas.css">
 </head>
 <body>
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
@@ -59,6 +60,14 @@
           <p class="menu-grupo__titulo" id="menu-grupo-empresas">Empresas</p>
           <button type="button" class="aba" data-aba="empresas" title="Empresas" hidden><svg class="icone menu-icone" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M8 8V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3M3 14h18"/></svg><span class="aba__texto">Empresas</span></button>
           <button type="button" class="aba" data-aba="relatorios" title="Relatórios" hidden><svg class="icone menu-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/></svg><span class="aba__texto">Relatórios</span></button>
+        </div>
+        <!-- Vagas sem Caos (js/admin-vagas.js): só a equipe; no Supabase, só com a migração do Vagas no banco; na prévia, só com ?vagas=1 -->
+        <div class="menu-grupo" data-grupo="vagas">
+          <p class="menu-grupo__titulo" id="menu-grupo-vagas">Vagas</p>
+          <button type="button" class="aba" data-aba="vg-cidades" title="Cidades e praças" hidden><svg class="icone menu-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l5-3v16M14 21V11l5-2v12M8 9h.01M8 13h.01M8 17h.01M17 13h.01M17 17h.01"/></svg><span class="aba__texto">Cidades e praças</span></button>
+          <button type="button" class="aba" data-aba="vg-operadores" title="Operadores" hidden><svg class="icone menu-icone" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg><span class="aba__texto">Operadores</span></button>
+          <button type="button" class="aba" data-aba="vg-moderacao" title="Moderação geral" hidden><svg class="icone menu-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V4h12l-1 4 1 4H4"/></svg><span class="aba__texto">Moderação geral</span><span class="aba__n tabular" id="aba-n-vg-moderacao" aria-hidden="true"></span></button>
+          <button type="button" class="aba" data-aba="vg-numeros" title="Números da praça" hidden><svg class="icone menu-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="aba__texto">Números da praça</span></button>
         </div>
         <div class="menu-grupo" data-grupo="vendas">
           <p class="menu-grupo__titulo" id="menu-grupo-vendas">Vendas</p>
@@ -232,6 +241,11 @@
       <div id="vista-relatorios" class="vista nao-imprimir" hidden></div>
       <!-- Vendas (venda direta do Mapa DISC): resumo, pedidos, cupons e pacotes; só quando o servidor tem a API de vendas -->
       <div id="vista-vendas" class="vista nao-imprimir" hidden></div>
+      <!-- Vagas sem Caos (js/admin-vagas.js): cidades e praças, operadores, moderação geral e números da praça -->
+      <div id="vista-vg-cidades" class="vista nao-imprimir" hidden></div>
+      <div id="vista-vg-operadores" class="vista nao-imprimir" hidden></div>
+      <div id="vista-vg-moderacao" class="vista nao-imprimir" hidden></div>
+      <div id="vista-vg-numeros" class="vista nao-imprimir" hidden></div>
       <div id="vista-usuarios" class="vista nao-imprimir" hidden></div>
 
       <!-- Conexões (só admin, Supabase ou prévia): estado de cada integração, com "Testar" -->
@@ -294,6 +308,7 @@
   <script src="js/admin-feedback360.js"></script>
   <script src="js/admin-andamento.js"></script>
   <script src="js/stripe-pagamento.js"></script>
+  <script src="js/admin-vagas.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

@@ -208,9 +208,11 @@
   // Com API, só o administrador usa o painel (gestor desativado nesta versão).
   // vendas: true quando o servidor tem a API de vendas (DISC_API.listarPedidos) — a aba Vendas vem depois de Relatórios.
   // conexoes: true quando o servidor tem a aba Conexões (DISC_API.diagnosticoConexoes) — sempre a última aba.
-  function abasDoPapel(papel, modoApi, vendas, conexoes) {
+  // vagas: true quando o grupo "Vagas" (js/admin-vagas.js) está disponível — as 4 abas vêm depois de Relatórios.
+  var ABAS_VAGAS = ['vg-cidades', 'vg-operadores', 'vg-moderacao', 'vg-numeros'];
+  function abasDoPapel(papel, modoApi, vendas, conexoes, vagas) {
     if (!modoApi) return ['lista', 'comparativo', 'importar'];
-    if (papel === 'admin') return ['lista', 'processos', 'empresas', 'relatorios'].concat(vendas ? ['vendas'] : []).concat(['usuarios', 'comparativo', 'importar']).concat(conexoes ? ['conexoes'] : []);
+    if (papel === 'admin') return ['lista', 'processos', 'empresas', 'relatorios'].concat(vagas ? ABAS_VAGAS : []).concat(vendas ? ['vendas'] : []).concat(['usuarios', 'comparativo', 'importar']).concat(conexoes ? ['conexoes'] : []);
     return [];
   }
 
@@ -2246,7 +2248,8 @@
   // Telas: '' (Participantes), participante/<id>, processos, processos/novo, processo/<id>, processo/<id>/editar,
   // processo/<id>/relatorio/<token>, empresas, empresa/<id>[/<subaba>], relatorio/<id> (relatório de modelo salvo),
   // relatorios[/gerados|/gerar[/<chave>]|/exemplo/<chave>], vendas[/<subaba>], vendas/pedido/<id>, usuarios,
-  // comparativo, importar, conexoes. Âncoras do Supabase Auth (#access_token=…, #error=…) não são rotas.
+  // comparativo, importar, conexoes, vg-cidades|vg-operadores|vg-moderacao|vg-numeros (grupo Vagas). Âncoras do Supabase Auth
+  // (#access_token=…, #error=…) não são rotas.
   var ABAS_ROTA = ['comparativo', 'importar', 'usuarios', 'conexoes'];
   var SUBABAS_ROTA_EMPRESA = ['colaboradores', 'andamento', 'organograma', 'compatibilidade', 'relatorios', 'clima', 'feedback360', 'historico'];
   var SUBABAS_ROTA_VENDAS = ['divulgar', 'resumo', 'pedidos', 'cupons', 'pacotes'];
@@ -2259,7 +2262,7 @@
     var a = p[0];
     if (a === 'participantes') return { aba: 'lista' };
     if (a === 'participante' && parteRota(p[1])) return { aba: 'lista', detalhe: p[1] };
-    if (ABAS_ROTA.indexOf(a) !== -1) return { aba: a };
+    if (ABAS_ROTA.indexOf(a) !== -1 || ABAS_VAGAS.indexOf(a) !== -1) return { aba: a };
     if (a === 'processos') return p[1] === 'novo' ? { aba: 'processos', tela: 'form' } : { aba: 'processos', tela: 'lista' };
     if (a === 'processo' && parteRota(p[1])) {
       if (p[2] === 'editar') return { aba: 'processos', tela: 'form', id: p[1] };
@@ -2286,7 +2289,7 @@
     r = r || {};
     var e = function (x) { return encodeURIComponent(String(x)); };
     if (r.aba === 'lista' || !r.aba) return r.detalhe ? 'participante/' + e(r.detalhe) : '';
-    if (ABAS_ROTA.indexOf(r.aba) !== -1) return r.aba;
+    if (ABAS_ROTA.indexOf(r.aba) !== -1 || ABAS_VAGAS.indexOf(r.aba) !== -1) return r.aba;
     if (r.aba === 'processos') {
       if (r.tela === 'form') return r.id ? 'processo/' + e(r.id) + '/editar' : 'processos/novo';
       if (r.tela === 'pagina' && r.id) return 'processo/' + e(r.id);
@@ -3483,7 +3486,8 @@
 
   function esconderVistas() {
     ['vista-lista', 'vista-detalhe', 'vista-processos', 'vista-empresas', 'vista-relatorios', 'vista-vendas', 'vista-usuarios', 'vista-comparativo', 'vista-importar', 'vista-conexoes']
-      .forEach(function (id) { $(id).hidden = true; });
+      .concat(ABAS_VAGAS.map(function (a) { return 'vista-' + a; }))
+      .forEach(function (id) { if ($(id)) $(id).hidden = true; });
   }
 
   function abrirDetalhe(id) {
@@ -9534,7 +9538,22 @@
 
   /* ---------- Navegação ---------- */
 
-  function abasPermitidas() { return abasDoPapel(papel(), MODO_API, temVendas(), temConexoes()); }
+  function abasPermitidas() { return abasDoPapel(papel(), MODO_API, temVendas(), temConexoes(), temVagas()); }
+
+  // Grupo "Vagas" (js/admin-vagas.js): só admin; no Supabase, depois de o versaoBanco confirmar a migração do Vagas; na prévia,
+  // só com ?vagas=1 (a demonstração do DISC continua igual).
+  function temVagas() {
+    var M = root.DISC_ADMIN_VAGAS;
+    if (!M || !MODO_API || papel() !== 'admin') return false;
+    var ssv = null;
+    try { ssv = root.sessionStorage; } catch (e) { ssv = null; }
+    return M.disponivel({ simulada: SIMULADA, supabase: SUPABASE, config: CONFIG, discApi: root.DISC_API, banco: M.banco(), local: root.location, sessionStorage: ssv });
+  }
+  function ctxVagas() {
+    return { avisar: avisar, confirmar: confirmar, abrirJanela: abrirJanela, criarEscolha: criarEscolha, simulada: SIMULADA, supabase: SUPABASE,
+      config: CONFIG, discApi: root.DISC_API, sessaoExpirou: sessaoExpirou,
+      contarPendencias: function (n) { var b = $('aba-n-vg-moderacao'); if (b) b.textContent = n > 0 ? String(n) : ''; } };
+  }
 
   // Item "Página de venda" do menu (data-aba="divulgar") é um atalho para a subaba Divulgar de Vendas.
   function abaDoBotao(b) { var a = b.getAttribute('data-aba'); return a === 'divulgar' ? 'vendas' : a; }
@@ -9547,6 +9566,7 @@
     $('vista-' + aba).hidden = false;
     marcarMenu();
     if (aba === 'conexoes') renderizarConexoes();
+    if (ABAS_VAGAS.indexOf(aba) !== -1 && root.DISC_ADMIN_VAGAS) root.DISC_ADMIN_VAGAS.mostrar(aba, $('vista-' + aba), ctxVagas());
     gravarRota();
   }
   // Item do menu em destaque. O relatório da pessoa aberto a partir do detalhe continua em "Participantes".
@@ -9673,6 +9693,8 @@
       .then(function (resp) {
         var msg = mensagemBanco(resp);
         estado.bancoFaltando = resp && Array.isArray(resp.faltando) ? resp.faltando.map(String) : [];
+        // Grupo Vagas: só aparece com a migração do Vagas no banco (js/admin-vagas.js).
+        if (root.DISC_ADMIN_VAGAS) { root.DISC_ADMIN_VAGAS.bancoConferido(resp); if (estado.token) aplicarPapel(); }
         if (!msg || !estado.token) return;
         $('faixa-banco-texto').textContent = msg;
         // O que deixa de funcionar e o que fazer (copiar a lista para quem aplica / ver em Conexões).
@@ -9723,6 +9745,8 @@
     esconderVistas();
     limpar($('vista-detalhe'));
     ['vista-processos', 'vista-empresas', 'vista-relatorios', 'vista-vendas', 'vista-usuarios', 'vista-conexoes', 'vista-comparativo'].forEach(function (id) { limpar($(id)); });
+    ABAS_VAGAS.forEach(function (a) { if ($('vista-' + a)) limpar($('vista-' + a)); });
+    if (root.DISC_ADMIN_VAGAS) root.DISC_ADMIN_VAGAS.esquecer();
     limpar($('lista-candidatos'));
     if ($('filtro-busca')) $('filtro-busca').value = '';
     estado.aba = 'lista';

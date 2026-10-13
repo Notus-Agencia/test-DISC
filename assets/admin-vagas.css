@@ -1,0 +1,54 @@
+/*
+ * Painel: grupo "Vagas" (js/admin-vagas.js). Só tokens de assets/notus.css (nenhuma cor nova; tamanhos pela escala --t-*).
+ * Componentes do VAGAS-TELAS §9 adaptados ao painel: cartão de cidade, números da praça (cor só como etiqueta), tabela.
+ */
+
+.vg-adm-estado { display: flex; align-items: center; gap: 8px; padding: 24px 4px; color: var(--medio); }
+.vg-adm-selo { white-space: nowrap; }
+.vg-adm-selo--pausada { background: var(--fundo); color: var(--suave); }
+.vg-adm-nota { margin-top: 12px; }
+.vg-adm-secao { margin-top: 16px; }
+
+/* Cidades e praças */
+.vg-adm-cidades { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.vg-adm-cidade { display: flex; flex-direction: column; gap: 10px; }
+.vg-adm-cidade__topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.vg-adm-cidade__nome { font-size: var(--t-titulo); font-weight: 600; letter-spacing: -0.02em; }
+.vg-adm-linhas { display: grid; gap: 6px; }
+.vg-adm-linha { display: flex; justify-content: space-between; gap: 12px; font-size: var(--t-rotulo); color: var(--medio); }
+.vg-adm-linha strong { color: var(--tinta); }
+.vg-adm-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 4px; }
+.vg-adm-acoes--fim { justify-content: flex-end; flex-wrap: nowrap; }
+.vg-adm-barra { position: relative; height: 8px; border-radius: var(--raio-pilula); background: var(--trilho); }
+.vg-adm-barra__feito { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--raio-pilula); background: var(--tinta); }
+.vg-adm-zonas { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; font-size: var(--t-rotulo); max-height: 220px; overflow-y: auto; }
+.vg-adm-zona--inativa { color: var(--suave); }
+
+/* Tabelas (operadores, moderação, selos) */
+.vg-adm-tabela-caixa { padding: 4px 8px; overflow-x: auto; }
+.vg-adm-tabela { width: 100%; border-collapse: collapse; font-size: var(--t-rotulo); }
+.vg-adm-tabela th { text-align: left; font-size: var(--t-eixo); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--suave); padding: 10px 12px; border-bottom: 1px solid var(--linha); white-space: nowrap; }
+.vg-adm-tabela td { padding: 12px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+.vg-adm-tabela tr:last-child td { border-bottom: 0; }
+.vg-adm-tabela .num { text-align: right; font-variant-numeric: tabular-nums; }
+.vg-adm-tabela .nao-quebra { white-space: nowrap; }
+.vg-adm-inativo td { color: var(--suave); }
+
+/* Moderação geral: pendências de todas as cidades no topo */
+.vg-adm-pendencias { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.vg-adm-pendencia { display: grid; gap: 4px; box-shadow: inset 3px 0 0 var(--notus); }
+.vg-adm-pend-vazio { margin: 0 0 12px; }
+
+/* Números da praça */
+.vg-adm-num-escolha { min-width: 220px; }
+.vg-adm-numeros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.vg-adm-numero { display: flex; flex-direction: column; gap: 6px; }
+.vg-adm-numero__rotulo { font-size: var(--t-rotulo); color: var(--suave); }
+.vg-adm-numero__valor { font-size: var(--t-numero); font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+.vg-adm-numero__alvo { font-size: var(--t-nota); color: var(--suave); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.vg-adm-gatilhos { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.vg-adm-partes { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; color: var(--medio); }
+
+@media (max-width: 1100px) {
+  .vg-adm-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

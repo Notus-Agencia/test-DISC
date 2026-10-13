@@ -1,0 +1,66 @@
+/*
+ * Vagas sem Caos — operação da praça (operador.html): só o que é da tela do operador e não existe em vagas.css/vagas-pc.css.
+ * Só tokens de comum/notus.css (nenhuma cor nova). Carregue depois de assets/vagas-pc.css.
+ */
+
+/* Selo fixo do menu: cada ato fica registrado (docs/VAGAS-TELAS.md §4). */
+.vg-op-registro { display: flex; align-items: center; gap: 6px; margin: -6px 8px 4px; font-size: var(--t-nota); color: var(--suave); }
+.vg-op-registro .icone { width: 14px; height: 14px; color: var(--notus-forte); }
+
+/* Escolha da cidade (só quando a conta opera mais de uma). */
+.vg-op-cidades { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 16px; }
+.vg-op-cidades .vg-opcoes { margin-top: 0; }
+
+/* Busca e filtros das tabelas. */
+.vg-op-busca { position: relative; flex: 1 1 260px; min-width: 0; }
+.vg-op-busca .icone { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--suave); pointer-events: none; }
+.vg-op-busca .entrada { padding-left: 40px; border-radius: var(--raio-pilula); }
+.vg-op-filtros { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-bottom: 12px; }
+.vg-op-tabela { padding: 4px 8px; }
+.vg-op-nota { margin-top: 12px; }
+.vg-op-secao { margin-top: 16px; }
+
+/* Empresas: o nome abre o detalhe; a coluna do nome não espreme. */
+.vg-op-empresa-nome { min-width: 220px; }
+.vg-op-link { border: 0; padding: 0; background: none; font: inherit; color: var(--tinta); text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.vg-op-link:hover { color: var(--notus-forte); }
+
+/* Fila e janela de decisão. */
+.vg-fila__item--decidida { grid-template-columns: minmax(0, 1fr); }
+.vg-op-correcao { margin-top: -4px; }
+.vg-op-caixas { display: grid; gap: 8px; padding: 12px 14px; border-radius: 16px; background: var(--nevoa); }
+
+/* Detalhe da empresa (janela). */
+.vg-op-detalhe { display: grid; gap: 12px; }
+.vg-op-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: var(--t-rotulo); }
+.vg-op-dl dt { color: var(--suave); }
+.vg-op-dl dd { margin: 0; overflow-wrap: anywhere; }
+.vg-op-lista { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: var(--t-rotulo); }
+.vg-op-lista-limpa { list-style: none; margin: 0; padding: 0; }
+.vg-op-vincular { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--linha); }
+
+/* Cadastro assistido. */
+.vg-op-intro { margin-bottom: 16px; }
+.vg-op-leu { margin-top: 16px; }
+.vg-op-acoes-direita { flex-direction: row; justify-content: flex-end; margin-top: 16px; }
+#vg-op-ass-resultado .aviso { margin-top: 14px; }
+
+/* Números da praça: cor SÓ como etiqueta (nunca bloco de cor). */
+.vg-op-cor--ok { background: var(--ok-fundo); color: var(--ok); }
+.vg-op-cor--atencao { background: var(--nevoa); color: var(--tinta); }
+.vg-op-cor--alerta { background: var(--erro-fundo); color: var(--erro); }
+.vg-op-gatilhos { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.vg-op-partes { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.vg-op-partes li { display: flex; align-items: flex-start; gap: 6px; }
+.vg-op-partes .icone { width: 14px; height: 14px; flex: none; margin-top: 3px; }
+.vg-op-partes [data-estado="ok"] .icone, .vg-op-partes [data-estado="fixa"] .icone { color: var(--ok); }
+.vg-op-partes [data-estado="nao"] .icone { color: var(--erro); }
+.vg-op-gatilho--sim, .vg-op-gatilho--fixa { background: var(--ok-fundo); color: var(--ok); }
+.vg-op-gatilho--nao { background: var(--fundo); color: var(--medio); }
+.vg-op-gatilho--conferir, .vg-op-gatilho--fora { background: var(--nevoa); color: var(--medio); }
+
+/* Zonas. */
+.vg-op-zonas { list-style: none; margin: 0; padding: 8px 24px; }
+
+/* Moderação só leitura (moderador) e conta suspensa: some o que muda dado. */
+body.vg-so-leitura .vg-fila__acoes, body.vg-so-leitura .vg-tabela__acoes button, body.vg-so-leitura #vg-op-form-assistido button[type="submit"] { display: none; }
