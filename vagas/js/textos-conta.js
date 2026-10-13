@@ -53,6 +53,11 @@
    "pessoa_sem_conta": "Referência só para quem tem conta. Convide a pessoa a se cadastrar: ela recebe o seu convite e, depois, você deixa a referência.",
    "declaracao_obrigatoria": "Para enviar, marque a declaração de que a pessoa trabalhou na empresa no período informado.",
    "texto_qualidade_pessoal": "Troque a qualidade pessoal por um fato: o que a pessoa fez, numa situação que você viu. Exemplo: em vez de \"responsável\", \"fechou o caixa certo todos os dias\"."
+  },
+  "texto_status": {
+   "pendente": "Texto em revisão",
+   "publicado": "Texto publicado",
+   "nao_publicado": "Texto não publicado"
   }
  },
  "consentimentos": {
@@ -147,8 +152,8 @@
     "versao": "2026-10-13",
     "quem": "pessoa",
     "titulo": "Aceitar e publicar esta referência",
-    "texto": "Aceito que a referência profissional de {{empresa_nome}} apareça no meu cartão e no meu perfil, com o nome da empresa. Sei que ela é pública e que posso ocultar ou excluir quando quiser.",
-    "explicacao": "Antes do Combinou, a empresa que vê o seu cartão enxerga só \"Referência de empresa verificada: sim\", sem o nome da empresa, sem os pontos fortes e sem o texto. Depois do Combinou (ou no perfil que você escolher tornar público), aparece a referência completa, com o nome da empresa. Se você ocultar, a empresa é avisada. A referência é informação de terceiro sobre você: sai junto com a conta e vai no arquivo de \"Baixar meus dados\". [REVISÃO JURÍDICA]",
+    "texto": "Aceito que a referência profissional de {{empresa_nome}} apareça, com o nome da empresa, para as empresas com quem eu combinar de conversar. Sei que posso ocultar ou excluir quando quiser.",
+    "explicacao": "Antes do Combinou, a empresa que vê o seu cartão enxerga só \"Referência de empresa verificada: sim\", sem o nome da empresa, sem os pontos fortes e sem o texto. Depois do Combinou, aparece a referência completa, com o nome da empresa. Se você ocultar ou excluir, a empresa que deixou a referência não fica sabendo. A referência é informação de terceiro sobre você: sai junto com a conta e vai no arquivo de \"Baixar meus dados\". [REVISÃO JURÍDICA]",
     "obrigatorio": true,
     "variaveis": [
      "empresa_nome"
@@ -178,7 +183,7 @@
     "quem": "empresa",
     "titulo": "Declaração da empresa",
     "texto": "Declaro que a pessoa trabalhou nesta empresa no período informado. A referência é pública e aparece com o nome da empresa. Ela é uma recomendação: não contém crítica, dado sensível, termo discriminatório nem contato.",
-    "explicacao": "A empresa responde pela veracidade do que declara. Só aparece depois que a pessoa aceitar; ela pode ocultar ou excluir, e você é avisado(a). A referência passa por moderação. Limite: 1 referência por pessoa; até {{limite_mes}} por mês. [REVISÃO JURÍDICA]",
+    "explicacao": "A empresa responde pela veracidade do que declara. A referência passa por moderação e só aparece se a pessoa quiser; a decisão é só dela e a empresa não é informada. Limite: 1 referência por pessoa; até {{limite_mes}} por mês. [REVISÃO JURÍDICA]",
     "obrigatorio": true,
     "variaveis": [
      "limite_mes"
@@ -433,7 +438,7 @@
     "alvo": "referencia",
     "acao": "liberar",
     "titulo": "Referência revisada e enviada à pessoa",
-    "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi revisada e enviada para a pessoa aceitar. Avisamos quando ela decidir.",
+    "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi revisada e enviada para a pessoa. A decisão de mostrar ou não é só dela.",
     "correcao": "",
     "lei": ""
    },
