@@ -82,13 +82,19 @@
  * provedor), climaEnvios ({email: true, whatsapp: false}), climaIdentificacao (registra o acesso), climaDesidentificar,
  * climaRenovarConvite, climaColaboradoresDados e climaSalvarColaborador (CPF/data só como hash com sal).
  *
+ * Versão técnica dos relatórios de equipe e "Como liderar" (como a migração 20261019120000_versao_tecnica.sql; regra de
+ * js/versao-tecnica.js): relatorioPublico pelo link de sempre devolve a versão do dono (sem a distância natural × cargo,
+ * com restrito: true); pelo link técnico, {ok, modelo, versao:'tecnica', relatorio completo, leituraTecnica:{nome, crp},
+ * publicadoEm}. Painel (só admin): relatorioTecnico(token, id) -> {tecnica, historico}; gerarRelatorioTecnico(token, id,
+ * {nome, crp}) -> {tecnica, historico} (novo token técnico; o anterior para de abrir); despublicarRelatorioTecnico(token, id).
+ *
  * No Node (testes): require('./js/api-simulada.js').criar({ armazenamento, scoring, latenciaMs: 0, semente: false }).
  * Opcional: { motor, fixture } para trocar o motor do relatório e os dados do processo de exemplo.
  */
 (function (root) {
   'use strict';
 
-  var VERSAO_BANCO = 20261018120000;                     // última migração (supabase/migrations)
+  var VERSAO_BANCO = 20261019120000;                     // última migração (supabase/migrations)
   var CHAVE_ARMAZENAMENTO = 'disc_planilha_simulada';     // respostas (mesma chave das versões anteriores)
   var CHAVES = {
     usuarios: 'disc_simulada_usuarios',
@@ -118,7 +124,8 @@
     climaIdentificacoes: 'disc_simulada_clima_identificacoes', // resposta ↔ colaborador (só quando a pessoa se identifica)
     climaAcessos: 'disc_simulada_clima_acessos',               // quem abriu a tela "uso interno" e quando
     climaLimites: 'disc_simulada_clima_limites',
-    sementeClima: 'disc_simulada_semente_clima'
+    sementeClima: 'disc_simulada_semente_clima',
+    leiturasTecnicas: 'disc_simulada_leituras_tecnicas'  // histórico da versão técnica (como public.leituras_tecnicas)
   };
   var CHAVE_ADMIN = 'previa';
   var LATENCIA_MS = 400;
@@ -1734,6 +1741,8 @@
       if (JSON.stringify(snap).length > MAX_DADOS_RELATORIO) return erro('Relatório grande demais (máximo 1 MB).');
       snap = copiar(snap);
       snap.modelo = modelo;
+      delete snap.leituraTecnica; // a leitura técnica vem só do link técnico (nunca do snapshot)
+      delete snap.restrito;
       var lista = relatoriosSalvos();
       var id = limparTexto(dados.id, 40);
       var t = agoraIso();
@@ -1785,6 +1794,85 @@
       if (!reg || !reg.modelo || reg.modelo === 'processo' || reg.modelo === 'clima') return erro('Relatório não encontrado.');
       gravarChave(CHAVES.relatorios, lista.filter(function (r) { return r !== reg; }));
       return { ok: true, id: id };
+    }
+
+    /* ----- versão técnica (equipe e "Como liderar"), como a migração 20261019120000_versao_tecnica.sql ----- */
+    // O link de sempre (token) entrega a versão do dono, sem a distância natural × cargo (Parte 2); o link técnico
+    // (tokenTecnico, outro token) entrega a completa com {nome, crp} de quem vai ler. Gerar de novo troca o link técnico
+    // (o anterior para de abrir); despublicar só desliga o técnico. Histórico em CHAVES.leiturasTecnicas (fica mesmo se o
+    // relatório for excluído).
+    var MODELOS_TECNICA = ['equipe', 'lideranca'];
+    function versaoTecnicaMod() {
+      if (root && root.DISC_VERSAO_TECNICA) return root.DISC_VERSAO_TECNICA;
+      if (typeof require === 'function') { try { return require('./versao-tecnica.js'); } catch (e) { /* ausente */ } }
+      return null;
+    }
+    function tecnicaPublica(reg) {
+      if (!reg.tokenTecnico) return { status: '', token: '', nome: '', crp: '', publicadoEm: '' };
+      var t = { status: reg.tecnicoStatus === 'publicado' ? 'publicado' : 'despublicado', token: reg.tokenTecnico, nome: reg.tecnicoNome || '',
+        crp: reg.tecnicoCrp || '', publicadoEm: reg.tecnicoPublicadoEm || '' };
+      if (t.status === 'publicado') t.url = urlRelatorio(reg.tokenTecnico);
+      return t;
+    }
+    function leiturasDe(id) {
+      return lerLista(CHAVES.leiturasTecnicas).filter(function (x) { return x && x.relatorioId === id; })
+        .sort(function (a, b) { return String(b.em).localeCompare(String(a.em)); }).slice(0, 20)
+        .map(function (x) { return { acao: x.acao, nome: x.nome, crp: x.crp, por: x.por, em: x.em }; });
+    }
+    function regTecnico(idBruto) {
+      var id = limparTexto(idBruto, 40);
+      var lista = relatoriosSalvos();
+      var reg = id && buscarPor(lista, 'id', id);
+      return reg && MODELOS_TECNICA.indexOf(reg.modelo) >= 0 ? { lista: lista, reg: reg } : null;
+    }
+    function anotarLeitura(reg, acao, u) {
+      var h = lerLista(CHAVES.leiturasTecnicas);
+      h.push({ relatorioId: reg.id, modelo: reg.modelo, acao: acao, nome: reg.tecnicoNome, crp: reg.tecnicoCrp,
+        por: (u && u.nome) || 'Administrador', porId: (u && u.id) || '', em: agoraIso() });
+      gravarChave(CHAVES.leiturasTecnicas, h);
+    }
+    function acaoRelatorioTecnicoVer(idBruto) {
+      var x = regTecnico(idBruto);
+      if (!x) return erro('Relatório não encontrado.');
+      return { ok: true, tecnica: tecnicaPublica(x.reg), historico: leiturasDe(x.reg.id) };
+    }
+    function acaoRelatorioTecnicoGerar(u, idBruto, leitor) {
+      var VT = versaoTecnicaMod();
+      if (!VT) return erro('Versão técnica indisponível nesta página.');
+      var v = VT.validarLeitor(leitor);
+      if (!v.ok) return erro(v.erro);
+      var x = regTecnico(idBruto);
+      if (!x) return erro('Relatório não encontrado.');
+      x.reg.tokenTecnico = hexAleatorio(32);
+      x.reg.tecnicoStatus = 'publicado';
+      x.reg.tecnicoNome = v.nome;
+      x.reg.tecnicoCrp = v.crp;
+      x.reg.tecnicoPublicadoEm = agoraIso();
+      gravarChave(CHAVES.relatorios, x.lista);
+      anotarLeitura(x.reg, 'gerada', u);
+      return { ok: true, tecnica: tecnicaPublica(x.reg), historico: leiturasDe(x.reg.id) };
+    }
+    function acaoRelatorioTecnicoDespublicar(u, idBruto) {
+      var x = regTecnico(idBruto);
+      if (!x) return erro('Relatório não encontrado.');
+      if (!x.reg.tokenTecnico) return erro('Este relatório não tem versão técnica.');
+      if (x.reg.tecnicoStatus === 'publicado') {
+        x.reg.tecnicoStatus = 'despublicado';
+        gravarChave(CHAVES.relatorios, x.lista);
+        anotarLeitura(x.reg, 'despublicada', u);
+      }
+      return { ok: true, tecnica: tecnicaPublica(x.reg), historico: leiturasDe(x.reg.id) };
+    }
+    // Link técnico publicado -> {ok, modelo, versao:'tecnica', relatorio (completo), leituraTecnica, publicadoEm}.
+    function relatorioTecnicoPublico(token) {
+      if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return null;
+      var reg = buscarPor(relatoriosSalvos(), 'tokenTecnico', token);
+      if (!reg || reg.tecnicoStatus !== 'publicado' || MODELOS_TECNICA.indexOf(reg.modelo) < 0) return null;
+      var rel = copiar(reg.relatorio || {});
+      delete rel.leituraTecnica;
+      delete rel.restrito;
+      return { ok: true, modelo: reg.modelo, versao: 'tecnica', relatorio: rel, leituraTecnica: { nome: reg.tecnicoNome, crp: reg.tecnicoCrp },
+        publicadoEm: reg.tecnicoPublicadoEm || '' };
     }
 
     function avaliacaoPublica(a, emp, contagem) {
@@ -2175,10 +2263,14 @@
     function acaoRelatorioPublico(token) {
       var lido = null;
       try { lido = relLer(token); } catch (e) { lido = null; }
+      if (!lido) { var tecnico = relatorioTecnicoPublico(token); if (tecnico) return tecnico; }
       if (!lido || lido.reg.status !== 'publicado') return erro(MSG_REL_NAO_ENCONTRADO);
       var relatorio = copiar(lido.reg.relatorio);
       if (relatorio && relatorio.processo) delete relatorio.processo.clickupListId;
       var modelo = MODELOS_RELATORIO.indexOf(lido.reg.modelo) >= 0 || lido.reg.modelo === 'clima' ? lido.reg.modelo : 'processo';
+      // Link do dono: equipe e "Como liderar" saem sem a distância natural × cargo (versão técnica só pelo outro link).
+      var VT = versaoTecnicaMod();
+      if (VT && MODELOS_TECNICA.indexOf(modelo) >= 0 && relatorio && typeof relatorio === 'object') relatorio = VT.versaoDono(relatorio);
       return { ok: true, modelo: modelo, relatorio: relatorio, publicadoEm: lido.reg.publicadoEm };
     }
 
@@ -2396,6 +2488,9 @@
       'relatoriosModelo.listar': { soAdmin: true, fn: function (u, c) { return acaoRelatoriosModeloListar(c.filtro); } },
       'relatorioModelo.excluir': { soAdmin: true, fn: function (u, c) { return acaoRelatorioModeloExcluir(c.id); } },
       'relatorioModelo.abrir': { soAdmin: true, fn: function (u, c) { return acaoRelatorioModeloAbrir(c.id); } },
+      'relatorioTecnico.ver': { soAdmin: true, fn: function (u, c) { return acaoRelatorioTecnicoVer(c.id); } },
+      'relatorioTecnico.gerar': { soAdmin: true, fn: function (u, c) { return acaoRelatorioTecnicoGerar(u, c.id, c.leitor); } },
+      'relatorioTecnico.despublicar': { soAdmin: true, fn: function (u, c) { return acaoRelatorioTecnicoDespublicar(u, c.id); } },
       'empresas.salvar': { soAdmin: true, fn: function (u, c) { return acaoEmpresasSalvar(c.empresa); } },
       'empresas.excluir': { soAdmin: true, fn: function (u, c) { return acaoEmpresasExcluir(c.id); } },
       'avaliacoes.listar': { fn: function (u) { return acaoAvaliacoesListar(u); } },
@@ -3954,14 +4049,14 @@
       limpar: function () {
         gravar([]); gravarPessoas([]); gravarChave(CHAVES.vinculos, []); gravarChave(CHAVES.relacoes, []); gravarChave(CHAVES.pedidos, []);
         [CHAVES.climaRodadas, CHAVES.climaEquipes, CHAVES.climaRespostas, CHAVES.climaRecebidos, CHAVES.climaConvites, CHAVES.climaCodigos,
-          CHAVES.climaConferencias, CHAVES.climaIdentificacoes, CHAVES.climaAcessos, CHAVES.climaLimites].forEach(function (k) { gravarChave(k, []); });
+          CHAVES.climaConferencias, CHAVES.climaIdentificacoes, CHAVES.climaAcessos, CHAVES.climaLimites, CHAVES.leiturasTecnicas].forEach(function (k) { gravarChave(k, []); });
       },
       // Volta a prévia ao estado inicial (apaga tudo e recria a semente).
       reiniciar: function () {
         [CHAVE_ARMAZENAMENTO, CHAVES.usuarios, CHAVES.empresas, CHAVES.avaliacoes, CHAVES.sessoes, CHAVES.relatorios, CHAVES.pessoas,
           CHAVES.vinculos, CHAVES.relacoes, CHAVES.pedidos, CHAVES.climaRodadas, CHAVES.climaEquipes, CHAVES.climaRespostas,
           CHAVES.climaRecebidos, CHAVES.climaConvites, CHAVES.climaCodigos, CHAVES.climaConferencias, CHAVES.climaIdentificacoes,
-          CHAVES.climaAcessos, CHAVES.climaLimites].forEach(function (k) {
+          CHAVES.climaAcessos, CHAVES.climaLimites, CHAVES.leiturasTecnicas].forEach(function (k) {
           gravarChave(k, k === CHAVES.sessoes ? {} : []);
         });
         gravarChave(CHAVES.sementeClima, 0);
@@ -4205,6 +4300,23 @@
         exigir(id, 'Relatório não informado.');
         return comSessao('relatorioModelo.abrir', token, { id: id });
       }),
+      // Versão técnica (equipe e "Como liderar"): mesmo contrato do js/api-supabase.js.
+      relatorioTecnico: seguro(function (token, id) {
+        exigirToken(token);
+        exigir(id, 'Relatório não informado.');
+        return comSessao('relatorioTecnico.ver', token, { id: id });
+      }),
+      gerarRelatorioTecnico: seguro(function (token, id, leitor) {
+        exigirToken(token);
+        exigir(id, 'Relatório não informado.');
+        var l = leitor && typeof leitor === 'object' ? leitor : {};
+        return comSessao('relatorioTecnico.gerar', token, { id: id, leitor: { nome: l.nome, crp: l.crp } });
+      }),
+      despublicarRelatorioTecnico: seguro(function (token, id) {
+        exigirToken(token);
+        exigir(id, 'Relatório não informado.');
+        return comSessao('relatorioTecnico.despublicar', token, { id: id });
+      }),
       // --- Pesquisa de clima: mesmo contrato do js/api-supabase.js ---
       climaPublica: seguro(function (t) { return chamar({ acao: 'clima.publica', tokenClima: String(t == null ? '' : t) }); }),
       climaEnviar: seguro(function (t, respostas) { return chamar({ acao: 'clima.enviar', tokenClima: String(t == null ? '' : t), respostas: respostas }); }),
@@ -4241,6 +4353,7 @@
     'relatorioMelhorarTextos', 'relatorioPublico', 'relatorioEnviarEmail', 'listarEnviosEmail',
     'listarEquipe', 'salvarColaborador', 'moverColaborador', 'desligarColaborador', 'salvarRelacoes',
     'salvarRelatorioModelo', 'listarRelatoriosModelo', 'excluirRelatorioModelo', 'abrirRelatorioModelo', 'salvarMinhaFoto', 'removerFoto',
+    'relatorioTecnico', 'gerarRelatorioTecnico', 'despublicarRelatorioTecnico',
     'moverResposta', 'contratarPessoa', 'versaoBanco',
     'pacotesPublicos', 'enviarPessoal', 'resumoPessoal', 'criarPedido', 'iniciarPagamento', 'statusPedido', 'relatorioPessoal',
     'salvarParte2Pessoal', 'recuperarAcesso', 'enviarLinkPorEmail', 'confirmarRetorno',

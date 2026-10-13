@@ -244,6 +244,13 @@ const DADOS_R3 = {
     relacoes: [{ de: 'a', para: 'b', tipo: 'lidera' }, { de: 'a', para: 'e', tipo: 'lidera' }, { de: 'b', para: 'c', tipo: 'lidera' }]
   }, { geradoEm: GERADO })
 };
+// Equipe e "Como liderar" com a Parte 2: a seta natural → exigido só aparece na versão técnica (link técnico, com o nome e o
+// CRP de quem vai ler; js/versao-tecnica.js). A versão do dono está em tests/e2e/versao-tecnica.spec.js.
+const LEITURA_TECNICA = { nome: 'Fulana de Tal', crp: '06/12345' };
+function respostaR3(d) {
+  const r = { ok: true, modelo: d.modelo, relatorio: d };
+  return d.modelo === 'equipe' || d.modelo === 'lideranca' ? Object.assign(r, { versao: 'tecnica', leituraTecnica: LEITURA_TECNICA }) : r;
+}
 const SECOES_R3 = {
   pessoaCompleto: ['capa', 'perfil', 'intensidade', 'esticando', 'fortes', 'plano', 'encerramento', 'rodape'],
   pessoaSimples: ['capa', 'resumo', 'habitos', 'encerramento', 'rodape'],
@@ -257,7 +264,7 @@ for (const chave of Object.keys(DADOS_R3)) {
       const erros = coletarErros(page);
       await page.setViewportSize(viewport);
       const d = DADOS_R3[chave];
-      await prepararModelo(page, d.modelo, { ok: true, modelo: d.modelo, relatorio: d });
+      await prepararModelo(page, d.modelo, respostaR3(d));
       await page.goto('/relatorio.html#r-' + TOKEN);
       await expect(page.locator('#relatorio')).toHaveAttribute('data-estado', 'pronto');
       for (const id of SECOES_R3[chave]) await expect(page.locator('[data-secao="' + id + '"]')).toHaveCount(1);
@@ -299,7 +306,7 @@ test('rodada 3: versão simples e pessoa completa imprimem em A4 sem rolagem lat
   for (const chave of ['pessoaSimples', 'pessoaCompleto', 'equipe']) {
     const d = DADOS_R3[chave];
     await page.setViewportSize({ width: 794, height: 1123 });
-    await prepararModelo(page, d.modelo, { ok: true, modelo: d.modelo, relatorio: d });
+    await prepararModelo(page, d.modelo, respostaR3(d));
     await page.goto('/relatorio.html#r-' + TOKEN);
     await expect(page.locator('#relatorio')).toHaveAttribute('data-estado', 'pronto');
     await page.emulateMedia({ media: 'print' });

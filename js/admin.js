@@ -2226,6 +2226,7 @@
     urlPagamentoStripe: urlPagamentoStripe,
     dataHoraEnvio: dataHoraEnvio,
     textoEnvio: textoEnvio,
+    textoLeituraTecnica: textoLeituraTecnica,
     urlPagamentosStripe: urlPagamentosStripe,
     pedidoStripeEmTeste: pedidoStripeEmTeste,
     modoStripeDoPedido: modoStripeDoPedido,
@@ -6748,8 +6749,10 @@
     if (publicado && rel.url) {
       var ctx = { empresa: rel.ctx && rel.ctx.empresa, pessoa: rel.ctx && rel.ctx.pessoa, consultor: consultorAtual() };
       var msg = mensagemRelatorioModelo(rel.modelo, ctx, rel.url);
+      var restrito = versaoTecnicaMod() && versaoTecnicaMod().temRestrito(rel.dados);
       box.appendChild(el('section', { classe: 'caixa caixa--destaque rel-publicado', id: 'rel-modelo-publicado' }, [
         el('h3', { classe: 'caixa__titulo', texto: 'Link do relatório' }),
+        restrito ? el('p', { classe: 'texto-suave t-rotulo', id: 'rel-modelo-versao', texto: 'Versão do dono/gestor: sai sem a distância entre o estilo natural e o que o cargo pede (no lugar, "' + versaoTecnicaMod().TEXTO_RESTRITO + '").' }) : null,
         el('p', { classe: 'av-link', id: 'rel-modelo-link', texto: rel.url }),
         el('p', { classe: 'rel-mensagem', id: 'rel-modelo-mensagem', texto: msg }),
         el('div', { classe: 'gestao-card__acoes' }, [
@@ -6762,6 +6765,9 @@
       ]));
     }
 
+    var tecnica = blocoVersaoTecnica(rel);
+    if (tecnica) box.appendChild(tecnica);
+
     var frame = el('iframe', { classe: 'previa-doc', id: 'rel-modelo-previa', title: 'Prévia do relatório', sandbox: 'allow-same-origin', loading: 'eager' });
     frame.addEventListener('load', function () {
       try { var d = frame.contentDocument; if (d && d.documentElement) frame.style.height = Math.max(600, d.documentElement.scrollHeight) + 'px'; } catch (e) { /* altura padrão */ }
@@ -6772,6 +6778,113 @@
     var filtro = rel.modelo === 'equipe' ? { empresaId: rel.empresaId } : { pessoaId: rel.pessoaId };
     var chave = rel.modelo === 'equipe' ? 'e:' + rel.empresaId : 'p:' + rel.pessoaId;
     box.appendChild(el('div', { classe: 'emp-rodape' }, blocoRelatoriosModelo(filtro, chave, rel.ctx || {})));
+  }
+
+  /* ----- Versão técnica (equipe e "Como liderar"; js/versao-tecnica.js; decisão do painel científico, seção 4, linha 12) -----
+   * O link de sempre é a versão do dono/gestor: sai sem a distância entre o estilo natural e o que o cargo pede (Parte 2).
+   * A versão completa sai por OUTRO link, só depois de informar o nome e o CRP de quem vai ler (impressos em todas as
+   * páginas). Gerar de novo troca o link técnico; despublicar desliga só ele. Cada ação fica no histórico (servidor). */
+  var tecnicas = {};   // id do relatório -> {tecnica, historico, semMigracao?} (lido do servidor)
+  function versaoTecnicaMod() { return root.DISC_VERSAO_TECNICA || null; }
+  // Uma linha do histórico: "Gerada para Fulana de Tal (CRP 06/12345) por Nome em 13/10/2026 14:32" ou
+  // "Link de Fulana de Tal (CRP 06/12345) despublicado por Nome em …".
+  function textoLeituraTecnica(h) {
+    if (!h) return '';
+    var quem = (h.nome || '—') + ' (CRP ' + (h.crp || '—') + ')';
+    return (h.acao === 'despublicada' ? 'Link de ' + quem + ' despublicado' : 'Gerada para ' + quem) +
+      ' por ' + (h.por || 'um administrador') + ' em ' + formatarData(h.em);
+  }
+  function blocoVersaoTecnica(rel) {
+    var VT = versaoTecnicaMod();
+    if ((rel.modelo !== 'equipe' && rel.modelo !== 'lideranca') || !VT || !metodoApi('gerarRelatorioTecnico') || !VT.temRestrito(rel.dados)) return null;
+    var sec = el('section', { classe: 'caixa rel-tecnica', id: 'rel-tecnica' }, [
+      el('h3', { classe: 'caixa__titulo', texto: 'Versão técnica · leitura por psicólogo(a)' }),
+      el('p', { classe: 'texto-suave t-rotulo', texto: 'O link do relatório é a versão do dono/gestor: sai sem a distância entre o estilo natural e o que o cargo pede. ' +
+        'A versão técnica sai completa, por outro link, com o nome e o CRP de quem vai ler impressos em todas as páginas.' })
+    ]);
+    if (!rel.id || rel.status === 'novo') {
+      sec.appendChild(el('p', { classe: 'aviso', id: 'rel-tec-salvar', texto: 'Salve o relatório (rascunho ou publicado) para gerar a versão técnica.' }));
+      return sec;
+    }
+    var info = tecnicas[rel.id];
+    if (!info) {
+      sec.appendChild(el('p', { classe: 'texto-suave t-rotulo', id: 'rel-tec-carregando', texto: 'Carregando…' }));
+      api('relatorioTecnico', rel.id).then(function (resp) {
+        tecnicas[rel.id] = resp;
+        var velho = $('rel-tecnica');
+        var novo = relAtual() === rel ? blocoVersaoTecnica(rel) : null;
+        if (velho && novo) velho.parentNode.replaceChild(novo, velho);
+      }).catch(function (e) {
+        if (e && e.tratado) return;
+        var p = $('rel-tec-carregando');
+        if (p) p.textContent = (e && e.message) || 'Não foi possível ler a versão técnica.';
+      });
+      return sec;
+    }
+    if (info.semMigracao) {
+      sec.appendChild(el('p', { classe: 'aviso', id: 'rel-tec-sem-banco', texto: 'O banco de dados ainda não tem a versão técnica. Peça para aplicar as migrações (veja docs/SUPABASE.md).' }));
+      return sec;
+    }
+    var t = info.tecnica || {};
+    if (t.status === 'publicado') {
+      var url = t.url ? urlAbsoluta(t.url, root.location.href) : linkRelatorioModelo(root.location.href, t.token);
+      sec.appendChild(el('div', { classe: 'rel-publicado', id: 'rel-tec-publicado' }, [
+        el('p', { classe: 't-rotulo seminegrito', id: 'rel-tec-leitor', texto: VT.linhaLeitura(t) }),
+        el('p', { classe: 'av-link', id: 'rel-tec-link', texto: url }),
+        el('div', { classe: 'gestao-card__acoes' }, [
+          botao('botao--principal botao--pequeno', 'Copiar link da versão técnica', function () { copiar(url, 'Link da versão técnica copiado.'); }, { id: 'btn-rel-tec-copiar' }),
+          el('a', { classe: 'botao botao--claro botao--pequeno', id: 'btn-rel-tec-abrir', href: url, target: '_blank', rel: 'noopener', texto: 'Abrir versão técnica' }),
+          botao('botao--perigo-contorno botao--pequeno', 'Despublicar versão técnica', function () {
+            confirmar({ titulo: 'Despublicar a versão técnica?', botao: 'Despublicar versão técnica', botaoVoltar: 'Manter',
+              texto: 'O link técnico para de abrir na hora. O link do relatório (versão do dono/gestor) continua como está.' }).then(function (ok) {
+              if (!ok) return;
+              api('despublicarRelatorioTecnico', rel.id).then(function (resp) {
+                tecnicas[rel.id] = resp;
+                avisar('Versão técnica despublicada: o link técnico não abre mais.', 'ok');
+                redesenharRel();
+              }).catch(falhou);
+            });
+          }, { id: 'btn-rel-tec-despublicar' })
+        ])
+      ]));
+    } else if (t.status === 'despublicado') {
+      sec.appendChild(el('p', { classe: 'aviso', id: 'rel-tec-despublicada', texto: 'Versão técnica despublicada: o link técnico não abre mais. Para liberar de novo, gere um novo link.' }));
+    }
+    if (rel.alterado) {
+      sec.appendChild(el('p', { classe: 'aviso', id: 'rel-tec-alterado', texto: 'Salve as alterações antes de gerar a versão técnica: ela mostra a versão salva do relatório.' }));
+    } else {
+      var erro = el('p', { classe: 'campo__erro form-erro', id: 'rel-tec-erro', role: 'alert' });
+      var btn = botao('botao--laranja', t.status === 'publicado' ? 'Gerar novo link (o atual para de abrir)' : 'Gerar link da versão técnica', function () {
+        erro.textContent = '';
+        var v = VT.validarLeitor({ nome: $('rel-tec-nome').value, crp: $('rel-tec-crp').value });
+        if (!v.ok) { erro.textContent = v.erro; $(v.campo === 'crp' ? 'rel-tec-crp' : 'rel-tec-nome').focus(); return; }
+        btn.disabled = true;
+        api('gerarRelatorioTecnico', rel.id, { nome: v.nome, crp: v.crp }).then(function (resp) {
+          tecnicas[rel.id] = resp;
+          avisar('Versão técnica gerada. Copie o link e envie para ' + v.nome + '.', 'ok');
+          redesenharRel();
+        }).catch(function (e) { if (!(e && e.tratado)) erro.textContent = (e && e.message) || 'Não foi possível gerar a versão técnica.'; btn.disabled = false; });
+      }, { id: 'btn-rel-tec-gerar' });
+      sec.appendChild(el('div', { classe: 'form-secao rel-tecnica__form' }, [
+        el('div', { classe: 'form-grade' }, [
+          campoTexto('rel-tec-nome', 'Nome de quem vai ler (psicólogo ou psicóloga)', { maxlength: 120, autocomplete: 'off', placeholder: 'Nome e sobrenome' }),
+          campoTexto('rel-tec-crp', 'CRP', { maxlength: 16, autocomplete: 'off', inputmode: 'numeric', placeholder: '06/12345' })
+        ]),
+        el('p', { classe: 'aviso rel-tecnica__aviso', id: 'rel-tec-aviso', texto: VT.AVISO_CRP }),
+        erro,
+        btn
+      ]));
+    }
+    var hist = Array.isArray(info.historico) ? info.historico : [];
+    if (hist.length) {
+      sec.appendChild(el('div', { classe: 'rel-tecnica__historico' }, [
+        el('span', { classe: 'campo__rotulo', texto: 'Histórico da versão técnica' }),
+        el('ul', { classe: 'envios__lista', id: 'rel-tec-historico' }, hist.map(function (h) {
+          return el('li', { classe: 'envios__item t-rotulo texto-suave', 'data-acao': h.acao, texto: textoLeituraTecnica(h) });
+        }))
+      ]));
+    }
+    return sec;
   }
 
   // Lista dos relatórios salvos (de uma empresa ou de uma pessoa), com link, mensagem e excluir.

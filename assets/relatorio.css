@@ -155,6 +155,21 @@ em { font-family: var(--ff-serif); font-style: italic; font-weight: 400; letter-
   background: var(--notus); color: var(--preto);
 }
 
+/* Versão técnica (js/versao-tecnica.js): "Leitura técnica: <nome> · CRP <n>" na capa, no índice e no topo de cada página
+   (na impressão, também no pé de todas as folhas, por @page). Na versão do dono, .restrito-doc fica no lugar do conteúdo
+   liberado só para leitura por psicólogo(a). */
+.leitura-tec {
+  margin: -16px 0 28px; padding: 8px 12px; border-left: 3px solid var(--laranja); background: var(--branco-doc);
+  font-family: var(--ff-mono); font-size: var(--f-nota); letter-spacing: .04em; line-height: 1.45; color: var(--tinta); overflow-wrap: anywhere;
+}
+.pagina--escura .leitura-tec, .leitura-tec--capa { background: rgba(255,255,255,.08); color: var(--branco-doc); border-left-color: var(--ambar); }
+.leitura-tec--capa { margin: 0 0 24px; }
+#indice .leitura-tec { margin-top: -8px; }
+.restrito-doc { margin-top: 16px; padding: 16px 20px; background: var(--branco-doc); border: 1px solid var(--linha-doc); border-left: 3px solid var(--tinta); border-radius: 2px; }
+.restrito-doc .rotulo-doc { margin-bottom: 6px; }
+.restrito-doc p { font-size: var(--f-corpo); line-height: 1.5; color: var(--tinta); }
+@media print { .leitura-tec, .restrito-doc { break-inside: avoid; } }
+
 /* ---------- Marca ---------- */
 .marca-doc { display: inline-flex; align-items: center; flex: none; }
 /* Logo da Gestão sem Caos: a altura manda (largura na proporção do desenho); nunca abaixo de 20px. */
