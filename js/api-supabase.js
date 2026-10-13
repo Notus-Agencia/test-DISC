@@ -273,9 +273,11 @@
     { nome: '20261021120000_feedback360', descricao: 'Feedback 360 da Liderança (ciclos, links individuais, moderação e relatório)' },
     { nome: '20261022120000_vagas', descricao: 'Vagas sem Caos: fundação (cidades, contas, vagas, conversas e referências; não muda nada do DISC)' },
     { nome: '20261023120000_vagas_testes', descricao: 'Vagas sem Caos: motor dos testes de habilidade (tentativas, sorteio, nota e selo)' },
-    { nome: '20261023120001_vagas_questoes', descricao: 'Vagas sem Caos: banco de questões dos testes de habilidade (carga à mão, a partir da cópia privada; o arquivo é só um espelho)' }
+    { nome: '20261023120001_vagas_questoes', descricao: 'Vagas sem Caos: banco de questões dos testes de habilidade (carga à mão, a partir da cópia privada; o arquivo é só um espelho)' },
+    { nome: '20261024120000_vagas_onda2', descricao: 'Vagas sem Caos: painel da praça (indicadores), equipe da empresa (convite por e-mail), WhatsApp na lista de espera e fuso da cidade' },
+    { nome: '20261024120001_vagas_piloto_uruacu', descricao: 'Vagas sem Caos: praça piloto Uruaçu (GO) em lista de espera, com as zonas da operação' }
   ];
-  var VERSAO_ATUAL = 20261023120001;
+  var VERSAO_ATUAL = 20261024120001;
   var MSG_PRIMEIRO_ACESSO = 'Com o Supabase não há chave de primeiro acesso: crie o seu usuário no painel do Supabase ' +
     '(Authentication > Users > Add user) e entre com esse e-mail e senha. O primeiro login vira administrador.';
   var MSG_REDEFINIR = 'Com o Supabase cada pessoa cria a própria senha nova pelo "Esqueci minha senha", na tela de entrada.';

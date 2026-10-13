@@ -1,25 +1,31 @@
 /*
- * Vagas sem Caos — PRÉVIA: um "banco" de mentira guardado só neste navegador (localStorage 'vagas_previa_v2'), com as MESMAS
- * RPCs, regras e mensagens da migração 20261022120000_vagas.sql. Carregado sob demanda por vagas/js/api.js quando
- * VAGAS_CONFIG.MODO = 'previa' (precisa de vagas/js/regras.js carregado antes). Nada sai do navegador; nenhum e-mail é enviado.
+ * Vagas sem Caos — PRÉVIA: um "banco" de mentira guardado só neste navegador (localStorage 'vagas_previa_v3'), com as MESMAS
+ * RPCs, regras e mensagens das migrações 20261022120000_vagas.sql e 20261024120000_vagas_onda2.sql. Carregado sob demanda por
+ * vagas/js/api.js quando VAGAS_CONFIG.MODO = 'previa' (precisa de vagas/js/regras.js carregado antes). Nada sai do navegador;
+ * nenhum e-mail é enviado.
  *
- * Dados fictícios de Boa Vista (criados na primeira carga; datas relativas a hoje): 15 empresas (razão social com "(prévia)" e
- * CNPJ de mentira começando com PV), 30 vagas (CLT, temporário, diária, estágio e freelancer; 3 confidenciais; 2 em revisão;
- * 1 rascunho), 40 pessoas, candidaturas, conversas e referências.
+ * Dados fictícios da praça piloto, Uruaçu (GO) (criados na primeira carga; datas relativas a hoje): Uruaçu ativa (porte
+ * pequena, fuso America/Sao_Paulo, as 6 zonas da operação), Campinorte no entorno e Niquelândia em lista de espera — as duas
+ * vizinhas existem SÓ na prévia, para mostrar "Incluir <entorno>" e a lista de espera; 15 empresas (razão social com
+ * "(prévia)" e CNPJ de mentira começando com PV), 30 vagas (CLT, temporário, diária, estágio e freelancer; 3 confidenciais;
+ * 2 em revisão; 1 rascunho), 40 pessoas, candidaturas, conversas e referências.
  * Logins da prévia (senha previa123): pessoa@previa.com (Ana Clara Ribeiro, cadastro completo, com conversa numa vaga
- * confidencial e um Combinou) · empresa@previa.com (dona do Mercadinho Sol do Norte, com cartões, conversas e referências) ·
- * operador@previa.com (operação de Boa Vista) · admin@previa.com (equipe da Gestão sem Caos).
- * Diferenças da versão real: sem e-mail (cadastrar/esqueci devolvem "linkPrevia" para a tela abrir), sem limites por origem
- * (IP) e sem Turnstile; os limites por conta (30 "Quero"/dia, 3 mensagens seguidas, 20 referências/30 dias) valem.
+ * confidencial e um Combinou) · empresa@previa.com (dona do Mercadinho Sol do Norte, com cartões, conversas, referências, uma
+ * recrutadora e um convite de equipe aberto) · recrutador@previa.com (recrutadora do Mercadinho: não convida) ·
+ * operador@previa.com (operação de Uruaçu) · admin@previa.com (equipe da Gestão sem Caos).
+ * Diferenças da versão real: sem e-mail (cadastrar/esqueci/convidarEquipe devolvem "linkPrevia" para a tela abrir; no convite
+ * de equipe o linkPrevia vem vazio quando, no real, nenhum convite que funcione seria enviado), sem limites por origem (IP) e
+ * sem Turnstile; os limites por conta (30 "Quero"/dia, 3 mensagens seguidas, 20 referências/30 dias, 10 convites de equipe por
+ * empresa por dia) valem. O token do convite de equipe fica em claro neste navegador (no banco, só o hash).
  *
  * No Node (testes): require('./vagas/js/api-previa.js').criarBackend({armazenamento, agora: () => ms, semente: true|false})
  *   -> {rpc(nome, args) -> Promise<json>, conta: {cadastrar, reenviarConfirmacao, esqueciSenha, cadastroAssistido, convidarOperador,
- *   excluirConta, entrar, sair, sessao, confirmarLink, definirSenha}, estado(), reiniciar()}
+ *   convidarEquipe, excluirConta, entrar, sair, sessao, confirmarLink, definirSenha}, estado(), reiniciar()}
  */
 (function (root) {
   'use strict';
   var R = (typeof module !== 'undefined' && module.exports) ? require('./regras.js') : root.VAGAS_REGRAS;
-  var CHAVE = 'vagas_previa_v2';
+  var CHAVE = 'vagas_previa_v3';   // v3: semente da praça piloto (a v2, de exemplo antigo, fica esquecida no navegador)
   var SENHA_PREVIA = 'previa123';
   var DIA = 86400000;
   var ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -41,11 +47,13 @@
       while (h.length < 12) h = '0' + h;
       return '00000000-0000-4000-8000-' + h;
     }
+    // Token fictício (64 hex) diferente a cada chamada. Conta em 32 bits (Math.imul): a conta antiga passava de 2^53, perdia os
+    // bits baixos e quase sempre dava só zeros (tokens e links repetidos na prévia).
     function novoToken() {
       st.seq += 1;
       var s = '';
-      var x = st.seq * 2654435761 % 4294967296;
-      while (s.length < 64) { x = (x * 1103515245 + 12345) % 2147483648; s += (x % 16).toString(16); }
+      var x = Math.imul(st.seq, 2654435761) >>> 0;
+      while (s.length < 64) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; s += ((x >>> 24) % 16).toString(16); }
       return s;
     }
     function novoCodigo() {
@@ -63,7 +71,7 @@
     function txt(v) { return v == null ? '' : (typeof v === 'object' ? '[object Object]' : String(v)); }
     function obj(v) { return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; }
     function reUuid(v) { return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(v || '')); }
-    function hoje(fuso) { return R.hoje(fuso || 'America/Boa_Vista', agora()); }
+    function hoje(fuso) { return R.hoje(fuso || 'America/Sao_Paulo', agora()); }
     function mesAtualIso() { return new Date(agora()).toISOString().slice(0, 7); }
     function contar(tipo, chave, janelaMs) {
       var k = tipo + '|' + chave;
@@ -378,26 +386,39 @@
         supervisao: achado.supervisao || 'online', situacao: achado.validoAte >= hoje() ? 'valido' : 'vencido' } });
     };
 
+    // WhatsApp opcional (celular com DDD); a resposta é a mesma com ou sem ele e não revela se o e-mail já estava.
     H.vagas_lista_espera_entrar = function (a) {
       var d = obj(a.p_dados);
       var c = cidade(txt(d.cidade).trim().toLowerCase());
       if (!c || c.status === 'rascunho' || c.status === 'pausada') return erro('Cidade não encontrada.');
       if (c.status === 'ativa') return erro('Esta cidade já está aberta: faça o seu cadastro.', { ativa: true });
-      var email = R.normalizarEmail(d.email);
-      if (!email) return erro('E-mail inválido.');
-      if (!st.listaEspera.some(function (l) { return l.cidade === c.slug && l.email === email; })) {
-        st.listaEspera.push({ cidade: c.slug, email: email, perfil: d.perfil === 'empresa' ? 'empresa' : 'pessoa', criadoEm: agora() });
+      var l = R.lerListaEspera(d);
+      if (!l.ok) return l;
+      var linha = st.listaEspera.filter(function (x) { return x.cidade === c.slug && x.email === l.campos.email; })[0];
+      if (!linha) {
+        linha = { cidade: c.slug, email: l.campos.email, perfil: l.campos.perfil, whatsapp: '', whatsappEm: null, criadoEm: agora() };
+        st.listaEspera.push(linha);
       }
+      if (l.campos.whatsapp) { linha.whatsapp = l.campos.whatsapp; linha.whatsappEm = agora(); }
       return ok({ cidade: c.slug, interessados: interessados(c.slug) });
     };
 
+    // Sair: pelo e-mail apaga a linha (com o WhatsApp); pelo WhatsApp tira só o número das linhas da cidade.
     H.vagas_lista_espera_sair = function (a) {
       var d = obj(a.p_dados);
       var c = cidade(txt(d.cidade).trim().toLowerCase());
       if (!c) return erro('Cidade não encontrada.');
+      var temEmail = !!txt(d.email).trim();
       var email = R.normalizarEmail(d.email);
-      if (!email) return erro('E-mail inválido.');
-      st.listaEspera = st.listaEspera.filter(function (l) { return !(l.cidade === c.slug && l.email === email); });
+      if (temEmail && !email) return erro('E-mail inválido.');
+      var whats = '';
+      if (txt(d.whatsapp).trim()) {
+        whats = R.normalizarWhatsapp(txt(d.whatsapp));
+        if (!R.whatsappCelularValido(whats)) return erro(R.MSG.WHATSAPP_INVALIDO);
+      }
+      if (!email && !whats) return erro('E-mail inválido.');
+      if (email) st.listaEspera = st.listaEspera.filter(function (l) { return !(l.cidade === c.slug && l.email === email); });
+      if (whats) st.listaEspera.forEach(function (l) { if (l.cidade === c.slug && l.whatsapp === whats) { l.whatsapp = ''; l.whatsappEm = null; } });
       return ok({ cidade: c.slug, removido: true });
     };
 
@@ -1508,29 +1529,32 @@
       if (!eAdmin()) return erro(R.MSG.SEM_PERMISSAO);
       var d = obj(a.p_dados);
       var slug = txt(d.slug).trim().toLowerCase();
-      if (!/^[a-z0-9]+(-[a-z0-9]+)*-[a-z]{2}$/.test(slug) || slug.length > 60) return erro('Endereço da cidade inválido (ex.: boa-vista-rr).');
+      if (!/^[a-z0-9]+(-[a-z0-9]+)*-[a-z]{2}$/.test(slug) || slug.length > 60) return erro('Endereço da cidade inválido (ex.: nome-da-cidade-uf).');
       var status = txt(d.status) || 'rascunho';
       if (['rascunho', 'lista_espera', 'ativa', 'pausada'].indexOf(status) < 0) return erro('Status da cidade inválido.');
+      var porte = txt(d.porte).trim().toLowerCase() || null;
+      if (porte && ['grande', 'pequena'].indexOf(porte) < 0) return erro('Porte da cidade inválido (grande ou pequena).');
       var praca = null;
       if (txt(d.praca).trim()) { praca = cidade(txt(d.praca).trim().toLowerCase()); if (!praca) return erro('Cidade-polo não encontrada.'); }
       var c = cidade(slug);
       var tem = function (k) { return Object.prototype.hasOwnProperty.call(d, k); };
       if (!c) {
         if (R.limparTexto(d.nome, 80).length < 2 || !/^[A-Z]{2}$/.test(txt(d.uf).trim().toUpperCase())) return erro('Dados da cidade inválidos. Confira nome, UF e IBGE.');
-        c = { id: novoId(), slug: slug, nome: '', uf: '', ibge: null, fuso: 'America/Boa_Vista', status: 'rascunho', praca: null, metaListaEspera: null, ordem: 0 };
+        c = { id: novoId(), slug: slug, nome: '', uf: '', ibge: null, fuso: 'America/Sao_Paulo', status: 'rascunho', porte: null, praca: null, metaListaEspera: null, ordem: 0 };
         st.cidades.push(c);
         d = Object.assign({ nome: d.nome, uf: d.uf, status: status }, d);
       }
       if (tem('nome')) c.nome = R.limparTexto(d.nome, 80);
       if (tem('uf')) c.uf = txt(d.uf).trim().toUpperCase();
       if (tem('ibge')) c.ibge = txt(d.ibge).trim() || null;
-      if (tem('fuso')) c.fuso = txt(d.fuso).trim() || 'America/Boa_Vista';
+      if (tem('fuso')) c.fuso = txt(d.fuso).trim() || 'America/Sao_Paulo';
       if (tem('status')) c.status = status;
+      if (tem('porte')) c.porte = porte;
       if (tem('praca')) c.praca = praca ? praca.slug : null;
       if (tem('metaListaEspera')) c.metaListaEspera = R.inteiro(d.metaListaEspera);
       if (tem('ordem')) c.ordem = R.inteiro(d.ordem) || 0;
-      registrar(c.slug, 'admin', 'cidade_salvar', 'cidade', c.id, '', { status: c.status });
-      return ok({ cidade: cidadeJson(c) });
+      registrar(c.slug, 'admin', 'cidade_salvar', 'cidade', c.id, '', { status: c.status, porte: c.porte || null });
+      return ok({ cidade: Object.assign(cidadeJson(c), { porte: c.porte || null }) });
     };
 
     H.vagas_adm_zona_salvar = function (a) {
@@ -1609,8 +1633,305 @@
         pedidosDeReferencia: st.convitesReferencia.filter(function (x) { return x.pessoaId === uid; }).map(function (x) { return { empresaNome: x.empresaNome, status: x.status, criadoEm: iso(x.criadoEm) }; }) });
     };
 
+    // ---- Painel da praça (igual a vagas_op_indicadores da 20261024): só agregados, da cidade + entorno; alvo pelo porte.
+    function alvoNumero(o, porte) {
+      var v = o && porte ? o[porte] : undefined;
+      if (typeof v === 'number') return v;
+      if (v && typeof v === 'object' && typeof v.total === 'number') return v.total;
+      return null;
+    }
+    function indicadorJson(chave, porte, valor, extra) {
+      var i = R.INDICADORES.filter(function (x) { return x.chave === chave; })[0];
+      var alvo = alvoNumero(i.alvo, porte);
+      var v = valor === undefined || valor === null || (typeof valor === 'number' && !isFinite(valor)) ? null : valor;
+      return Object.assign({ chave: i.chave, nome: i.nome, unidade: i.unidade, periodo: i.periodo, direcao: i.direcao, hipotese: !!i.hipotese,
+        valor: v, alvo: alvo, alvoLancamento: alvoNumero(i.alvoLancamento, porte), cor: R.corIndicador(v, alvo, i.direcao), semDado: false,
+        detalhe: {} }, extra || {});
+    }
+    function parteGatilho(descricao, okv, extra) { return Object.assign({ descricao: descricao, ok: okv === undefined ? null : okv }, extra || {}); }
+    function gatilhoJson(chave, aplica, partes) {
+      var g = R.GATILHOS.filter(function (x) { return x.chave === chave; })[0];
+      var atingido = null;
+      if (aplica && partes.length) {
+        if (partes.some(function (p) { return p.ok === false; })) atingido = false;
+        else if (partes.some(function (p) { return p.ok !== true; })) atingido = null;
+        else atingido = true;
+      }
+      return { chave: g.chave, nome: g.nome, hipotese: !!g.hipotese, aplica: !!aplica, atingido: atingido, partes: aplica ? partes : [] };
+    }
+    function maiorIgual(a, b) { return a === null || a === undefined || b === null || b === undefined ? null : a >= b; }
+    function menorIgual(a, b) { return a === null || a === undefined || b === null || b === undefined ? null : a <= b; }
+    function mediana(l) {
+      if (!l.length) return null;
+      var x = l.slice().sort(function (p, q) { return p - q; });
+      var m = Math.floor(x.length / 2);
+      return x.length % 2 ? x[m] : (x[m - 1] + x[m]) / 2;
+    }
+    function umaCasa(x) { return x === null ? null : Math.round(x * 10) / 10; }
+    // Diferença (ms) entre o relógio do fuso e o UTC num instante (Intl); sem Intl de fusos, UTC−3.
+    function deslocamento(ms, fuso) {
+      try {
+        var p = {};
+        new Intl.DateTimeFormat('en-US', { timeZone: fuso, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric',
+          minute: 'numeric', second: 'numeric' }).formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = x.value; });
+        return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - Math.floor(ms / 1000) * 1000;
+      } catch (e) { return -3 * 3600000; }
+    }
+    function inicioDoMes(fuso) {
+      var base = Date.parse(hoje(fuso).slice(0, 8) + '01T00:00:00Z');
+      return base - deslocamento(base, fuso);
+    }
+    function seloValidoEm(uid, ms, fuso) {
+      var dia = R.hoje(fuso, ms);
+      return selos(uid).some(function (x) { return x.data <= dia && x.validoAte >= dia; });
+    }
+
+    H.vagas_op_indicadores = function (a) {
+      if (!st.sessao) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
+      var c = cidade(txt(a.p_cidade).trim().toLowerCase());
+      if (!c) return erro(eAdmin() ? 'Cidade não encontrada.' : R.MSG.SEM_PERMISSAO);
+      if (!papelCidade(c.slug)) return erro(R.MSG.SEM_PERMISSAO);
+      var cids = [c.slug].concat(st.cidades.filter(function (x) { return x.praca === c.slug && x.slug !== c.slug; }).map(function (x) { return x.slug; }));
+      var naPraca = function (slug) { return cids.indexOf(slug) >= 0; };
+      var porte = c.porte || null;
+      var fuso = c.fuso || 'America/Sao_Paulo';
+      var hj = hoje(fuso);
+      var mes = inicioDoMes(fuso);
+      var t = agora();
+      var janelaTxt = (R.INDICADORES[2].janela || {})[porte];
+      var janela = janelaTxt === '72h' ? 72 * 3600000 : 7 * DIA;
+      var testes = R.TESTES_SELO.map(function (x) { return x.id; });
+      // 1. Vagas no ar.
+      var noArLista = st.anuncios.filter(function (an) { return naPraca(an.cidade) && noAr(an); });
+      var porTesteVagas = {};
+      testes.forEach(function (x) { porTesteVagas[x] = noArLista.filter(function (an) { return an.selo === x; }).length; });
+      var areas = {};
+      noArLista.forEach(function (an) { areas[an.area] = (areas[an.area] || 0) + 1; });
+      var porArea = Object.keys(areas).map(function (k) { return { area: k, nome: areaJson(k).nome, valor: areas[k] }; })
+        .sort(function (p, q) { return q.valor - p.valor || R.AREAS.findIndex(function (x) { return x.id === p.area; }) - R.AREAS.findIndex(function (x) { return x.id === q.area; }); });
+      // 2. Pessoas da praça com selo válido.
+      var daPraca = Object.keys(st.pessoas).filter(function (uid) { var p = st.pessoas[uid]; return naPraca(p.cidade) || (p.cidade2 && naPraca(p.cidade2)); });
+      var comSelo = function (uid, teste) { return selos(uid).some(function (x) { return x.validoAte >= hj && (!teste || x.teste === teste); }); };
+      var nSelo = daPraca.filter(function (uid) { return comSelo(uid); }).length;
+      var porTesteSelo = {};
+      testes.forEach(function (x) { porTesteSelo[x] = daPraca.filter(function (uid) { return comSelo(uid, x); }).length; });
+      // 3 e 4. Vagas publicadas nos últimos 30 dias (e há pelo menos a janela / 7 dias).
+      var base = function (min) {
+        return st.anuncios.filter(function (an) { return naPraca(an.cidade) && an.publicadoEm != null && an.status !== 'removido' && an.publicadoEm >= t - 30 * DIA && an.publicadoEm <= t - min; });
+      };
+      var b3 = base(janela);
+      var ok3 = b3.filter(function (an) {
+        return st.candidaturas.filter(function (k) {
+          return k.anuncioId === an.id && k.status !== 'retirada' && k.criadoEm <= an.publicadoEm + janela && seloValidoEm(k.pessoaId, k.criadoEm, fuso);
+        }).length >= 3;
+      }).length;
+      var b7 = base(7 * DIA);
+      var ok7 = b7.filter(function (an) {
+        return st.candidaturas.some(function (k) { return k.anuncioId === an.id && (k.status === 'combinou' || k.status === 'contratada') && k.combinouEm <= an.publicadoEm + 7 * DIA; });
+      }).length;
+      // 5. Primeira resposta (dias): a primeira decisão ou a conversa aberta pela empresa; sem resposta há 7+ dias conta a espera.
+      var dias = [];
+      st.candidaturas.forEach(function (k) {
+        var an = anuncio(k.anuncioId);
+        if (!an || !naPraca(an.cidade) || k.criadoEm < t - 30 * DIA) return;
+        var v = conversaDe(k.id);
+        var marcas = [k.empresaDecidiuEm, v ? v.criadaEm : null].filter(function (x) { return x != null; });
+        var primeira = marcas.length ? Math.min.apply(null, marcas) : null;
+        if (primeira === null && (k.status === 'retirada' || k.criadoEm > t - 7 * DIA)) return;
+        dias.push(((primeira === null ? t : primeira) - k.criadoEm) / DIA);
+      });
+      // 6. Contratações. 7. Empresas ativas no mês.
+      var contratadas = st.candidaturas.filter(function (k) { var an = anuncio(k.anuncioId); return an && naPraca(an.cidade) && k.status === 'contratada'; });
+      var empMes = st.empresas.filter(function (e) {
+        if (!naPraca(e.cidade) || e.status !== 'ativa') return false;
+        if (st.anuncios.some(function (an) { return an.empresaId === e.id && an.publicadoEm != null && an.publicadoEm >= mes; })) return true;
+        if (st.candidaturas.some(function (k) { return k.empresaId === e.id && k.empresaDecidiuEm != null && k.empresaDecidiuEm >= mes; })) return true;
+        return st.mensagens.some(function (m) {
+          if (m.autor !== 'empresa' || m.criadoEm < mes) return false;
+          var v = st.conversas.filter(function (x) { return x.id === m.conversaId; })[0];
+          var k = v ? candidatura(v.candidaturaId) : null;
+          return !!k && k.empresaId === e.id;
+        });
+      }).length;
+      // 11. Denúncias. 13. Fila. 14. Lista de espera. 15. Cadastros assistidos.
+      var decididas = st.denuncias.filter(function (d) { return naPraca(d.cidade) && d.decididaEm != null; })
+        .sort(function (p, q) { return q.decididaEm - p.decididaEm; }).slice(0, 30);
+      var abertas24 = st.denuncias.filter(function (d) { return naPraca(d.cidade) && d.status === 'aberta' && d.criadoEm < t - DIA; }).length;
+      var filaA = st.anuncios.filter(function (an) { return naPraca(an.cidade) && an.status === 'em_revisao' && an.atualizadoEm < t - DIA; }).length;
+      var filaE = st.empresas.filter(function (e) { return naPraca(e.cidade) && e.status === 'em_analise' && e.criadoEm < t - DIA; }).length;
+      var filaR = st.referencias.filter(function (r) { var e = empresa(r.empresaId); return e && naPraca(e.cidade) && r.textoStatus === 'pendente' && r.criadoEm < t - DIA; }).length;
+      var lista = st.listaEspera.filter(function (l) { return naPraca(l.cidade); });
+      var assistidas = Object.keys(st.contas).map(function (uid) { return { uid: uid, c: st.contas[uid] }; })
+        .filter(function (x) { return x.c.assistidaPor && naPraca(x.c.cidade) && (x.c.tipo === 'pessoa' || x.c.tipo === 'empresa'); });
+      var alvoMutirao = alvoNumero(R.INDICADORES[14].alvo, porte);
+      var eventos = {};
+      assistidas.filter(function (x) { return x.c.codigoEvento && x.c.criadoEm >= t - 90 * DIA; }).forEach(function (x) {
+        var ev = eventos[x.c.codigoEvento] || (eventos[x.c.codigoEvento] = { codigoEvento: x.c.codigoEvento, criadas: 0, confirmadas: 0, ultimo: 0 });
+        ev.criadas += 1;
+        if (x.c.confirmadaEm != null) ev.confirmadas += 1;
+        ev.ultimo = Math.max(ev.ultimo, x.c.criadoEm);
+      });
+      var porMutirao = Object.keys(eventos).map(function (k) { return eventos[k]; }).sort(function (p, q) { return q.ultimo - p.ultimo; }).slice(0, 20)
+        .map(function (ev) { return { codigoEvento: ev.codigoEvento, criadas: ev.criadas, confirmadas: ev.confirmadas, cor: R.corIndicador(ev.confirmadas, alvoMutirao, 'maior_melhor') }; });
+
+      var p3 = b3.length ? Math.round(100 * ok3 / b3.length) : null;
+      var resp = umaCasa(mediana(dias));
+      var den = umaCasa(mediana(decididas.map(function (d) { return (d.decididaEm - d.criadoEm) / 3600000; })));
+      var lancSelo = ((R.INDICADORES[1].alvo || {})[porte] || {});
+      var ind = [
+        indicadorJson('vagas_ativas', porte, noArLista.length, { detalhe: { porTeste: porTesteVagas, porArea: porArea } }),
+        indicadorJson('pessoas_com_selo_por_funcao', porte, nSelo, { detalhe: { porTeste: porTesteSelo,
+          alvoPorTeste: lancSelo.porTeste === undefined ? null : lancSelo.porTeste,
+          alvoLancamentoPorTeste: (((R.INDICADORES[1].alvoLancamento || {})[porte] || {}).porTeste === undefined ? null : R.INDICADORES[1].alvoLancamento[porte].porTeste) } }),
+        indicadorJson('vagas_3_interessados_72h', porte, p3, { semBase: b3.length === 0,
+          detalhe: { base: b3.length, comTres: ok3, janelaHoras: Math.round(janela / 3600000) } }),
+        indicadorJson('vagas_combinou_7d', porte, b7.length ? Math.round(100 * ok7 / b7.length) : null, { semBase: b7.length === 0,
+          detalhe: { base: b7.length, comCombinou: ok7 } }),
+        indicadorJson('primeira_resposta_empresa_dias', porte, resp, { semBase: dias.length === 0, detalhe: { base: dias.length,
+          semRespostaEm7DiasPct: dias.length ? Math.round(100 * dias.filter(function (x) { return x > 7; }).length / dias.length) : null } }),
+        indicadorJson('contratacoes', porte, contratadas.length, { detalhe: { mes: contratadas.filter(function (k) { return k.contratadaEm >= mes; }).length } }),
+        indicadorJson('empresas_ativas_mes', porte, empMes, null),
+        indicadorJson('empresas_buscando_semana', porte, null, { semDado: true }),
+        indicadorJson('empresas_pagantes', porte, null, { semDado: true }),
+        indicadorJson('receita_liquida_centavos', porte, null, { semDado: true }),
+        indicadorJson('denuncia_tempo_decisao_h', porte, den, { semBase: decididas.length === 0, detalhe: { base: decididas.length, abertasMais24h: abertas24 } }),
+        indicadorJson('emails_mes', porte, null, { semDado: true, alerta: R.INDICADORES[11].alerta }),
+        indicadorJson('fila_moderacao', porte, filaA + filaE + filaR, { detalhe: { anuncios: filaA, empresas: filaE, referencias: filaR } }),
+        indicadorJson('lista_espera', porte, lista.length, { detalhe: { pessoa: lista.filter(function (l) { return l.perfil === 'pessoa'; }).length,
+          empresa: lista.filter(function (l) { return l.perfil === 'empresa'; }).length, comWhatsapp: lista.filter(function (l) { return !!l.whatsapp; }).length } }),
+        indicadorJson('cadastros_assistidos_confirmados', porte, assistidas.filter(function (x) { return x.c.confirmadaEm != null && x.c.confirmadaEm >= mes; }).length,
+          { detalhe: { porMutirao: porMutirao } })
+      ];
+      var al = function (i) { return ind[i].alvo; };
+      var lanc = function (i) { return ind[i].alvoLancamento; };
+      var semDadoSelo = {};
+      var gat = [gatilhoJson('antes_de_cobrar', lanc(0) !== null, [
+        parteGatilho('Vagas no ar: ' + lanc(0) + ' ou mais', maiorIgual(noArLista.length, lanc(0))),
+        parteGatilho('Empresas ativas no mês: ' + lanc(6) + ' ou mais', maiorIgual(empMes, lanc(6))),
+        parteGatilho('Pessoas com selo: ' + lanc(1) + ' ou mais', maiorIgual(nSelo, lanc(1)), semDadoSelo),
+        parteGatilho('Vagas com 3 interessados com selo na janela: ' + al(2) + '% ou mais', maiorIgual(p3, al(2)), semDadoSelo),
+        parteGatilho('Contratações: ' + al(5) + ' ou mais', maiorIgual(contratadas.length, al(5)))])];
+      var viva = gatilhoJson('praca_viva', al(0) !== null, [
+        parteGatilho('Vagas no ar: ' + al(0) + ' ou mais', maiorIgual(noArLista.length, al(0))),
+        parteGatilho('Pessoas com selo: ' + al(1) + ' ou mais', maiorIgual(nSelo, al(1)), semDadoSelo),
+        parteGatilho('Empresas ativas no mês: ' + al(6) + ' ou mais', maiorIgual(empMes, al(6))),
+        parteGatilho('Empresas pagantes no mês: ' + al(8) + ' ou mais', null, { semDado: true }),
+        parteGatilho('Primeira resposta da empresa: até ' + al(4) + ' dias', menorIgual(resp, al(4)))]);
+      gat.push(viva,
+        gatilhoJson('abrir_proxima', al(0) !== null, [
+          parteGatilho('Decisão do dono de abrir outra praça', null, { manual: true }),
+          parteGatilho('Praça viva em 2 meses seguidos', viva.atingido === false ? false : null, { manual: true }),
+          parteGatilho('Lista de espera da próxima cidade: ' + al(13) + ' ou mais (veja o painel dela)', null, { manual: true }),
+          parteGatilho('Parceiro local com contrato assinado', null, { manual: true })]),
+        gatilhoJson('trocar_parceiro', true, [
+          parteGatilho('Praça operada por parceiro: 90 dias de contrato sem concluir os passos 3 a 9 do manual', null, { manual: true }),
+          parteGatilho('Falta grave (acesso indevido, cobrança de pessoa, uso da base)', null, { manual: true })]),
+        gatilhoJson('pessoa_nao_paga', true, [parteGatilho('Quem procura emprego não paga nada: não existe produto pago para a pessoa', true, { fixa: true })]));
+      return ok({ cidade: { slug: c.slug, nome: c.nome, uf: c.uf, status: c.status, porte: porte, fuso: fuso },
+        praca: cids.map(function (sl) { var x = cidade(sl); return { slug: x.slug, nome: x.nome, status: x.status }; }),
+        mes: hj.slice(0, 7), geradoEm: iso(t), indicadores: ind, gatilhos: gat });
+    };
+
+    // ---- Equipe da empresa (convite pela própria empresa; igual às RPCs vagas_equipe_* da 20261024).
+    var SO_DONO_EQUIPE = 'Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.';
+    var VALIDADE_CONVITE = 72 * 3600000;
+    function convitesEquipe() { if (!st.convitesEquipe) st.convitesEquipe = []; return st.convitesEquipe; }
+    function conviteEquipeJson(cv) {
+      return { id: cv.id, email: cv.email, papel: cv.papel,
+        status: cv.status === 'aberto' ? (cv.expiraEm <= agora() ? 'vencido' : 'pendente') : cv.status,
+        criadoEm: iso(cv.criadoEm), expiraEm: iso(cv.expiraEm) };
+    }
+    // Convite que ESTA conta pode usar: aberto, no prazo, do mesmo e-mail, de quem ainda é dono(a) ativo(a); senão null.
+    function conviteEquipeValido(token, uid) {
+      var tk = txt(token).trim().toLowerCase();
+      if (!/^[0-9a-f]{64}$/.test(tk) || !uid) return null;
+      var cv = convitesEquipe().filter(function (x) { return x.token === tk; })[0];
+      if (!cv || cv.status !== 'aberto' || cv.expiraEm <= agora()) return null;
+      var u = usuario(uid);
+      if (!u || u.email !== cv.email) return null;
+      if (!st.membros.some(function (m) { return m.empresaId === cv.empresaId && m.userId === cv.criadoPor && m.ativo && m.papel === 'dono'; })) return null;
+      return cv;
+    }
+    function membroAtivo(empId, uid) { return st.membros.filter(function (m) { return m.empresaId === empId && m.userId === uid && m.ativo; })[0] || null; }
+
+    H.vagas_equipe_empresa = function (a) {
+      var c = contaAtual('empresa'); if (!c.ok) return c;
+      var e = empresa(a.p_empresa);
+      if (!e || !membro(e.id)) return erro('Empresa não encontrada.');
+      if (!membro(e.id, true)) return erro(SO_DONO_EQUIPE);
+      var ativos = st.membros.filter(function (m) { return m.empresaId === e.id && m.ativo; });
+      var donos = ativos.filter(function (m) { return m.papel === 'dono'; }).length;
+      return ok({ empresa: { id: e.id, nomeFantasia: e.nomeFantasia, status: e.status },
+        membros: ativos.slice().sort(function (p, q) { return (q.papel === 'dono') - (p.papel === 'dono') || p.criadoEm - q.criadoEm; }).map(function (m) {
+          var u = usuario(m.userId) || {};
+          return { userId: m.userId, email: u.email || '', nome: R.limparTexto((u.meta && u.meta.nome) || '', 120), papel: m.papel, desde: iso(m.criadoEm),
+            eu: m.userId === st.sessao, podeRemover: !(m.papel === 'dono' && donos <= 1) };
+        }),
+        convites: convitesEquipe().filter(function (cv) {
+          return cv.empresaId === e.id && (cv.status === 'aberto' || (cv.usadoEm || cv.encerradoEm || cv.criadoEm) > agora() - 30 * DIA);
+        }).sort(function (p, q) { return q.criadoEm - p.criadoEm; }).slice(0, 50).map(conviteEquipeJson),
+        limites: { convitesPorDia: 10, convitesHoje: (st.limites['equipe_convite_empresa|' + e.id] || []).filter(function (x) { return x > agora() - DIA; }).length,
+          membrosMax: 20, convitesAbertosMax: 20, validadeHoras: 72 } });
+    };
+
+    H.vagas_equipe_convite_cancelar = function (a) {
+      var c = contaAtual('empresa'); if (!c.ok) return c;
+      var cv = convitesEquipe().filter(function (x) { return x.id === a.p_convite; })[0];
+      if (!cv || !membro(cv.empresaId, true)) return erro('Convite não encontrado.');
+      if (cv.status === 'cancelado') return ok({ convite: conviteEquipeJson(cv), duplicado: true });
+      if (cv.status === 'aceito') return erro('Este convite já foi aceito. Para tirar o acesso, remova a pessoa da equipe.');
+      cv.status = 'cancelado'; cv.encerradoEm = agora();
+      registrar(empresa(cv.empresaId).cidade, 'empresa', 'equipe_convite_cancelar', 'empresa', cv.empresaId, '');
+      return ok({ convite: conviteEquipeJson(cv) });
+    };
+
+    H.vagas_equipe_remover = function (a) {
+      var c = contaAtual('empresa'); if (!c.ok) return c;
+      var e = empresa(a.p_empresa);
+      if (!e || !membro(e.id)) return erro('Empresa não encontrada.');
+      var uid = st.sessao;
+      if (a.p_membro !== uid && !membro(e.id, true)) return erro(SO_DONO_EQUIPE);
+      var m = membroAtivo(e.id, a.p_membro);
+      if (!m) return erro('Esta pessoa não está na equipe.');
+      if (m.papel === 'dono' && st.membros.filter(function (x) { return x.empresaId === e.id && x.ativo && x.papel === 'dono'; }).length <= 1) {
+        return erro('A empresa precisa ter pelo menos uma pessoa como dona. Esta pessoa não pode sair da equipe.');
+      }
+      m.ativo = false;
+      convitesEquipe().forEach(function (cv) { if (cv.empresaId === e.id && cv.criadoPor === m.userId && cv.status === 'aberto') { cv.status = 'cancelado'; cv.encerradoEm = agora(); } });
+      registrar(e.cidade, 'empresa', a.p_membro === uid ? 'equipe_sair' : 'equipe_remover', 'empresa', e.id, '', { papel: m.papel });
+      return ok({ removido: true, saiu: a.p_membro === uid });
+    };
+
+    H.vagas_equipe_convite = function (a) {
+      var c = contaAtual('empresa'); if (!c.ok) return c;
+      var cv = conviteEquipeValido(a.p_token, st.sessao);
+      if (!cv) return erro(R.MSG.CONVITE_INVALIDO);
+      var e = empresa(cv.empresaId);
+      var ce = cidade(e.cidade);
+      return ok({ convite: { empresa: { id: e.id, nomeFantasia: e.nomeFantasia, cidade: { slug: ce.slug, nome: ce.nome } }, papel: cv.papel,
+        expiraEm: iso(cv.expiraEm), jaMembro: !!membroAtivo(e.id, st.sessao) } });
+    };
+
+    H.vagas_equipe_convite_aceitar = function (a) {
+      var c = contaAtual('empresa'); if (!c.ok) return c;
+      var cv = conviteEquipeValido(a.p_token, st.sessao);
+      if (!cv) return erro(R.MSG.CONVITE_INVALIDO);
+      var e = empresa(cv.empresaId);
+      if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.', { suspensa: true });
+      var dup = !!membroAtivo(e.id, st.sessao);
+      if (!dup) {
+        if (st.membros.filter(function (m) { return m.empresaId === e.id && m.ativo; }).length >= 20) return erro('A equipe desta empresa está completa. Fale com quem convidou.');
+        var m = st.membros.filter(function (x) { return x.empresaId === e.id && x.userId === st.sessao; })[0];
+        if (m) { m.ativo = true; m.papel = 'recrutador'; } else st.membros.push({ empresaId: e.id, userId: st.sessao, papel: 'recrutador', ativo: true, criadoEm: agora() });
+      }
+      cv.status = 'aceito'; cv.usadoPor = st.sessao; cv.usadoEm = agora();
+      registrar(e.cidade, 'empresa', 'equipe_aceitar', 'empresa', e.id, '', { papel: cv.papel });
+      return ok({ empresa: { id: e.id, nomeFantasia: e.nomeFantasia, papel: membroAtivo(e.id, st.sessao).papel, status: e.status }, duplicado: dup });
+    };
+
     // ------------------------------------------------------------------------------------------------- conta (Edge Function + Auth)
     var MSG_ENVIADO = 'Se este e-mail puder ser usado, você vai receber um link em instantes. Confira também a caixa de spam.';
+    var MSG_CONVITE_EQUIPE = 'Pronto. Se este e-mail puder entrar na equipe, a pessoa recebe o convite em instantes. O convite vale por 3 dias.';
     function mascarar(e) { var m = /^([^@]+)@([^.]+)(\..+)?$/.exec(String(e || '')); return m ? m[1].charAt(0) + '***@' + m[2].charAt(0) + '***' + (m[3] || '') : ''; }
     function novoLink(email, tipo) {
       var t = 'previa' + novoToken().slice(0, 24);
@@ -1707,6 +2028,47 @@
         st.operadores.push({ userId: u.id, cidade: cid, papel: papel, ativo: true, repassePercentual: 0, contratoVersao: '' });
         var l = novoLink(email, 'invite');
         return ok({ enviado: true, email: mascarar(email), linkPrevia: l.caminho });
+      },
+      // Convite para a equipe (Edge Function convite_equipe + vagas_conta_convite_equipe): só dono(a); resposta neutra.
+      convidarEquipe: function (empresaId, email) {
+        if (!st.sessao) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
+        var em = R.normalizarEmail(email);
+        if (!em) return erro('E-mail inválido.');
+        if (!reUuid(empresaId)) return erro('Empresa não encontrada.');
+        var c = contaAtual('empresa'); if (!c.ok) return c;
+        var e = empresa(empresaId);
+        if (!e || !membro(e.id)) return erro('Empresa não encontrada.');
+        if (!membro(e.id, true)) return erro('Só quem é dono(a) da conta da empresa pode convidar pessoas para a equipe.');
+        if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.', { suspensa: true });
+        if (st.membros.some(function (m) { var u = usuario(m.userId); return m.empresaId === e.id && m.ativo && u && u.email === em; })) {
+          return erro('Esta pessoa já faz parte da equipe.');
+        }
+        if (contar('equipe_convite_empresa', e.id, DIA) > 10 || contar('equipe_convite_email', e.id + ':' + em, DIA) > 3) {
+          return erro('Muitos convites hoje. Tente de novo amanhã.', { bloqueado: true });
+        }
+        if (st.membros.filter(function (m) { return m.empresaId === e.id && m.ativo; }).length >= 20) {
+          return erro('A equipe já tem 20 pessoas. Remova alguém antes de convidar outra.');
+        }
+        if (convitesEquipe().filter(function (x) { return x.empresaId === e.id && x.status === 'aberto' && x.expiraEm > agora() && x.email !== em; }).length >= 20) {
+          return erro('Sua empresa já tem 20 convites abertos. Cancele algum antes de convidar outra pessoa.');
+        }
+        convitesEquipe().forEach(function (x) { if (x.empresaId === e.id && x.email === em && x.status === 'aberto') { x.status = 'cancelado'; x.encerradoEm = agora(); } });
+        var cv = { id: novoId(), empresaId: e.id, email: em, papel: 'recrutador', token: novoToken(), status: 'aberto', criadoPor: st.sessao, criadoEm: agora(),
+          expiraEm: agora() + VALIDADE_CONVITE, usadoPor: null, usadoEm: null, encerradoEm: null };
+        convitesEquipe().push(cv);
+        registrar(e.cidade, 'empresa', 'equipe_convidar', 'empresa', e.id, '', { papel: cv.papel });
+        // Destino (como o banco decide); na prévia o "e-mail" vira linkPrevia.
+        var u = usuarioPorEmail(em);
+        var conta2 = u ? st.contas[u.id] : null;
+        var link = '';
+        if (!u) {
+          u = criarUsuario(em, 'empresa', { app: { produto: 'vagas', tipo: 'empresa', convite: true } });
+          st.contas[u.id] = { tipo: 'empresa', status: 'pendente', termosVersao: '', criadoEm: agora() };
+          link = novoLink(em, 'invite').caminho + '&convite=' + cv.token;
+        } else if (conta2 && conta2.tipo === 'empresa' && conta2.status !== 'suspensa') {
+          link = u.confirmada ? 'entrar.html?convite=' + cv.token : novoLink(em, 'invite').caminho + '&convite=' + cv.token;
+        }
+        return ok({ enviado: true, mensagem: MSG_CONVITE_EQUIPE, email: mascarar(em), convite: conviteEquipeJson(cv), linkPrevia: link });
       },
       excluirConta: function () {
         var uid = st.sessao;
@@ -1809,23 +2171,27 @@
 
     function semear() {
       var t0 = agora();
-      function cidadeNova(slug, nome, ibge, status, ordem, praca) {
-        st.cidades.push({ id: novoId(), slug: slug, nome: nome, uf: 'RR', ibge: ibge, fuso: 'America/Boa_Vista', status: status, praca: praca || null, metaListaEspera: null, ordem: ordem });
+      function cidadeNova(slug, nome, ibge, status, ordem, praca, porte) {
+        st.cidades.push({ id: novoId(), slug: slug, nome: nome, uf: 'GO', ibge: ibge, fuso: 'America/Sao_Paulo', status: status, porte: porte || null,
+          praca: praca || null, metaListaEspera: null, ordem: ordem });
       }
-      cidadeNova('boa-vista-rr', 'Boa Vista', '1400100', 'ativa', 1);
-      cidadeNova('mucajai-rr', 'Mucajaí', '1400308', 'ativa', 2, 'boa-vista-rr');
-      cidadeNova('canta-rr', 'Cantá', '1400175', 'ativa', 3, 'boa-vista-rr');
-      cidadeNova('rorainopolis-rr', 'Rorainópolis', '1400472', 'lista_espera', 4);
-      [['boa-vista-rr', 'centro-leste', 'Centro e Zona Leste', ['Centro', 'São Pedro', 'São Francisco', 'Aparecida', '31 de Março', 'Canarinho', 'Caçari', 'Paraviana', 'Bairro dos Estados'], 1],
-        ['boa-vista-rr', 'zona-norte', 'Zona Norte', ['Aeroporto', 'Cauamé', 'Jardim Floresta', 'Mecejana', 'Pricumã', 'Jóquei Clube'], 2],
-        ['boa-vista-rr', 'zona-sul', 'Zona Sul', ['Calungá', 'São Vicente', 'Treze de Setembro', 'Marechal Rondon', 'Centenário', 'Distrito Industrial'], 3],
-        ['boa-vista-rr', 'zona-oeste', 'Zona Oeste', ['Pintolândia', 'Senador Hélio Campos', 'Cidade Satélite', 'Jardim Primavera', 'Tancredo Neves', 'Asa Branca', 'Buritis',
-          'Cambará', 'Caimbé', 'Liberdade', 'Raiar do Sol', 'Nova Cidade', 'Doutor Sílvio Botelho', 'Santa Tereza', 'Alvorada'], 4],
-        ['mucajai-rr', 'cidade-toda', 'Mucajaí (cidade toda)', [], 1], ['canta-rr', 'cidade-toda', 'Cantá (cidade toda)', [], 1],
-        ['rorainopolis-rr', 'cidade-toda', 'Rorainópolis (cidade toda)', [], 1]].forEach(function (z) {
+      // Praça piloto (dado real: IBGE e fuso) + duas vizinhas SÓ da prévia (entorno e lista de espera, para a tela mostrar os dois casos).
+      cidadeNova('uruacu-go', 'Uruaçu', '5221601', 'ativa', 1, null, 'pequena');
+      cidadeNova('campinorte-go', 'Campinorte', '5204706', 'ativa', 2, 'uruacu-go', null);
+      cidadeNova('niquelandia-go', 'Niquelândia', '5214606', 'lista_espera', 3, null, null);
+      // Zonas de Uruaçu: a lista da operação (mesa da equipe), inclusive as vazias.
+      [['uruacu-go', 'centro', 'Centro', ['Centro', 'Setor Central', 'Vila Santana', 'Loteamento Santana'], 1],
+        ['uruacu-go', 'regiao-norte', 'Região Norte', ['Francisco Martins'], 2],
+        ['uruacu-go', 'regiao-sul', 'Região Sul', ['Setor Sul', 'Setor Sul I'], 3],
+        ['uruacu-go', 'regiao-leste', 'Região Leste', [], 4],
+        ['uruacu-go', 'regiao-oeste', 'Região Oeste', [], 5],
+        ['uruacu-go', 'zona-rural', 'Zona rural e lago', ['Zona rural', 'Geriaçu', 'Beira do Lago de Serra da Mesa'], 6],
+        ['campinorte-go', 'cidade-toda', 'Campinorte (cidade toda)', [], 1],
+        ['niquelandia-go', 'cidade-toda', 'Niquelândia (cidade toda)', [], 1]].forEach(function (z) {
         st.zonas.push({ id: novoId(), cidade: z[0], slug: z[1], nome: z[2], bairros: z[3], ordem: z[4], ativa: true });
       });
-      st.listaEspera.push({ cidade: 'rorainopolis-rr', email: 'interessada@previa.com', perfil: 'pessoa', criadoEm: t0 - 3 * DIA });
+      st.listaEspera.push({ cidade: 'niquelandia-go', email: 'interessada@previa.com', perfil: 'pessoa', whatsapp: '5562988887777', whatsappEm: t0 - 3 * DIA,
+        criadoEm: t0 - 3 * DIA });
 
       function usuarioSemente(email, tipo, extra) {
         var u = criarUsuario(email, tipo, Object.assign({ senha: SENHA_PREVIA, confirmada: true }, extra || {}));
@@ -1835,23 +2201,23 @@
       var admin = usuarioSemente('admin@previa.com', null, { admin: true, app: {} });
       void admin;
       var op = usuarioSemente('operador@previa.com', 'operador');
-      st.operadores.push({ userId: op.id, cidade: 'boa-vista-rr', papel: 'operador', ativo: true, repassePercentual: 0, contratoVersao: '' });
+      st.operadores.push({ userId: op.id, cidade: 'uruacu-go', papel: 'operador', ativo: true, repassePercentual: 0, contratoVersao: '' });
 
-      // 15 empresas (fictícias). A primeira é a da empresa@previa.com.
+      // 15 empresas (fictícias, nomes neutros). A primeira é a da empresa@previa.com. A 14ª fica na vizinha (entorno).
       var EMP = [
-        ['Mercadinho Sol do Norte', 'Supermercado', 'centro-leste', '559532241001'], ['Padaria Trigo Dourado', 'Padaria', 'zona-oeste', '559532241002'],
-        ['Farmácia Bem Viver', 'Farmácia', 'zona-sul', '559532241003'], ['Loja Casa & Cor', 'Material de construção', 'zona-norte', '559532241004'],
-        ['Auto Peças Rodovia', 'Autopeças', 'zona-oeste', '559532241005'], ['Restaurante Sabor da Terra', 'Restaurante', 'centro-leste', '559532241006'],
-        ['Clínica Cuidar Bem', 'Saúde', 'centro-leste', '559532241007'], ['Construtora Alicerce Forte', 'Construção civil', 'zona-sul', '559532241008'],
-        ['Pousada Lavrado Azul', 'Hotelaria', 'centro-leste', '559532241009'], ['Ótica Visão Clara', 'Varejo', 'centro-leste', '559532241010'],
-        ['Distribuidora Norte Frio', 'Distribuição', 'zona-norte', '559532241011'], ['Escola de Idiomas Ponte', 'Educação', 'zona-norte', '559532241012'],
-        ['Pet Shop Amigo Fiel', 'Pet shop', 'zona-oeste', '559532241013'], ['Eventos Festa Boa', 'Eventos', 'zona-sul', '559532241014'],
-        ['Lava-Jato Brilho Total', 'Serviços automotivos', 'zona-oeste', '559532241015']];
+        ['Mercadinho Sol do Norte', 'Supermercado', 'centro', '556233571001'], ['Padaria Trigo Dourado', 'Padaria', 'regiao-oeste', '556233571002'],
+        ['Farmácia Bem Viver', 'Farmácia', 'regiao-sul', '556233571003'], ['Loja Casa & Cor', 'Material de construção', 'regiao-norte', '556233571004'],
+        ['Auto Peças Rodovia', 'Autopeças', 'regiao-oeste', '556233571005'], ['Restaurante Sabor da Terra', 'Restaurante', 'centro', '556233571006'],
+        ['Clínica Cuidar Bem', 'Saúde', 'centro', '556233571007'], ['Construtora Alicerce Forte', 'Construção civil', 'regiao-sul', '556233571008'],
+        ['Pousada Lago Azul', 'Hotelaria', 'zona-rural', '556233571009'], ['Ótica Visão Clara', 'Varejo', 'centro', '556233571010'],
+        ['Distribuidora Norte Frio', 'Distribuição', 'regiao-norte', '556233571011'], ['Escola de Idiomas Ponte', 'Educação', 'regiao-norte', '556233571012'],
+        ['Pet Shop Amigo Fiel', 'Pet shop', 'regiao-oeste', '556233571013'], ['Eventos Festa Boa', 'Eventos', 'regiao-sul', '556233571014'],
+        ['Lava-Jato Brilho Total', 'Serviços automotivos', 'regiao-oeste', '556233571015']];
       var empresas = EMP.map(function (x, i) {
         var base = 'PV' + ('0000000000' + (i + 1)).slice(-10);
         var cnpj = base;
         for (var d1 = 0; d1 <= 99; d1++) { var tenta = base + ('0' + d1).slice(-2); if (R.cnpjValido(tenta)) { cnpj = tenta; break; } }
-        var e = { id: novoId(), cidade: i === 13 ? 'mucajai-rr' : 'boa-vista-rr', zona: i === 13 ? 'cidade-toda' : x[2], cnpj: cnpj, mei: i === 14,
+        var e = { id: novoId(), cidade: i === 13 ? 'campinorte-go' : 'uruacu-go', zona: i === 13 ? 'cidade-toda' : x[2], cnpj: cnpj, mei: i === 14,
           razaoSocial: x[0] + ' Ltda (prévia)', nomeFantasia: x[0], setor: x[1], descricao: 'Empresa fictícia da prévia do Vagas sem Caos.',
           whatsapp: x[3], email: 'contato' + (i + 1) + '@previa.com', status: i === 12 ? 'em_analise' : 'ativa', statusMotivo: '',
           cnpjConferidoEm: i === 12 ? null : t0 - 15 * DIA, criadaPor: null, criadoEm: t0 - 16 * DIA };
@@ -1860,6 +2226,12 @@
         st.membros.push({ empresaId: e.id, userId: dono.id, papel: 'dono', ativo: true, criadoEm: t0 - 16 * DIA });
         return e;
       });
+      // Equipe do Mercadinho: uma recrutadora (não convida nem remove) e um convite aberto (sem conta ainda).
+      var recrutadora = usuarioSemente('recrutador@previa.com', 'empresa', { meta: { nome: 'Rita Moraes' } });
+      st.membros.push({ empresaId: empresas[0].id, userId: recrutadora.id, papel: 'recrutador', ativo: true, criadoEm: t0 - 5 * DIA });
+      st.convitesEquipe = [{ id: novoId(), empresaId: empresas[0].id, email: 'convidada@previa.com', papel: 'recrutador', token: novoToken(), status: 'aberto',
+        criadoPor: st.membros.filter(function (m) { return m.empresaId === empresas[0].id && m.papel === 'dono'; })[0].userId, criadoEm: t0 - DIA,
+        expiraEm: t0 - DIA + VALIDADE_CONVITE, usadoPor: null, usadoEm: null, encerradoEm: null }];
 
       // 40 pessoas (a primeira é a pessoa@previa.com).
       var NOMES = ['Ana Clara Ribeiro', 'Bruno Souza Lima', 'Carla Alves Pereira', 'Diego Costa Gomes', 'Elaine Martins Araújo', 'Fábio Barbosa Rocha',
@@ -1871,12 +2243,12 @@
         'Larissa Barbosa Dias', 'Matheus Cardoso Teixeira', 'Nicole Freitas Moraes', 'Otávio Nunes Pinto'];
       var CARGOS = [['Atendente', 'Caixa'], ['Repositor', 'Auxiliar de depósito'], ['Recepcionista'], ['Vendedor(a)', 'Atendente'], ['Auxiliar administrativo'],
         ['Cozinheiro(a)', 'Auxiliar de cozinha'], ['Serviços gerais'], ['Ajudante de obra', 'Pedreiro(a)'], ['Garçom/Garçonete'], ['Motorista', 'Entregador(a)']];
-      var ZONAS = ['zona-oeste', 'zona-sul', 'zona-norte', 'centro-leste'];
+      var ZONAS = ['regiao-oeste', 'regiao-sul', 'regiao-norte', 'centro'];
       var ESC = ['medio', 'medio_incompleto', 'fundamental', 'tecnico', 'superior_incompleto', 'medio'];
       var pessoas = NOMES.map(function (nome, i) {
         var u = usuarioSemente(i === 0 ? 'pessoa@previa.com' : 'pessoa' + (i + 1) + '@previa.com', 'pessoa');
         var cg = CARGOS[i % CARGOS.length];
-        st.pessoas[u.id] = { cidade: i % 13 === 7 ? 'mucajai-rr' : 'boa-vista-rr', cidade2: i % 9 === 4 ? 'canta-rr' : null,
+        st.pessoas[u.id] = { cidade: i % 13 === 7 ? 'campinorte-go' : 'uruacu-go', cidade2: i % 9 === 4 ? 'campinorte-go' : null,
           zona: i % 13 === 7 ? 'cidade-toda' : ZONAS[i % ZONAS.length], cargos: cg.slice(), escolaridade: ESC[i % ESC.length],
           turnos: i % 3 === 0 ? ['manha', 'tarde'] : (i % 3 === 1 ? ['tarde', 'noite'] : ['manha', 'fim_de_semana']), cnh: i % 4 === 0 ? ['B'] : (i % 7 === 0 ? ['A', 'B'] : []),
           modalidades: i % 2 === 0 ? ['clt', 'diaria'] : ['clt', 'temporario', 'freelancer'], pretensaoCentavos: i % 5 === 0 ? null : 160000 + (i % 6) * 10000,
@@ -1884,29 +2256,29 @@
           areas: [['caixa', 'atendimento'], ['logistica'], ['atendimento'], ['vendas-loja', 'atendimento'], ['administrativo'], ['cozinha'],
             ['limpeza'], ['construcao'], ['hotelaria', 'cozinha'], ['motorista', 'logistica']][i % 10],
           criadoEm: t0 - (30 - i % 20) * DIA, atualizadoEm: t0 - (10 - i % 10) * DIA };
-        st.contatos[u.id] = { nome: nome, whatsapp: '55959' + ('8' + ('0000000' + (1000000 + i * 137)).slice(-7)), email: u.email };
+        st.contatos[u.id] = { nome: nome, whatsapp: '55629' + ('8' + ('0000000' + (1000000 + i * 137)).slice(-7)), email: u.email };
         st.experiencias.push({ id: novoId(), userId: u.id, funcao: cg[0], empregador: 'Empregador fictício ' + (i + 1), inicio: '2023-0' + (1 + i % 9), fim: i % 3 === 0 ? null : '2025-0' + (1 + i % 9), informal: i % 4 === 3, ordem: 1 });
         return u.id;
       });
 
       // 30 vagas: CLT, temporário, diária (hoje e próximos dias), estágio e freelancer; 3 confidenciais, 2 em revisão, 1 rascunho.
-      var hojeBV = hoje('America/Boa_Vista');
+      var hojeBV = hoje('America/Sao_Paulo');   // dia de hoje na praça
       var VAGAS = [
-        [0, 'Atendente de caixa', 'Caixa', 'clt', 162100, 180000, 'centro-leste'], [0, 'Repositor(a) de mercadorias', 'Repositor', 'clt', 162100, null, 'centro-leste'],
-        [0, 'Diária: organização de estoque', 'Auxiliar de depósito', 'diaria', 12000, null, 'centro-leste', 0], [1, 'Padeiro(a)', 'Padeiro', 'clt', 200000, 230000, 'zona-oeste'],
-        [1, 'Balconista de padaria', 'Balconista', 'clt', 162100, null, 'zona-oeste'], [2, 'Balconista de farmácia', 'Balconista', 'clt', 170000, 190000, 'zona-sul'],
-        [2, 'Estágio em atendimento', 'Estagiário(a)', 'estagio', 80000, null, 'zona-sul'], [3, 'Vendedor(a) de loja', 'Vendedor', 'clt', 162100, 250000, 'zona-norte'],
-        [3, 'Diária: descarga de caminhão', 'Ajudante', 'diaria', 15000, null, 'zona-norte', 1], [4, 'Auxiliar de estoque', 'Estoquista', 'temporario', 162100, null, 'zona-oeste'],
-        [5, 'Cozinheiro(a)', 'Cozinheiro', 'clt', 220000, 260000, 'centro-leste'], [5, 'Garçom/Garçonete (fim de semana)', 'Garçom', 'freelancer', 9000, null, 'centro-leste'],
-        [6, 'Recepcionista de clínica', 'Recepcionista', 'clt', 180000, 200000, 'centro-leste'], [6, 'Auxiliar administrativo(a)', 'Auxiliar administrativo', 'clt', 170000, null, 'centro-leste'],
-        [7, 'Ajudante de obra', 'Ajudante de obra', 'temporario', 170000, null, 'zona-sul'], [7, 'Diária: limpeza pós-obra', 'Serviços gerais', 'diaria', 13000, null, 'zona-sul', 2],
-        [8, 'Camareiro(a)', 'Camareira', 'clt', 162100, null, 'centro-leste'], [8, 'Recepcionista noturno(a)', 'Recepcionista', 'clt', 190000, null, 'centro-leste'],
-        [9, 'Vendedor(a) de ótica', 'Vendedor', 'clt', 170000, 220000, 'centro-leste'], [10, 'Motorista entregador(a)', 'Motorista', 'clt', 230000, 260000, 'zona-norte'],
-        [10, 'Conferente de carga', 'Conferente', 'clt', 190000, null, 'zona-norte'], [11, 'Recepcionista de escola', 'Recepcionista', 'clt', 170000, null, 'zona-norte'],
-        [11, 'Estágio em secretaria escolar', 'Estagiário(a)', 'estagio', 70000, null, 'zona-norte'], [13, 'Diária: garçom em evento', 'Garçom', 'diaria', 14000, null, 'cidade-toda', 3],
-        [13, 'Montador(a) de eventos', 'Montador', 'freelancer', 25000, null, 'cidade-toda'], [14, 'Lavador(a) de carros', 'Lavador', 'clt', 162100, null, 'zona-oeste'],
-        [0, 'Vendedor(a) interno(a)', 'Vendedor', 'clt', 180000, 220000, 'centro-leste', null, true], [6, 'Assistente de faturamento', 'Auxiliar administrativo', 'clt', 200000, null, 'centro-leste', null, true],
-        [10, 'Supervisor(a) de rota', 'Supervisor', 'clt', 300000, 350000, 'zona-norte', null, true], [12, 'Banhista e tosador(a)', 'Banhista', 'clt', 162100, null, 'zona-oeste']];
+        [0, 'Atendente de caixa', 'Caixa', 'clt', 162100, 180000, 'centro'], [0, 'Repositor(a) de mercadorias', 'Repositor', 'clt', 162100, null, 'centro'],
+        [0, 'Diária: organização de estoque', 'Auxiliar de depósito', 'diaria', 12000, null, 'centro', 0], [1, 'Padeiro(a)', 'Padeiro', 'clt', 200000, 230000, 'regiao-oeste'],
+        [1, 'Balconista de padaria', 'Balconista', 'clt', 162100, null, 'regiao-oeste'], [2, 'Balconista de farmácia', 'Balconista', 'clt', 170000, 190000, 'regiao-sul'],
+        [2, 'Estágio em atendimento', 'Estagiário(a)', 'estagio', 80000, null, 'regiao-sul'], [3, 'Vendedor(a) de loja', 'Vendedor', 'clt', 162100, 250000, 'regiao-norte'],
+        [3, 'Diária: descarga de caminhão', 'Ajudante', 'diaria', 15000, null, 'regiao-norte', 1], [4, 'Auxiliar de estoque', 'Estoquista', 'temporario', 162100, null, 'regiao-oeste'],
+        [5, 'Cozinheiro(a)', 'Cozinheiro', 'clt', 220000, 260000, 'centro'], [5, 'Garçom/Garçonete (fim de semana)', 'Garçom', 'freelancer', 9000, null, 'centro'],
+        [6, 'Recepcionista de clínica', 'Recepcionista', 'clt', 180000, 200000, 'centro'], [6, 'Auxiliar administrativo(a)', 'Auxiliar administrativo', 'clt', 170000, null, 'centro'],
+        [7, 'Ajudante de obra', 'Ajudante de obra', 'temporario', 170000, null, 'regiao-sul'], [7, 'Diária: limpeza pós-obra', 'Serviços gerais', 'diaria', 13000, null, 'regiao-sul', 2],
+        [8, 'Camareiro(a)', 'Camareira', 'clt', 162100, null, 'centro'], [8, 'Recepcionista noturno(a)', 'Recepcionista', 'clt', 190000, null, 'centro'],
+        [9, 'Vendedor(a) de ótica', 'Vendedor', 'clt', 170000, 220000, 'centro'], [10, 'Motorista entregador(a)', 'Motorista', 'clt', 230000, 260000, 'regiao-norte'],
+        [10, 'Conferente de carga', 'Conferente', 'clt', 190000, null, 'regiao-norte'], [11, 'Recepcionista de escola', 'Recepcionista', 'clt', 170000, null, 'regiao-norte'],
+        [11, 'Estágio em secretaria escolar', 'Estagiário(a)', 'estagio', 70000, null, 'regiao-norte'], [13, 'Diária: garçom em evento', 'Garçom', 'diaria', 14000, null, 'cidade-toda', 3],
+        [13, 'Montador(a) de eventos', 'Montador', 'freelancer', 25000, null, 'cidade-toda'], [14, 'Lavador(a) de carros', 'Lavador', 'clt', 162100, null, 'regiao-oeste'],
+        [0, 'Vendedor(a) interno(a)', 'Vendedor', 'clt', 180000, 220000, 'centro', null, true], [6, 'Assistente de faturamento', 'Auxiliar administrativo', 'clt', 200000, null, 'centro', null, true],
+        [10, 'Supervisor(a) de rota', 'Supervisor', 'clt', 300000, 350000, 'regiao-norte', null, true], [12, 'Banhista e tosador(a)', 'Banhista', 'clt', 162100, null, 'regiao-oeste']];
       var AREA_DO_CARGO = { Caixa: 'caixa', Repositor: 'logistica', 'Auxiliar de depósito': 'logistica', Padeiro: 'cozinha',
         Balconista: 'vendas-loja', 'Estagiário(a)': 'atendimento', Vendedor: 'vendas-loja', Ajudante: 'logistica', Estoquista: 'logistica',
         Cozinheiro: 'cozinha', 'Garçom': 'hotelaria', Recepcionista: 'atendimento', 'Auxiliar administrativo': 'administrativo',

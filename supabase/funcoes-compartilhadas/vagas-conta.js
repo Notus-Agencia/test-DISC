@@ -22,8 +22,16 @@
 //   foto (JWT) {candidatura?} -> {ok, url, expiraEm}: URL assinada de 5 minutos da foto OPCIONAL da pessoa (bucket privado
 //       'vagas-fotos', <user_id>/foto.jpg). Sem candidatura = a própria foto (pessoa). Com candidatura = só membro da empresa
 //       daquela candidatura, depois do Combinou e sem corte de acesso (quem confere é public.vagas_conta_foto, no banco).
+//   convite_equipe (JWT de quem é dono(a) da empresa) {empresaId, email} -> convite para a equipe (papel recrutador). O banco
+//       decide tudo (public.vagas_conta_convite_equipe: dono(a) ativo(a), limites, token de uso único de 72 h guardado com hash)
+//       e diz para onde vai o e-mail; o token e o destino NUNCA voltam para o navegador. Resposta NEUTRA, igual para qualquer
+//       e-mail: conta nova (a conta de empresa nasce pendente e o link confirma o e-mail e cria a senha), conta de empresa
+//       (link para entrar e aceitar), conta de outro tipo (e-mail explicando que precisa de outro e-mail), conta só do painel
+//       DISC ou suspensa (nada é enviado). A pessoa só entra na equipe depois de confirmar o e-mail e aceitar
+//       (vagas_equipe_convite_aceitar, com o login dela).
 // Link do e-mail: <VAGAS_SITE_URL>/entrar.html?token_hash=<hash>&type=invite|recovery (gerado com auth.admin.generateLink,
-// no domínio do site; o antivírus que "abre" o link antes da pessoa não o gasta, porque a tela só confere no clique).
+// no domínio do site; o antivírus que "abre" o link antes da pessoa não o gasta, porque a tela só confere no clique). No convite
+// de equipe o link leva também &convite=<token> (ou só ?convite=<token> para quem já tem conta de empresa).
 // Limites (banco, public.vagas_conta_limite): por origem (cf-connecting-ip e x-forwarded-for), por e-mail, por quem age e total.
 // Segredos: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (do Supabase), RESEND_API_KEY, VAGAS_SITE_URL, VAGAS_EMAIL_REMETENTE?
 // (senão EMAIL_REMETENTE), TURNSTILE_SECRET? (liga o "não sou robô" no cadastrar/reenviar/esqueci).
@@ -42,6 +50,7 @@ export const VAGAS_MSG_EMAIL_INVALIDO = 'E-mail inválido.';
 export const VAGAS_MSG_TERMOS = 'Para criar a conta, aceite os termos de uso e o aviso de privacidade.';
 export const VAGAS_MSG_TIPO = 'Escolha se a conta é para procurar emprego ou para uma empresa.';
 export const VAGAS_MSG_JA_EXISTE = 'Este e-mail já tem conta. A pessoa pode entrar ou usar "Esqueci minha senha".';
+export const VAGAS_MSG_CONVITE_EQUIPE = 'Pronto. Se este e-mail puder entrar na equipe, a pessoa recebe o convite em instantes. O convite vale por 3 dias.';
 export const VAGAS_BUCKET_FOTOS = 'vagas-fotos';
 export const VAGAS_FOTO_SEGUNDOS = 300;
 const VAGAS_LIMITE_CORPO = 4000;
@@ -74,11 +83,17 @@ export function linkVagas(env, tokenHash, tipo) {
   return siteVagas(env) + '/entrar.html?token_hash=' + encodeURIComponent(tokenHash) + '&type=' + encodeURIComponent(tipo);
 }
 
-/** E-mails com a marca Vagas sem Caos (moldura da Gestão sem Caos). tipo: confirmar | jaTemConta | senha | assistido | operador */
+/** E-mails com a marca Vagas sem Caos (moldura da Gestão sem Caos).
+ *  tipo: confirmar | jaTemConta | senha | assistido | operador | conviteEquipe | conviteEquipeOutraConta
+ *  (textos completos para revisão: conteudo/vagas-textos/emails/convite-equipe*.html). */
 export function montarEmailVagas(tipo, d) {
   d = d || {};
   const primeiro = String(d.nome || '').trim().split(/\s+/)[0] || '';
   const ola = primeiro ? 'Olá, ' + primeiro + '!' : 'Olá!';
+  const empresa = String(d.empresa || '').trim() || 'uma empresa';
+  const quem = String(d.quem || '').trim();
+  const convidou = (quem ? quem + ', da empresa ' + empresa + ', convidou' : 'A empresa ' + empresa + ' convidou') +
+    ' você para a equipe dela no Vagas sem Caos' + (d.cidade ? ', em ' + d.cidade : '') + '.';
   const modelos = {
     confirmar: { assunto: 'Confirme seu e-mail — Vagas sem Caos', titulo: 'Confirme seu e-mail',
       paragrafos: [ola, 'Falta só um passo para usar o Vagas sem Caos: confirme que este e-mail é seu e crie a sua senha.'],
@@ -96,7 +111,14 @@ export function montarEmailVagas(tipo, d) {
       botao: 'Ativar minha conta', nota: 'Se você não pediu este cadastro, ignore este e-mail.' },
     operador: { assunto: 'Acesso de operação — Vagas sem Caos', titulo: 'Seu acesso de operação',
       paragrafos: [ola, 'A Gestão sem Caos criou o seu acesso de operação do Vagas sem Caos' + (d.cidade ? ' em ' + d.cidade : '') + '. Crie a sua senha para entrar.'],
-      botao: 'Criar minha senha', nota: 'O link vale por tempo limitado e funciona uma vez só.' }
+      botao: 'Criar minha senha', nota: 'O link vale por tempo limitado e funciona uma vez só.' },
+    conviteEquipe: { assunto: 'Convite para a equipe de ' + empresa + ' — Vagas sem Caos', titulo: 'Convite para a equipe da empresa',
+      paragrafos: [ola, convidou, 'Na equipe, você publica vagas, vê os cartões de quem se candidatou (sem nome nem contato até o Combinou) e conversa pela plataforma.',
+        'Para aceitar, abra o link e entre com este e-mail. Se ainda não tem conta, o mesmo link confirma o e-mail e cria a sua senha.'],
+      botao: 'Ver o convite', nota: 'O convite vale por 3 dias e funciona uma vez só. Se você não conhece esta empresa, ignore este e-mail: sem o seu aceite, nada acontece.' },
+    conviteEquipeOutraConta: { assunto: 'Convite para a equipe de ' + empresa + ' — Vagas sem Caos', titulo: 'Convite para a equipe da empresa',
+      paragrafos: [ola, convidou, 'Este e-mail já é usado numa conta do Vagas sem Caos de outro tipo, e cada e-mail tem um tipo de conta só. Para entrar na equipe, peça a quem convidou para usar outro e-mail seu.'],
+      botao: 'Abrir o Vagas sem Caos', nota: 'Se você não conhece esta empresa, ignore este e-mail: nada muda na sua conta.' }
   };
   const m = modelos[tipo] || modelos.confirmar;
   const html = htmlMarca({ titulo: m.titulo, previa: m.paragrafos[1], paragrafos: m.paragrafos, botao: { texto: m.botao, url: d.url }, nota: m.nota,
@@ -301,6 +323,54 @@ export async function acaoVagasExcluir(base, corpo, origem, quem) {
 
 const UUID_VAGAS = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Link do convite de equipe: conta nova ou pendente recebe também o link de confirmação (cria a senha). */
+export function linkConviteEquipe(env, token, confirmacao) {
+  const t = encodeURIComponent(String(token || ''));
+  return confirmacao ? linkVagas(env, confirmacao.hash, confirmacao.tipo) + '&convite=' + t : siteVagas(env) + '/entrar.html?convite=' + t;
+}
+
+/** Convite para a equipe da empresa: o banco decide (dono(a), limites, token) e diz para onde vai o e-mail; a tela recebe
+ *  sempre a mesma resposta (nada revela se o e-mail tem conta, nem de que tipo). */
+export async function acaoVagasConviteEquipe(base, corpo, origem, quem) {
+  if (!quem) return erro('Sessão expirada. Entre de novo.', { sessaoExpirada: true });
+  const email = emailVagas(corpo.email);
+  if (!email) return erro(VAGAS_MSG_EMAIL_INVALIDO);
+  const empresaId = String(corpo.empresaId || '').trim();
+  if (!UUID_VAGAS.test(empresaId)) return erro('Empresa não encontrada.');
+  if (!vagasEmailConfigurado(base)) return erro(VAGAS_MSG_EMAIL_NAO_CONFIGURADO, { naoConfigurado: true });
+  const r = await base.db.conviteEquipe(quem.id, empresaId, email, origem.cf, origem.xff);
+  if (!r || r.ok !== true) {
+    // Erro do banco (permissão, limite, e-mail que já está na equipe): só a mensagem e as marcas, nunca outro campo.
+    if (!r || typeof r.erro !== 'string') return erro(MSG_ERRO_INTERNO);
+    const marcas = {};
+    ['sessaoExpirada', 'confirmar', 'suspensa', 'bloqueado'].forEach((k) => { if (r[k]) marcas[k] = true; });
+    return erro(r.erro, marcas);
+  }
+  if (!/^[0-9a-f]{64}$/.test(String(r.token || ''))) throw new Error('convite sem token');
+  const dados = { empresa: r.empresaNome, cidade: r.cidadeNome, quem: r.convidadoPor };
+  if (r.destino === 'nova') {
+    const u = await base.auth.criarUsuario({ email, senha: senhaAleatoriaVagas(base), app: { produto: 'vagas', tipo: 'empresa', convite: true }, usuario: {} });
+    const reg = await base.db.registrar(u.id, { tipo: 'empresa' });
+    if (!reg || reg.ok !== true) {
+      try { await base.auth.excluirUsuario(u.id); } catch (err) { /* sem conta pela metade */ }
+      throw new Error('registro da conta do convite falhou');
+    }
+    const l = await linkConfirmacaoVagas(base, email);
+    await enviarEmailVagas(base, email, 'conviteEquipe', Object.assign({ url: linkConviteEquipe(base.env, r.token, l) }, dados));
+  } else if (r.destino === 'empresa_pendente') {
+    const l = await linkConfirmacaoVagas(base, email);
+    await enviarEmailVagas(base, email, 'conviteEquipe', Object.assign({ url: linkConviteEquipe(base.env, r.token, l) }, dados));
+  } else if (r.destino === 'empresa') {
+    await enviarEmailVagas(base, email, 'conviteEquipe', Object.assign({ url: linkConviteEquipe(base.env, r.token, null) }, dados));
+  } else if (r.destino === 'outro_tipo') {
+    await enviarEmailVagas(base, email, 'conviteEquipeOutraConta', Object.assign({ url: siteVagas(base.env) + '/entrar.html' }, dados));
+  }
+  // 'nenhum' (conta só do painel DISC ou suspensa): nada é enviado, e a resposta é a mesma.
+  const c = r.convite || {};
+  return { ok: true, enviado: true, mensagem: VAGAS_MSG_CONVITE_EQUIPE, email: mascararEmailVagas(email),
+    convite: { id: c.id, email: c.email, papel: c.papel, status: c.status, criadoEm: c.criadoEm, expiraEm: c.expiraEm } };
+}
+
 /** URL assinada curta da foto: o banco decide se pode (vagas_conta_foto); aqui só se assina o caminho que ele devolver. */
 export async function acaoVagasFoto(base, corpo, origem, quem) {
   if (!quem) return erro('Sessão expirada. Entre de novo.', { sessaoExpirada: true });
@@ -331,7 +401,9 @@ export function criarBaseVagasConta(createClient, getEnv, extras) {
       consultar: (email) => rpc('vagas_conta_consultar', { p_email: email }),
       registrar: (userId, dados) => rpc('vagas_conta_registrar', { p_user: userId, p_dados: dados }),
       quem: (userId) => rpc('vagas_conta_quem', { p_user: userId }),
-      foto: (userId, candidatura) => rpc('vagas_conta_foto', { p_user: userId, p_candidatura: candidatura || null })
+      foto: (userId, candidatura) => rpc('vagas_conta_foto', { p_user: userId, p_candidatura: candidatura || null }),
+      conviteEquipe: (userId, empresaId, email, cf, xff) => rpc('vagas_conta_convite_equipe', { p_user: userId, p_empresa: empresaId,
+        p_email: email, p_cf: cf || '', p_xff: xff || '' })
     },
     storage: {
       async assinar(bucket, caminho, segundos) {
@@ -415,6 +487,7 @@ export async function atenderVagasConta(req, base) {
     else if (corpo.acao === 'operador') r = await acaoVagasOperador(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'excluir') r = await acaoVagasExcluir(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'foto') r = await acaoVagasFoto(base, corpo, origem, await quemChamaVagas(base, req));
+    else if (corpo.acao === 'convite_equipe') r = await acaoVagasConviteEquipe(base, corpo, origem, await quemChamaVagas(base, req));
     else r = erro('Ação desconhecida.');
     return vagasResponder(r, 200, cors);
   } catch (err) {

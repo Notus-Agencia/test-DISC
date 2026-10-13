@@ -353,13 +353,24 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
 
 1. **Banco:** aplique [`supabase/migrations/20261022120000_vagas.sql`](../supabase/migrations/20261022120000_vagas.sql)
    (com a integração do GitHub ela entra sozinha; à mão: SQL Editor → cole → Run, como no passo 3b). Ela é idempotente,
-   não apaga nada e cria as cidades iniciais (Boa Vista ativa com 4 zonas; Mucajaí e Cantá no entorno; Rorainópolis em
-   lista de espera). Confira: `select public.versao_banco();` deve trazer `20261022120000_vagas` em `migracoes`.
+   não apaga nada e cria uma semente fictícia de cidades (Boa Vista, Mucajaí, Cantá e Rorainópolis — a 20261024120001, item
+   1b, passa as quatro para rascunho). Confira: `select public.versao_banco();` deve trazer `20261022120000_vagas` em `migracoes`.
    A mesma migração faz o primeiro login **nunca** promover uma conta do Vagas a administradora do painel DISC.
    Ela também cria no **Storage** o bucket PRIVADO `vagas-fotos` (foto opcional da pessoa: até 1 MB, jpg/png/webp) e as
    políticas: cada pessoa grava, troca e apaga só a própria foto; ninguém lê direto (a empresa recebe, depois do Combinou,
    uma URL de 5 minutos assinada pela função `vagas-conta`). Confira em **Storage → Buckets** (deve aparecer `vagas-fotos`,
    sem o selo "Public").
+1b. **Onda 2 e praça piloto:** depois das migrações dos testes de habilidade (20261023), aplique na ordem
+   [`20261024120000_vagas_onda2.sql`](../supabase/migrations/20261024120000_vagas_onda2.sql) (painel da praça com os 15
+   indicadores, equipe da empresa com convite por e-mail, WhatsApp opcional na lista de espera, fuso da cidade nos testes) e
+   [`20261024120001_vagas_piloto_uruacu.sql`](../supabase/migrations/20261024120001_vagas_piloto_uruacu.sql) (cria Uruaçu-GO
+   **em lista de espera**, porte pequena, fuso de Brasília, com as 6 zonas da operação; passa as cidades de Roraima da
+   semente para rascunho uma vez só). As duas são idempotentes e não apagam nada. Confira: `select public.versao_banco();` deve
+   trazer `versao: 20261024120001` e `faltando` vazio (ou só `20261023120001_vagas_questoes`, se o banco de questões ainda não
+   foi carregado). **Para abrir Uruaçu:** painel (grupo "Vagas") ou `admCidadeSalvar({slug:'uruacu-go', status:'ativa'})`
+   com o login da equipe — rodar a migração de novo não fecha a cidade. Se alguém rodar a 20261022 ou a 20261023 de novo
+   depois, rode a 20261024120000 em seguida (ela recria as funções que aquelas voltariam à versão antiga). Depois de aplicar,
+   **publique de novo a função `vagas-conta`** (item 2): o convite de equipe é a ação nova `convite_equipe`.
 2. **Função `vagas-conta`:** crie como no passo 8 (arquivo `dist/funcoes/vagas-conta/index.ts`) com **Verify JWT
    desligado** (o cadastro é feito por quem ainda não tem login; as ações que exigem login conferem o token sozinhas).
 3. **Segredos** (passo 9): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`, e os opcionais `VAGAS_EMAIL_REMETENTE` e
@@ -369,7 +380,7 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
 5. **Cadastro aberto do Auth continua fechado** (passo 4): as contas do Vagas são criadas só pela função `vagas-conta`
    (com `app_metadata.produto = 'vagas'`), sem senha no cadastro — a pessoa cria a senha depois de clicar no link.
 6. **Ligar o site ao banco:** em `vagas/js/config.js`, troque `MODO: 'previa'` por `MODO: 'supabase'` (até lá o site roda
-   com dados fictícios de Boa Vista guardados só no navegador). Na página, `?previa=1` volta a prévia só naquela aba.
+   com dados fictícios de Uruaçu guardados só no navegador). Na página, `?previa=1` volta a prévia só naquela aba.
 7. **Operadores das cidades:** pelo painel (grupo "Vagas", quando existir) ou chamando a ação `operador` da `vagas-conta`
    com o login da equipe; o operador recebe o link, cria a senha e só enxerga empresas, vagas e denúncias da cidade dele
    (nunca pessoas nem contatos).
@@ -385,6 +396,8 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
 |---|---|---|
 | "O banco de dados ainda não tem o Vagas sem Caos…" | migração 20261022 não aplicada | item 1 |
 | "O cadastro ainda não está disponível…" | função `vagas-conta` não publicada | item 2 |
+| Painel da praça, equipe da empresa ou WhatsApp da lista de espera: "O banco de dados ainda não tem o Vagas sem Caos…" | 20261024120000 não aplicada | item 1b |
+| Convite de equipe: "Ação desconhecida." | `vagas-conta` publicada antes da onda 2 | item 1b (publicar a função de novo) |
 | "O envio de e-mail ainda não está configurado…" | falta `RESEND_API_KEY` | item 3 |
 | Link do e-mail abre o DISC ou dá "link expirou" | Redirect URL ou `VAGAS_SITE_URL` faltando | itens 3 e 4; peça um link novo |
 

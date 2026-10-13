@@ -8,7 +8,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const R = require('../vagas/js/regras.js');
 
-const SQL = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20261022120000_vagas.sql'), 'utf8');
+// A 20261024 (onda 2) acrescenta e redefine RPCs (painel da praça, equipe da empresa, lista de espera com WhatsApp).
+const SQL = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20261022120000_vagas.sql'), 'utf8') +
+  fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20261024120000_vagas_onda2.sql'), 'utf8');
 const FONTE = fs.readFileSync(path.join(__dirname, '..', 'vagas', 'js', 'regras.js'), 'utf8');
 const AGORA = Date.parse('2026-10-13T15:00:00Z');
 
@@ -189,11 +191,55 @@ test('referência: 1 a 3 pontos fortes da lista fechada, declaração obrigatór
   assert.equal(R.lerReferencia(Object.assign({}, d, { fim: '2099-01' }), AGORA).erro, 'A saída não pode estar no futuro.');
 });
 
-test('valores e datas: reais, faixa por unidade, meses de experiência, hoje em Boa Vista', () => {
+test('valores e datas: reais, faixa por unidade, meses de experiência, hoje no fuso da cidade (sem fuso: Brasília)', () => {
   assert.equal(R.reais(162100), 'R$ 1.621,00');
   assert.equal(R.formatarValor({ minCentavos: 162100, maxCentavos: 190000, unidade: 'mes' }), 'R$ 1.621,00 a R$ 1.900,00 por mês');
   assert.equal(R.formatarValor({ minCentavos: 12000, maxCentavos: null, unidade: 'dia' }), 'R$ 120,00 por dia');
   assert.equal(R.meses('2024-01', '2025-06'), 18);
-  assert.equal(R.hoje('America/Boa_Vista', Date.parse('2026-10-14T02:00:00Z')), '2026-10-13', 'UTC−4');
+  assert.equal(R.hoje('America/Boa_Vista', Date.parse('2026-10-14T02:00:00Z')), '2026-10-13', 'fuso informado (UTC−4)');
+  assert.equal(R.hoje('America/Sao_Paulo', Date.parse('2026-10-14T02:30:00Z')), '2026-10-13', 'Uruaçu (UTC−3)');
+  assert.equal(R.hoje('America/Sao_Paulo', Date.parse('2026-10-14T03:30:00Z')), '2026-10-14');
+  assert.equal(R.hoje('', Date.parse('2026-10-14T02:30:00Z')), '2026-10-13', 'sem fuso: reserva America/Sao_Paulo');
   assert.equal(R.somarDias('2026-10-13', 7), '2026-10-20');
+});
+
+test('onda 2: lista de espera com WhatsApp opcional (celular com DDD), mensagem nova de WhatsApp sem DDD fixo', () => {
+  assert.equal(R.MSG.WHATSAPP_INVALIDO, 'WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).');
+  assert.ok(!/\b9[0-9] 9/.test(R.MSG.WHATSAPP_INVALIDO), 'sem exemplo com DDD de uma cidade');
+  assert.deepEqual(R.lerListaEspera({ cidade: ' Uruacu-GO ', email: ' Ana@Exemplo.com ' }),
+    { ok: true, campos: { cidade: 'uruacu-go', email: 'ana@exemplo.com', perfil: 'pessoa', whatsapp: '' } });
+  assert.equal(R.lerListaEspera({ cidade: 'x', email: 'a@b.co', whatsapp: '(62) 98888-1111', perfil: 'empresa' }).campos.whatsapp, '5562988881111');
+  assert.equal(R.lerListaEspera({ cidade: 'x', email: 'a@b.co', perfil: 'empresa' }).campos.perfil, 'empresa');
+  assert.equal(R.lerListaEspera({ cidade: 'x', email: 'a@b.co', whatsapp: '62 3333-4444' }).erro, R.MSG.WHATSAPP_INVALIDO, 'fixo não serve');
+  assert.equal(R.lerListaEspera({ cidade: 'x', email: 'a@b.co', whatsapp: '98888-1111' }).erro, R.MSG.WHATSAPP_INVALIDO, 'sem DDD');
+  assert.equal(R.lerListaEspera({ cidade: 'x', email: 'ana@' }).erro, 'E-mail inválido.');
+  assert.equal(R.lerPessoa({ whatsapp: '123' }, AGORA).ok, false);
+});
+
+test('onda 2: catálogo do painel da praça = conteudo/vagas-operacao/indicadores.json (versão 2) e a regra das cores', () => {
+  const arq = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'conteudo', 'vagas-operacao', 'indicadores.json'), 'utf8'));
+  assert.equal(arq.versao, 2);
+  assert.deepEqual(R.INDICADORES.map((i) => i.chave), arq.indicadores.map((i) => i.chave));
+  assert.deepEqual(R.GATILHOS.map((g) => g.chave), arq.gatilhos.map((g) => g.chave));
+  for (const i of arq.indicadores) {
+    const r = R.INDICADORES.find((x) => x.chave === i.chave);
+    assert.deepEqual([r.unidade, r.periodo, r.direcao, !!r.hipotese], [i.unidade, i.periodo, i.direcao, !!i.hipotese], i.chave);
+    // O arquivo só tem alvo de cidade pequena (alvo.cidadePequena); no catálogo, porte 'pequena'.
+    const alvo = i.alvo && i.alvo.cidadePequena !== undefined ? i.alvo.cidadePequena : undefined;
+    assert.deepEqual(r.alvo && r.alvo.pequena, alvo, i.chave);
+    assert.ok(!r.alvo || !('grande' in r.alvo), 'cidade grande ainda sem alvo: ' + i.chave);
+  }
+  assert.deepEqual(R.PORTES.map((p) => p.id), ['pequena', 'grande']);
+  assert.deepEqual(R.CORES_INDICADOR.map((c) => c.id), ['ok', 'atencao', 'alerta']);
+  assert.equal(R.corIndicador(20, 20, 'maior_melhor'), 'ok');
+  assert.equal(R.corIndicador(14, 20, 'maior_melhor'), 'atencao');
+  assert.equal(R.corIndicador(13, 20, 'maior_melhor'), 'alerta');
+  assert.equal(R.corIndicador(7, 7, 'menor_melhor'), 'ok');
+  assert.equal(R.corIndicador(9, 7, 'menor_melhor'), 'atencao');
+  assert.equal(R.corIndicador(10, 7, 'menor_melhor'), 'alerta');
+  assert.equal(R.corIndicador(null, 7, 'menor_melhor'), null);
+  assert.equal(R.corIndicador(3, null, 'maior_melhor'), null);
+  assert.deepEqual(R.STATUS_CONVITE_EQUIPE.map((s) => s.id), ['pendente', 'vencido', 'aceito', 'cancelado']);
+  assert.deepEqual(R.PAPEIS_EMPRESA.map((s) => s.id), ['dono', 'recrutador']);
+  assert.equal(R.MSG.CONVITE_INVALIDO, 'Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.');
 });
