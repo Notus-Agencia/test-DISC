@@ -1534,6 +1534,48 @@ test('revisão E(e): o texto da referência é "publicado"/"nao_publicado" — n
   assert.ok(!/'(aprovado|recusado|texto_aprovado|texto_recusado)'/.test(sql));
 });
 
+test('reverificação (R1, B3 porta lateral, I8): conta assistida/vinculada não troca de tipo; assistido só entra em empresa sem membro; lista pública com contador aproximado', async () => {
+  exigirBanco();
+  const JA_TEM = 'Esta empresa já tem acesso. Peça a quem é dono(a) para convidar pelo painel da empresa.';
+  const OUTRO_TIPO = 'Este e-mail já tem uma conta de outro tipo.';
+  // R1: empresa cadastrada pela operação, dona assistida ainda pendente, vaga assistida no ar.
+  const emp = ok(await de(S.operador)('vagas_op_empresa_cadastrar', { cnpj: cnpjCom('223344550001'), razaoSocial: 'Mercearia Assistida Ltda', cidade: 'boa-vista-rr' })).empresa.id;
+  const dona = await usuarioAuth('dona-assistida@vagas.teste', { app: { produto: 'vagas', tipo: 'empresa', assistido: true }, confirmado: false });
+  ok(await servico('vagas_conta_registrar', dona, { tipo: 'empresa', assistidaPor: S.operador, cidade: 'boa-vista-rr', empresaId: emp }));
+  const vaga = ok(await de(S.operador)('vagas_op_anuncio_salvar', anuncioDados(emp, { funcao: 'Balconista', publicar: true }))).anuncio;
+  assert.equal(vaga.status, 'publicado');
+  // Quem souber o e-mail chama "cadastrar" como pessoa: o banco recusa (a Function mantém o tipo, reenvia o link e responde neutro).
+  erro(await servico('vagas_conta_registrar', dona, { tipo: 'pessoa', termosVersao: '2026-10-13' }), OUTRO_TIPO);
+  assert.equal((await db.query(`select tipo from public.vagas_contas where user_id = $1`, [dona])).rows[0].tipo, 'empresa');
+  assert.equal((await db.query(`select count(*)::int n from public.vagas_empresa_membros where empresa_id = $1 and user_id = $2 and ativo`, [emp, dona])).rows[0].n, 1, 'o vínculo fica');
+  assert.equal((await db.query(`select status from public.vagas_anuncios where id = $1`, [vaga.id])).rows[0].status, 'publicado', 'a vaga continua no ar');
+  // Convite de operação pendente: idem.
+  const op2 = await usuarioAuth('op-pendente@vagas.teste', { app: { produto: 'vagas', tipo: 'operador' }, confirmado: false });
+  ok(await servico('vagas_conta_registrar', op2, { tipo: 'operador', assistidaPor: S.adminDisc, operador: { cidade: 'boa-vista-rr', papel: 'moderador' } }));
+  erro(await servico('vagas_conta_registrar', op2, { tipo: 'pessoa', termosVersao: '2026-10-13' }), OUTRO_TIPO);
+  assert.equal((await db.query(`select count(*)::int n from public.vagas_operadores where user_id = $1`, [op2])).rows[0].n, 1);
+  // Conta "solta" (cadastro aberto, sem vínculo, sem confirmar) continua podendo trocar (I4).
+  const solta = await usuarioAuth('solta@vagas.teste', { app: { produto: 'vagas', tipo: 'empresa' }, confirmado: false });
+  ok(await servico('vagas_conta_registrar', solta, { tipo: 'empresa', termosVersao: '2026-10-13' }));
+  assert.equal(ok(await servico('vagas_conta_registrar', solta, { tipo: 'pessoa', termosVersao: '2026-10-13' })).tipo, 'pessoa');
+  // B3 (porta lateral): cadastro assistido com empresaId de empresa que JÁ tem membro ativo é recusado; sem membro, entra como dono(a).
+  const intruso = await usuarioAuth('intruso@vagas.teste', { app: { produto: 'vagas', tipo: 'empresa', assistido: true }, confirmado: false });
+  erro(await servico('vagas_conta_registrar', intruso, { tipo: 'empresa', assistidaPor: S.operador, cidade: 'boa-vista-rr', empresaId: S.empresaB.id }), JA_TEM);
+  assert.equal((await db.query(`select count(*)::int n from public.vagas_empresa_membros where user_id = $1`, [intruso])).rows[0].n, 0);
+  erro(await servico('vagas_conta_registrar', intruso, { tipo: 'empresa', assistidaPor: S.operador, cidade: 'boa-vista-rr', empresaId: emp }), JA_TEM, 'a assistida já tem a dona pendente');
+  const vazia = ok(await de(S.operador)('vagas_op_empresa_cadastrar', { cnpj: cnpjCom('334455660001'), razaoSocial: 'Sem Ninguém Ltda', cidade: 'boa-vista-rr' })).empresa.id;
+  ok(await servico('vagas_conta_registrar', intruso, { tipo: 'empresa', assistidaPor: S.operador, cidade: 'boa-vista-rr', empresaId: vazia }));
+  assert.deepEqual((await db.query(`select papel, ativo from public.vagas_empresa_membros where empresa_id = $1`, [vazia])).rows, [{ papel: 'dono', ativo: true }]);
+  // I8 (sobra): a lista pública de uma cidade em espera devolve o mesmo contador aproximado antes e depois de entrar.
+  const antes = await anon('vagas_anuncios_publicos', { cidade: 'rorainopolis-rr' });
+  erro(antes, 'Ainda não chegamos a esta cidade. Entre na lista de espera.');
+  ok(await rpcComo('anon', null, 'vagas_lista_espera_entrar', [{ cidade: 'rorainopolis-rr', email: 'sobra@espera.teste' }], ip(90)));
+  const depois = await anon('vagas_anuncios_publicos', { cidade: 'rorainopolis-rr' });
+  assert.equal(depois.interessados, antes.interessados, 'entrar na lista não muda o número da lista pública');
+  assert.equal(depois.interessados % 10, 0);
+  assert.equal(depois.interessados, (await db.query(`select vagas_interno.interessados(id) n from public.vagas_cidades where slug = 'rorainopolis-rr'`)).rows[0].n);
+});
+
 test('filtro de textos: o banco (vagas_interno.conferir_texto) e o JS (VAGAS_REGRAS.conferirTexto) dão o MESMO resultado', async () => {
   exigirBanco();
   // A mesma lista de padrões, na mesma ordem.

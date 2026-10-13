@@ -334,7 +334,7 @@
       var f = obj(a.p_filtro);
       var c = cidade(txt(f.cidade).trim().toLowerCase());
       if (!c || c.status === 'rascunho') return erro('Cidade não encontrada.', { naoEncontrada: true });
-      if (c.status === 'lista_espera') return erro(R.MSG.CIDADE_FECHADA, { listaEspera: true, interessados: st.listaEspera.filter(function (l) { return l.cidade === c.slug; }).length });
+      if (c.status === 'lista_espera') return erro(R.MSG.CIDADE_FECHADA, { listaEspera: true, interessados: interessados(c.slug) });
       if (c.status === 'pausada') return erro('As vagas desta cidade estão pausadas no momento.', { pausada: true });
       var cids = [c.slug];
       if (f.entorno !== false) st.cidades.forEach(function (x) { if (x.praca === c.slug && x.status === 'ativa') cids.push(x.slug); });
@@ -1643,13 +1643,12 @@
           return neutro(email, novoLink(email, 'invite'));
         }
         if (st.contas[u.id] && !u.confirmada) {
-          // Conta pendente: quem tem o e-mail decide o tipo (um terceiro pode ter "pré-registrado" com outro).
-          if (st.contas[u.id].tipo !== d.tipo) {
-            st.contas[u.id].tipo = d.tipo; u.app = { produto: 'vagas', tipo: d.tipo };
-            st.membros = st.membros.filter(function (m) { return m.userId !== u.id; });
-            st.operadores = st.operadores.filter(function (o) { return o.userId !== u.id; });
-          }
-          st.contas[u.id].termosVersao = versao; st.contas[u.id].termosAceitosEm = null;
+          // Conta pendente "solta" (sem cadastro assistido, sem empresa, sem operação): quem tem o e-mail decide o tipo
+          // (um terceiro pode ter "pré-registrado" com outro). Com vínculo, o tipo fica e o link vai de novo (mesma resposta).
+          var solta = !st.contas[u.id].assistidaPor && !st.membros.some(function (m) { return m.userId === u.id; })
+            && !st.operadores.some(function (o) { return o.userId === u.id; });
+          if (st.contas[u.id].tipo !== d.tipo && solta) { st.contas[u.id].tipo = d.tipo; u.app = { produto: 'vagas', tipo: d.tipo }; }
+          if (solta) { st.contas[u.id].termosVersao = versao; st.contas[u.id].termosAceitosEm = null; }
           return neutro(email, novoLink(email, 'invite'));
         }
         return neutro(email, null);
@@ -1675,6 +1674,10 @@
         if (!email) return erro('E-mail inválido.');
         if (d.tipo !== 'pessoa' && d.tipo !== 'empresa') return erro('Escolha se a conta é para procurar emprego ou para uma empresa.');
         if (usuarioPorEmail(email)) return erro('Este e-mail já tem conta. A pessoa pode entrar ou usar "Esqueci minha senha".', { existe: true });
+        // Mesma regra de vagas_op_vincular_membro: o assistido só entra em empresa SEM membro ativo.
+        if (d.empresaId && d.tipo === 'empresa' && st.membros.some(function (m) { return m.empresaId === d.empresaId && m.ativo; })) {
+          return erro('Esta empresa já tem acesso. Peça a quem é dono(a) para convidar pelo painel da empresa.');
+        }
         var u = criarUsuario(email, d.tipo, { meta: { nome: R.limparTexto(d.nome, 120) } });
         st.contas[u.id] = { tipo: d.tipo, status: 'pendente', termosVersao: '', assistidaPor: st.sessao, cidade: cid, codigoEvento: txt(d.codigoEvento).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40), criadoEm: agora() };
         if (d.empresaId && empresa(d.empresaId) && d.tipo === 'empresa') {

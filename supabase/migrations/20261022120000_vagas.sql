@@ -1634,7 +1634,7 @@ begin
   if not found or c.status = 'rascunho' then return vagas_interno.erro('Cidade não encontrada.', '{"naoEncontrada": true}'); end if;
   if c.status = 'lista_espera' then
     return vagas_interno.erro('Ainda não chegamos a esta cidade. Entre na lista de espera.', jsonb_build_object('listaEspera', true,
-      'interessados', (select count(*)::int from public.vagas_lista_espera l where l.cidade_id = c.id)));
+      'interessados', vagas_interno.interessados(c.id)));   -- aproximado, como em vagas_cidades_publicas
   end if;
   if c.status = 'pausada' then return vagas_interno.erro('As vagas desta cidade estão pausadas no momento.', '{"pausada": true}'); end if;
   v_cids := array[c.id];
@@ -4106,11 +4106,14 @@ begin
   on conflict (user_id) do nothing;
   select * into c from public.vagas_contas where user_id = p_user for update;
   if c.tipo <> v_tipo then
-    -- Conta pendente com e-mail ainda não confirmado: quem tem o e-mail é quem decide o tipo (um terceiro pode ter
-    -- "pré-registrado" o e-mail com o tipo errado). Confirmada, o tipo não muda mais.
-    if c.status = 'pendente' and not exists (select 1 from auth.users u where u.id = p_user and u.email_confirmed_at is not null) then
-      delete from public.vagas_empresa_membros where user_id = p_user;
-      delete from public.vagas_operadores where user_id = p_user;
+    -- Conta pendente "solta" (criada pelo cadastro aberto, sem e-mail confirmado, sem vínculo com empresa nem operação):
+    -- quem tem o e-mail é quem decide o tipo (um terceiro pode ter "pré-registrado" o e-mail com o tipo errado).
+    -- Conta assistida, com vínculo de empresa ou convite de operação, ou já confirmada: o tipo não muda (senão quem
+    -- soubesse o e-mail derrubaria o vínculo — e, com ele, as vagas da empresa — antes do clique).
+    if c.status = 'pendente' and c.assistida_por is null
+       and not exists (select 1 from public.vagas_empresa_membros m where m.user_id = p_user)
+       and not exists (select 1 from public.vagas_operadores o where o.user_id = p_user)
+       and not exists (select 1 from auth.users u where u.id = p_user and u.email_confirmed_at is not null) then
       update public.vagas_contas set tipo = v_tipo where user_id = p_user returning * into c;
     else
       return vagas_interno.erro('Este e-mail já tem uma conta de outro tipo.');
@@ -4129,6 +4132,11 @@ begin
   if v_emp is not null and v_tipo = 'empresa' then
     if not exists (select 1 from public.vagas_empresas e where e.id = v_emp and (v_cid is null or e.cidade_id = v_cid)) then
       return vagas_interno.erro('Empresa não encontrada.');
+    end if;
+    -- Mesma regra de vagas_op_vincular_membro: o cadastro assistido só entra em empresa SEM membro ativo (quem tem acesso
+    -- convida pelo painel da empresa). A Function apaga o usuário criado pela metade quando isto falha.
+    if exists (select 1 from public.vagas_empresa_membros m where m.empresa_id = v_emp and m.ativo and m.user_id <> p_user) then
+      return vagas_interno.erro('Esta empresa já tem acesso. Peça a quem é dono(a) para convidar pelo painel da empresa.');
     end if;
     insert into public.vagas_empresa_membros (empresa_id, user_id, papel)
     values (v_emp, p_user, case when exists (select 1 from public.vagas_empresa_membros m where m.empresa_id = v_emp and m.papel = 'dono' and m.ativo)
