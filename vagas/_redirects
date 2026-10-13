@@ -1,0 +1,13 @@
+# Redirecionamentos do Cloudflare Pages (docs: developers.cloudflare.com/pages/configuration/redirects/).
+# Formato: origem  destino  código (302 se omitido). Regras estáticas antes das dinâmicas.
+#
+# Enquanto não há seletor de cidade, a raiz vai para a única cidade ativa.
+# Tire esta linha quando vagas/index.html ganhar o seletor (o registro na mesa de equipe avisa).
+/  /boa-vista-rr/  302
+
+# Links curtos da vaga (/v/K7M2QX) são servidos pela Pages Function vagas/functions/v/[codigo].js.
+# Regra de _redirects NÃO vale para rota atendida por Function (documentado pelo Cloudflare), então não há
+# regra aqui. Se um dia a Function for desligada, descomente a linha abaixo apontando para a tela da vaga:
+# /v/:codigo  /boa-vista-rr/?vaga=:codigo  302
+
+# Nada de "www": o site é só vagas.gestaosemcaos.com.br (não há CNAME para www.vagas).

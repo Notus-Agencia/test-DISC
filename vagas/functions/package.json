@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "description": "Pages Functions do Vagas sem Caos (ES modules). Este package.json só diz ao Node que os .js daqui são ESM, para os testes em tests/vagas-hospedagem.test.js; o Cloudflare Pages não o usa."
+}
