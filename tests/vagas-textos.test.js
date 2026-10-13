@@ -135,6 +135,11 @@ test('avisos.json: chaves obrigatórias e o aviso anti-golpe exato', () => {
   assert.equal(av.validacao.login_invalido, 'E-mail ou senha não conferem.');
   // Mensagens fixas do banco (fundacao) e da prova (testes): texto idêntico ao registrado na mesa.
   assert.equal(av.avisos.contato_cortado_empresa, 'A pessoa deixou de compartilhar o contato com a sua empresa.');
+  assert.equal(av.avisos.empresa_ja_tem_acesso, 'Esta empresa já tem acesso. Peça a quem é dono(a) para convidar pelo painel da empresa.');
+  assert.equal(av.avisos.empresa_saiu_conversa, 'A empresa saiu da plataforma. Esta conversa foi encerrada.');
+  assert.deepEqual(av.referencia.texto_status, { pendente: 'Texto em revisão', publicado: 'Texto publicado', nao_publicado: 'Texto não publicado' });
+  assert.match(av.avisos.cidade_lista_espera_vazia, /{{cidade}}/);
+  assert.ok(!/{{total}}/.test(av.avisos.cidade_lista_espera_vazia), 'lista vazia não mostra número');
   assert.equal(av.avisos.referencia_ja_dada, 'Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.');
   assert.equal(av.foto.formato, 'A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.');
   assert.equal(av.anuncio.campos.diaria_prazo, 'A diária fica no ar de 48 a 168 horas.');
@@ -268,7 +273,17 @@ test('referência profissional: aceite da pessoa, declaração da empresa, aviso
     assert.ok(x && x.alvo === 'referencia' && x.correcao.length > 20, k);
   }
   assert.match(m.motivos.find((y) => y.chave === 'referencia_negativa').lei, /REVISÃO JURÍDICA/);
-  for (const a of ['referencia-recebida.html', 'referencia-pedido.html', 'referencia-decidida.html']) assert.ok(EMAILS.includes(a), a);
+  for (const a of ['referencia-recebida.html', 'referencia-pedido.html']) assert.ok(EMAILS.includes(a), a);
+  // P2 (integrador): a empresa nunca é avisada nem percebe que a pessoa aceitou, recusou, ocultou ou excluiu a referência.
+  assert.ok(!EMAILS.includes('referencia-decidida.html'), 'sem e-mail para a empresa sobre a decisão da pessoa');
+  for (const k of ['referencia_empresa_aceita', 'referencia_empresa_ocultada']) assert.ok(!(k in av.avisos), k + ' não existe');
+  for (const k of ['referencia_so_se_aceitar', 'referencia_recusada', 'referencia_ocultada', 'referencia_excluida']) assert.match(av.avisos[k], /não fica sabendo/, k);
+  for (const a of TODOS) {
+    const t = textoLido(a);
+    assert.ok(!/a empresa (é|será) avisada|avisamos quando ela decidir|ocultar ou excluir, e você é avisad/i.test(t), a + ' avisa a empresa sobre a referência');
+  }
+  // P1: no cartão cego, só "Referência de empresa verificada: sim" (nada de contagem nem pontos fortes).
+  for (const a of TODOS) assert.ok(!/cartão[^.]{0,40}(só|apenas) a contagem|contagem e os pontos fortes/i.test(textoLido(a)), a + ' cartão cego com contagem/pontos fortes');
   assert.match(ler('emails/referencia-recebida.html'), /só você vê|Só aparece se você aceitar/i);
   assert.ok(json('whatsapp.json').mensagens.some((x) => x.chave === 'pessoa_pedir_referencia'));
   assert.match(ler('termos-de-uso.md'), /6\.3\. \*\*Referência profissional\.\*\* \[REVISÃO JURÍDICA\]/);

@@ -69,7 +69,7 @@ Na prova presencial (fase 2), o operador confere o seu documento na hora, para d
 | Bloquear pedidos de dinheiro e documento, apurar denúncias, evitar fraude e golpe | conversas, técnico, registros | legítimo interesse (art. 7º, IX) e exercício regular de direitos (art. 7º, VI), com a proteção da pessoa como prioridade |
 | Guardar aceites, registros de acesso e notas fiscais | aceites, técnico, compras | obrigação legal (art. 7º, II): Marco Civil, art. 15; legislação fiscal |
 | Mostrar a sua foto (opcional) à empresa com quem você combinou de conversar, só depois do Combinou | foto | **consentimento específico, destacado e revogável** (art. 7º, I e art. 8º); tratada como dado sensível por inferência (art. 5º, II e art. 11), por isso nunca antes do Combinou |
-| Publicar uma referência profissional que uma empresa deixou sobre você (com o nome da empresa, no cartão só a contagem e os pontos fortes) | referências | **consentimento específico e revogável** (art. 7º, I e art. 8º); a empresa responde pelo que declara |
+| Publicar uma referência profissional que uma empresa deixou sobre você (com o nome da empresa, só depois do Combinou; no cartão, só "Referência de empresa verificada: sim") | referências | **consentimento específico e revogável** (art. 7º, I e art. 8º); a empresa responde pelo que declara |
 | Enviar e-mails de serviço (confirmar conta, Combinou, selo, referência, aviso de exclusão) | e-mail | execução de contrato (art. 7º, V) |
 | Enviar novidades da plataforma | e-mail | consentimento (art. 7º, I), com descadastro em um clique |
 | Números gerais da cidade (vagas, selos, contratações), sem identificar ninguém | dados anonimizados | não são dados pessoais (art. 12) |
@@ -83,7 +83,7 @@ Não usamos os seus dados para decisão automatizada que afete você: não há o
 | Empresa, antes do Combinou | cartão cego: zona, experiência, escolaridade, turnos, CNH, pretensão, selos (nota com margem) e "Referência de empresa verificada: sim" | nome, foto, contato, e-mail, currículo completo, nome da empresa que deu referência, pontos fortes e texto da referência, qualquer dado que não existe (seção 2.4) |
 | Empresa, depois do Combinou | nome, WhatsApp, currículo completo, as referências que você aceitou (com o nome da empresa) e a conversa | o que você escreveu para outras empresas; as suas outras candidaturas |
 | Empresa, depois do Combinou, se você enviou foto | a sua foto, enquanto a conversa daquela vaga estiver aberta | a foto em qualquer outra tela (cartão cego, busca, perfil público) |
-| Empresa que deixou uma referência | o que ela mesma escreveu e a sua decisão (publicada, recusada, ocultada, excluída) | o motivo da sua decisão; o resto da sua conta |
+| Empresa que deixou uma referência | o que ela mesma escreveu | se você aceitou, recusou, ocultou ou excluiu (ela não é avisada); o resto da sua conta |
 | Quem tem o link do seu perfil público (só se você ligar) | primeiro nome, funções, selos e as referências que você aceitou | contato, zona, pretensão, candidaturas |
 | Empresa, na busca do banco de talentos | só o cartão cego de quem autorizou, dentro do prazo | nome e contato (só após Combinou) |
 | Operador local | empresas, anúncios, denúncias e os números da cidade | currículo, nome ligado a candidatura, contato, conversas |

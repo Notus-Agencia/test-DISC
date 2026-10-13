@@ -203,22 +203,6 @@
       "revisao_psicologia": false
     },
     {
-      "arquivo": "referencia-decidida.html",
-      "para": "empresa",
-      "assunto": "Sua referência para {{pessoa_nome}}: {{decisao}} · Vagas sem Caos",
-      "quando": "pessoa aceitou, recusou, ocultou ou excluiu a referência (vagas_referencia_responder); a empresa é avisada sem motivo",
-      "variaveis": {
-        "responsavel_nome": "primeiro nome da pessoa responsável",
-        "pessoa_nome": "nome da pessoa (primeiro nome + inicial)",
-        "decisao": "\"publicada\" | \"recusada\" | \"ocultada\" | \"excluída\"",
-        "decisao_texto": "frase pronta: avisos.referencia_empresa_aceita ou referencia_empresa_ocultada",
-        "link": "…/empresa/referencias",
-        "email": "e-mail do destinatário"
-      },
-      "anti_golpe": false,
-      "revisao_psicologia": false
-    },
-    {
       "arquivo": "vaga-interessados-lembrete.html",
       "para": "empresa",
       "assunto": "Sua vaga tem {{total}} pessoas esperando resposta · Vagas sem Caos",
