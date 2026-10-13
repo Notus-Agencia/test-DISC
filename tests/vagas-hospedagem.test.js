@@ -227,10 +227,11 @@ test('_headers: CSP sem script de fora (exceto Turnstile), Supabase liberado, ca
   assert.ok(blocos.length <= 100);
 });
 
-test('_redirects: raiz vai para /boa-vista-rr/ com 302; /v/ fica com a Function', () => {
+test('_redirects: a raiz fica com o index.html (escolha da cidade); /<cidade>/ vai para cidade.html; /v/ fica com a Function', () => {
   const txt = fs.readFileSync(path.join(RAIZ, '_redirects'), 'utf8');
   const regras = txt.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')).map((l) => l.split(/\s+/));
-  assert.deepEqual(regras[0], ['/', '/boa-vista-rr/', '302']);
+  assert.ok(!regras.some((r) => r[0] === '/'), 'sem cidade fixa na raiz');
+  assert.deepEqual(regras[0], ['/:cidade/', '/cidade.html?cidade=:cidade', '302']);
   assert.ok(!regras.some((r) => r[0].startsWith('/v/')), 'uma regra /v/ ignoraria a Function (o Pages não aplica _redirects a rota de Function)');
   for (const r of regras) {
     assert.ok(r.length === 2 || r.length === 3, 'origem destino [código]');
