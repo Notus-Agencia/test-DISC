@@ -3208,7 +3208,7 @@
       var visao = String(o.visao == null ? '' : o.visao);
       if (visao !== 'lider' && visao !== 'chefia') return erro('Escolha a visão do relatório: líder ou chefia.');
       if (!a.devolutivaEm) return erro('Marque a devolutiva como feita antes: ninguém recebe o relatório sem a conversa com o consultor.');
-      var emp = buscarPor(empresas(), 'id', c.empresaId) || { nome: '' };
+      var emp = buscarPor(empresas(), 'id', c.empresaId) || { nome: c.empresaNome || '' };
       var consultor = limparTexto(o.consultor, 80);
       var dados;
       if (visao === 'chefia') {
@@ -3254,7 +3254,7 @@
       var cons = FX().consolidar(avs.map(function (a) { return FX().visaoLider(a.resultado); }),
         avs.filter(function (a) { return a.plano; }).map(function (a) { return a.plano.comportamentos.map(function (x) { return x.item; }); }));
       if (!cons.disponivel) return erro('O consolidado da liderança só aparece com 5 ou mais líderes com relatório liberado e devolutiva feita.');
-      var emp = buscarPor(empresas(), 'id', c.empresaId) || { nome: '' };
+      var emp = buscarPor(empresas(), 'id', c.empresaId) || { nome: c.empresaNome || '' };
       var dados = { modelo: 'feedback360', visao: 'empresa', versao: 1, titulo: 'Feedback 360 da Liderança · consolidado · ' + (emp.nome || ''), geradoEm: agoraIso(),
         empresa: { nome: emp.nome || '' }, consultor: limparTexto(o.consultor, 80), ciclo: { nome: c.nome, encerradoEm: c.encerradoEm, versaoItens: c.versaoItens || 'v0' },
         consolidado: cons };
@@ -3324,7 +3324,7 @@
       function iso(dias) { return new Date(t - dias * dia).toISOString(); }
       var ids = FX().IDS_ITENS;
       function itens(v, glb) { var o = {}; ids.forEach(function (id, i) { o[id] = v[i]; }); o.GLB1 = glb; return o; }
-      var c = { id: PREVIA.f360CicloId, empresaId: EMP, nome: 'Feedback 360 · ago/2026', status: 'aberto', versaoItens: 'v0',
+      var c = { id: PREVIA.f360CicloId, empresaId: EMP, empresaNome: 'Clínica Exemplo', nome: 'Feedback 360 · ago/2026', status: 'aberto', versaoItens: 'v0',
         encerramentoPrevisto: iso(61).slice(0, 10), canalTexto: 'o canal de ética da Clínica Exemplo', canalUrl: '', contatoDados: '',
         contatoRelatos: 'Diretoria administrativa (definida no contrato)', retencaoDias: 90, manterLista: false, relatosRegistrados: 0,
         abertoEm: iso(75), encerradoEm: '', listaApagadaEm: '' };

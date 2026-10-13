@@ -171,6 +171,7 @@ test.describe('Feedback 360: resposta no celular', () => {
     await expect(page.locator('#relatorio')).toHaveAttribute('data-estado', 'pronto');
     await expect(page.locator('#relatorio')).toHaveAttribute('data-modelo', 'feedback360');
     await expect(page.locator('.capa__titulo')).toContainText('Marta E.');
+    await expect(page.locator('.capa__rodape')).toContainText('Clínica Exemplo');
     const ids = await page.locator('section[data-secao]').evaluateAll((els) => els.map((e) => e.getAttribute('data-secao')));
     expect(ids).toEqual(['capa', 'indice', 'como-ler', 'resumo', 'temas', 'comportamentos', 'diferencas', 'comentarios', 'estilo', 'equipe', 'plano', 'acompanhamento', 'metodo']);
     await expect(page.locator('.pag-cab__dir').first()).toHaveText('Confidencial · desenvolvimento de Marta E. · não usar em decisões de pessoal');
