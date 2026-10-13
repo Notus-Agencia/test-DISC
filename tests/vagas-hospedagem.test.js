@@ -59,6 +59,67 @@ test('normalizarAnuncio: aceita {ok, anuncio} e variações de nome; dinheiro em
   assert.equal(mod.normalizarAnuncio(null), null);
 });
 
+// Exemplo exato de docs/VAGAS-SPEC.md §8.1 (vagas_anuncios_publicos) + os campos que o vagas_anuncio_publico acrescenta.
+const ANUNCIO_SPEC = {
+  ok: true,
+  anuncio: {
+    id: '…', codigo: 'K7M2QX', titulo: 'Operador(a) de caixa', funcao: 'Operador(a) de caixa', modalidade: 'clt',
+    area: { slug: 'caixa', nome: 'Caixa e operação de loja' }, turno: 'manha', fimDeSemana: false, experiencia: 'nao_precisa',
+    comissao: false, selo: 'caixa', valor: { minCentavos: 162100, maxCentavos: 180000, unidade: 'mes' },
+    cidade: { slug: 'boa-vista-rr', nome: 'Boa Vista' }, zona: { slug: 'centro-leste', nome: 'Centro e Zona Leste' },
+    empresa: { nome: 'Mercadinho Sol do Norte', iniciais: 'MS', confidencial: false, conferida: true, setor: 'Supermercado', descricao: 'Mercadinho de bairro.' },
+    diaria: null, paraHoje: false, quantidade: 2, publicadoEm: '2026-10-12T14:00:00.000000Z', expiraEm: '2026-11-11T14:00:00.000000Z',
+    descricao: 'Atender no caixa e repor gôndolas.',
+    requisitos: ['cnh_b', 'disponibilidade', 'outro'], requisitoOutro: 'Morar perto do Centro',
+    requisitosLista: ['CNH categoria B', 'Disponibilidade de horário', 'Morar perto do Centro'],
+    beneficios: ['vt', 'refeicao'], escolaridade: 'medio', inicio: 'imediato', inicioData: null, horasDia: null
+  }
+};
+
+test('formato real da SPEC §8.1: salário de valor{minCentavos,maxCentavos}, verificada de empresa.conferida, requisitos em frases', () => {
+  const a = mod.normalizarAnuncio(ANUNCIO_SPEC);
+  assert.equal(a.salarioMin, 162100);
+  assert.equal(a.salarioMax, 180000);
+  assert.equal(mod.textoValor(a), 'R$ 1.621 a R$ 1.800');
+  assert.equal(a.verificada, true);
+  assert.equal(mod.textoEmpresa(a), 'Mercadinho Sol do Norte · verificada');
+  assert.equal(a.requisitos, 'CNH categoria B · Disponibilidade de horário · Morar perto do Centro · Ensino médio');
+  assert.equal(a.beneficios, 'Vale-transporte · Refeição');
+  const html = mod.montarPaginaVaga(ANUNCIO_SPEC, ORIGEM);
+  assert.ok(html.includes('<meta property="og:description" content="Mercadinho Sol do Norte · verificada · Boa Vista · Centro e Zona Leste · CLT · R$ 1.621 a R$ 1.800">'));
+  assert.ok(html.includes('<span class="valor">R$ 1.621 a R$ 1.800</span>'), 'salário na página');
+  assert.ok(html.includes('CNH categoria B · Disponibilidade de horário · Morar perto do Centro'), 'requisitos legíveis');
+  assert.ok(!/cnh_b|disponibilidade<|>outro</.test(html), 'nunca imprime a chave');
+  assert.ok(html.includes('11/11/2026'), 'expiraEm vira "Vaga aberta até"');
+  assert.ok(html.includes('<dt>Vagas</dt><dd>2</dd>'));
+});
+
+test('formato real da SPEC: requisitos só como lista de chaves (sem requisitosLista) viram frases; unidade hora/serviço', () => {
+  const a = mod.normalizarAnuncio({ ok: true, anuncio: Object.assign({}, ANUNCIO_SPEC.anuncio, { requisitosLista: undefined, valor: { minCentavos: 1200, maxCentavos: null, unidade: 'hora' }, escolaridade: 'nao_exigida' }) });
+  assert.equal(a.requisitos, 'CNH categoria B · Disponibilidade de horário · Morar perto do Centro');
+  assert.equal(mod.textoValor(a), 'R$ 12 por hora ou mais');
+  const b = mod.normalizarAnuncio({ titulo: 'Pintor', modalidade: 'freelancer', valor: { minCentavos: 50000, maxCentavos: 80000, unidade: 'servico' }, requisitos: ['chave_inventada'] });
+  assert.equal(mod.textoValor(b), 'R$ 500 a R$ 800 por serviço');
+  assert.equal(b.requisitos, '');
+});
+
+test('formato real da SPEC: diária usa valor.minCentavos (unidade dia) e diaria{data,inicio,fim}', () => {
+  const r = { ok: true, anuncio: Object.assign({}, ANUNCIO_SPEC.anuncio, { titulo: 'Ajudante de evento', modalidade: 'diaria', valor: { minCentavos: 15000, maxCentavos: null, unidade: 'dia' }, diaria: { data: '2026-10-14', inicio: '07:00', fim: '16:00' }, paraHoje: true, requisitos: [], requisitosLista: [] }) };
+  const a = mod.normalizarAnuncio(r);
+  assert.equal(a.diariaValor, 15000);
+  assert.equal(mod.textoValor(a), 'R$ 150 por dia');
+  assert.equal(a.diariaHorario, '07:00–16:00');
+  const html = mod.montarPaginaVaga(r, ORIGEM);
+  assert.ok(html.includes('<dt>Quando</dt><dd>14/10/2026, 07:00–16:00</dd>'));
+  assert.ok(html.includes('<dt>Diária</dt>'));
+  assert.ok(html.includes('· Diária · R$ 150 por dia">'));
+});
+
+test('empresa confidencial no formato real: nome "Empresa confidencial" + conferida', () => {
+  const a = mod.normalizarAnuncio({ ok: true, anuncio: Object.assign({}, ANUNCIO_SPEC.anuncio, { empresa: { nome: 'Empresa confidencial', iniciais: '', confidencial: true, conferida: true } }) });
+  assert.equal(mod.textoEmpresa(a), 'Empresa confidencial · verificada');
+});
+
 test('empresa confidencial: nunca mostra o nome, mesmo que venha no JSON', () => {
   const a = mod.normalizarAnuncio({ titulo: 'Caixa', empresa: { nome: 'Não mostrar', confidencial: true, verificada: true } });
   assert.equal(a.empresaNome, '');
@@ -149,6 +210,8 @@ test('_headers: CSP sem script de fora (exceto Turnstile), Supabase liberado, ca
   assert.deepEqual(dir['script-src'], ["'self'", 'https://challenges.cloudflare.com']);
   assert.ok(dir['connect-src'].includes('https://tevpqngqzxcswmticjnr.supabase.co'));
   assert.ok(!dir['connect-src'].includes('https://*.supabase.co'), 'só o projeto, não qualquer *.supabase.co');
+  assert.ok(dir['img-src'].includes('https://tevpqngqzxcswmticjnr.supabase.co'), 'foto da pessoa (URL assinada do Storage, só depois do Combinou)');
+  assert.ok(!dir['img-src'].includes('https://*.supabase.co'));
   assert.deepEqual(dir['frame-ancestors'], ["'none'"]);
   assert.deepEqual(dir['object-src'], ["'none'"]);
   assert.ok(!dir['script-src'].includes("'unsafe-inline'") && !dir['script-src'].includes("'unsafe-eval'"));

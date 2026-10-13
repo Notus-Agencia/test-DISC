@@ -36,7 +36,7 @@ export function codigoValido(texto) {
 }
 
 function texto(v) { return v == null ? '' : String(v).trim(); }
-function numero(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
+function numero(v) { if (v == null || v === '') return null; const n = Number(v); return Number.isFinite(n) ? n : null; }
 function primeiro(obj, nomes) {
   for (const n of nomes) if (obj && obj[n] != null && obj[n] !== '') return obj[n];
   return undefined;
@@ -51,14 +51,28 @@ export function reais(centavos) {
   return 'R$ ' + milhar + (cents ? ',' + String(cents).padStart(2, '0') : '');
 }
 
+const UNIDADES = { mes: '', hora: ' por hora', dia: ' por dia', servico: ' por serviço' };
+// Chaves fechadas do anúncio (docs/VAGAS-SPEC.md §8.1) -> frases. A página NUNCA imprime a chave (ex.: "cnh_b").
+const REQUISITOS = { cnh_a: 'CNH categoria A', cnh_b: 'CNH categoria B', cnh_d: 'CNH categoria D', curso_registro: 'Curso com registro na área', disponibilidade: 'Disponibilidade de horário' };
+const BENEFICIOS = { vt: 'Vale-transporte', refeicao: 'Refeição', saude: 'Plano de saúde', moradia: 'Moradia', comissao: 'Comissão' };
+const ESCOLARIDADES = { fundamental: 'Ensino fundamental', medio: 'Ensino médio', tecnico: 'Curso técnico', superior: 'Ensino superior' };
+
 /** Faixa salarial ou valor da diária em texto; '' quando o anúncio não informa. */
 export function textoValor(a) {
   if (a.modalidade === 'diaria' && a.diariaValor != null) return reais(a.diariaValor) + ' por dia';
-  if (a.salarioMin != null && a.salarioMax != null && a.salarioMax > a.salarioMin) return reais(a.salarioMin) + ' a ' + reais(a.salarioMax);
-  if (a.salarioMin != null) return reais(a.salarioMin) + (a.salarioMax == null ? ' ou mais' : '');
-  if (a.salarioMax != null) return 'até ' + reais(a.salarioMax);
+  const un = UNIDADES[a.unidade] != null ? UNIDADES[a.unidade] : '';
+  if (a.salarioMin != null && a.salarioMax != null && a.salarioMax > a.salarioMin) return reais(a.salarioMin) + ' a ' + reais(a.salarioMax) + un;
+  if (a.salarioMin != null) return reais(a.salarioMin) + un + (a.salarioMax == null ? ' ou mais' : '');
+  if (a.salarioMax != null) return 'até ' + reais(a.salarioMax) + un;
   if (a.salarioTexto) return a.salarioTexto;
   return '';
+}
+
+/** Lista de chaves fechadas -> frases (chave desconhecida some); texto livre passa como está. */
+function frases(valor, mapa, extra) {
+  if (Array.isArray(valor)) return valor.map((k) => mapa[texto(k)] || (texto(k) === 'outro' ? texto(extra) : '')).filter(Boolean);
+  const t = texto(valor);
+  return t && !mapa[t] ? [t] : (mapa[t] ? [mapa[t]] : []);
 }
 
 /** Lê o JSON da RPC (ou já o anúncio) e devolve só o que a página usa, com nomes fixos. */
@@ -72,9 +86,19 @@ export function normalizarAnuncio(obj) {
   const cidadeObj = a.cidade && typeof a.cidade === 'object' ? a.cidade : {};
   const zonaObj = a.zona && typeof a.zona === 'object' ? a.zona : {};
   const diaria = a.diaria && typeof a.diaria === 'object' ? a.diaria : {};
+  const valor = a.valor && typeof a.valor === 'object' ? a.valor : {};
   const modalidade = texto(a.modalidade).toLowerCase();
-  const titulo = texto(primeiro(a, ['titulo', 'cargo', 'nome']));
+  const titulo = texto(primeiro(a, ['titulo', 'funcao', 'cargo', 'nome']));
   if (!titulo) return null;
+  const salarioMin = numero(primeiro(a, ['salarioMin', 'salario_min', 'salarioDe']) ?? valor.minCentavos);
+  const salarioMax = numero(primeiro(a, ['salarioMax', 'salario_max', 'salarioAte']) ?? valor.maxCentavos);
+  const unidade = texto(valor.unidade || a.unidade).toLowerCase();
+  const diariaValor = numero(primeiro(a, ['diariaValor', 'diaria_valor', 'valorDiaria']) ?? diaria.valor ?? (modalidade === 'diaria' || unidade === 'dia' ? salarioMin : null));
+  const requisitos = Array.isArray(a.requisitosLista) && a.requisitosLista.length
+    ? a.requisitosLista.map(texto).filter(Boolean)
+    : frases(primeiro(a, ['requisitos', 'exigencias']), REQUISITOS, a.requisitoOutro);
+  const escolaridade = texto(primeiro(a, ['escolaridade', 'escolaridadeMin'])).toLowerCase();
+  if (ESCOLARIDADES[escolaridade]) requisitos.push(ESCOLARIDADES[escolaridade]);
   return {
     codigo: codigoValido(primeiro(a, ['codigo', 'link', 'codigoLink'])),
     titulo,
@@ -82,18 +106,21 @@ export function normalizarAnuncio(obj) {
     modalidadeNome: MODALIDADES[modalidade] || (modalidade ? modalidade[0].toUpperCase() + modalidade.slice(1) : ''),
     empresaNome: nomeEmpresa,
     confidencial,
-    verificada: emp.verificada != null ? !!emp.verificada : !!primeiro(a, ['empresaVerificada', 'verificada']),
+    verificada: !!(emp.verificada ?? emp.conferida ?? primeiro(a, ['empresaVerificada', 'verificada', 'conferida'])),
     cidadeNome: texto(primeiro(a, ['cidadeNome', 'cidade_nome']) || cidadeObj.nome || (typeof a.cidade === 'string' ? a.cidade : '')),
     cidadeSlug: texto(primeiro(a, ['cidadeSlug', 'cidade_slug']) || cidadeObj.slug || ''),
     zonaNome: texto(primeiro(a, ['zonaNome', 'zona_nome']) || zonaObj.nome || (typeof a.zona === 'string' ? a.zona : '')),
-    salarioMin: numero(primeiro(a, ['salarioMin', 'salario_min', 'salarioDe'])),
-    salarioMax: numero(primeiro(a, ['salarioMax', 'salario_max', 'salarioAte'])),
+    salarioMin,
+    salarioMax,
+    unidade,
     salarioTexto: texto(primeiro(a, ['salarioTexto', 'faixaSalarial'])),
-    diariaValor: numero(primeiro(a, ['diariaValor', 'diaria_valor', 'valorDiaria']) ?? diaria.valor),
+    diariaValor,
     diariaData: texto(primeiro(a, ['diariaData', 'diaria_data']) || diaria.data),
-    diariaHorario: texto(primeiro(a, ['diariaHorario', 'diaria_horario']) || diaria.horario),
+    diariaHorario: texto(primeiro(a, ['diariaHorario', 'diaria_horario']) || diaria.horario || [texto(diaria.inicio), texto(diaria.fim)].filter(Boolean).join('–')),
     descricao: texto(primeiro(a, ['descricao', 'resumo'])),
-    requisitos: texto(primeiro(a, ['requisitos', 'exigencias'])),
+    requisitos: requisitos.join(' · '),
+    beneficios: frases(a.beneficios, BENEFICIOS).join(' · '),
+    quantidade: numero(a.quantidade),
     horario: texto(primeiro(a, ['horario', 'jornada'])),
     publicadoEm: texto(primeiro(a, ['publicadoEm', 'publicado_em'])),
     validoAte: texto(primeiro(a, ['validoAte', 'valido_ate', 'expiraEm', 'expira_em'])),
@@ -180,7 +207,9 @@ export function montarPaginaVaga(anuncio, origem) {
   if (a.modalidade === 'diaria' && (a.diariaData || a.diariaHorario)) linhas.push(['Quando', [dataCurta(a.diariaData) || a.diariaData, a.diariaHorario].filter(Boolean).join(', ')]);
   if (a.horario) linhas.push(['Horário', a.horario]);
   if (valor) linhas.push([a.modalidade === 'diaria' ? 'Diária' : 'Salário', '<span class="valor">' + esc(valor) + '</span>', true]);
-  if (a.validoAte) linhas.push(['Vaga aberta até', dataCurta(a.validoAte) || a.validoAte]);
+  if (a.beneficios) linhas.push(['Benefícios', a.beneficios]);
+  if (a.quantidade > 1) linhas.push(['Vagas', String(a.quantidade)]);
+  if (dataCurta(a.validoAte)) linhas.push(['Vaga aberta até', dataCurta(a.validoAte)]);
   const destino = a.cidadeSlug ? '/' + a.cidadeSlug + '/' : '/';
   const linkApp = destino + (a.codigo ? '?vaga=' + a.codigo : '');
   const expirada = a.status && !['publicado', 'ativo', 'ativa', 'aberta'].includes(a.status);

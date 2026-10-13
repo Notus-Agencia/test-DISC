@@ -66,6 +66,9 @@ CSP equivalente à do DISC, mais fechada onde dá:
   Nada de `unsafe-inline`/`unsafe-eval`: o script embutido de uma página precisa de hash, como o `tests/csp.test.js`
   do DISC confere para o `index.html`. Prefira arquivo `.js` separado.
 - `connect-src 'self' https://tevpqngqzxcswmticjnr.supabase.co wss://…` (só o nosso projeto, não `*.supabase.co`).
+- `img-src 'self' data: blob: https://tevpqngqzxcswmticjnr.supabase.co`: a foto da pessoa vem por URL assinada do
+  Supabase Storage e só aparece para a empresa depois do Combinou. (Alternativa, se um dia a origem sair da CSP: a tela
+  baixa por `fetch` e mostra como `blob:`, que já está liberado.)
 - `frame-src https://challenges.cloudflare.com` (Turnstile), `frame-ancestors 'none'` + `X-Frame-Options: DENY`.
 - `Strict-Transport-Security: max-age=31536000; includeSubDomains`, `X-Content-Type-Options: nosniff`,
   `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` fechando câmera, microfone, localização,
@@ -93,10 +96,13 @@ Nunca dado de pessoa. O botão "Quero essa vaga" leva para `/<cidade>/?vaga=<có
 - **Erros**: código fora do padrão ou vaga inexistente/encerrada → **404** com página simples (`no-store`); Supabase
   fora do ar → **503** com `Retry-After: 30`. Vaga com status diferente de `publicado` → página com "Vaga encerrada",
   `noindex` e botão "Ver outras vagas".
-- **Campos que a Function entende** (`normalizarAnuncio`, tolerante a nomes): `codigo`, `titulo`, `modalidade`,
-  `empresa{nome, verificada, confidencial}` (ou `empresaNome`/`confidencial`), `cidade{nome, slug}`, `zona{nome}`,
-  `salarioMin`/`salarioMax` (centavos), `diaria{valor, data, horario}` ou `diariaValor`, `horario`, `descricao`,
-  `requisitos`, `validoAte`, `status`. Se a RPC devolver outros nomes, ajuste `normalizarAnuncio` e os testes.
+- **Campos lidos** (formato de `docs/VAGAS-SPEC.md` §8.1; `normalizarAnuncio` também aceita alguns sinônimos):
+  `codigo`, `titulo`/`funcao`, `modalidade`, `valor{minCentavos, maxCentavos, unidade: mes|hora|dia|servico}`,
+  `empresa{nome, confidencial, conferida}` (conferida = "verificada" na tela), `cidade{nome, slug}`, `zona{nome}`,
+  `diaria{data, inicio, fim}`, `quantidade`, `descricao`, `requisitosLista` (frases prontas; sem ela, as chaves de
+  `requisitos` + `requisitoOutro` viram frases e chave desconhecida some; nunca imprime `cnh_b`), `beneficios`
+  (chaves → frases), `escolaridade`, `expiraEm` ("Vaga aberta até"). Vaga fora do ar vem como `{ok:false}` → 404.
+  A Function **não** chama `vagas_anuncio_vista` (prévia de link não conta como vista).
 - **Imagem da prévia**: `/comum/marca/gsc-logo-email.png` (PNG; o WhatsApp não mostra SVG). Uma imagem própria
   1200×630 com a marca Vagas melhora a prévia: troque a constante `IMAGEM_OG`.
 - Testes sem rede: `node --test tests/vagas-hospedagem.test.js` (entra no `npm test`).
