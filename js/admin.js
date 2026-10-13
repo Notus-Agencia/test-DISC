@@ -2145,7 +2145,7 @@
   // relatorios[/gerados|/gerar[/<chave>]|/exemplo/<chave>], vendas[/<subaba>], vendas/pedido/<id>, usuarios,
   // comparativo, importar, conexoes. Âncoras do Supabase Auth (#access_token=…, #error=…) não são rotas.
   var ABAS_ROTA = ['comparativo', 'importar', 'usuarios', 'conexoes'];
-  var SUBABAS_ROTA_EMPRESA = ['colaboradores', 'organograma', 'compatibilidade', 'relatorios', 'clima', 'historico'];
+  var SUBABAS_ROTA_EMPRESA = ['colaboradores', 'organograma', 'compatibilidade', 'relatorios', 'clima', 'feedback360', 'historico'];
   var SUBABAS_ROTA_VENDAS = ['divulgar', 'resumo', 'pedidos', 'cupons', 'pacotes'];
   function parteRota(s) { return /^[A-Za-z0-9_.:-]{1,128}$/.test(String(s || '')) ? String(s) : ''; }
   function lerRota(hash) {
@@ -5831,6 +5831,7 @@
     { id: 'compatibilidade', rotulo: 'Compatibilidade' },
     { id: 'relatorios', rotulo: 'Relatórios' },
     { id: 'clima', rotulo: 'Pesquisa de clima' },
+    { id: 'feedback360', rotulo: 'Feedback 360' },
     { id: 'historico', rotulo: 'Histórico' }
   ];
 
@@ -5899,6 +5900,8 @@
       painel.appendChild(blocoRelatoriosModelo({ empresaId: id }, 'e:' + id, { empresa: emp.nome }));
     } else if (sub === 'clima') {
       painel.appendChild(blocoClima(emp, eq, colabs));
+    } else if (sub === 'feedback360') {
+      painel.appendChild(blocoF360(emp, eq, colabs));
     } else if (sub === 'historico') {
       painel.appendChild(blocoHistorico2(eq, emp));
     } else {
@@ -5934,6 +5937,20 @@
       consultor: consultorAtual(), emp: emp, eq: eq, colabs: colabs,
       redesenhar: function () {
         if (estado.aba === 'empresas' && estado.emp.tela === 'pagina' && estado.emp.id === emp.id && estado.emp.subaba === 'clima') renderizarEmpresas();
+      } });
+  }
+
+  // Feedback 360 da Liderança (js/admin-feedback360.js): enquanto aberto, só contagens por fonte; depois, o resultado congelado pelo banco.
+  function blocoF360(emp, eq, colabs) {
+    var M = root.DISC_ADMIN_F360;
+    if (!M || !root.DISC_F360 || !metodoApi('f360Listar')) {
+      return el('section', { classe: 'caixa emp-bloco', id: 'emp-f360' }, el('p', { classe: 'texto-suave', texto: 'Feedback 360 indisponível neste painel.' }));
+    }
+    return M.bloco({ el: el, botao: botao, api: api, avisar: avisar, falhou: falhou, confirmar: confirmar, abrirJanela: abrirJanela, copiar: copiar,
+      formatarData: formatarData, linkWhatsApp: linkWhatsAppTexto, abrirPrevia: abrirPreviaNovaAba, href: root.location.href,
+      consultor: consultorAtual(), emp: emp, eq: eq, colabs: colabs,
+      redesenhar: function () {
+        if (estado.aba === 'empresas' && estado.emp.tela === 'pagina' && estado.emp.id === emp.id && estado.emp.subaba === 'feedback360') renderizarEmpresas();
       } });
   }
 

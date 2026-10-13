@@ -7,10 +7,11 @@ import { dirname, join } from 'node:path';
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ARQUIVOS = ['assets/styles.css', 'assets/admin.css', 'js/app.js', 'js/admin.js', 'index.html', 'admin.html', 'relatorio.html',
-  'clima.html', 'assets/clima.css', 'js/clima-resposta.js', 'js/admin-clima.js', 'assets/admin-clima.css'];
+  'clima.html', 'assets/clima.css', 'js/clima-resposta.js', 'js/admin-clima.js', 'assets/admin-clima.css',
+  'feedback360.html', 'assets/feedback360.css', 'js/feedback360-resposta.js', 'js/admin-feedback360.js', 'assets/admin-feedback360.css'];
 // Documentos (relatório público): variante EDITORIAL — docs/IDENTIDADE-VISUAL.md, seção "Documentos (relatórios e manuais)".
 // Mesmas proibições das telas, mas com o papel creme, a escala de tipos do documento e o peso 500.
-const ARQUIVOS_DOCUMENTO = ['assets/relatorio.css', 'js/relatorio-view.js', 'assets/relatorio-clima.css'];
+const ARQUIVOS_DOCUMENTO = ['assets/relatorio.css', 'js/relatorio-view.js', 'assets/relatorio-clima.css', 'assets/relatorio-feedback360.css'];
 
 // Tokens da identidade (assets/notus.css) + vermelho/verde funcionais + cores do próprio ícone.
 const CORES_LIBERADAS = new Set([

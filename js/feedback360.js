@@ -961,7 +961,7 @@
   var MOTIVOS_DESCARTE = { identifica: 'Identifica quem escreveu', ofensa: 'Ofensa', sensivel: 'Dado sensível', relato: 'Relato de assédio, discriminação ou violência', fora: 'Fora do tema' };
 
   var TEXTOS = {
-    capa: function (nome) { return 'Relatório confidencial de desenvolvimento de ' + nome + '. Mostra como comportamentos de liderança são percebidos por grupos de pessoas, ao lado da autoavaliação. Não é avaliação psicológica, não mede competência técnica nem desempenho e não pode ser usado para decidir contratação, promoção, salário, bônus, desligamento ou remanejamento, nem para comparar líderes.'; },
+    capa: function (nome) { return pontuar('Relatório confidencial de desenvolvimento de ' + nome + '.') + ' Mostra como comportamentos de liderança são percebidos por grupos de pessoas, ao lado da autoavaliação. Não é avaliação psicológica, não mede competência técnica nem desempenho e não pode ser usado para decidir contratação, promoção, salário, bônus, desligamento ou remanejamento, nem para comparar líderes.'; },
     grupos: 'Grupos com menos de 3 respostas não aparecem separados. Com 3 ou 4 respostas, a média tem margem ampla: uma opinião muda bastante o resultado. Frase por frase, só com 5 respostas ou mais.',
     chefia: 'A resposta da chefia aparece identificada; a chefia foi avisada disso antes de responder. É a visão de uma pessoa.',
     comentarios: 'Opiniões de quem convive com você, revisadas pela Gestão sem Caos para proteger quem escreveu. Trechos removidos aparecem marcados.',
