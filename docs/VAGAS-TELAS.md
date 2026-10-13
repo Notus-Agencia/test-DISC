@@ -58,6 +58,8 @@ Regras que valem para TODAS as telas (não repetidas em cada uma):
 | `eu.html` | `#curriculo/1…5`, `#candidaturas`, `#conversa/<id>`, `#quem-viu`, `#dados`, `#referencias`, `#referencia/pedir`, `#referencia/<id>` | pessoa logada | celular | área da pessoa |
 | `testes.html` | `#catalogo`, `#teste/<slug>`, `#prova`, `#resultado/<tentativa>` | pessoa logada | celular | motor dos testes (`vagas/js/testes.js`) |
 | `selo.html` | `/selo?codigo=Q8V3N2KD` | qualquer pessoa | celular | conferência pública |
+| `referencia.html` | `/referencia.html?t=<token>` (convite de referência; empresa logada abre com `vagas_referencia_convite`) | empresa | computador | preencher a referência pedida |
+| `referencias.html` | `/referencias.html?t=<token>` (página pública que a pessoa liga) | qualquer pessoa | celular | referências completas da pessoa |
 | `empresa.html` | `#inicio`, `#vagas`, `#vaga/nova`, `#vaga/<id>`, `#vaga/<id>/cartoes`, `#conversas`, `#conversa/<id>`, `#referencias`, `#referencia/dar`, `#banco`, `#compras`, `#comprar/<produto>/<vaga>`, `#dados` | empresa logada | computador | painel da empresa |
 | `operador.html` | `#fila`, `#denuncias`, `#empresas`, `#assistido`, `#boletim`, `#repasse`, `#zonas` | operador logado (ou equipe) | computador | operação da praça |
 | `../admin.html` | aba "Vagas" (`data-aba="vg-cidades" | "vg-operadores" | "vg-moderacao" | "vg-numeros"`) | equipe (`e_admin()`) | computador | painel da Gestão sem Caos |
@@ -149,9 +151,11 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   Horário, Valor do dia, "Pagamento combinado direto com a empresa"), "O que a pessoa vai fazer" `#vg-vaga-descricao`,
   "O que precisa" `#vg-vaga-requisitos`, bloco do selo pedido (`.vg-selo--mini`: "Você já tem o selo de …" com nota e data, ou
   "Você ainda não tem o selo de …" + `#vg-vaga-fazer-teste` "Fazer o teste agora (15 min)"; quem não tem o selo **pode**
-  se candidatar), `#vg-aviso-golpe`, links "Denunciar esta vaga" (janela `#vg-janela-denuncia`: motivo em pílulas — "Pede
-  dinheiro", "Pede documento", "Discriminação", "Parece falsa", "Outro" — + texto ≤ 300 + "Enviar denúncia"; anônimo pode;
-  RPC `vagas_denunciar`) e "Compartilhar no WhatsApp" (`https://wa.me/?text=` com cargo, zona, valor e o link curto).
+  se candidatar), `#vg-aviso-golpe`, links "Denunciar esta vaga" (janela `#vg-janela-denuncia`: motivo em pílulas geradas de
+  `VAGAS_REGRAS.MOTIVOS_DENUNCIA` (lista `{chave, texto}`: `golpe`, `documento`/`cobranca`, `discriminacao`, `falsa`, `ofensa`,
+  `contato`, `outro` — a tela usa as chaves e textos de `regras.js`, nunca uma lista própria) + `#vg-denuncia-detalhe` ≤ 300 +
+  "Enviar denúncia"; anônimo pode denunciar anúncio (`id` = uuid ou código); mensagem e referência só com login;
+  RPC `vagas_denunciar({alvo, id, motivo, detalhe})`) e "Compartilhar no WhatsApp" (`https://wa.me/?text=` com cargo, zona, valor e o link curto).
 - **Barra fixa `#vg-barra-vaga`:** dica "Você escolhe: nada acontece sem o seu 'Quero'." + `#vg-pular` (claro) + `#vg-quero`
   (laranja, "Quero esta vaga"). Logado sem currículo completo → "Quero" leva ao passo que falta com aviso "Falta terminar
   o currículo (passo 3 de 5). Depois a candidatura é enviada sozinha." Anônimo → `entrar.html?voltar=` (a intenção fica em
@@ -170,20 +174,27 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   Grátis para quem procura emprego." (no computador, metade laranja / metade azul-escura como o login do painel).
 - **Segmento `#vg-aba-entrar` / `#vg-aba-criar`.** Criar (`form#vg-form-criar`): `#vg-criar-nome` ("Como quer ser chamada(o)",
   obrigatório, 2–60 caracteres; erro "Escreva o seu nome"), `#vg-criar-email` (obrigatório; erro "Esse e-mail parece incompleto.
-  Confira se tem o '.com' no fim."; ajuda "Não tem e-mail? Peça ajuda no WhatsApp da praça."), `#vg-criar-senha` (≥ 8; erro
-  "A senha precisa ter pelo menos 8 caracteres"; ajuda com a dica das três palavras), `#vg-criar-termos` (obrigatório: "Tenho 18
+  Confira se tem o '.com' no fim."; ajuda "Não tem e-mail? Peça ajuda no WhatsApp da praça."), `#vg-criar-termos` (obrigatório: "Tenho 18
   anos ou mais e li os Termos de uso e a Política de privacidade. Sei que candidatar-se é sempre grátis."; erro "Marque a caixa
-  para continuar"), `#vg-criar-enviar` "Criar conta" (laranja). Chama a Edge Function `vagas-conta` `cadastrar` {tipo:'pessoa',
-  termosVersao}. Resposta sempre neutra → tela `#vg-confirmar-email` "Abra o seu e-mail e toque no link para confirmar"
-  + `#vg-reenviar` (bloqueado 60 s com contador) + "Trocar o e-mail".
-- **Entrar (`form#vg-form-entrar`):** `#vg-entrar-email`, `#vg-entrar-senha`, `#vg-entrar-enviar`, link `#vg-ir-esqueci`; erro
-  único "E-mail ou senha não conferem." (não diz qual); `confirmar` → "Confirme o e-mail antes de entrar" + reenviar.
+  para continuar"), `#vg-criar-enviar` "Criar conta" (laranja). **Sem campo de senha no cadastro** (contrato §6.6/§9): a conta é
+  criada só com e-mail + nome + tipo (`VAGAS_API.cadastrar({email, tipo:'pessoa', nome, termosVersao})`) e a senha é criada depois
+  do clique no link do e-mail. Resposta sempre neutra (a `mensagem` da Edge Function: "Se este e-mail puder ser usado, você vai
+  receber um link em instantes. Confira também a caixa de spam.") → tela `#vg-confirmar-email` com essa mensagem + `#vg-reenviar`
+  (`reenviarConfirmacao`; bloqueado 60 s com contador) + "Trocar o e-mail". Nota abaixo do botão: "Você cria a senha depois de
+  abrir o link do e-mail."
+- **Entrar (`form#vg-form-entrar`):** `#vg-entrar-email`, `#vg-entrar-senha`, `#vg-entrar-enviar`, link `#vg-ir-esqueci`
+  (`VAGAS_API.entrar(email, senha)`); erro único **"E-mail ou senha não conferem."** (não diz qual; a tela mostra esse texto no lugar do
+  `erro` da API); `confirmar` → "Confirme seu e-mail pelo link que enviamos antes de continuar." + reenviar.
 - **Esqueci (`#vg-esqueci`, `pessoa-esqueci.png`):** `#vg-esqueci-email` + `#vg-esqueci-enviar`; sempre `.aviso--ok` "Se esse e-mail
   tiver conta, o link chega em alguns minutos. Olhe também a caixa de spam." (botão vira "Enviado", desabilitado 60 s).
-- **Volta do link (`?token_hash&type`):** `signup` → "E-mail confirmado" + continua (`voltar`, senão `eu.html#curriculo/1`);
-  `recovery` → `form#vg-form-nova-senha` (`#vg-ns-senha`, `#vg-ns-confirmar`; erro "As senhas não são iguais");
-  `invite` (cadastro assistido) → "A operação da praça criou a sua conta. Crie a sua senha para ela valer." + mesmo formulário;
-  token inválido → "Este link venceu ou já foi usado. Peça outro." + esqueci.
+- **Volta do link (`?token_hash&type`):** **todo** link (`invite` = cadastro, reenviar, assistido e operador; `magiclink`; `recovery` =
+  esqueci) cai na mesma tela **"Crie sua senha"** (`form#vg-form-nova-senha`: `#vg-ns-email` readonly, `#vg-ns-senha`,
+  `#vg-ns-confirmar`, `#vg-ns-salvar` "Salvar senha"), com texto neutro "Escolha uma senha de 8 a 72 caracteres para entrar no Vagas
+  sem Caos." (não diz se é conta nova ou recuperação). Fluxo: `VAGAS_API.linkDoEndereco(location)` → `confirmarLink(link)`
+  (`{ok, tipo, precisaSenha:true}`) → `definirSenha(senha)` (erro da API "A senha precisa ter de 8 a 72 caracteres."; a tela
+  acrescenta "As senhas não são iguais") → `eu()` → continua (`voltar`, senão `eu.html#curriculo/1`; cadastro assistido: antes
+  aceita os termos em `#vg-aceitar-termos`). Link vencido (`linkExpirado`): "O link expirou ou já foi usado. Peça outro na tela de
+  entrada." + botão para o esqueci.
 - **Empresa:** o mesmo arquivo com `?tipo=empresa` mostra o cadastro da empresa (seção 3.1).
 
 ### 2.6 Currículo em 5 passos (`eu.html#curriculo/<n>`) — `pessoa-curriculo-2.png`, `pessoa-curriculo-5.png`
@@ -202,9 +213,18 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
      `areas[]`, mínimo 1 e máximo 3; 8 visíveis + `#vg-cv-areas-todas` "Ver todas as 24 áreas"; ajuda "2 de 3 marcadas: …"; erro
      "Marque pelo menos uma área" / "Só dá para marcar 3"); depois "Onde você já trabalhou?": `#vg-exp-cargo` (obrigatório se
      houver experiência), `#vg-exp-onde`, tempo (`#vg-exp-tempo`, 4 pílulas), carteira assinada (`#vg-exp-carteira`: Sim / Não /
-     Prefiro não dizer), `#vg-exp-adicionar` (até 5), `#vg-exp-nenhuma` "Ainda não trabalhei" (pula com `sem_experiencia=true`).
+     Prefiro não dizer), `#vg-exp-atual` "Trabalho lá atualmente", `#vg-exp-adicionar` (até 10), `#vg-exp-nenhuma` "Ainda não
+     trabalhei" (envia `experiencias: []`).
+     **Conversão para `vagas_pessoa_salvar` (`experiencias[]:{funcao, empregador?, inicio:'AAAA-MM', fim?, informal?}`):**
+     `funcao` = `#vg-exp-cargo`; `empregador` = `#vg-exp-onde` (vazio → omitido); pílula de tempo → `inicio` = mês atual − N meses
+     (AAAA-MM): "Menos de 6 meses" N=3 · "6 meses a 1 ano" N=9 · "1 a 3 anos" N=24 · "Mais de 3 anos" N=48 (a pessoa pode trocar
+     para mês/ano exato em "Ajustar datas", `#vg-exp-inicio`/`#vg-exp-fim`); `fim` = `''` se "Trabalho lá atualmente", senão mês
+     atual (ou o mês informado); "carteira: Não" → `informal:true`; "Sim" → `informal:false`; "Prefiro não dizer" → chave omitida.
+     Ao reabrir, a tela mostra as datas gravadas (meses → pílula mais próxima) sem perder o valor exato.
   3. **Escolaridade e cursos:** `#vg-cv-escolaridade` (pílulas: Fundamental incompleto … Superior completo), `#vg-cv-cursos`
-     (texto curto, ≤ 120), `#vg-cv-cnh` (Não tem / A / B / AB / C ou mais).
+     (texto curto, ≤ 120; `cursos[]` até 10), `#vg-cv-cnh` (Não tem / A / B / AB / C ou mais → `cnh[]`: `[]` / `['A']` / `['B']` /
+     `['A','B']` / `['C']`; ao reabrir, qualquer lista com C, D ou E mostra "C ou mais"). Escolaridade → `escolaridade`
+     (`fundamental_incompleto|fundamental|medio_incompleto|medio|tecnico|superior_incompleto|superior|pos`).
   4. **Disponibilidade e contato:** `#vg-cv-turnos` (Manhã / Tarde / Noite / Madrugada / Fins de semana; múltipla),
      `#vg-cv-diarias` ("Topo diárias e bicos" sim/não), `#vg-cv-pretensao` ("A partir de R$", inteiro; ajuda "Só aparece como
      faixa para a empresa"), `#vg-cv-whatsapp` (tel, DDD + 9 dígitos; erro "Digite o WhatsApp com DDD, como (95) 99999-0000";
@@ -284,8 +304,9 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   centralizada: "Candidatura enviada em 07/10", "Vocês combinaram em 09/10. Nome e contato liberados para os dois lados.");
   `#vg-conversa-whatsapp` "Chamar no WhatsApp" (`wa.me/<numero da empresa>?text=` com mensagem pronta); `form#vg-form-mensagem`
   (`#vg-mensagem-texto` ≤ 1000, `#vg-mensagem-enviar`); `#vg-conversa-bloqueio` "Pedidos de dinheiro, Pix ou documento não passam
-  por aqui. Algo estranho? Denunciar." Mensagem bloqueada pelo filtro de `regras.js` → erro inline "Essa mensagem tem algo que
-  não pode ir (Pix, dinheiro, documento ou link encurtado). Reescreva sem isso." Antes do Combinou a pessoa também pode
+  por aqui. Algo estranho? Denunciar." Mensagem bloqueada: a RPC devolve `{ok:false, bloqueada:true, tipo, erro}` e a tela mostra o
+  `erro` como veio (ex.: "Mensagem bloqueada: telefone, e-mail e redes sociais só depois do Combinou…"), mantém o texto no campo
+  para reescrever e não grava rascunho; `aguardar` → "Espere a pessoa responder antes de mandar outra mensagem." Antes do Combinou a pessoa também pode
   responder por mensagem (sem liberar contato); o campo some se a conversa fechou ("Conversa encerrada").
 - **Dados:** `vagas_conversa(p_candidatura)`, `vagas_mensagem_enviar(p_candidatura, p_texto, p_id)`; atualização por
   consulta a cada 20 s com a tela aberta (sem websocket). Novas mensagens chegam por e-mail (textos do agente textos).
@@ -309,23 +330,30 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
 
 ### 2.13 Referência profissional — lado da pessoa — `pessoa-referencia-pedir.png`, `pessoa-referencia-aceitar.png`, `pessoa-referencias.png`
 - **Pedir (`#vg-ref-pedir`, `eu.html#referencia/pedir`):** "Pedir referência"; subtítulo explica (só empresa verificada; só aparece
-  depois do aceite); `form#vg-ref-form-pedir`: `#vg-ref-pedir-empresa` (busca nas empresas verificadas da cidade; se não achar,
-  mostra "Não achou? Mande o convite por WhatsApp"), `#vg-ref-pedir-funcao`, `#vg-ref-pedir-inicio` / `#vg-ref-pedir-fim` (mês/ano;
-  erro "Use mês/ano, como 03/2024") ou `#vg-ref-pedir-atual`; consentimento fixo "É pública…"; `#vg-ref-pedir-enviar` (laranja,
-  pela plataforma: `vagas_referencia_pedir`) e `#vg-ref-pedir-whatsapp` (gera link `/r/<codigo>` do convite e abre `wa.me/?text=`).
-  Sucesso: "Pedido enviado. A empresa tem 30 dias para responder; você vê aqui quando ela responder."
+  depois do aceite); `form#vg-ref-form-pedir`: `#vg-ref-pedir-cnpj` (CNPJ da empresa, opcional; com CNPJ de empresa ativa só ela
+  abre o convite) **ou** `#vg-ref-pedir-empresa` (nome livre da empresa; obrigatório se não houver CNPJ) — `VAGAS_API.pedirReferencia({cnpj}
+  | {empresaNome})`; função e período NÃO vão no pedido (a empresa preenche); consentimento fixo "É pública…"; `#vg-ref-pedir-enviar`
+  "Gerar o convite" (laranja). Resposta `{convite:{caminho:'/referencia.html?t=<token>', expiraEm, empresaNome, empresaNaPlataforma}}` →
+  a tela monta o link completo (`location.origin + convite.caminho`), mostra `#vg-ref-convite-link` (readonly + "Copiar") e
+  `#vg-ref-pedir-whatsapp` (abre `wa.me/?text=` com a mensagem pronta e o link). Não existe rota `/r/`. Sucesso: "Convite criado.
+  Vale 30 dias; você vê aqui quando a empresa responder." Erros da API exibidos como vêm ("CNPJ inválido…", "Você já tem 20 pedidos…").
 - **Receber (`#vg-ref-receber`, `eu.html#referencia/<id>`, status `pendente`):** "A Padaria Modelo deu uma referência para você";
   "Só você está vendo."; componente `.vg-ref.vg-ref--pendente` completo; consentimento (o que aparece antes/depois do Combinou;
-  pode ocultar/excluir; a empresa é avisada); `#vg-ref-recusar` "Não quero mostrar" e `#vg-ref-aceitar` "Aceitar e mostrar" (laranja);
-  "Denunciar a referência" (mesma janela de denúncia, alvo `referencia`); "A empresa não vê se você recusou."
-  RPC `vagas_referencia_responder(p_referencia, 'aceitar'|'recusar'|'ocultar'|'mostrar'|'excluir')`.
+  pode ocultar/remover **sem avisar a empresa**, veto da psicologia); `#vg-ref-recusar` "Não quero mostrar" e `#vg-ref-aceitar` "Aceitar e
+  mostrar" (laranja); "Denunciar a referência" (mesma janela de denúncia, alvo `referencia`); "A empresa não vê se você recusou."
+  RPC `vagas_referencia_responder(p_referencia, 'aceitar'|'recusar'|'ocultar'|'mostrar'|'remover')` (`VAGAS_API.responderReferencia`).
 - **Lista (`#vg-ref-lista`, `eu.html#referencias`):** "Referências" + "Sem nota, sem estrelas: é uma carta, não uma avaliação.";
   `#vg-ref-novo-pedido`; `ul.vg-refs` com `.vg-ref` e `.vg-ref__acoes` (`.vg-status` Visível/Oculta/Pendente; `data-acao`
-  ocultar/mostrar/excluir — excluir com confirmação na página); "Pedidos enviados" (`.vg-item` com "Lembrar", 1 lembrete a cada
-  7 dias); aviso do que a empresa vê antes/depois do Combinou. Perfil público (opcional, fase 2): toggle "Mostrar minhas
-  referências na minha página pública" — desenhar só quando a página pública existir.
+  ocultar/mostrar/**remover** — remover com confirmação na página "Remover esta referência? Ela some do seu cartão e do perfil; a
+  empresa não é avisada."; ocultar explica "Some do cartão e da página pública; você pode mostrar de novo"); "Pedidos enviados"
+  (`convites[]` de `vagas_referencias_minhas`: empresa, status, "Copiar link" com `caminho`, expira em); aviso do que a empresa vê
+  antes/depois do Combinou. **Página pública:** `#vg-ref-publicar` ("Mostrar minhas referências numa página pública",
+  `vagas_referencias_publicar(true|false)` → `caminhoPublico` `/referencias.html?t=…`, com "Copiar link"; desligar apaga o link).
 - **Não existe:** estrelas, média, "nota" de referência, referência negativa, referência de empresa não verificada, referência
-  anônima/confidencial.
+  anônima/confidencial, contagem ou pontos fortes no cartão cego (só "sim"). Pontos fortes: chaves e textos de
+  `VAGAS_REGRAS.PONTOS_FORTES` (12 comportamentos observáveis da psicologia: `pontualidade`, `atendimento`, `caixa_certo`,
+  `organizacao`, `equipe`, `aprende_rapido`, `regras_seguranca`, `comunicacao`, `iniciativa`, `cuidado_material`, `vendas`,
+  `situacao_dificil`); a tela mostra o texto da lista, nunca um rótulo próprio.
 
 ## 3. Telas da empresa (computador, 1280 px; funciona no celular)
 
@@ -334,11 +362,13 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   MEI; publique com salário; chame para conversar), "Já é cliente da consultoria? A gente cadastra para você."
 - Metade azul-escura (`form#vg-emp-form-cadastro`): `#vg-emp-cnpj` (máscara 00.000.000/0001-00; validação de dígitos de
   `regras.js`; erro "CNPJ inválido. Confira os 14 números."; MEI é CNPJ normal), `#vg-emp-nome` (nome como aparece; 2–60),
-  `#vg-emp-responsavel`, `#vg-emp-email`, `#vg-emp-whatsapp` ("aparece só depois do Combinou"), `#vg-emp-senha`, `#vg-emp-termos`
+  `#vg-emp-responsavel`, `#vg-emp-email`, `#vg-emp-whatsapp` ("aparece só depois do Combinou"), `#vg-emp-termos`
   (Termos para empresas: salário obrigatório, nada de pedir dinheiro/documento, anúncio sem discriminação), `#vg-emp-erro`,
   `#vg-emp-cadastrar` "Cadastrar e confirmar o e-mail" (branco sobre azul-escuro), `#vg-emp-ir-entrar`. Nota: "Depois de confirmar
   o e-mail, a operação confere o CNPJ (em geral no mesmo dia útil). Você já pode escrever a vaga enquanto espera."
-  Fluxo: `vagas-conta` `cadastrar` {tipo:'empresa'} → confirmar e-mail → `vagas_empresa_cadastrar(p_dados)` → status `em_analise`.
+  Fluxo: `vagas-conta` `cadastrar` {tipo:'empresa', nome, termosVersao} (**sem senha**) → link do e-mail → "Crie sua senha" (2.5) →
+  `vagas_empresa_cadastrar(p_dados)` com CNPJ, nome, responsável, WhatsApp (a tela guarda o rascunho desses campos em
+  `localStorage` `vg.rascunho.empresa` até a senha existir) → status `em_analise`.
 - Empresa `em_analise` entra no painel com faixa fixa "Seu CNPJ está em conferência pela operação da praça. Dá para escrever vagas;
   elas vão ao ar depois da liberação." Empresa `suspensa`: faixa "Conta suspensa. Motivo: … Fale com a praça." e tudo só leitura.
 
@@ -415,7 +445,8 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
 - `ul#vg-cartoes` de `.vg-cartao` (componente 9.4): ordem ("1º"), "Pessoa candidata" + "chegou em 12/10, 15:40" + `.vg-status`
   (Novo / Você chamou / Combinou / Agora não), `dl` (Zona, Quer trabalhar com, Experiência, Escolaridade, Turnos, CNH,
   Pretensão "A partir de R$ 1.600"), selos (`.vg-etiqueta--selo` com teste · nota · data), referências
-  (`#vg-ref-cartao-<n>`: "2 referências de empresas verificadas" + pontos fortes; "Nome das empresas e texto: depois do Combinou"),
+  (`#vg-ref-cartao-<n>`: só a linha "Referência de empresa verificada: sim" quando `temReferencia` — sem contagem, sem pontos fortes,
+  sem nome da empresa, por veto da psicologia; "A referência completa aparece depois do Combinou"),
   redação (se o teste for português: "Ver redação" abre janela com o texto, sem nota), ações `data-acao="agora_nao"` (claro) /
   `"conversar"` (principal; abre janela `#vg-janela-chamar` com `#vg-chamar-texto` opcional "Escreva a primeira mensagem (ex.: dia e
   hora da entrevista)" e "Chamar para conversar") → status "Você chamou · Esperando a pessoa aceitar". Agora não → cartão
@@ -489,7 +520,9 @@ O operador **nunca** vê currículo, selos, candidaturas, conversas nem contato 
 - Janela `#vg-op-confirmar` (devolver/recusar): motivo em pílulas `#vg-op-motivo` (lista fechada: pede documento ou dado pessoal;
   telefone ou link no texto; falta salário ou valor; critério discriminatório; CNPJ não confere; empresa não respondeu; outro) +
   `#vg-op-motivo-texto` (recado, ≤ 500) + `#vg-op-confirmar-cancelar` / `#vg-op-confirmar-sim`. Publicar não pede motivo.
-  Tudo via `vagas_op_anuncio_decidir` / `vagas_op_empresa_decidir` com `p_motivo`; a decisão aparece no `#vg-aviso-geral` com "Desfazer"
+  Tudo via `vagas_op_anuncio_decidir(id, 'publicar'|'devolver'|'remover', motivo)` (devolver = volta a rascunho com o motivo, chave de
+  `conteudo/vagas-textos/moderacao.json`) / `vagas_op_empresa_decidir(id, 'aprovar'|'recusar'|'suspender'|'reativar', motivo)`
+  (recusar = continua em análise com o motivo; moderador não aprova/suspende/reativa); a decisão aparece no `#vg-aviso-geral` com "Desfazer"
   por 8 s (que registra um novo ato de reversão).
 - Meta na tela: "decidir em até 24 h"; item com mais de 24 h ganha etiqueta "Atrasada". Vazio: "Fila vazia. Nada esperando você."
 
@@ -506,8 +539,10 @@ O operador **nunca** vê currículo, selos, candidaturas, conversas nem contato 
 - `table#vg-op-denuncias`: Quando, Alvo (vaga / mensagem / referência, com empresa), Motivo, Trecho (só o conteúdo denunciado),
   Status (Aberta / Suspensa (3 denúncias) / Improcedente · data / Removida), ações por tipo: vaga → Remover / Improcedente; mensagem →
   Avisar a empresa (manda o aviso padrão por e-mail e registra) / Suspender empresa / Improcedente; referência → Remover /
-  Improcedente. Nunca mostra quem denunciou. Golpe confirmado: botão "Avisar quem liberou contato" (`vagas_op_avisar_contatos`,
-  proposta da operação) com o texto padrão e confirmação; o operador não vê a lista de pessoas.
+  Improcedente. Nunca mostra quem denunciou. Decisão por `vagas_op_denuncia_decidir(id, {decisao:'procedente'|'improcedente', motivo,
+  removerAnuncio?, suspenderEmpresa?, suspenderAutor?, removerReferencia?})` (janela com o motivo obrigatório e as caixas das
+  consequências). Golpe confirmado: o botão "Avisar quem liberou contato" (`vagas_op_avisar_contatos`) **fica oculto** até a RPC
+  existir (proposta da operação, não está no contrato); o operador não vê a lista de pessoas.
 - Filtro Abertas / Todas; meta "decidir em 24 h"; nota "Toda decisão grava o motivo no registro de moderação. A equipe da Gestão sem
   Caos pode reverter."
 
@@ -557,7 +592,11 @@ Grupo "Vagas" no menu lateral (entre Empresas e Vendas): **Cidades e praças** (
   `cadastros_assistidos_confirmados`); cor pela regra da operação (verde/amarelo/vermelho só como etiqueta `.vg-status`, nunca como
   bloco de cor); `table#vg-adm-selos` (pessoas com selo por função, vagas que pedem, tentativas, nota mediana — acompanhamento do
   teste, nunca aparece para empresa [REVISÃO PSICOLOGIA]); gatilhos da proposta como etiquetas ("Antes de cobrar: 3 de 5 metas").
-  Dados: `vagas_op_resumo()` no formato sugerido pela operação `{numeros:{<chave>:{valor, alvo, cor}}}`.
+  Dados: **nesta onda** `vagas_op_resumo()` devolve `{cidades:[{id, slug, nome, status, papel, contagens:{empresasEmAnalise,
+  empresasAtivas, anunciosEmRevisao, anunciosSuspensos, anunciosNoAr, denunciasAbertas, pessoas, listaEspera}}]}` — a tela monta
+  os cards só com essas 8 contagens (vagas no ar, em revisão, suspensas, empresas ativas/em análise, denúncias abertas, pessoas,
+  lista de espera) e deixa os demais `.vg-numero` ocultos. Os 15 indicadores com alvo e cor virão em `vagas_op_indicadores(p_cidade)`
+  na onda do painel; até lá a tela mostra "Em breve" nesses cards (nunca número inventado).
 
 ## 6. Estados, erros e mensagens (resumo transversal)
 
