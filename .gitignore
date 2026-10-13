@@ -3,3 +3,5 @@ test-results/
 playwright-report/
 *.xlsx
 .DS_Store
+# Conteúdo real dos testes de habilidade do Vagas sem Caos (com gabarito): nunca no repositório (docs/VAGAS-TESTES.md).
+conteudo/vagas-testes/

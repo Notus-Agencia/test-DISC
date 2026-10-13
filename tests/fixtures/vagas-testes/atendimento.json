@@ -1,0 +1,1422 @@
+{
+  "teste": "atendimento",
+  "nome": "Atendimento (FICTÍCIO)",
+  "descricao": "Banco FICTÍCIO para os testes automáticos do motor. Não é o conteúdo real: nenhum item tem significado.",
+  "versao": "2026-10-v0",
+  "ativo": true,
+  "prova": {
+    "questoes": 15,
+    "minutos": 20
+  },
+  "competencias": [
+    {
+      "id": "fic_a",
+      "nome": "Competência fictícia A"
+    },
+    {
+      "id": "fic_b",
+      "nome": "Competência fictícia B"
+    },
+    {
+      "id": "fic_c",
+      "nome": "Competência fictícia C"
+    },
+    {
+      "id": "fic_d",
+      "nome": "Competência fictícia D"
+    },
+    {
+      "id": "fic_e",
+      "nome": "Competência fictícia E"
+    }
+  ],
+  "tarefas": [
+    {
+      "id": "tarefa_a",
+      "nome": "Tarefa fictícia A"
+    },
+    {
+      "id": "tarefa_b",
+      "nome": "Tarefa fictícia B"
+    },
+    {
+      "id": "tarefa_c",
+      "nome": "Tarefa fictícia C"
+    },
+    {
+      "id": "tarefa_d",
+      "nome": "Tarefa fictícia D"
+    }
+  ],
+  "questoes": [
+    {
+      "id": "ATE-001",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "grupo": "fic_par_a",
+      "enunciado": "FICTÍCIO ATE-001: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-002",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-002: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-003",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-003: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-004",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-004: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-005",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-005: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-006",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "grupo": "fic_par_a",
+      "enunciado": "FICTÍCIO ATE-006: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-007",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-007: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-008",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-008: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-009",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-009: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-010",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-010: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-011",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-011: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-012",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "grupo": "fic_par_b",
+      "enunciado": "FICTÍCIO ATE-012: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-013",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-013: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-014",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-014: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-015",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-015: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-016",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-016: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-017",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "grupo": "fic_par_b",
+      "enunciado": "FICTÍCIO ATE-017: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-018",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-018: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-019",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-019: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-020",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-020: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-021",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-021: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-022",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-022: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-023",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-023: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-024",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-024: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-025",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-025: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-026",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "texto": "FICTÍCIO: texto de apoio do item ATE-026, só para exercitar o campo.",
+      "enunciado": "FICTÍCIO ATE-026: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-027",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "texto": "FICTÍCIO: texto de apoio do item ATE-027, só para exercitar o campo.",
+      "enunciado": "FICTÍCIO ATE-027: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-028",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "texto": "FICTÍCIO: texto de apoio do item ATE-028, só para exercitar o campo.",
+      "enunciado": "FICTÍCIO ATE-028: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-029",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "texto": "FICTÍCIO: texto de apoio do item ATE-029, só para exercitar o campo.",
+      "enunciado": "FICTÍCIO ATE-029: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-030",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "texto": "FICTÍCIO: texto de apoio do item ATE-030, só para exercitar o campo.",
+      "enunciado": "FICTÍCIO ATE-030: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-031",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-031: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-032",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-032: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-033",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-033: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-034",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-034: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-035",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-035: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-036",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-036: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-037",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-037: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-038",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-038: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-039",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-039: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-040",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-040: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-041",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-041: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-042",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-042: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-043",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-043: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-044",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-044: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-045",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-045: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-046",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-046: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-047",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-047: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-048",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-048: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-049",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-049: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-050",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-050: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-051",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-051: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-052",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-052: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-053",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-053: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-054",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-054: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-055",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-055: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-056",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-056: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-057",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-057: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-058",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-058: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-059",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-059: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-060",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-060: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-061",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_a",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-061: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-062",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_b",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-062: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-063",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_c",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-063: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-064",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_d",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-064: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-065",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_a",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-065: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-066",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_b",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-066: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-067",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_c",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-067: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-068",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_d",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-068: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-069",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_a",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-069: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-070",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_b",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-070: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-071",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_c",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-071: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-072",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_d",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-072: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-073",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_a",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-073: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-074",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_b",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-074: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-075",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_c",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-075: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-076",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_d",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-076: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-077",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_a",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-077: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-078",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_b",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-078: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-079",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_c",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-079: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "ATE-080",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_d",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO ATE-080: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    }
+  ]
+}

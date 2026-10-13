@@ -1,0 +1,17 @@
+-- =============================================================================
+-- Vagas sem Caos — banco de questões dos TESTES DE HABILIDADE: ESPELHO sem conteúdo (de propósito).
+--
+-- O banco de questões (enunciados, alternativas e GABARITO) NÃO fica no repositório: o repositório é público e o site sai
+-- dele pelo GitHub Pages, então qualquer arquivo aqui vira URL. A cópia-mestre é privada (JSON por teste + análise da
+-- função), fora do GitHub, e o banco de dados é carregado À MÃO pela equipe da Gestão sem Caos:
+--   1. node scripts/montar-testes.mjs --conteudo <pasta privada> --saida <arquivo fora do repositório>.sql
+--   2. SQL Editor do Supabase → colar o arquivo gerado → Run
+--   3. apagar o arquivo gerado. A saída NUNCA é commitada (nem aqui, nem em outro arquivo).
+-- O fluxo completo, o formato do conteúdo e a revisão humana: docs/VAGAS-TESTES.md.
+--
+-- Este arquivo mantém o nome 20261023120001_vagas_questoes para o versao_banco() e para a lista MIGRACOES do painel
+-- (js/api-supabase.js): enquanto o banco de questões não for carregado, versao_banco() devolve
+-- faltando: ['20261023120001_vagas_questoes'] e o painel mostra a faixa "banco desatualizado" — é o sinal de que falta a
+-- carga. A integração do GitHub com o Supabase aplica este arquivo sem efeito nenhum (só comentário).
+-- `npm test` (node scripts/montar-testes.mjs --checar) confere que este arquivo continua sem conteúdo.
+-- =============================================================================

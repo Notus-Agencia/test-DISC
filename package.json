@@ -5,7 +5,7 @@
   "description": "Teste de perfil comportamental DISC para candidatos de processo seletivo, com painel do recrutador e Guia para a Liderança.",
   "license": "UNLICENSED",
   "scripts": {
-    "test": "node scripts/checar-visual.mjs && node scripts/montar-apps-script.mjs --checar && node scripts/montar-funcoes.mjs --checar && node scripts/montar-profundo.mjs --checar && node scripts/montar-lideranca.mjs --checar && node scripts/montar-vagas.mjs --checar && node --test tests/*.test.js tests/funcoes/*.test.js",
+    "test": "node scripts/checar-visual.mjs && node scripts/montar-apps-script.mjs --checar && node scripts/montar-funcoes.mjs --checar && node scripts/montar-profundo.mjs --checar && node scripts/montar-lideranca.mjs --checar && node scripts/montar-vagas.mjs --checar && node scripts/montar-testes.mjs --checar && node --test tests/*.test.js tests/funcoes/*.test.js",
     "checar:visual": "node scripts/checar-visual.mjs",
     "montar:apps-script": "node scripts/montar-apps-script.mjs",
     "montar:funcoes": "node scripts/montar-funcoes.mjs",
@@ -13,6 +13,7 @@
     "montar:profundo": "node scripts/montar-profundo.mjs",
     "montar:lideranca": "node scripts/montar-lideranca.mjs",
     "montar:vagas": "node scripts/montar-vagas.mjs",
+    "montar:testes": "node scripts/montar-testes.mjs",
     "test:e2e": "playwright test",
     "start": "node tests/e2e/server.js",
     "test:supabase": "node --test --test-concurrency=1 \"tests/supabase/*.test.js\""
