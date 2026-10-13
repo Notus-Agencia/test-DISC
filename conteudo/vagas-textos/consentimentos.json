@@ -170,6 +170,17 @@
       "variaveis": [
         "limite_mes"
       ]
+    },
+    {
+      "chave": "voluntario_mutirao_sigilo",
+      "versao": "2026-10-13",
+      "quem": "voluntário(a) de mutirão",
+      "quando": "antes de ajudar no mutirão (papel ou tela do operador); MINUTA, precisa do(a) advogado(a)",
+      "titulo": "Termo de sigilo do(a) voluntário(a)",
+      "texto": "Como voluntário(a) do mutirão do Vagas sem Caos, vou só ajudar a pessoa a usar o próprio celular. Não vou copiar, fotografar, anotar, guardar nem repassar nome, contato, documento ou qualquer dado de ninguém, nem usar o que vir para fim próprio. Sei que cada pessoa confirma a própria conta e que a Gestão sem Caos responde pelos dados.",
+      "explicacao": "[REVISÃO JURÍDICA] Quem descumprir responde pessoalmente (LGPD, art. 42 e 43; Código Civil, art. 186). Vale durante o mutirão e depois dele.",
+      "obrigatorio": true,
+      "base_legal": "LGPD art. 39 e 42; dever de sigilo contratual"
     }
   ]
 }

@@ -208,7 +208,8 @@
       "titulo": "Referência com dado sensível",
       "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi recusada porque o texto traz dado sensível ({{detalhe}}): saúde, família, gravidez, religião, origem, orientação ou situação financeira não entram em referência.",
       "correcao": "Edite o texto deixando só fatos do trabalho e a recomendação. Reenvie e a pessoa recebe para aceitar.",
-      "lei": "LGPD art. 11; Lei 9.029/1995"
+      "lei": "LGPD art. 11; Lei 9.029/1995",
+      "frase_curta": "Recusada: o texto traz dado sensível (saúde, família, religião, origem). Tire e reenvie."
     },
     {
       "chave": "referencia_discriminatoria",
@@ -217,7 +218,8 @@
       "titulo": "Referência com termo discriminatório",
       "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi recusada porque o texto tem termo ligado a aparência, idade, sexo, cor, origem ou estado civil ({{detalhe}}). Isso não entra em referência, mesmo como elogio.",
       "correcao": "Descreva o que a pessoa fazia e como, não quem ela é. Exemplo: troque \"moça bonita e educada\" por \"atendia bem as pessoas\".",
-      "lei": "Lei 9.029/1995; CLT, art. 373-A"
+      "lei": "Lei 9.029/1995; CLT, art. 373-A",
+      "frase_curta": "Recusada: o texto cita aparência, idade, sexo, cor, origem ou estado civil. Descreva o trabalho, não a pessoa."
     },
     {
       "chave": "referencia_contato",
@@ -226,7 +228,8 @@
       "titulo": "Referência com telefone, e-mail ou link",
       "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi recusada porque o texto tem telefone, e-mail ou link. Referência é pública: contato ali expõe a pessoa e a empresa.",
       "correcao": "Tire o contato e reenvie. Quem quiser confirmar a referência fala com a empresa pelo canal público dela.",
-      "lei": "termos de uso, seção 8.3"
+      "lei": "termos de uso, seção 8.3",
+      "frase_curta": "Recusada: o texto tem telefone, e-mail ou link. Tire e reenvie."
     },
     {
       "chave": "referencia_negativa",
@@ -235,7 +238,8 @@
       "titulo": "Referência com crítica, ressalva ou ofensa",
       "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi recusada porque contém crítica, ressalva ou ofensa. Aqui a referência é só recomendação, pública e com o nome da empresa. Referência negativa pública pode gerar dano moral e caracterizar \"lista\" de pessoas, o que é ilegal.",
       "correcao": "Se você recomenda a pessoa, reescreva só com os pontos positivos e os fatos do período. Se não recomenda, não dê referência: isso basta.",
-      "lei": "[REVISÃO JURÍDICA] Código Civil, arts. 186 e 927; Constituição, art. 5º, X; Lei 9.029/1995 (listas discriminatórias)"
+      "lei": "[REVISÃO JURÍDICA] Código Civil, arts. 186 e 927; Constituição, art. 5º, X; Lei 9.029/1995 (listas discriminatórias)",
+      "frase_curta": "Recusada: tem crítica, ressalva ou ofensa. Referência é só recomendação; se não recomenda, não dê."
     },
     {
       "chave": "referencia_periodo_improvavel",
@@ -244,7 +248,8 @@
       "titulo": "Período ou vínculo que não confere",
       "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi recusada porque o período ou o vínculo informado não confere ({{detalhe}}). A empresa responde pela veracidade da declaração.",
       "correcao": "Confira as datas e a função no registro da empresa e reenvie.",
-      "lei": "declaração da empresa (aceite empresa_referencia_declaracao)"
+      "lei": "declaração da empresa (aceite empresa_referencia_declaracao)",
+      "frase_curta": "Recusada: período ou vínculo não confere. Confira as datas e a função e reenvie."
     },
     {
       "chave": "referencia_denunciada",
@@ -253,7 +258,8 @@
       "titulo": "Removida por denúncia",
       "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi removida depois de denúncia ({{detalhe}}).",
       "correcao": "Se discorda, responda este e-mail em até 30 dias.",
-      "lei": "termos de uso, seção 10"
+      "lei": "termos de uso, seção 10",
+      "frase_curta": "Removida depois de denúncia. Se discorda, responda em até 30 dias."
     },
     {
       "chave": "referencia_ok",
@@ -262,7 +268,27 @@
       "titulo": "Referência revisada e enviada à pessoa",
       "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi revisada e enviada para a pessoa aceitar. Avisamos quando ela decidir.",
       "correcao": "",
-      "lei": ""
+      "lei": "",
+      "frase_curta": "Revisada e enviada para a pessoa aceitar."
+    },
+    {
+      "chave": "referencia_limite",
+      "alvo": "referencia",
+      "acao": "recusar",
+      "titulo": "Limite de referências",
+      "texto_empresa": "A referência para {{pessoa_nome}} não foi enviada porque a sua empresa chegou ao limite deste mês ({{limite_mes}}) ou já deixou uma referência para esta pessoa.",
+      "correcao": "Espere o mês virar ou, se a pessoa pediu uma nova, edite a que já existe.",
+      "lei": "termos de uso, seção 6.3",
+      "frase_curta": "Não enviada: limite do mês ou já existe referência para esta pessoa."
+    },
+    {
+      "chave": "denuncia_golpe_confirmado",
+      "alvo": "denuncia",
+      "acao": "acatar",
+      "titulo": "Golpe confirmado: resposta a quem denunciou",
+      "texto_empresa": "Obrigado por denunciar. Confirmamos o problema: a vaga saiu do ar e a empresa foi suspensa. Se você mandou dinheiro ou documento, registre um boletim de ocorrência (pode ser online) e, se quiser, fale com a gente para orientação. Quem foi denunciado não sabe quem denunciou.",
+      "correcao": "",
+      "lei": "termos de uso, seção 10.5; protocolo de golpe em docs/VAGAS-OPERACAO.md"
     }
   ]
 }

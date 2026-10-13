@@ -207,6 +207,18 @@
         "link"
       ],
       "texto": "Oi, {{pessoa_primeiro_nome}}! A {{empresa_nome}} deixou uma referência profissional para você no Vagas sem Caos. Ela só aparece se você aceitar: {{link}}. É grátis e ninguém pede dinheiro ou documento por isso."
+    },
+    {
+      "chave": "alerta_golpe_canal",
+      "de": "operador",
+      "para": "canal e grupos da cidade",
+      "uso": "copiar",
+      "quando": "golpe confirmado (protocolo do manual de operação); sem nome de pessoa, sem dado de quem denunciou",
+      "variaveis": [
+        "vaga_titulo",
+        "cidade"
+      ],
+      "texto": "*Alerta · Vagas sem Caos · {{cidade}}*\nA vaga \"{{vaga_titulo}}\" saiu do ar por suspeita de golpe. Se alguém falou com você em nome dela e pediu dinheiro, Pix, documento ou senha: não mande nada e denuncie pelo site.\nNunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe."
     }
   ]
 }

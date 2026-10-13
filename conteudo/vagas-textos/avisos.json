@@ -102,7 +102,14 @@
     "referencia_empresa_ocultada": "{{pessoa_nome}} ocultou ou excluiu a referência que a sua empresa deixou. Isso é direito da pessoa e não precisa de motivo.",
     "referencia_texto_regras": "Texto livre opcional, até 300 letras: fatos e recomendação. Sem dado sensível (saúde, família, religião, origem), sem termo discriminatório, sem telefone ou e-mail, sem crítica. Passa por moderação.",
     "referencia_sem_ranking": "Referências não geram nota, média, estrela nem ordem. Quem lê e decide é a empresa, na entrevista.",
-    "referencia_pedido_recebido": "{{pessoa_nome}} pediu uma referência profissional à sua empresa sobre o período {{periodo}} como {{funcao}}. Você decide se dá. Se preferir não dar, é só ignorar."
+    "referencia_pedido_recebido": "{{pessoa_nome}} pediu uma referência profissional à sua empresa sobre o período {{periodo}} como {{funcao}}. Você decide se dá. Se preferir não dar, é só ignorar.",
+    "referencia_mutirao": "Trabalhou em alguma empresa da cidade? Dá para pedir uma referência profissional a ela aqui mesmo: a empresa decide se dá, e a referência só aparece se você aceitar. É pública, com o nome da empresa, e é sempre uma recomendação.",
+    "golpe_vaga_fora_do_ar": "A vaga \"{{vaga_titulo}}\" saiu do ar por suspeita de golpe. Se alguém falou com você em nome dela e pediu dinheiro, Pix ou documento, não mande nada e denuncie. Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.",
+    "denuncia_resposta_golpe": "Obrigado por denunciar. Confirmamos o problema: a vaga saiu do ar e a empresa foi suspensa. Se você mandou dinheiro ou documento, registre um boletim de ocorrência (pode ser online) e, se quiser, fale com a gente para orientação. Quem foi denunciado não sabe quem denunciou.",
+    "vaga_pausada_pessoa": "A empresa pausou a vaga \"{{vaga_titulo}}\". Sua candidatura continua guardada; se a vaga voltar, você é avisada(o).",
+    "vaga_encerrada_pessoa": "A vaga \"{{vaga_titulo}}\" foi encerrada pela empresa. Sua candidatura fica no seu histórico e some do painel da empresa em 90 dias.",
+    "vaga_interessados_lembrete": "Sua vaga \"{{vaga_titulo}}\" tem {{total}} pessoas esperando resposta há {{dias}} dias. Responder em até 7 dias mantém a vaga viva: marque \"Quero conversar\" ou \"Agora não\".",
+    "incidente_dados_resumo": "Houve um incidente de segurança que pode ter exposto alguns dados seus. Explicamos o que aconteceu, o que fizemos e o que você pode fazer."
   },
   "botoes": {
     "quero": "Quero",
@@ -479,7 +486,8 @@
     "referencia": [
       "pontos_fortes",
       "avisos.referencia_o_que_e",
-      "avisos.referencia_sem_ranking"
+      "avisos.referencia_sem_ranking",
+      "avisos.referencia_mutirao"
     ]
   },
   "referencia": {
