@@ -21,9 +21,9 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos · seg
 
 ## 1. Quem é responsável (controladora)
 
-A controladora dos dados é a **Gestão sem Caos** ([razão social e CNPJ a preencher], Boa Vista, Roraima). É ela quem decide para que os dados servem e como são tratados.
+A controladora dos dados é a **Gestão sem Caos** ([razão social e CNPJ a preencher], com sede em [REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos]). É ela quem decide para que os dados servem e como são tratados.
 
-O **operador local** de cada cidade (a própria Gestão sem Caos em Boa Vista; em outras cidades, um parceiro contratado) é **operador de dados** na LGPD: age só por instrução escrita da controladora, sob contrato, não vê currículo nem contato de pessoa e tem cada ação registrada.
+O **operador local** de cada cidade (a própria Gestão sem Caos, onde não houver parceiro; nas outras cidades, um parceiro contratado) é **operador de dados** na LGPD: age só por instrução escrita da controladora, sob contrato, não vê currículo nem contato de pessoa e tem cada ação registrada.
 
 As **empresas** que recebem a sua candidatura passam a ser controladoras dos dados que recebem, para a finalidade única de preencher a vaga. Elas aceitam, nos termos de uso, não guardar, repassar nem usar esses dados para outra coisa.
 
@@ -161,4 +161,4 @@ Se este aviso mudar, a nova versão fica nesta página com a data. Mudança rele
 
 ## 12. Contato
 
-Encarregado(a) de dados: [nome a preencher] · [e-mail a preencher] · Gestão sem Caos, Boa Vista, RR.
+Encarregado(a) de dados: [nome a preencher] · [e-mail a preencher] · Gestão sem Caos, [REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos].

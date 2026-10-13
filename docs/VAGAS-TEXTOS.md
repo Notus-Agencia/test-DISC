@@ -6,6 +6,12 @@ marca "Gestão sem Caos" (assinatura "uma ferramenta da Gestão sem Caos"). Nunc
 "DiSC" (sempre "DISC"), "candidato(a)" como substantivo. O teste `tests/vagas-textos.test.js` confere tudo isso e
 entra no `npm test` (glob `tests/*.test.js`).
 
+**Nenhum nome de cidade fixo** (decisão do dono, 13/10: o piloto é uma cidade só por enquanto, e a plataforma é por cidade).
+Onde o texto precisa da cidade, use a variável `{{cidade}}` (e `{{vizinhas}}` para o entorno), que a tela preenche com o nome
+da cidade da página; senão, texto genérico ("da sua cidade", "da cidade"). Nada de DDD, bairro, zona com nome próprio ou
+gentílico regional em exemplo. A sede da Gestão sem Caos (foro, controladora, encarregado(a)) fica com o marcador
+`[REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos]` até o dono informar. O teste barra nomes de cidade e de UF.
+
 Versão de todos os textos: **2026-10-13** (`termos_versao` da conta; `vagas_aceitar_termos({versao})`). Mudou um texto
 publicado? Crie uma versão nova (data), nunca edite a versão que alguém já aceitou.
 
@@ -63,7 +69,7 @@ publicado? Crie uma versão nova (data), nunca edite a versão que alguém já a
 | **Campos que não existem**: idade (só "18+"), gênero, estado civil, filhos, gravidez, cor, religião, nacionalidade, saúde, antecedentes, CPF/RG | discriminação e minimização | Lei 9.029/1995; LGPD art. 6º, III e art. 11 |
 | **Foto opcional** (pedido do dono, 13/10): aceite separado `foto_opcional`, nunca no cartão cego/busca/perfil público, só para a empresa depois do Combinou; remover apaga o arquivo; conferência humana (`foto_indevida`); `avisos.json → foto.{explicacao, opcional, quem_ve, removida, recusada_moderacao, em_moderacao, empresa, limites}`, `botoes.foto_*`, `validacao.foto_*` | foto permite inferir cor, religião e saúde (sensível por inferência); mostrar antes do Combinou abriria discriminação | LGPD art. 5º, II, art. 7º, I, art. 8º e art. 11; Lei 9.029/1995; `[REVISÃO JURÍDICA]` |
 | **Só 18+**; cadastro assistido só vale com confirmação da própria pessoa; a empresa não digita dados de terceiros | aceite é do titular | LGPD art. 8º §§1º e 2º; art. 14 (menores: fora do MVP) |
-| Foro de Boa Vista/RR, salvo foro do consumidor | | CDC art. 101, I |
+| Foro da cidade da sede da Gestão sem Caos (marcador `[REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos]` até o dono informar), salvo foro do consumidor | a sede ainda não foi informada; nenhuma cidade fixa nos textos | CDC art. 101, I |
 | Transferência internacional (hospedagem) com cláusulas contratuais | | LGPD art. 33 |
 
 ## 3. O que o(a) advogado(a) precisa validar (lista objetiva)
@@ -74,7 +80,7 @@ publicado? Crie uma versão nova (data), nunca edite a versão que alguém já a
 4. **Termos §10.5 e moderação**: comunicar suspeita de crime à polícia/MPT com registros de conversa: base legal e procedimento (Marco Civil art. 10 §§).
 5. **Termos §12.4**: devolução em 7 dias (CDC art. 49) para empresa compradora: o CDC se aplica a empresa pequena/MEI nesse caso?
 6. **Termos §15**: 15 dias de aviso de mudança e "quem continuar usando aceita": é suficiente? Precisa de novo aceite ativo?
-7. **Privacidade §1**: razão social, CNPJ, endereço e **encarregado(a)** (placeholders). Decidir se o(a) encarregado(a) é pessoa interna ou serviço terceirizado.
+7. **Privacidade §1 e §12; termos §1.1 e §16.2**: razão social, CNPJ, endereço, **cidade da sede** (marcador `[REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos]`) e **encarregado(a)** (placeholders). Com a sede definida, confirmar a escolha do **foro** dessa comarca (termos §16.2) e a ressalva do foro do domicílio da pessoa consumidora (CDC art. 101, I). Decidir se o(a) encarregado(a) é pessoa interna ou serviço terceirizado.
 8. **Privacidade §3**: bases legais por finalidade, especialmente (a) candidatura em art. 7º, V sem consentimento por vaga; (b) antifraude e leitura de mensagens em legítimo interesse (precisa de LIA documentado) e art. 7º, VI; (c) e-mails de serviço em execução de contrato.
 9. **Privacidade §5**: todos os prazos de retenção são HIPÓTESES do redator; confirmar cada linha (sobretudo 24 meses para conta parada, 5 anos para moderação/aceites, 90 dias de candidatura pós-vaga).
 10. **Privacidade §7**: Supabase, Resend, Cloudflare, Stripe, InfinitePay: confirmar a lista final, DPAs/cláusulas e transferência internacional (art. 33); redigir o aviso de transferência se exigido.
@@ -85,7 +91,7 @@ publicado? Crie uma versão nova (data), nunca edite a versão que alguém já a
 15. **`anuncio.termos_proibidos`**: revisar a lista (sobretudo `nacionalidade`, `antecedentes`, `aparencia_fisica`) para não barrar exigência legítima e específica (ex.: certidão para funções previstas em lei; exigência física comprovadamente inerente à função).
 16. **E-mail `conta-sera-apagada`**: um único aviso 30 dias antes basta? Precisa de segundo aviso?
 17. **WhatsApp**: mensagens enviadas pelo próprio usuário (wa.me) e boletim copiado à mão: confirmar que não configuram comunicação de marketing que exija opt-in (consentimento `pessoa_novidades` cobre só e-mail).
-18. **Cidade de fronteira (Pacaraima)**: textos em espanhol (fase 2) precisarão de revisão própria; não traduzir por conta.
+18. **Outro idioma**: se um dia houver tela em outro idioma (fase futura, sem cidade definida), termos, privacidade e aceites precisarão de revisão própria; não traduzir por conta.
 19. **Referência profissional** (`[REVISÃO JURÍDICA]`, termos §6.3, privacidade §2.1/§3/§4/§5/§6, aceites `pessoa_referencia_aceitar` e `empresa_referencia_declaracao`, moderação `referencia_negativa`): (a) referência é dado de terceiro sobre a pessoa publicado com consentimento (art. 7º, I): a base e a redação do aceite bastam? (b) responsabilidade da empresa pela veracidade (Código Civil arts. 186 e 927) e a declaração na tela como prova; (c) proibição de referência negativa e de "lista" de pessoas (Constituição art. 5º, X; Lei 9.029/1995): confirmar as fontes e se a plataforma precisa de cláusula de indenização; (d) perfil público opcional: cabe aviso extra sobre indexação por buscadores? (e) retenção do registro da decisão (5 anos) após exclusão da referência.
 20. **Foto opcional da pessoa** (pedido do dono, 13/10; `[REVISÃO JURÍDICA]`; termos §4.7, privacidade §2.1/§2.4/§3/§4/§5/§6, aceite `foto_opcional`, `avisos.json → foto.*`, moderação `foto_indevida`): (a) a foto é dado pessoal que permite inferir cor/raça, religião e saúde: tratá-la como **dado sensível por inferência** (LGPD art. 5º, II e art. 11) é a leitura correta? Isso exige o regime do art. 11 (consentimento específico e destacado) ou basta o art. 7º, I com aceite separado? (b) redação do aceite `foto_opcional` (curto, opcional, separado, revogável) e se precisa ser um "destaque" visual próprio (art. 8º, §4º); (c) retenção: apagar o arquivo na hora ao remover, ao recusar na conferência e ao apagar a conta; confirmar se algum registro (data do aceite/remoção) deve ficar e por quanto tempo; (d) moderação de foto indevida (só rosto da própria pessoa, sem terceiros, documento, texto ou conteúdo impróprio): base para a conferência humana e para apagar sem aviso prévio; foto de terceiro = dado de terceiro sem base; (e) a regra **"só após o Combinou"** como medida de não discriminação (Lei 9.029/1995; CLT art. 373-A): confirmar que a empresa não pode exigir foto nem usá-la para decidir, e se cabe cláusula no aceite `empresa_cadastro`; (f) foto nunca no cartão cego, na busca do banco nem no perfil público: confirmar que o perfil público (aceite `pessoa_perfil_publico`) continua sem foto mesmo a pedido da pessoa (decisão de produto: evitar discriminação) ou se deve ser opção dela.
 

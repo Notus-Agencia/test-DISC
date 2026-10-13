@@ -310,13 +310,19 @@
           "brasileira",
           "brasileiros",
           "somente brasileiros",
+          "somente nacionais",
           "nao aceita estrangeiro",
           "nao aceita estrangeiros",
-          "sem venezuelanos",
-          "venezuelano",
-          "venezuelana"
+          "sem estrangeiros",
+          "nao aceita imigrante",
+          "nao aceita imigrantes",
+          "sem imigrantes",
+          "sem refugiados"
         ],
-        "explicacao": "não pode: origem ou nacionalidade não entra em anúncio (Lei 9.029/1995). Se a função exige documento de trabalho no Brasil, isso é conferido na contratação, não no anúncio."
+        "explicacao": "não pode: origem ou nacionalidade não entra em anúncio (Lei 9.029/1995). Se a função exige documento de trabalho no Brasil, isso é conferido na contratação, não no anúncio.",
+        "padroes": [
+          "\\b(sem|nao aceita|nao aceitamos|exceto)\\s+(estrangeir|imigrant|migrant|refugiad)\\w*"
+        ]
       },
       {
         "chave": "religiao",
@@ -495,7 +501,7 @@
     "senha_curta": "A senha precisa ter pelo menos 8 caracteres.",
     "senha_diferente": "As senhas não são iguais.",
     "nome_obrigatorio": "Escreva o seu nome como quer ser chamada(o).",
-    "whatsapp_invalido": "Escreva o WhatsApp com DDD, por exemplo (95) 99999-9999.",
+    "whatsapp_invalido": "Escreva o WhatsApp com DDD e o número do celular, só os números (11 dígitos).",
     "cidade_obrigatoria": "Escolha pelo menos uma cidade.",
     "cidade_maximo": "Você pode escolher até 2 cidades.",
     "zona_obrigatoria": "Escolha a zona onde você mora ou pode trabalhar.",

@@ -19,6 +19,16 @@ const TODOS = [...MD, ...JSONS, ...EMAILS.map((a) => 'emails/' + a)];
 const NOTA_MINUTA = 'MINUTA · para revisão do(a) advogado(a) antes de publicar';
 const NUNCA_PAGUE = 'Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.';
 
+// Texto sem as listas de filtro: `padrao`, `padroes` e `termos` são regex/termos de busca, não texto que alguém lê.
+const semRegex = (v) => {
+  if (Array.isArray(v)) return v.map(semRegex);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).filter(([k]) => !['padrao', 'padroes', 'termos'].includes(k)).map(([k, x]) => [k, semRegex(x)]));
+  return v;
+};
+const textoLido = (a) => (a.endsWith('.json') ? JSON.stringify(semRegex(json(a))) : ler(a));
+const semAcento = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const MARCADOR_SEDE = '[REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos]';
+
 test('todos os arquivos existem e os JSON são válidos', () => {
   for (const a of TODOS) assert.ok(fs.existsSync(path.join(PASTA, a)), a);
   for (const a of JSONS) assert.doesNotThrow(() => json(a), a);
@@ -33,16 +43,42 @@ test('nenhum texto cita a agência, app de namoro, "swipe", promessa ("garant"),
   }
 });
 
+// A plataforma é por cidade e a cidade do piloto pode mudar: nenhum texto traz cidade, UF, DDD ou gentílico regional fixo.
+// A cidade entra pela variável {{cidade}}; a sede da Gestão sem Caos fica com o marcador até o dono informar.
+test('nenhum nome de cidade fixo: só {{cidade}} ou texto genérico; sede com o marcador', () => {
+  const nomes = ['boa vista', 'roraima', 'pacaraima', 'mucajai', 'rorainopolis', 'caracarai', 'uruacu', 'goias', 'goiania',
+    'brasilia', 'sao paulo', 'manaus', 'venezuel', 'espanhol'];
+  const UF = 'AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO';
+  const cidadeUf = new RegExp('\\b\\p{Lu}\\p{Ll}+(?:\\s(?:d[aeo]s?\\s)?\\p{Lu}\\p{Ll}+)*\\s?(?:/|,|\\s[-–]|\\()\\s?(?:' + UF + ')\\b', 'u');
+  const slug = new RegExp('[a-z]+-(?:' + UF.toLowerCase() + ')/'); // caminho de cidade, ex.: /nome-da-cidade-uf/
+  const ddd = /\(\d{2}\)\s?9?\d{4}/;
+  for (const a of [...TODOS, '../../docs/VAGAS-TEXTOS.md']) {
+    const t = a.startsWith('../') ? fs.readFileSync(path.join(PASTA, a), 'utf8') : textoLido(a);
+    const n = semAcento(t);
+    for (const nome of nomes) assert.ok(!n.includes(nome), a + ' cita "' + nome + '"');
+    if (a.startsWith('../')) continue; // o docs cita leis e links; as regras de UF/DDD valem para o texto que alguém lê
+    for (const re of [cidadeUf, slug, ddd]) {
+      const m = t.match(re);
+      assert.ok(!m, a + ' tem cidade/UF/DDD fixo: "' + (m && m[0]) + '"');
+    }
+  }
+  // Foro e sede: marcador de revisão jurídica, com a ressalva do foro do consumidor.
+  const termos = ler('termos-de-uso.md');
+  const foro = termos.split('16.2.')[1].split('\n')[0];
+  assert.ok(foro.includes(MARCADOR_SEDE), 'foro com o marcador');
+  assert.match(foro, /salvo o direito da pessoa consumidora de usar o foro do seu domicílio/);
+  assert.ok(ler('aviso-de-privacidade.md').includes(MARCADOR_SEDE), 'controladora com o marcador');
+  // Textos que precisam da cidade usam a variável.
+  const av = json('avisos.json').avisos;
+  for (const k of ['cidade_lista_espera', 'cidade_pausada', 'cidade_entorno', 'mural_vazio']) assert.match(av[k], /{{cidade}}/, k);
+  assert.match(json('whatsapp.json').mensagens.find((x) => x.chave === 'boletim_do_dia').texto, /{{cidade}}/);
+});
+
 // Lista da psicologia (mesa): nem em negação. As regex de filtro (padrao/padroes/termos) não são texto de tela.
 test('frases proibidas pela psicologia não aparecem em texto de tela, e-mail ou documento', () => {
   const proibidas = [/\bmatch\b/i, /currículo verificado/i, /\bvalidad[oa]s?\b/i, /científic/i, /certificad/i, /ranking/i, /os melhores/i, /teste psicológico/i, /avaliação/i, /\baprovad[oa]s?\b/i];
-  const semRegex = (v) => {
-    if (Array.isArray(v)) return v.map(semRegex);
-    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).filter(([k]) => !['padrao', 'padroes', 'termos'].includes(k)).map(([k, x]) => [k, semRegex(x)]));
-    return v;
-  };
   for (const a of TODOS) {
-    const t = a.endsWith('.json') ? JSON.stringify(semRegex(json(a))) : ler(a);
+    const t = textoLido(a);
     for (const re of proibidas) {
       const m = t.match(re);
       // "vaga aprovada" (moderação de anúncio) é a única exceção: não é sobre pessoa.
@@ -241,7 +277,7 @@ test('referência profissional: aceite da pessoa, declaração da empresa, aviso
 
 test('termos e privacidade cobrem os pontos obrigatórios', () => {
   const termos = ler('termos-de-uso.md');
-  for (const re of [/não é agência de emprego/, /6\.019\/1974/, /grátis para a pessoa, para sempre/, /sem renovação automática|Nenhum extra renova sozinho/, /9\.029\/1995/, /373-A/, /LC 150\/2015/, /Boa Vista, Roraima/, /operador de dados/, /Resumo em 10 linhas/]) assert.match(termos, re);
+  for (const re of [/não é agência de emprego/, /6\.019\/1974/, /grátis para a pessoa, para sempre/, /sem renovação automática|Nenhum extra renova sozinho/, /9\.029\/1995/, /373-A/, /LC 150\/2015/, /REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos/, /operador de dados/, /Resumo em 10 linhas/]) assert.match(termos, re);
   const priv = ler('aviso-de-privacidade.md');
   for (const re of [/art\. 7º, V/, /consentimento específico, com prazo/, /24 meses/, /Supabase/, /Resend/, /Cloudflare/, /Stripe/, /InfinitePay/, /"Meus dados"/, /Encarregad[oa]\(a\) de dados/, /18 anos/, /Resumo em 10 linhas/, /art\. 20/]) assert.match(priv, re);
   const naoColeta = ['idade', 'gênero', 'estado civil', 'filhos', 'gravidez', 'cor', 'religião', 'nacionalidade', 'saúde', 'antecedentes'];

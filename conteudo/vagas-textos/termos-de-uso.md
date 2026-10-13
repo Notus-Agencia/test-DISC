@@ -21,7 +21,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 ## 1. O que é o Vagas sem Caos
 
-1.1. O Vagas sem Caos ("plataforma") é um mural de vagas de trabalho por cidade, no endereço `vagas.gestaosemcaos.com.br`. É mantido pela Gestão sem Caos ([razão social e CNPJ a preencher], "nós"), com sede em Boa Vista, Roraima.
+1.1. O Vagas sem Caos ("plataforma") é um mural de vagas de trabalho por cidade, no endereço `vagas.gestaosemcaos.com.br`. É mantido pela Gestão sem Caos ([razão social e CNPJ a preencher], "nós"), com sede em [REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos]. O mural funciona por cidade: cada cidade tem a sua página e só mostra vagas daquela cidade e do entorno.
 
 1.2. A plataforma **não é agência de emprego** nem intermediadora de mão de obra. Ela só mostra o anúncio da empresa para a pessoa e o interesse da pessoa para a empresa. Nós não selecionamos, não indicamos, não ordenamos pessoas do melhor para o pior e não participamos da decisão de contratar.
 
@@ -195,7 +195,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 16.1. Estes termos seguem a lei brasileira, em especial a LGPD (Lei 13.709/2018), o Marco Civil da Internet (Lei 12.965/2014), o Código de Defesa do Consumidor (Lei 8.078/1990), a Lei 9.029/1995 e a CLT.
 
-16.2. Fica escolhido o foro da comarca de **Boa Vista, Roraima**, para qualquer questão, salvo o direito da pessoa consumidora de usar o foro do seu domicílio.
+16.2. Fica escolhido o foro da comarca de **[REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos]** para qualquer questão, salvo o direito da pessoa consumidora de usar o foro do seu domicílio.
 
 ## 17. Contato
 
