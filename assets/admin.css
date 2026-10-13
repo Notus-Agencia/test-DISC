@@ -1002,6 +1002,9 @@
 .subaba[aria-current="page"] { background: var(--tinta); color: var(--branco); }
 .subaba__n { min-width: 22px; padding: 1px 7px; border-radius: var(--raio-pilula); background: var(--fundo); color: var(--medio); font-size: var(--t-eixo); text-align: center; }
 .subaba[aria-current="page"] .subaba__n { background: var(--ardosia); color: var(--branco); }
+/* Página da empresa: as 8 subabas (com "Andamento") cabem numa linha a partir de 1280 px, mesmo com a barra de rolagem
+   do Windows (15 px); acima de 1440 px, o espaço de sempre. */
+@media (max-width: 1439px) { #emp-subabas { gap: 2px; } #emp-subabas .subaba { padding-inline: 10px; } }
 .emp-painel { display: grid; gap: 12px; }
 .emp-painel > * { margin-bottom: 0; }
 

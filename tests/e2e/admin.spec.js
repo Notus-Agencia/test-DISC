@@ -1744,8 +1744,8 @@ test.describe('Empresas (Supabase, API falsa)', () => {
     const id = async (nome) => page.locator('#lista-colaboradores > li[data-nome="' + nome + '"]').getAttribute('data-pessoa');
     const idAna = await id('Ana Souza'), idCarla = await id('Carla Dias');
 
-    // Subabas: Colaboradores (padrão, com a contagem) | Organograma | Compatibilidade | Relatórios | Histórico
-    await expect(page.locator('#emp-subabas .subaba')).toHaveText([/^Colaboradores\s*3$/, 'Organograma', 'Compatibilidade', 'Relatórios', 'Pesquisa de clima', 'Feedback 360', /^Histórico\s*0$/]);
+    // Subabas: Colaboradores (padrão, com a contagem) | Andamento | Organograma | Compatibilidade | Relatórios | Clima | 360 | Histórico
+    await expect(page.locator('#emp-subabas .subaba')).toHaveText([/^Colaboradores\s*3$/, 'Andamento', 'Organograma', 'Compatibilidade', 'Relatórios', 'Pesquisa de clima', 'Feedback 360', /^Histórico\s*0$/]);
     await expect(page.locator('#emp-subaba-colaboradores')).toHaveAttribute('aria-current', 'page');
     await expect(page.locator('#emp-link')).toBeVisible();
     await expect(page.locator('#emp-organograma')).toHaveCount(0);

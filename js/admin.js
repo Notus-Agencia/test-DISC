@@ -2247,7 +2247,7 @@
   // relatorios[/gerados|/gerar[/<chave>]|/exemplo/<chave>], vendas[/<subaba>], vendas/pedido/<id>, usuarios,
   // comparativo, importar, conexoes. Âncoras do Supabase Auth (#access_token=…, #error=…) não são rotas.
   var ABAS_ROTA = ['comparativo', 'importar', 'usuarios', 'conexoes'];
-  var SUBABAS_ROTA_EMPRESA = ['colaboradores', 'organograma', 'compatibilidade', 'relatorios', 'clima', 'feedback360', 'historico'];
+  var SUBABAS_ROTA_EMPRESA = ['colaboradores', 'andamento', 'organograma', 'compatibilidade', 'relatorios', 'clima', 'feedback360', 'historico'];
   var SUBABAS_ROTA_VENDAS = ['divulgar', 'resumo', 'pedidos', 'cupons', 'pacotes'];
   function parteRota(s) { return /^[A-Za-z0-9_.:-]{1,128}$/.test(String(s || '')) ? String(s) : ''; }
   function lerRota(hash) {
@@ -5988,6 +5988,7 @@
 
   function irParaEmpresas(tela, id, subaba) {
     if (tela === 'pagina' && (String(id) !== String(estado.emp.id) || subaba)) estado.emp.subaba = subaba || 'colaboradores';
+    if (tela === 'pagina' && estado.emp.subaba === 'andamento') esquecerAndamento(id);
     estado.emp.tela = tela || 'lista';
     estado.emp.id = id || null;
     renderizarEmpresas();
@@ -6184,6 +6185,7 @@
   // Subabas da página da empresa (a escolhida fica guardada enquanto o painel está aberto).
   var SUBABAS_EMPRESA = [
     { id: 'colaboradores', rotulo: 'Colaboradores' },
+    { id: 'andamento', rotulo: 'Andamento' },
     { id: 'organograma', rotulo: 'Organograma' },
     { id: 'compatibilidade', rotulo: 'Compatibilidade' },
     { id: 'relatorios', rotulo: 'Relatórios' },
@@ -6193,6 +6195,7 @@
   ];
 
   function irParaSubaba(sub) {
+    if (sub === 'andamento') esquecerAndamento(estado.emp.id); // entrar no Andamento sempre busca clima e 360 de novo
     estado.emp.subaba = sub;
     renderizarEmpresas();
     gravarRota(); // a subaba também fica no endereço (Voltar do navegador volta para a anterior)
@@ -6255,6 +6258,8 @@
         ])
       ]));
       painel.appendChild(blocoRelatoriosModelo({ empresaId: id }, 'e:' + id, { empresa: emp.nome }));
+    } else if (sub === 'andamento') {
+      painel.appendChild(blocoAndamento(emp, eq, colabs, proc, linkTeste));
     } else if (sub === 'clima') {
       painel.appendChild(blocoClima(emp, eq, colabs));
     } else if (sub === 'feedback360') {
@@ -6281,6 +6286,27 @@
       ]));
       painel.appendChild(blocoColaboradores(emp, eq, colabs, id, proc, linkTeste));
     }
+  }
+
+  // Andamento por pessoa (js/admin-andamento.js): DISC por pessoa; clima só por equipe e 360 só agregado (nunca quem respondeu).
+  function esquecerAndamento(id) { if (root.DISC_ADMIN_ANDAMENTO) root.DISC_ADMIN_ANDAMENTO.esquecer(id); }
+  function blocoAndamento(emp, eq, colabs, proc, linkTeste) {
+    var M = root.DISC_ADMIN_ANDAMENTO;
+    if (!M) return el('section', { classe: 'caixa emp-bloco', id: 'emp-andamento' }, el('p', { classe: 'texto-suave', texto: 'Andamento indisponível neste painel.' }));
+    var p2 = proc && proc.config && proc.config.formulario ? proc.config.formulario.parte2 : '';
+    return M.bloco({ el: el, botao: botao, api: api, copiar: copiar, avisar: avisar, href: root.location.href,
+      emp: emp, eq: eq, colabs: colabs, proc: proc, linkTeste: linkTeste, minutos: minutosTeste(p2),
+      metodoApi: function (nome) { return !!metodoApi(nome); },
+      linkWhatsApp: linkWhatsAppTexto,
+      // Abre a conversa com o número do cadastro (sem número, o WhatsApp pede o contato).
+      linkWhatsAppPara: function (tel, texto) { var b = linkWhatsApp(tel); return b ? b + '?text=' + encodeURIComponent(String(texto || '')) : linkWhatsAppTexto(texto); },
+      criarLinkEquipe: function () { irParaProcessos('form', null, { tipo: 'equipe', empresaId: emp.id, empresa: emp.nome, nome: 'Equipe ' + emp.nome, volta: { empresa: emp.id } }); },
+      abrirProcesso: function () { if (proc) irParaProcessos('pagina', proc.id); },
+      irParaSubaba: irParaSubaba,
+      recarregarEquipe: function () { return carregarEquipe(emp.id); },
+      redesenhar: function () {
+        if (estado.aba === 'empresas' && estado.emp.tela === 'pagina' && estado.emp.id === emp.id && estado.emp.subaba === 'andamento') renderizarEmpresas();
+      } });
   }
 
   // Pesquisa de Clima da Equipe (js/admin-clima.js): o painel só recebe contagens e o resultado já suprimido pelo servidor.

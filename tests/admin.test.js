@@ -1318,6 +1318,7 @@ test('lerRota/formatarRota: cada tela tem endereço; ida e volta iguais; âncora
     [{ aba: 'processos', tela: 'editor', id: 'p1', token: 'abc123' }, 'processo/p1/relatorio/abc123'],
     [{ aba: 'empresas', tela: 'lista' }, 'empresas'],
     [{ aba: 'empresas', tela: 'pagina', id: 'emp_1', subaba: 'organograma' }, 'empresa/emp_1/organograma'],
+    [{ aba: 'empresas', tela: 'pagina', id: 'emp_1', subaba: 'andamento' }, 'empresa/emp_1/andamento'],
     [{ aba: 'relatorios', tela: 'relatorio', relId: 'rel_9' }, 'relatorio/rel_9'],
     [{ aba: 'relatorios', tela: 'gerados' }, 'relatorios/gerados'],
     [{ aba: 'relatorios', tela: 'assistente', chave: 'equipe' }, 'relatorios/gerar/equipe'],
