@@ -380,8 +380,8 @@
         if (metodos.length > 1) {
           var botoes = [];
           confirmar.appendChild(el('div', { classe: 'clima-opcoes clima-opcoes--metodos', role: 'group', 'aria-label': 'Como confirmar' }, metodos.map(function (m) {
-            var sub = m === 'email' ? (info.emailMascarado || 'e-mail do cadastro') : (m === 'whatsapp' ? 'número com final ' + (info.whatsappFinal || '••')
-              : 'dados que a empresa cadastrou');
+            var sub = m === 'email' ? 'no e-mail do seu cadastro' + (info.emailMascarado ? ' (' + info.emailMascarado + ')' : '')
+              : (m === 'whatsapp' ? 'no WhatsApp do seu cadastro (final ' + (info.whatsappFinal || '••') + ')' : 'dados que a empresa cadastrou');
             var b = el('button', { type: 'button', classe: 'clima-opcao clima-opcao--larga', 'data-metodo': m, 'aria-pressed': String(estado.id.metodo === m) }, [
               el('span', { classe: 'escolha-marca', 'aria-hidden': 'true' }),
               el('span', { classe: 'clima-opcao__texto' }, [el('strong', { texto: CL.METODOS_INFO[m].rotulo }), el('span', { classe: 'clima-opcao__ajuda', texto: sub })])
@@ -421,7 +421,11 @@
           texto: estado.id.codigoPedido ? 'Pedir outro código' : 'Enviar código' });
         pedir.addEventListener('click', function () { pedirCodigo(pedir, erro); });
         if (!estado.id.codigoPedido) {
-          area.appendChild(el('p', { classe: 'clima-nota', texto: 'Vamos enviar um código de 6 números ' + (m === 'email' ? 'para o e-mail ' : 'pelo WhatsApp, para o número com ') + destino + '.' }));
+          // O código vai para o contato que a empresa informou no cadastro (a pessoa não digita: quem tem só o link não
+          // consegue mandar o código para outro endereço). A tela diz de onde veio o e-mail e o que fazer se não for mais dela.
+          area.appendChild(el('p', { classe: 'clima-nota', id: 'clima-codigo-destino', texto: 'Vamos enviar um código de 6 números ' +
+            (m === 'email' ? 'para o e-mail que a empresa informou no seu cadastro: ' : 'pelo WhatsApp, para o número que a empresa informou no seu cadastro: ') +
+            destino + '. Não é mais ' + (m === 'email' ? 'o seu e-mail' : 'o seu número') + '? Avise quem enviou este link para corrigir o cadastro.' }));
           area.appendChild(el('div', { classe: 'acoes' }, pedir));
           return;
         }
@@ -430,8 +434,8 @@
         cod.value = estado.id.codigo;
         cod.addEventListener('input', function () { cod.value = cod.value.replace(/[^0-9 ]/g, '').slice(0, 7); estado.id.codigo = cod.value; });
         area.appendChild(el('label', { classe: 'campo', for: 'clima-codigo' }, [el('span', { classe: 'campo__rotulo', texto: 'Código de 6 números' }), cod]));
-        area.appendChild(el('p', { classe: 'clima-nota', id: 'clima-codigo-ajuda', texto: 'Enviado para ' + destino + '. Vale por ' + CL.CODIGO_MINUTOS +
-          ' minutos. Não chegou? Confira a caixa de spam ou peça outro.' }));
+        area.appendChild(el('p', { classe: 'clima-nota', id: 'clima-codigo-ajuda', texto: 'Enviado para ' + (m === 'email' ? 'o e-mail' : 'o WhatsApp') +
+          ' do seu cadastro (' + destino + '). Vale por ' + CL.CODIGO_MINUTOS + ' minutos. Não chegou? Confira a caixa de spam ou peça outro.' }));
         if (estado.id.codigoPrevia) {
           area.appendChild(el('p', { classe: 'clima-previa-codigo', 'data-codigo-previa': estado.id.codigoPrevia,
             texto: 'Prévia: nenhum e-mail é enviado. Use o código ' + estado.id.codigoPrevia + '.' }));
