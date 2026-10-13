@@ -135,6 +135,8 @@ Convites feitos pelo painel continuam funcionando com o cadastro fechado.
 2. **Site URL:** apague o que estiver (`http://localhost:3000`) e escreva `https://disc.gestaosemcaos.com.br` → **Save changes**.
 3. **Redirect URLs** → **Add URL** → escreva `https://disc.gestaosemcaos.com.br/admin.html` → **Save URLs**.
    - Opcional, para testar no computador: adicione também `http://localhost:4173/admin.html`.
+4. **Vagas sem Caos:** adicione também `https://vagas.gestaosemcaos.com.br/**` (os links dos e-mails do Vagas abrem
+   `https://vagas.gestaosemcaos.com.br/entrar.html?token_hash=…`). Veja a seção 15.
 
 ## 6. E-mails (convite e "Esqueci minha senha")
 
@@ -170,6 +172,7 @@ O sistema tem três funções. Cada uma é **um arquivo só**, já pronto, na pa
 | `disc-sync` | `dist/funcoes/disc-sync/index.ts` | Leva o resultado do candidato para a tarefa dele no ClickUp | **Ligado** (desligue só se usou a Publishable key no passo 2) |
 | `clickup-webhook` | `dist/funcoes/clickup-webhook/index.ts` | Recebe o aviso do ClickUp quando o briefing vai para "gerar relatório" | **Desligado** |
 | `clima` | `dist/funcoes/clima/index.ts` | Pesquisa de clima com identificação: manda o código de confirmação do link pessoal (e-mail pelo Resend) | **Desligado** |
+| `vagas-conta` | `dist/funcoes/vagas-conta/index.ts` | Vagas sem Caos: cria as contas (pessoa, empresa, cadastro assistido, operador) e manda os links de confirmar e de "Esqueci minha senha"; exclui a conta (seção 15) | **Desligado** (confere o login sozinha quando precisa) |
 
 Para **cada** linha da tabela:
 
@@ -199,6 +202,9 @@ Segredos são senhas que **só as funções** enxergam; nunca vão para o site.
 | `CLICKUP_PASTA_ID` | ID da pasta de recrutamento no ClickUp (o número no endereço da pasta) | Opcional — sem ele, o painel lista todas as listas do workspace |
 | `ANTHROPIC_API_KEY` | a chave da Anthropic (`sk-ant-…`) | Opcional — sem ela, o botão "Melhorar textos com IA" não aparece |
 | `CLICKUP_WEBHOOK_SECRET` | o `secret` devolvido pelo ClickUp no passo 13 | Só depois do passo 13 |
+| `VAGAS_SITE_URL` | `https://vagas.gestaosemcaos.com.br` (sem barra no fim) | Para o Vagas sem Caos: endereço dos links dos e-mails e única origem liberada para chamar a `vagas-conta` |
+| `VAGAS_EMAIL_REMETENTE` | `Vagas · Gestão sem Caos <vagas@gestaosemcaos.com.br>` | Opcional — sem ele, a `vagas-conta` usa o `EMAIL_REMETENTE` do DISC |
+| `TURNSTILE_SECRET` | a chave secreta do widget Turnstile da Cloudflare | Opcional — liga o "não sou robô" no cadastro, reenviar e "Esqueci minha senha" do Vagas (a chave pública vai em `vagas/js/config.js`, `TURNSTILE_SITE_KEY`) |
 
 - Pesquisa de clima com identificação: o código por e-mail usa os mesmos `RESEND_API_KEY` e `EMAIL_REMETENTE` (docs/EMAILS.md). `WHATSAPP_PROVEDOR` fica **sem criar** até existir um provedor de WhatsApp contratado (sem ele, a opção "Código por WhatsApp" não aparece).
 - **Não** crie `SUPABASE_URL`, `SUPABASE_ANON_KEY` nem `SUPABASE_SERVICE_ROLE_KEY`: o Supabase já fornece esses sozinho (eles aparecem na lista com um cadeado).
@@ -340,6 +346,43 @@ curl -sS -X DELETE "https://api.clickup.com/api/v2/webhook/ID_DO_WEBHOOK" -H "Au
 
 ---
 
+## 15. Vagas sem Caos (vagas.gestaosemcaos.com.br)
+
+O Vagas sem Caos usa **o mesmo projeto** do Supabase do DISC (as tabelas dele começam com `vagas_` e ficam separadas;
+nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedagem do site: [VAGAS-HOSPEDAGEM.md](VAGAS-HOSPEDAGEM.md).
+
+1. **Banco:** aplique [`supabase/migrations/20261022120000_vagas.sql`](../supabase/migrations/20261022120000_vagas.sql)
+   (com a integração do GitHub ela entra sozinha; à mão: SQL Editor → cole → Run, como no passo 3b). Ela é idempotente,
+   não apaga nada e cria as cidades iniciais (Boa Vista ativa com 4 zonas; Mucajaí e Cantá no entorno; Rorainópolis em
+   lista de espera). Confira: `select public.versao_banco();` deve trazer `20261022120000_vagas` em `migracoes`.
+   A mesma migração faz o primeiro login **nunca** promover uma conta do Vagas a administradora do painel DISC.
+   Ela também cria no **Storage** o bucket PRIVADO `vagas-fotos` (foto opcional da pessoa: até 1 MB, jpg/png/webp) e as
+   políticas: cada pessoa grava, troca e apaga só a própria foto; ninguém lê direto (a empresa recebe, depois do Combinou,
+   uma URL de 5 minutos assinada pela função `vagas-conta`). Confira em **Storage → Buckets** (deve aparecer `vagas-fotos`,
+   sem o selo "Public").
+2. **Função `vagas-conta`:** crie como no passo 8 (arquivo `dist/funcoes/vagas-conta/index.ts`) com **Verify JWT
+   desligado** (o cadastro é feito por quem ainda não tem login; as ações que exigem login conferem o token sozinhas).
+3. **Segredos** (passo 9): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`, e os opcionais `VAGAS_EMAIL_REMETENTE` e
+   `TURNSTILE_SECRET`. Nenhuma chave secreta vai para o site: `vagas/js/config.js` leva só a URL do projeto e a chave
+   **pública** (as mesmas de `js/config.js`).
+4. **Redirect URL** (passo 5): `https://vagas.gestaosemcaos.com.br/**`.
+5. **Cadastro aberto do Auth continua fechado** (passo 4): as contas do Vagas são criadas só pela função `vagas-conta`
+   (com `app_metadata.produto = 'vagas'`), sem senha no cadastro — a pessoa cria a senha depois de clicar no link.
+6. **Ligar o site ao banco:** em `vagas/js/config.js`, troque `MODO: 'previa'` por `MODO: 'supabase'` (até lá o site roda
+   com dados fictícios de Boa Vista guardados só no navegador). Na página, `?previa=1` volta a prévia só naquela aba.
+7. **Operadores das cidades:** pelo painel (grupo "Vagas", quando existir) ou chamando a ação `operador` da `vagas-conta`
+   com o login da equipe; o operador recebe o link, cria a senha e só enxerga empresas, vagas e denúncias da cidade dele
+   (nunca pessoas nem contatos).
+8. **Na semana de abrir:** plano Pro do Supabase (o grátis pausa projeto parado e tem limites menores) e domínio `vagas` no DNS
+   ([VAGAS-HOSPEDAGEM.md](VAGAS-HOSPEDAGEM.md)).
+
+| Erro no site do Vagas | Causa | O que fazer |
+|---|---|---|
+| "O banco de dados ainda não tem o Vagas sem Caos…" | migração 20261022 não aplicada | item 1 |
+| "O cadastro ainda não está disponível…" | função `vagas-conta` não publicada | item 2 |
+| "O envio de e-mail ainda não está configurado…" | falta `RESEND_API_KEY` | item 3 |
+| Link do e-mail abre o DISC ou dá "link expirou" | Redirect URL ou `VAGAS_SITE_URL` faltando | itens 3 e 4; peça um link novo |
+
 ## Se algo der errado
 
 | O que aparece | Causa provável | O que fazer |
@@ -388,3 +431,7 @@ curl -sS -X DELETE "https://api.clickup.com/api/v2/webhook/ID_DO_WEBHOOK" -H "Au
 - Despertador: `.github/workflows/manter-ativo.yml`. Migração: `scripts/migrar-planilha.mjs` (testes em `tests/migrar-planilha.test.js`).
 - Testes do banco num Postgres embutido: `npm run test:supabase`.
 - Contrato completo: seção "Supabase" de [SPEC.md](SPEC.md).
+- Vagas sem Caos: `supabase/migrations/20261022120000_vagas.sql` (tabelas `vagas_*`, schema fechado `vagas_interno`, RPCs
+  `vagas_*`), função `vagas-conta` (`supabase/funcoes-fonte/vagas-conta/` + `supabase/funcoes-compartilhadas/vagas-conta.js`),
+  site em `vagas/` (cliente `vagas/js/api.js` por fetch, sem supabase-js), testes `tests/supabase/vagas.test.js`,
+  `tests/vagas-*.test.js` e `tests/funcoes/vagas-conta.test.js`. Contrato: [VAGAS-SPEC.md](VAGAS-SPEC.md).

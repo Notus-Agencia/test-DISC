@@ -227,6 +227,16 @@ Quem já fez o quê e o que falta mandar, numa tela (`#empresa/<id>/andamento`, 
 - **Feedback 360:** como **avaliado(a)**, a situação do ciclo em foco (o aberto ou o mais recente): "Coleta aberta" com as respostas de colegas, equipe e outros somadas ("N de M", e quantas faltam para o mínimo de 3), ou, encerrado, "Relatório liberado"/"Sem relatório", devolutiva e relatório do líder publicado. Chefia e autoavaliação (uma pessoa cada) ficam só na subaba Feedback 360. Como **avaliador(a)**, nunca se respondeu: só a coluna "Links do 360 que recebe" ("N links · confidencial"), e só com o ciclo aberto (a lista de convites some no encerramento).
 - Ordem da tabela: a do organograma (topo, cada equipe abaixo do líder, por nome; sem posição no fim). Resumo no topo, uma linha por instrumento ("Teste DISC: 6 de 7 colaboradores responderam · falta 1 · parte 2: 6 de 7"; "Pesquisa de clima · set/2026: encerrada · 19 de 23 responderam (83%) · anônima"; "Feedback 360 · ago/2026: encerrado · 2 de 3 líderes com relatório liberado · 2 devolutivas feitas") e legenda (`#and-legenda`) com o porquê. Estados vazios: sem processo de equipe ("Crie o link do teste da equipe", `#btn-and-criar-link`, o mesmo atalho da aba Colaboradores), sem pesquisa de clima, sem ciclo do 360, sem colaboradores. Testes: `tests/admin-andamento.test.js` e `tests/e2e/andamento.spec.js`.
 
+### Vagas sem Caos · Gestão sem Caos (migração `20261022120000_vagas.sql`; Edge Function `vagas-conta`; site separado em `vagas/`)
+
+Plataforma de vagas de Boa Vista e entorno (vagas.gestaosemcaos.com.br), no mesmo projeto Supabase mas isolada do DISC:
+tabelas `public.vagas_*` (RLS em todas, escrita só por RPC `vagas_*`), schema fechado `vagas_interno`, contas próprias
+criadas pela Edge Function `vagas-conta` (`app_metadata.produto = 'vagas'`; `garantir_primeiro_admin` nunca as promove a
+administradoras do painel) e site estático próprio em `vagas/` (cliente `vagas/js/api.js` por fetch, prévia
+`vagas/js/api-previa.js`, peças da marca copiadas para `vagas/comum/` por `scripts/montar-vagas.mjs`). Nada do DISC lê ou
+grava as tabelas do Vagas. Contrato completo (tabelas, estados, RPCs com respostas e mensagens exatas, fluxo Quero →
+Combinou, privacidade): [VAGAS-SPEC.md](VAGAS-SPEC.md).
+
 ### Venda direta B2C — "Mapa de Perfil" (migração `20261011120000_vendas.sql`; Edge Functions `pagamento` e `asaas-webhook`; só Supabase e prévia)
 
 Produto da **Gestão sem Caos** vendido direto ao público: resumo grátis + pacotes pagos (Pix e cartão pelo Asaas). Passo a passo do dono: `docs/VENDAS.md`. Contrato completo dos métodos no topo de `js/api-supabase.js` (os agentes do site e do painel programam contra estes nomes). Dinheiro **sempre em centavos** (inteiro).
