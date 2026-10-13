@@ -52,12 +52,16 @@ test('nota: arredonda 100 × acertos ÷ total (meio ponto para cima), como o ban
   assert.equal(T.calcularNota(3, 0), 0);
 });
 
-test('datas: AAAA-MM-DD -> DD/MM/AAAA; data-hora ISO no fuso de Boa Vista (UTC−4)', () => {
+test('datas: AAAA-MM-DD -> DD/MM/AAAA; data-hora ISO no fuso da cidade (sem fuso: Brasília, UTC−3)', () => {
   assert.equal(T.dataBR('2026-10-13'), '13/10/2026');
   assert.equal(T.dataBR('lixo'), '');
-  assert.equal(T.dataDoIso('2026-10-13T03:59:00.000Z'), '12/10/2026');
-  assert.equal(T.dataDoIso('2026-10-13T04:00:00.000Z'), '13/10/2026');
-  assert.equal(T.hojeBoaVista(Date.parse('2026-01-01T02:00:00Z')), '2025-12-31');
+  assert.equal(T.FUSO_PADRAO, 'America/Sao_Paulo');
+  assert.equal(T.dataDoIso('2026-10-13T02:59:00.000Z'), '12/10/2026');
+  assert.equal(T.dataDoIso('2026-10-13T03:00:00.000Z'), '13/10/2026');
+  assert.equal(T.dataDoIso('2026-10-13T03:59:00.000Z', 'America/Manaus'), '12/10/2026', 'o fuso da cidade, quando vier');
+  assert.equal(T.hoje(Date.parse('2026-01-01T02:00:00Z')), '2025-12-31');
+  assert.equal(T.hoje(Date.parse('2026-01-01T03:00:00Z')), '2026-01-01');
+  assert.equal(T.hojeBoaVista, T.hoje, 'nome antigo, mesmo comportamento');
 });
 
 test('estado da prova: uma questão por vez; o tempo conta a partir do valor do servidor', () => {
