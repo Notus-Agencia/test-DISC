@@ -97,6 +97,14 @@ test('avisos.json: chaves obrigatórias e o aviso anti-golpe exato', () => {
   assert.deepEqual(av.avisos.denuncia_motivos.map((m) => m.chave), ['golpe', 'documento', 'discriminacao', 'falsa', 'ofensa', 'contato', 'outro']);
   assert.ok(av.avisos.denuncia_motivos.every((m) => typeof m.texto === 'string' && m.texto.length > 2));
   assert.equal(av.validacao.login_invalido, 'E-mail ou senha não conferem.');
+  // Mensagens fixas do banco (fundacao) e da prova (testes): texto idêntico ao registrado na mesa.
+  assert.equal(av.avisos.contato_cortado_empresa, 'A pessoa deixou de compartilhar o contato com a sua empresa.');
+  assert.equal(av.avisos.referencia_ja_dada, 'Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.');
+  assert.equal(av.foto.formato, 'A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.');
+  assert.equal(av.anuncio.campos.diaria_prazo, 'A diária fica no ar de 48 a 168 horas.');
+  assert.match(av.avisos.teste_lgpd_registro, /^Durante a prova, registramos o tempo de cada questão, a saída da tela e a cópia de texto\./);
+  assert.equal(av.avisos.teste_so_pessoa, 'Os testes são para a conta de pessoa. Entre com a sua conta de pessoa para fazer o teste.');
+  assert.equal(av.avisos.teste_conta_inativa, 'Sua conta não está ativa. Confirme o e-mail ou fale com a equipe da Gestão sem Caos.');
   assert.deepEqual(av.foto._fase2, ['em_moderacao', 'recusada_moderacao']);
   assert.equal(json('moderacao.json').motivos.find((x) => x.chave === 'foto_indevida').fase, 2);
   assert.match(av.avisos.cidade_lista_espera, /{{cidade}}/);

@@ -138,7 +138,17 @@
     "combinou_roteiro_entrevista": "Quer uma entrevista mais justa e mais rápida? Use o roteiro de entrevista (20 a 30 minutos): 8 perguntas iguais para todo mundo, o que não perguntar e uma ficha para anotar. A plataforma não calcula nota nem ordena.",
     "contratada_pessoa": "{{empresa_nome}} marcou você como contratada(o) na vaga de {{vaga_titulo}}. Parabéns! A candidatura foi encerrada. Se algo não bater, fale com a empresa ou com a gente.",
     "denuncia_titulo": "Denunciar",
-    "denuncia_texto": "O que está errado? A denúncia é confidencial: quem foi denunciado não sabe quem denunciou."
+    "denuncia_texto": "O que está errado? A denúncia é confidencial: quem foi denunciado não sabe quem denunciou.",
+    "contato_cortado_empresa": "A pessoa deixou de compartilhar o contato com a sua empresa.",
+    "contato_cortado_conversa": "A pessoa encerrou a conversa e deixou de compartilhar o contato.",
+    "contato_voltou_empresa": "A pessoa voltou a compartilhar o contato.",
+    "contato_nao_liberado": "Seu contato não foi liberado para esta empresa.",
+    "contato_cortar_pessoa": "Você pode parar de compartilhar o seu contato com esta empresa quando quiser. Ela é avisada, sem motivo, e deixa de ver o seu WhatsApp e a sua foto.",
+    "referencia_ja_dada": "Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.",
+    "teste_lgpd_registro": "Durante a prova, registramos o tempo de cada questão, a saída da tela e a cópia de texto. Ninguém perde o selo só por isso: uma pessoa da equipe revisa antes de qualquer decisão.",
+    "teste_encerrar_conta": "Se você encerrar antes do fim, a tentativa conta: o próximo teste só em 30 dias.",
+    "teste_so_pessoa": "Os testes são para a conta de pessoa. Entre com a sua conta de pessoa para fazer o teste.",
+    "teste_conta_inativa": "Sua conta não está ativa. Confirme o e-mail ou fale com a equipe da Gestão sem Caos."
   },
   "botoes": {
     "quero": "Quero",
@@ -452,8 +462,15 @@
       "zona_obrigatoria": "Escolha a zona da cidade onde é o trabalho.",
       "modalidade_obrigatoria": "Escolha a modalidade: CLT, temporário, diária, autônomo ou estágio.",
       "titulo_curto": "O título precisa ter entre 5 e 60 letras.",
-      "descricao_curta": "Descreva as tarefas em pelo menos 3 linhas.",
-      "selo_sugerido": "Quer pedir o selo de {{teste_nome}}? A pessoa faz o teste de conhecimento prático no celular e você vê a nota com a margem. Não é obrigatório e não substitui a entrevista."
+      "descricao_curta": "Descreva a vaga em pelo menos 40 caracteres.",
+      "selo_sugerido": "Quer pedir o selo de {{teste_nome}}? A pessoa faz o teste de conhecimento prático no celular e você vê a nota com a margem. Não é obrigatório e não substitui a entrevista.",
+      "area_obrigatoria": "Escolha a área da vaga.",
+      "turno_obrigatorio": "Escolha o turno da vaga.",
+      "experiencia_obrigatoria": "Escolha a experiência que a vaga pede.",
+      "outro_requisito": "Escreva qual é o outro requisito.",
+      "teste_obrigatorio": "Escolha um dos testes da plataforma ou \"nenhum\".",
+      "estagio_horas": "Informe as horas por dia do estágio (até 6).",
+      "diaria_prazo": "A diária fica no ar de 48 a 168 horas."
     }
   },
   "mensagem": {
@@ -492,8 +509,8 @@
     "limite_candidaturas": "Você chegou ao limite de {{limite}} candidaturas ativas. Retire alguma para enviar outra.",
     "limite_envios": "Muitas tentativas em pouco tempo. Espere {{minutos}} minutos e tente de novo.",
     "captcha": "Confirme que você não é um robô.",
-    "foto_formato": "Envie uma imagem JPG ou PNG.",
-    "foto_tamanho": "A foto passou de {{maximo_mb}} MB. Tente uma menor.",
+    "foto_formato": "A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.",
+    "foto_tamanho": "A foto passou de 1 MB. Tente uma menor.",
     "login_invalido": "E-mail ou senha não conferem."
   },
   "_revisao_psicologia": {
@@ -511,7 +528,9 @@
       "selo_conferir",
       "selo_presencial",
       "teste_antes",
-      "disc_fora"
+      "disc_fora",
+      "teste_lgpd_registro",
+      "teste_encerrar_conta"
     ],
     "anuncio.campos": [
       "selo_sugerido"
@@ -609,11 +628,14 @@
     "recusada_moderacao": "Sua foto não foi aceita: precisa ser uma foto sua, do rosto, sem outras pessoas, sem documento, sem texto e sem conteúdo impróprio. Você pode enviar outra ou seguir sem foto: nada muda na sua candidatura.",
     "em_moderacao": "Foto enviada. Ela passa por uma conferência rápida antes de ficar disponível para as empresas com quem você combinar.",
     "empresa": "A foto da pessoa aparece só depois do Combinou, para esta vaga. Ela é opcional: quem não enviou foto está em igualdade com quem enviou. Não use a foto para decidir.",
-    "limites": "Arquivo JPG ou PNG, até {{maximo_mb}} MB.",
+    "limites": "Arquivo JPG, PNG ou WEBP, com até 1 MB.",
     "_fase2": [
       "em_moderacao",
       "recusada_moderacao"
     ],
-    "denunciar_empresa": "Foto imprópria, de outra pessoa ou com documento? Denuncie: a foto some para você e a equipe apura."
+    "denunciar_empresa": "Foto imprópria, de outra pessoa ou com documento? Denuncie: a foto some para você e a equipe apura.",
+    "formato": "A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.",
+    "so_apos_combinou": "A foto só aparece depois do Combinou.",
+    "sem_foto_empresa": "Esta pessoa não pôs foto."
   }
 }
