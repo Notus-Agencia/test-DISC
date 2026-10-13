@@ -1,7 +1,7 @@
 'use strict';
 // Testes da migração 20261020120000_codigos_processo.sql (códigos de link de processo com 10 caracteres para os
 // processos novos; os de 4 continuam valendo; limite por origem nas consultas públicas por código, com a mesma resposta
-// para código inexistente e origem bloqueada) num Postgres 17 EMBUTIDO, com as 14 migrações aplicadas EM SEQUÊNCIA
+// para código inexistente e origem bloqueada) num Postgres 17 EMBUTIDO, com as 16 migrações aplicadas EM SEQUÊNCIA
 // sobre dados "de produção" das anteriores. Mesmo preparo "tipo Supabase" de tests/supabase/clima.test.js.
 // A origem é simulada como o PostgREST faz: request.headers (JSON) na transação.
 //
@@ -125,7 +125,7 @@ let seq = 0;
 const novoId = () => 'cod-' + Date.now().toString(36) + '-' + (++seq);
 const ANTIGO = {};   // códigos gravados antes da migração
 
-test('as 14 migrações em sequência: códigos antigos intactos, idempotente, versão nova', async () => {
+test('as 16 migrações em sequência: códigos antigos intactos, idempotente, versão nova', async () => {
   exigirBanco();
   for (let i = 0; i < ULTIMA; i++) await db.query(SQL[i]);
   await db.query(`insert into auth.users (id, email) values ($1, 'admin@x.com')`, [ADMIN]);
@@ -139,7 +139,7 @@ test('as 14 migrações em sequência: códigos antigos intactos, idempotente, v
   const r = await enviar(payloadValido({ id: novoId(), avaliacao: ANTIGO.sorteado.toLowerCase() }));
   assert.equal(r.ok, true, r.erro);
   const antes = await funcoesDoAnon();
-  assert.equal((await rpc('versao_banco', [])).versao, 20261017120000);
+  assert.equal((await rpc('versao_banco', [])).versao, 20261019120000);
 
   await db.query(SQL[ULTIMA]);
   await db.query(SQL[ULTIMA]);

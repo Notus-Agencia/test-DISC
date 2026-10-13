@@ -1,6 +1,6 @@
 'use strict';
 // Testes da migração 20261019120000_versao_tecnica.sql (versão técnica dos relatórios de equipe e "Como liderar") num
-// Postgres 17 EMBUTIDO, com as 14 migrações aplicadas EM SEQUÊNCIA sobre dados "de produção" das anteriores:
+// Postgres 17 EMBUTIDO, com as 15 migrações aplicadas EM SEQUÊNCIA sobre dados "de produção" das anteriores:
 //   - relatorio_publico pelo link de sempre entrega a versão do DONO (mesma regra de js/versao-tecnica.js — o SQL e o JS
 //     dão o MESMO resultado), inclusive para relatórios publicados antes da migração;
 //   - o link técnico só existe depois de gerar_relatorio_tecnico (só admin; nome e CRP validados) e entrega o completo;
@@ -26,7 +26,8 @@ const ler = (n) => fs.readFileSync(path.join(RAIZ, 'supabase', 'migrations', n),
 const MIGRACOES = ['20261005120000_disc', '20261006120000_pessoas_formulario', '20261007120000_empresas_equipes',
   '20261008120000_parte2', '20261009120000_fotos', '20261010120000_mover_versao', '20261011120000_vendas',
   '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca',
-  '20261016120000_envios_email', '20261017120000_clima', '20261019120000_versao_tecnica'];
+  '20261016120000_envios_email', '20261017120000_clima', '20261018120000_clima_identificacao',
+  '20261019120000_versao_tecnica'];
 const SQL = MIGRACOES.map((n) => ler(n + '.sql'));
 const ULTIMA = SQL.length - 1;
 
@@ -143,7 +144,7 @@ async function relatorio(modelo, dados, status) {
     [modelo, ref, JSON.stringify(Object.assign({ modelo }, dados)), status || 'publicado'])).rows[0];
 }
 
-test('as 14 migrações em sequência sobre dados antigos: idempotente; relatório já publicado abre na versão do dono', async () => {
+test('as 15 migrações em sequência sobre dados antigos: idempotente; relatório já publicado abre na versão do dono', async () => {
   exigirBanco();
   for (let i = 0; i < ULTIMA; i++) await db.query(SQL[i]);
   await db.query(`insert into auth.users (id, email) values ($1, 'admin@x.com'), ($2, 'outro@x.com')`, [ADMIN, OUTRO]);
@@ -156,7 +157,7 @@ test('as 14 migrações em sequência sobre dados antigos: idempotente; relatór
   const antigoProc = await relatorio('processo', { titulo: 'Processo X' });
   // antes da migração: o banco entrega tudo (a página escondia na tela)
   assert.ok((await publico(antigoEquipe.token)).relatorio.pressao);
-  assert.equal((await rpc(anon, 'versao_banco')).versao, 20261017120000);
+  assert.equal((await rpc(anon, 'versao_banco')).versao, 20261018120000);
 
   await db.query(SQL[ULTIMA]);
   await db.query(SQL[ULTIMA]);
