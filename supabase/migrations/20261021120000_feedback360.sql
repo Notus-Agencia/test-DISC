@@ -349,6 +349,8 @@ declare
   v_ct jsonb;
   v_ci jsonb;
   v_exibidas text[];
+  v_nao_t int;
+  v_r_t int;
 begin
   select jsonb_object_agg(f, coalesce(disc_interno.clima_int(case when jsonb_typeof(p_convidados) = 'object' then p_convidados -> f end, 1, 2147483647), 0))
     into v_conv from unnest(v_fontes) f;
@@ -463,8 +465,11 @@ begin
             and (v_stats -> (a.o::int - 1) -> 'itens' -> it.item ->> 'n')::int >= ki)
         or (not v_tirar and (v_stats -> (a.o::int - 1) -> 'itens' -> it.item ->> 'n')::int > 0);
     v_e := disc_interno.f360_estat_item(v_mem, it.item);
+    -- "pouco observada" em "Outras pessoas": proporção de todos os grupos exibidos (sem média)
+    select coalesce(sum((s -> 'itens' -> it.item ->> 'nao')::int), 0), coalesce(sum((s -> 'itens' -> it.item ->> 'r')::int), 0)
+      into v_nao_t, v_r_t from jsonb_array_elements(v_stats) s;
     v_outras_i := v_outras_i || jsonb_build_object(it.item, case
-      when (v_e ->> 'r')::int > 0 and (v_e ->> 'nao')::int * 2 > (v_e ->> 'r')::int then jsonb_build_object('pouco', true)
+      when v_nao_t * 2 > v_r_t then jsonb_build_object('pouco', true)
       when (v_e ->> 'n')::int >= ki then jsonb_build_object('n', v_e -> 'n', 'media', v_e -> 'media', 'dist', v_e -> 'dist')
       else 'null'::jsonb end);
   end loop;

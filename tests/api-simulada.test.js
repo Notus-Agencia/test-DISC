@@ -1132,7 +1132,7 @@ test('topoIds do organograma: salvarRelacoes guarda na empresa; listarEquipe dev
   assert.deepEqual((await api.listarEquipe(T, clinica.id)).topoIds, [a.pessoaId]);
   await assert.rejects(api.salvarRelacoes(T, clinica.id, [], { topoIds: 'x' }), /Relações inválidas\./);
 
-  assert.deepEqual(await api.versaoBanco(), { ok: true, versao: 20261017120000, faltando: [] });
+  assert.deepEqual(await api.versaoBanco(), { ok: true, versao: 20261021120000, faltando: [] });
 });
 
 // ---------------------------------------------------------------------------

@@ -389,11 +389,14 @@
         grupos[i].itens[id] = mostra ? { n: e.n, media: e.media, dist: e.dist } : (pouco ? { pouco: true } : null);
         return { g: g, n: e.n, mostra: mostra };
       });
+      // "Pouco observada" em "Outras pessoas": conta de todos os grupos exibidos (é só uma proporção, sem média).
+      var todosM = [];
+      exibidos.forEach(function (g) { todosM = todosM.concat(g.membros); });
+      var et = estatItem(todosM, id);
       var membros = [];
       incluidosEmOutras(cel, K_ITEM).forEach(function (x) { membros = membros.concat(x.g.membros); });
       var eo = estatItem(membros, id);
-      var poucoO = membros.length > 0 && eo.nao * 2 > eo.r;
-      outras.itens[id] = poucoO ? { pouco: true } : (eo.n >= K_ITEM ? { n: eo.n, media: eo.media, dist: eo.dist } : null);
+      outras.itens[id] = et.nao * 2 > et.r ? { pouco: true } : (eo.n >= K_ITEM ? { n: eo.n, media: eo.media, dist: eo.dist } : null);
     });
     res.grupos = grupos;
     res.outras = outras;
@@ -519,10 +522,10 @@
   }
   function textoDiferenca(d) {
     var nomeT = tema(d.tema).nome.toLowerCase();
-    var quem = d.grupo === 'outras' ? 'as outras pessoas' : 'o grupo "' + d.nome + '"';
+    var quem = d.grupo === 'outras' ? 'as outras pessoas perceberam' : 'o grupo "' + d.nome + '" percebeu';
     return d.sentido === 'acima'
-      ? 'Em ' + nomeT + ', você marcou uma frequência maior do que ' + quem + ' perceberam.'
-      : 'Em ' + nomeT + ', ' + quem + ' perceberam uma frequência maior do que você marcou.';
+      ? 'Em ' + nomeT + ', você marcou uma frequência maior do que ' + quem + '.'
+      : 'Em ' + nomeT + ', ' + quem + ' uma frequência maior do que você marcou.';
   }
 
   /* ------------------------------------------------------------------ hipóteses DISC (4.8): só com o aceite do líder */
