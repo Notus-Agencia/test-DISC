@@ -52,8 +52,8 @@ test('semente: 15 empresas, 40 pessoas, 30 vagas + 1 rascunho, 3 confidenciais, 
 test('a prévia tem TODAS as RPCs públicas da migração (e as do contrato de vagas/js/api.js), com as mesmas mensagens', () => {
   const b = novo();
   const doBanco = [...SQL.matchAll(/create or replace function public\.(vagas_[a-z_0-9]+)/g)].map((m) => m[1])
-    .filter((f) => !['vagas_ids_minhas_empresas', 'vagas_ids_minhas_cidades', 'vagas_conta_limite', 'vagas_conta_consultar',
-      'vagas_conta_registrar', 'vagas_conta_quem'].includes(f));
+    .filter((f) => !['vagas_ids_minhas_empresas', 'vagas_ids_minhas_cidades', 'vagas_sou_pessoa', 'vagas_conta_limite', 'vagas_conta_consultar',
+      'vagas_conta_registrar', 'vagas_conta_quem', 'vagas_conta_foto'].includes(f));
   for (const f of doBanco) assert.ok(b.RPCS.includes(f), 'falta na prévia: ' + f);
   for (const def of Object.values(API.METODOS)) assert.ok(b.RPCS.includes(def.rpc), 'falta na prévia (api.js): ' + def.rpc);
   // Mensagens: cada erro da prévia existe igual no banco, na Edge Function ou no cliente (exceto o do selo, que é da 20261023).
@@ -213,4 +213,71 @@ test('adaptador prévia de vagas/js/api.js: mesmos métodos, resolve {ok:true} e
   await assert.rejects(api.cartoes('x', {}), (e) => e.message === 'Esta área é para empresas.');
   const err = await api.anuncio('ZZZZZZ').catch((e) => e);
   assert.equal(err.naoEncontrada, true);
+});
+
+test('vaga como produto na prévia: filtros da lista (áreas, turno, salário mensal, sem experiência, total), áreas do currículo e vaga assistida', async () => {
+  const b = novo();
+  const todas = await ok(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'boa-vista-rr', limite: 20 } }));
+  assert.ok(todas.anuncios.every((a) => a.area && a.area.nome && a.funcao && a.turno && a.experiencia));
+  const total = await ok(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'boa-vista-rr', somenteTotal: true } }));
+  assert.ok(total.total > 20 && !('anuncios' in total));
+  const caixa = await ok(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'boa-vista-rr', areas: ['caixa'] } }));
+  assert.ok(caixa.anuncios.length >= 1 && caixa.anuncios.every((a) => a.area.slug === 'caixa'));
+  const noite = await ok(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'boa-vista-rr', turno: ['noite'] } }));
+  assert.ok(noite.anuncios.length >= 1 && noite.anuncios.every((a) => a.turno === 'noite'));
+  const sal = await ok(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'boa-vista-rr', salarioMin: 220000 } }));
+  const mensal = (a) => (a.valor.maxCentavos != null ? a.valor.maxCentavos : a.valor.minCentavos) * ({ mes: 1, dia: 22, hora: 220 }[a.valor.unidade] || 0);
+  assert.ok(sal.anuncios.length >= 1 && sal.anuncios.every((a) => mensal(a) >= 220000));
+  const semExp = await ok(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'boa-vista-rr', semExperiencia: true } }));
+  assert.ok(semExp.anuncios.length >= 1 && semExp.anuncios.every((a) => a.experiencia === 'nao_precisa'));
+  const proibidos = await ok(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'boa-vista-rr', limite: 20, nota: 90, selo: 'caixa',
+    temReferencia: true, idade: 30, sexo: 'f' } }));
+  assert.deepEqual(proibidos.anuncios.map((a) => a.id), todas.anuncios.map((a) => a.id), 'nada de filtro por dado da pessoa');
+  // Ana tem áreas no currículo: a lista abre nelas; "areas": [] mostra tudo.
+  await entrar(b, 'pessoa@previa.com');
+  const eu = await ok(b.rpc('vagas_pessoa_minha', {}));
+  assert.deepEqual(eu.pessoa.areas, ['caixa', 'atendimento']);
+  const feed = await ok(b.rpc('vagas_feed', { p_filtro: {} }));
+  assert.equal(feed.areasPadrao, true);
+  assert.ok(feed.anuncios.every((a) => ['caixa', 'atendimento'].indexOf(a.area.slug) >= 0));
+  assert.equal((await ok(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'boa-vista-rr', areas: [], somenteTotal: true } }))).total, total.total);
+  // Vaga assistida pela operação: mesmos campos, publica direto.
+  await ok(b.conta.sair());
+  await entrar(b, 'operador@previa.com');
+  const emp = b.estado().empresas[0];
+  const v = await ok(b.rpc('vagas_op_anuncio_salvar', { p_dados: { empresaId: emp.id, area: 'limpeza', funcao: 'Auxiliar de limpeza', modalidade: 'clt',
+    turno: 'manha', experiencia: 'nao_precisa', salarioDe: 162100, descricao: 'Limpeza das áreas da loja e do depósito, com escala combinada.', publicar: true } }));
+  assert.deepEqual([v.anuncio.status, v.anuncio.area.slug, v.anuncio.titulo], ['publicado', 'limpeza', 'Auxiliar de limpeza']);
+  assert.equal((await ok(b.rpc('vagas_areas_publicas', {}))).areas.length, 24);
+});
+
+test('foto opcional na prévia: só a pessoa grava; a empresa só vê depois do Combinou (contatoPessoa traz fotoUrl)', async () => {
+  const api = API.criar({ modo: 'previa', backend: novo() });
+  await api.entrar('pessoa@previa.com', PREVIA.SENHA_PREVIA);
+  const FOTO = 'A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.';
+  await assert.rejects(api.enviarFoto({ type: 'image/gif', size: 100 }), (e) => e.message === FOTO);
+  await assert.rejects(api.enviarFoto({ type: 'image/jpeg', size: 2 * 1024 * 1024 }), (e) => e.message === FOTO);
+  assert.equal((await api.enviarFoto({ type: 'image/jpeg', size: 120000, dataUrl: 'data:image/jpeg;base64,AAAA' })).temFoto, true);
+  const minha = await api.minhaPessoa();
+  assert.equal(minha.pessoa.temFoto, true);
+  assert.ok(!/foto/i.test(JSON.stringify(minha.cartao)), 'cartão cego sem foto');
+  assert.equal((await api.fotoUrl()).url, 'data:image/jpeg;base64,AAAA');
+  await api.sair();
+  // Restaurante (Combinou com a Ana) vê; o Mercadinho (só "conversar") não.
+  await api.entrar('empresa6@previa.com', PREVIA.SENHA_PREVIA);
+  const rest = (await api.minhasEmpresas()).empresas[0];
+  const comb = (await api.conversasDaEmpresa(rest.id)).conversas.find((c) => c.status === 'combinou');
+  const ct = await api.contatoPessoa(comb.candidaturaId);
+  assert.equal(ct.pessoa.temFoto, true);
+  assert.equal(ct.pessoa.fotoUrl, 'data:image/jpeg;base64,AAAA');
+  await api.sair();
+  await api.entrar('empresa@previa.com', PREVIA.SENHA_PREVIA);
+  const merc = (await api.minhasEmpresas()).empresas[0];
+  const conversar = (await api.conversasDaEmpresa(merc.id)).conversas.find((c) => c.status === 'conversar');
+  await assert.rejects(api.fotoUrl(conversar.candidaturaId), (e) => e.message === 'A foto só aparece depois do Combinou.');
+  await assert.rejects(api.enviarFoto({ type: 'image/png', size: 1000 }), (e) => e.message === 'Esta área é para quem procura emprego.');
+  await api.sair();
+  await api.entrar('pessoa@previa.com', PREVIA.SENHA_PREVIA);
+  await api.apagarFoto();
+  assert.equal((await api.minhaPessoa()).pessoa.temFoto, false);
 });

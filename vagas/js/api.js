@@ -12,7 +12,7 @@
  *   erro.resposta (o JSON {ok:false, erro, ...}), erro.sessaoExpirada, erro.confirmar (e-mail não confirmado),
  *   erro.bancoDesatualizado (migração não aplicada), erro.conexao (sem internet / servidor fora).
  *
- * Métodos (nome -> RPC; ver METODOS): públicos — cidades, anuncios(filtro), anuncio(codigo), anuncioVista(codigo), listaEspera(dados),
+ * Métodos (nome -> RPC; ver METODOS): públicos — cidades, areas, anuncios(filtro), anuncio(codigo), anuncioVista(codigo), listaEspera(dados),
  *   denunciar(dados), referenciasPublicas(token), seloPublico(codigo) (RPC da migração dos testes), versaoBanco; conta — eu,
  *   aceitarTermos(dados), exportarMeusDados; pessoa — minhaPessoa, salvarPessoa(dados), feed(filtro), quero(anuncioId), pular(anuncioId),
  *   retirar(candId), minhasCandidaturas, verEmpresa(candId), combinar(candId), recusar(candId), quemViuMeuContato, cortarAcesso(candId);
@@ -22,7 +22,7 @@
  *   enviarMensagem(candId, texto, idCliente?), minhasConversas, conversasDaEmpresa(empresaId); referência — oferecerReferencia(dados),
  *   pedirReferencia(dados), conviteReferencia(token), responderReferencia(refId, acao), minhasReferencias, referenciasDaEmpresa(empresaId),
  *   publicarReferencias(ligar); operação — opResumo, opEmpresas(filtro), opEmpresaDecidir(id, acao, motivo), opEmpresaCadastrar(dados),
- *   opVincularMembro(empresaId, email), opAnuncios(filtro), opAnuncioDecidir(id, acao, motivo), opDenuncias(filtro),
+ *   opVincularMembro(empresaId, email), opAnuncios(filtro), opAnuncioSalvar(dados) (vaga assistida), opAnuncioDecidir(id, acao, motivo), opDenuncias(filtro),
  *   opDenunciaDecidir(id, dados), opModeracao(filtro), opReferencias(filtro), opReferenciaDecidir(id, acao, motivo);
  *   equipe — admCidadeSalvar(dados), admZonaSalvar(dados), admOperadorSalvar(dados).
  * Conta e sessão: cadastrar({email, tipo, nome?, termosVersao?, captcha?}), reenviarConfirmacao(email, captcha?),
@@ -30,6 +30,10 @@
  *   convidarOperador({email, cidade, papel, cidadeNome?}), excluirConta(), entrar(email, senha) -> resposta de eu(),
  *   sair(), sessao() -> {ok, usuario:{id, email}}, linkDoEndereco(location) -> {tokenHash, tipo} | null,
  *   confirmarLink({tokenHash, tipo}) -> {ok, tipo, precisaSenha:true}, definirSenha(senha) -> {ok}.
+ * Foto OPCIONAL da pessoa (bucket privado 'vagas-fotos' do Storage): enviarFoto(arquivo File/Blob jpg|png|webp ≤ 1 MB) -> {ok, temFoto},
+ *   apagarFoto() -> {ok, temFoto:false}, fotoUrl(candidaturaId?) -> {ok, url, expiraEm} (URL assinada de 5 min pela Edge Function:
+ *   sem candidatura = a própria; com candidatura = só a empresa daquela candidatura, depois do Combinou). contatoPessoa(candId)
+ *   já devolve pessoa.fotoUrl ('' quando não há foto ou não deu para assinar).
  *
  * No Node (testes): require('./vagas/js/api.js').criar({modo:'supabase', url, chave, fetch, armazenamento, agora}) ou
  *   criar({modo:'previa', backend: require('./vagas/js/api-previa.js').criarBackend({...})}).
@@ -50,10 +54,16 @@
   var MSG_SENHA = 'A senha precisa ter de 8 a 72 caracteres.';
   var MSG_MUITAS = 'Muitas tentativas. Tente de novo em alguns minutos.';
   var MSG_FUNCAO = 'O cadastro ainda não está disponível. Tente de novo mais tarde.';
+  var MSG_FOTO = 'A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.';
+  var MSG_FOTO_FALHA = 'Não foi possível guardar a foto. Tente de novo.';
+  var TIPOS_FOTO = ['image/jpeg', 'image/png', 'image/webp'];
+  var LIMITE_FOTO = 1048576;
+  var CAMINHO_FOTOS = '/storage/v1/object/vagas-fotos';
 
   // Método -> RPC. p = nomes dos parâmetros, na ordem dos argumentos. publico = funciona sem login (manda a sessão se houver).
   var METODOS = {
     cidades: { rpc: 'vagas_cidades_publicas', p: [], publico: true },
+    areas: { rpc: 'vagas_areas_publicas', p: [], publico: true },
     anuncios: { rpc: 'vagas_anuncios_publicos', p: ['p_filtro'], publico: true },
     anuncio: { rpc: 'vagas_anuncio_publico', p: ['p_codigo'], publico: true },
     anuncioVista: { rpc: 'vagas_anuncio_vista', p: ['p_codigo'], publico: true },
@@ -106,6 +116,7 @@
     opEmpresaCadastrar: { rpc: 'vagas_op_empresa_cadastrar', p: ['p_dados'] },
     opVincularMembro: { rpc: 'vagas_op_vincular_membro', p: ['p_empresa', 'p_email'] },
     opAnuncios: { rpc: 'vagas_op_anuncios', p: ['p_filtro'] },
+    opAnuncioSalvar: { rpc: 'vagas_op_anuncio_salvar', p: ['p_dados'] },
     opAnuncioDecidir: { rpc: 'vagas_op_anuncio_decidir', p: ['p_anuncio', 'p_acao', 'p_motivo'] },
     opDenuncias: { rpc: 'vagas_op_denuncias', p: ['p_filtro'] },
     opDenunciaDecidir: { rpc: 'vagas_op_denuncia_decidir', p: ['p_denuncia', 'p_dados'] },
@@ -123,7 +134,7 @@
     var e = new Error((json && json.erro) ? String(json.erro) : MSG_RECUSA);
     e.resposta = json || null;
     ['sessaoExpirada', 'confirmar', 'bloqueado', 'suspensa', 'semConta', 'completar', 'naoConfigurado', 'captcha', 'bancoDesatualizado',
-      'naoEncontrada', 'listaEspera', 'pausada', 'verEmpresa', 'semCombinou', 'contatoCortado', 'bloqueada', 'aguardar'].forEach(function (k) {
+      'naoEncontrada', 'listaEspera', 'pausada', 'verEmpresa', 'semCombinou', 'contatoCortado', 'bloqueada', 'aguardar', 'semFoto'].forEach(function (k) {
       if (json && json[k]) e[k] = true;
     });
     if (extra) Object.keys(extra).forEach(function (k) { e[k] = extra[k]; });
@@ -176,7 +187,7 @@
     var arm = op.armazenamento === undefined ? armazenamentoPadrao() : op.armazenamento;
     var agora = op.agora || function () { return Date.now(); };
     var limite = op.timeoutMs || TIMEOUT_MS;
-    var versaoTermos = op.versaoTermos || '2026-10';
+    var versaoTermos = op.versaoTermos || '2026-10-13';
     var renovando = null;
 
     function sessaoGuardada() { return lerJson(arm, CHAVE_SESSAO); }
@@ -351,8 +362,47 @@
         });
       });
     };
+    // Foto: grava/apaga direto no Storage com o login da pessoa (as políticas só deixam o próprio <id>/foto.jpg); a URL para ver
+    // vem assinada pela Edge Function (o banco confere o Combinou).
+    api.enviarFoto = function (arquivo) {
+      if (!arquivo || TIPOS_FOTO.indexOf(arquivo.type) < 0 || !(arquivo.size > 0) || arquivo.size > LIMITE_FOTO) {
+        return Promise.reject(erroDe({ ok: false, erro: MSG_FOTO }));
+      }
+      return token(true).then(function (tk) {
+        var uid = sessaoGuardada().user.id;
+        return pedir(CAMINHO_FOTOS + '/' + uid + '/foto.jpg', { headers: { apikey: chave, Authorization: 'Bearer ' + tk, 'Content-Type': arquivo.type,
+          'x-upsert': 'true', 'cache-control': '60' }, body: arquivo }).then(function (r) {
+          if (r.status === 413) throw erroDe({ ok: false, erro: MSG_FOTO });
+          if (r.status < 200 || r.status >= 300) throw erroDe({ ok: false, erro: MSG_FOTO_FALHA });
+          return { ok: true, temFoto: true };
+        });
+      });
+    };
+    api.apagarFoto = function () {
+      return token(true).then(function (tk) {
+        var uid = sessaoGuardada().user.id;
+        return pedir(CAMINHO_FOTOS, { method: 'DELETE', headers: cabecalhos(tk), body: JSON.stringify({ prefixes: [uid + '/foto.jpg'] }) }).then(function (r) {
+          if (r.status < 200 || r.status >= 300) throw erroDe({ ok: false, erro: MSG_FOTO_FALHA });
+          return { ok: true, temFoto: false };
+        });
+      });
+    };
+    api.fotoUrl = function (candidaturaId) { return funcao({ acao: 'foto', candidatura: candidaturaId || '' }, true); };
+    comFotoNoContato(api);
     api.modo = 'supabase';
     return api;
+  }
+
+  // contatoPessoa(candId) devolve também pessoa.fotoUrl (assinada; '' sem foto ou se não der para assinar).
+  function comFotoNoContato(api) {
+    var contato = api.contatoPessoa;
+    api.contatoPessoa = function (candId) {
+      return contato(candId).then(function (r) {
+        if (!r.pessoa) return r;
+        if (!r.pessoa.temFoto) { r.pessoa.fotoUrl = ''; return r; }
+        return api.fotoUrl(candId).then(function (f) { r.pessoa.fotoUrl = f.url || ''; return r; }, function () { r.pessoa.fotoUrl = ''; return r; });
+      });
+    };
   }
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -389,12 +439,25 @@
       };
     });
     ['cadastrar', 'reenviarConfirmacao', 'esqueciSenha', 'cadastroAssistido', 'convidarOperador', 'excluirConta', 'entrar', 'sair', 'sessao',
-      'confirmarLink', 'definirSenha'].forEach(function (m) {
+      'confirmarLink', 'definirSenha', 'apagarFoto', 'fotoUrl'].forEach(function (m) {
       api[m] = function () {
         var args = Array.prototype.slice.call(arguments);
         return backend().then(function (b) { return b.conta[m].apply(null, args); }).then(resultado);
       };
     });
+    // Na prévia a foto fica neste navegador (data URL); valida igual ao Storage.
+    api.enviarFoto = function (arquivo) {
+      if (!arquivo || TIPOS_FOTO.indexOf(arquivo.type) < 0 || !(arquivo.size > 0) || arquivo.size > LIMITE_FOTO) {
+        return Promise.reject(erroDe({ ok: false, erro: MSG_FOTO }));
+      }
+      var ler = typeof FileReader !== 'undefined' && typeof Blob !== 'undefined' && arquivo instanceof Blob
+        ? new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(String(fr.result || '')); }; fr.onerror = function () { res(''); }; fr.readAsDataURL(arquivo); })
+        : Promise.resolve(typeof arquivo.dataUrl === 'string' ? arquivo.dataUrl : '');
+      return Promise.all([backend(), ler]).then(function (x) {
+        return x[0].conta.enviarFoto({ tipo: arquivo.type, tamanho: arquivo.size, dataUrl: x[1] });
+      }).then(resultado);
+    };
+    comFotoNoContato(api);
     api.linkDoEndereco = linkDoEndereco;
     api.modo = 'previa';
     return api;

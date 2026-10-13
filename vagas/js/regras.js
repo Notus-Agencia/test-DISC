@@ -5,7 +5,8 @@
  * que vagas_interno.conferir_texto / normalizar / cnpj_valido / normalizar_whatsapp.
  *
  *   Listas fechadas (id + rótulo): MODALIDADES, TURNOS, ESCOLARIDADES, CNH, UNIDADES, PONTOS_FORTES, VINCULOS, MOTIVOS_DENUNCIA,
- *     STATUS_CANDIDATURA, STATUS_ANUNCIO, STATUS_EMPRESA, STATUS_REFERENCIA, STATUS_REFERENCIA_EMPRESA.
+ *     STATUS_CANDIDATURA, STATUS_ANUNCIO, STATUS_EMPRESA, STATUS_REFERENCIA, STATUS_REFERENCIA_EMPRESA; da vaga ("como produto"):
+ *     AREAS (24), TURNOS_VAGA, EXPERIENCIAS_VAGA, ESCOLARIDADES_VAGA, REQUISITOS_VAGA, BENEFICIOS, TESTES_SELO.
  *   Filtro de textos: PADROES, tiposDoContexto(ctx), mensagemTexto(tipo, trecho, ctx), conferirTexto(texto, ctx) -> null | {tipo, trecho, erro}
  *     ctx: 'anuncio' | 'empresa' | 'mensagem' | 'referencia' | 'cartao' | 'perfil'.
  *   normalizar(texto) · normalizarCnpj · cnpjValido · formatarCnpj · normalizarWhatsapp · whatsappCelularValido · whatsappEmpresaValido
@@ -21,7 +22,7 @@
   'use strict';
 
   // Texto final dos termos/privacidade: conteudo/vagas-textos/ (aqui só a versão aceita).
-  var VERSAO_TERMOS = '2026-10';
+  var VERSAO_TERMOS = '2026-10-13';
 
   function lista(pares) { return pares.map(function (p) { return { id: p[0], rotulo: p[1] }; }); }
   var MODALIDADES = lista([['clt', 'CLT (carteira assinada)'], ['temporario', 'Temporário'], ['diaria', 'Diária'],
@@ -34,6 +35,28 @@
     ['superior_incompleto', 'Superior incompleto'], ['superior', 'Superior completo'], ['pos', 'Pós-graduação']]);
   var CNH = ['A', 'B', 'C', 'D', 'E'];
   var UNIDADES = { mes: 'por mês', hora: 'por hora', dia: 'por dia', servico: 'por serviço' };
+  // Vaga "como produto de marketplace" (chaves do design; as mesmas do banco: vagas_areas e restrições de vagas_anuncios).
+  var AREAS = lista([['atendimento', 'Atendimento e recepção'], ['vendas-loja', 'Vendas em loja e balcão'],
+    ['vendas-externas', 'Vendas externas e representação'], ['caixa', 'Caixa e operação de loja'], ['administrativo', 'Administrativo e escritório'],
+    ['financeiro', 'Financeiro e contabilidade'], ['rh', 'Recursos humanos'], ['logistica', 'Estoque, logística e entregas'],
+    ['motorista', 'Motorista e transporte'], ['producao', 'Produção e indústria'], ['construcao', 'Construção civil'],
+    ['manutencao', 'Manutenção e reparos'], ['limpeza', 'Limpeza e conservação'], ['cozinha', 'Cozinha e restaurante'],
+    ['hotelaria', 'Hotelaria e eventos'], ['beleza', 'Beleza e estética'], ['saude', 'Saúde e farmácia'], ['educacao', 'Educação e creche'],
+    ['agro', 'Agropecuária e campo'], ['seguranca', 'Segurança e portaria'], ['marketing', 'Marketing, design e redes sociais'],
+    ['tecnologia', 'Tecnologia e informática'], ['domesticos', 'Serviços domésticos e cuidado de pessoas'], ['outros', 'Outros comércios e serviços']]);
+  var TURNOS_VAGA = lista([['manha', 'Manhã'], ['tarde', 'Tarde'], ['noite', 'Noite'], ['comercial', 'Horário comercial'], ['escala', 'Escala'],
+    ['a_combinar', 'A combinar']]);
+  var EXPERIENCIAS_VAGA = lista([['nao_precisa', 'Não precisa de experiência'], ['ate_1', 'Até 1 ano'], ['1_a_3', 'De 1 a 3 anos'],
+    ['mais_3', 'Mais de 3 anos']]);
+  var ESCOLARIDADES_VAGA = lista([['nao_exigida', 'Não exigida'], ['fundamental', 'Fundamental'], ['medio', 'Médio'], ['tecnico', 'Técnico'],
+    ['superior', 'Superior']]);
+  var REQUISITOS_VAGA = lista([['cnh_a', 'CNH categoria A'], ['cnh_b', 'CNH categoria B'], ['cnh_d', 'CNH categoria D'],
+    ['curso_registro', 'Curso com registro na área'], ['disponibilidade', 'Disponibilidade de horário'], ['outro', 'Outro']]);
+  var BENEFICIOS = lista([['vt', 'Vale-transporte'], ['refeicao', 'Refeição ou vale-refeição'], ['saude', 'Plano de saúde'],
+    ['moradia', 'Moradia'], ['comissao', 'Comissão']]);
+  // Testes que a vaga pode citar ("valoriza o selo"): informativo, NUNCA filtro nem corte.
+  var TESTES_SELO = lista([['atendimento', 'Atendimento e recepção'], ['vendas', 'Vendas'], ['administrativo', 'Rotinas administrativas'],
+    ['caixa', 'Operação de caixa'], ['portugues', 'Português para o trabalho']]);
   // Lista fechada de pontos fortes da referência profissional: os 12 comportamentos observáveis da psicologia (evidencias.md
   // §4A.4; a empresa marca até 3). Mesma lista, na mesma ordem, em vagas_interno.pontos_fortes() (o teste do banco confere).
   var PONTOS_FORTES = lista([['pontualidade', 'Chega no horário e avisa quando não pode'], ['atendimento', 'Atende bem o cliente'],
@@ -318,6 +341,9 @@
     }
     var cursos = listaTexto(d.cursos, 80);
     if (cursos.length > 10) return falha('Informe até 10 cursos.');
+    var areasIn = chave(d, 'areas', 'areasInteresse');
+    var areas = areasIn === undefined ? null : listaEnum(areasIn, AREAS);
+    if (areas && areas.length > 3) return falha('Escolha até 3 áreas de interesse.');
     var sobre = texto(d.sobre);
     if (sobre.length > 600) return falha('O texto "Sobre você" pode ter até 600 caracteres.');
     var nome = limparTexto(texto(d.nome), 120);
@@ -352,7 +378,7 @@
       lidas.push({ funcao: funcao, empregador: limparTexto(texto(x.empregador), 120), inicio: ini.texto, fim: fim ? fim.texto : '', informal: x.informal === true });
     }
     var campos = { cargos: cargos, escolaridade: texto(d.escolaridade), turnos: turnos, cnh: listaEnum(d.cnh, CNH), modalidades: mods,
-      pretensaoCentavos: pret, cursos: cursos, sobre: limparMultilinha(sobre, 600), nome: nome, whatsapp: whats, email: email, experiencias: lidas };
+      pretensaoCentavos: pret, cursos: cursos, areas: areas, sobre: limparMultilinha(sobre, 600), nome: nome, whatsapp: whats, email: email, experiencias: lidas };
     var conf = null;
     cargos.concat(cursos).concat(lidas.map(function (e) { return e.funcao; })).some(function (t) { conf = conferirTexto(t, 'cartao'); return conf; });
     if (!conf) lidas.some(function (e) { conf = conferirTexto(e.empregador, 'perfil'); return conf; });
@@ -391,31 +417,43 @@
   }
 
   // vagas_interno.ler_anuncio + as regras do gatilho (diária nos próximos 7 dias e filtro de textos). hojeIso = hoje na cidade.
+  // Chaves do contrato (camelCase); aceita também as do design em snake_case (salario_de, fim_de_semana, inicio_data...).
+  function chave(d) {
+    // Como no banco (o JSON não leva chave com undefined): a primeira chave presente com valor definido.
+    for (var i = 1; i < arguments.length; i++) if (Object.prototype.hasOwnProperty.call(d, arguments[i]) && d[arguments[i]] !== undefined) return d[arguments[i]];
+    return undefined;
+  }
   function lerAnuncio(d, hojeIso) {
     d = d && typeof d === 'object' ? d : {};
-    var titulo = limparTexto(texto(d.titulo), 80);
-    if (titulo.length < 4) return falha('Informe o título da vaga (ex.: Atendente de loja).');
-    var cargo = limparTexto(texto(d.cargo), 60);
-    if (cargo.length < 2) return falha('Informe a função (ex.: Atendente).');
+    var area = texto(d.area).trim().toLowerCase();
+    if (ids(AREAS).indexOf(area) < 0) return falha('Escolha a área da vaga.');
+    var funcao = limparTexto(texto(d.funcao), 60);
+    if (funcao.length < 2) return falha('Informe a função (ex.: Atendente).');
     var mod = texto(d.modalidade);
     if (ids(MODALIDADES).indexOf(mod) < 0) return falha('Escolha o tipo de vaga: CLT, temporário, diária, freelancer ou estágio.');
-    var desc = texto(d.descricao);
-    if (desc.length > 3000) return falha('A descrição pode ter até 3.000 caracteres.');
-    desc = limparMultilinha(desc, 3000);
-    if (desc.length < 20) return falha('Descreva a vaga em pelo menos 20 caracteres.');
-    var req = texto(d.requisitos);
-    if (req.length > 1500) return falha('Os requisitos podem ter até 1.500 caracteres.');
-    var ben = texto(d.beneficios);
-    if (ben.length > 800) return falha('Os benefícios podem ter até 800 caracteres.');
-    var esc = texto(d.escolaridadeMin).trim() || null;
-    if (esc && ids(ESCOLARIDADES).indexOf(esc) < 0) return falha('Escolaridade mínima inválida.');
-    var exp = inteiro(d.experienciaMinMeses); if (exp === null) exp = 0;
-    if (exp < 0 || exp > 240) return falha('Experiência mínima inválida (0 a 240 meses).');
     var qtd = inteiro(d.quantidade); if (qtd === null) qtd = 1;
     if (qtd < 1 || qtd > 100) return falha('Quantidade de vagas inválida (1 a 100).');
-    var uni = texto(d.valorUnidade).trim() || (mod === 'diaria' ? 'dia' : mod === 'freelancer' ? 'servico' : 'mes');
-    var min = inteiro(d.valorMinCentavos);
-    var max = inteiro(d.valorMaxCentavos);
+    var turno = texto(d.turno);
+    if (ids(TURNOS_VAGA).indexOf(turno) < 0) return falha('Escolha o turno da vaga.');
+    var exp = texto(d.experiencia);
+    if (ids(EXPERIENCIAS_VAGA).indexOf(exp) < 0) return falha('Escolha a experiência que a vaga pede.');
+    var esc = texto(d.escolaridade).trim() || 'nao_exigida';
+    if (ids(ESCOLARIDADES_VAGA).indexOf(esc) < 0) return falha('Escolaridade mínima inválida.');
+    var req = listaEnum(d.requisitos, REQUISITOS_VAGA);
+    var outro = texto(chave(d, 'requisitoOutro', 'requisito_outro'));
+    if (outro.length > 80) return falha('O requisito "Outro" pode ter até 80 caracteres.');
+    outro = limparTexto(outro, 80);
+    if (req.indexOf('outro') >= 0 && !outro) return falha('Escreva qual é o outro requisito.');
+    if (outro && req.indexOf('outro') < 0) req = listaEnum(req.concat('outro'), REQUISITOS_VAGA);
+    var selo = texto(d.selo).trim().toLowerCase();
+    if (selo === '' || selo === 'nenhum') selo = null;
+    if (selo && ids(TESTES_SELO).indexOf(selo) < 0) return falha('Escolha um dos testes da plataforma ou "nenhum".');
+    var ben = listaEnum(d.beneficios, BENEFICIOS);
+    if (d.comissao === true && ben.indexOf('comissao') < 0) ben = listaEnum(ben.concat('comissao'), BENEFICIOS);
+    var comissao = ben.indexOf('comissao') >= 0;
+    var uni = texto(chave(d, 'valorUnidade', 'valor_unidade')).trim() || (mod === 'diaria' ? 'dia' : mod === 'freelancer' ? 'servico' : 'mes');
+    var min = inteiro(chave(d, 'salarioDe', 'salario_de'));
+    var max = inteiro(chave(d, 'salarioAte', 'salario_ate'));
     if (min === null || min < 100) {
       return falha(mod === 'estagio' ? 'Informe o valor da bolsa.' : mod === 'diaria' ? 'Informe a data, o horário e o valor da diária.'
         : mod === 'freelancer' ? 'Informe o valor do serviço.' : 'Informe o salário ou a faixa salarial.');
@@ -425,29 +463,56 @@
     var uniOk = (['clt', 'temporario', 'estagio'].indexOf(mod) >= 0 && (uni === 'mes' || uni === 'hora')) || (mod === 'diaria' && uni === 'dia') ||
       (mod === 'freelancer' && ['servico', 'hora', 'dia'].indexOf(uni) >= 0);
     if (!uniOk) return falha('Unidade do valor inválida para este tipo de vaga.');
-    var dias = inteiro(d.diasNoAr); if (dias === null) dias = 30;
-    var data = null, hi = null, hf = null;
+    var desc = texto(d.descricao);
+    if (desc.length > 1500) return falha('A descrição pode ter até 1.500 caracteres.');
+    desc = limparMultilinha(desc, 1500);
+    if (desc.length < 40) return falha('Descreva a vaga em pelo menos 40 caracteres.');
+    var horas = null;
+    if (mod === 'estagio') {
+      horas = inteiro(chave(d, 'horasDia', 'horas_dia'));
+      if (horas === null || horas < 1 || horas > 6) return falha('Informe as horas por dia do estágio (até 6).');
+    }
+    var reData = function (v) {
+      var t = texto(v).trim();
+      return /^\d{4}-\d{2}-\d{2}$/.test(t) && !isNaN(Date.parse(t + 'T00:00:00Z')) && new Date(t + 'T00:00:00Z').toISOString().slice(0, 10) === t ? t : null;
+    };
+    var dias = inteiro(chave(d, 'diasNoAr', 'dias_no_ar')); if (dias === null) dias = 30;
+    var prazo = null, data = null, hi = null, hf = null;
+    var inicio = texto(d.inicio).trim() || 'imediato';
+    var inicioData = null;
     if (mod === 'diaria') {
-      var dt = texto(d.dataTrabalho).trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dt) && !isNaN(Date.parse(dt + 'T00:00:00Z')) && new Date(dt + 'T00:00:00Z').toISOString().slice(0, 10) === dt) data = dt;
+      data = reData(chave(d, 'data', 'dataTrabalho'));
       var reH = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
-      if (reH.test(texto(d.horaInicio).trim())) hi = texto(d.horaInicio).trim();
-      if (reH.test(texto(d.horaFim).trim())) hf = texto(d.horaFim).trim();
+      var h1 = texto(chave(d, 'horaInicio', 'hora_inicio')).trim();
+      var h2 = texto(chave(d, 'horaFim', 'hora_fim')).trim();
+      if (reH.test(h1)) hi = h1;
+      if (reH.test(h2)) hf = h2;
       if (!data || !hi || !hf) return falha('Informe a data, o horário e o valor da diária.');
+      prazo = inteiro(chave(d, 'prazoHoras', 'prazo_horas')); if (prazo === null) prazo = 48;
+      if (prazo < 48 || prazo > 168) return falha('A diária fica no ar de 48 a 168 horas.');
       if (hojeIso) {
         if (data < hojeIso) return falha('A data da diária já passou. Escolha outra data.');
         if (data > somarDias(hojeIso, 7)) return falha('A diária precisa ser para os próximos 7 dias.');
       }
+      inicio = 'data';
+      inicioData = data;
       dias = 30;
-    } else if (dias < 7 || dias > 60) {
-      return falha('Escolha de 7 a 60 dias no ar.');
+    } else {
+      if (dias < 7 || dias > 60) return falha('Escolha de 7 a 60 dias no ar.');
+      if (inicio !== 'imediato' && inicio !== 'data') return falha('Escolha quando a pessoa começa.');
+      if (inicio === 'data') {
+        inicioData = reData(chave(d, 'inicioData', 'inicio_data'));
+        if (!inicioData) return falha('Informe a data de início (AAAA-MM-DD).');
+        if (hojeIso && inicioData < hojeIso) return falha('A data de início não pode estar no passado.');
+      }
     }
-    var campos = { titulo: titulo, cargo: cargo, modalidade: mod, descricao: desc, requisitos: limparMultilinha(req, 1500),
-      beneficios: limparMultilinha(ben, 800), turnos: listaEnum(d.turnos, TURNOS), escolaridadeMin: esc, cnh: listaEnum(d.cnh, CNH),
-      experienciaMinMeses: exp, quantidade: qtd, valor: { minCentavos: min, maxCentavos: max, unidade: uni }, diasNoAr: dias,
+    var campos = { area: area, funcao: funcao, titulo: funcao, modalidade: mod, quantidade: qtd, turno: turno,
+      fimDeSemana: chave(d, 'fimDeSemana', 'fim_de_semana') === true, comissao: comissao, inicio: inicio, inicioData: inicioData,
+      experiencia: exp, escolaridade: esc, requisitos: req, requisitoOutro: outro, selo: selo, beneficios: ben, descricao: desc,
+      valor: { minCentavos: min, maxCentavos: max, unidade: uni }, diasNoAr: dias, prazoHoras: prazo, horasDia: horas,
       diaria: data ? { data: data, inicio: hi, fim: hf } : null, confidencial: d.confidencial === true };
     var conf = null;
-    [titulo, cargo, campos.descricao, campos.requisitos, campos.beneficios].some(function (t) { conf = conferirTexto(t, 'anuncio'); return conf; });
+    [funcao, desc, outro].some(function (t) { conf = conferirTexto(t, 'anuncio'); return conf; });
     if (conf) return falha(conf.erro);
     return { ok: true, campos: campos };
   }
@@ -487,7 +552,9 @@
 
   var VAGAS_REGRAS = {
     VERSAO_TERMOS: VERSAO_TERMOS, MODALIDADES: MODALIDADES, VINCULOS: VINCULOS, TURNOS: TURNOS, ESCOLARIDADES: ESCOLARIDADES, CNH: CNH,
-    UNIDADES: UNIDADES, PONTOS_FORTES: PONTOS_FORTES, MOTIVOS_DENUNCIA: MOTIVOS_DENUNCIA, STATUS_CANDIDATURA: STATUS_CANDIDATURA,
+    UNIDADES: UNIDADES, AREAS: AREAS, TURNOS_VAGA: TURNOS_VAGA, EXPERIENCIAS_VAGA: EXPERIENCIAS_VAGA,
+    ESCOLARIDADES_VAGA: ESCOLARIDADES_VAGA, REQUISITOS_VAGA: REQUISITOS_VAGA, BENEFICIOS: BENEFICIOS, TESTES_SELO: TESTES_SELO,
+    PONTOS_FORTES: PONTOS_FORTES, MOTIVOS_DENUNCIA: MOTIVOS_DENUNCIA, STATUS_CANDIDATURA: STATUS_CANDIDATURA,
     STATUS_ANUNCIO: STATUS_ANUNCIO, STATUS_EMPRESA: STATUS_EMPRESA, STATUS_REFERENCIA: STATUS_REFERENCIA,
     STATUS_REFERENCIA_EMPRESA: STATUS_REFERENCIA_EMPRESA, MSG: MSG,
     PADROES: PADROES, tiposDoContexto: tiposDoContexto, mensagemTexto: mensagemTexto, conferirTexto: conferirTexto, normalizar: normalizar,

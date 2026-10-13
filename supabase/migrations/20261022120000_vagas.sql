@@ -78,6 +78,14 @@ create table if not exists public.vagas_zonas (
   constraint vagas_zonas_slug_unico unique (cidade_id, slug)
 );
 
+-- Áreas da vaga (lista fechada, "como num marketplace"): o anúncio escolhe UMA; a pessoa marca até 3 de interesse.
+create table if not exists public.vagas_areas (
+  slug   text primary key check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and char_length(slug) <= 40),
+  nome   text not null check (char_length(btrim(nome)) between 2 and 80),
+  ordem  int not null default 0,
+  ativa  boolean not null default true
+);
+
 -- Conta do Vagas sem Caos (1 tipo por conta). 'pendente' até a pessoa confirmar o e-mail pelo link.
 create table if not exists public.vagas_contas (
   user_id              uuid primary key references auth.users (id) on delete cascade,
@@ -124,6 +132,7 @@ create table if not exists public.vagas_pessoas (
                       check (cardinality(modalidades) >= 1 and modalidades <@ array['clt', 'temporario', 'diaria', 'freelancer', 'estagio']::text[]),
   pretensao_centavos  int check (pretensao_centavos is null or pretensao_centavos between 0 and 10000000),
   cursos              text[] not null default '{}'::text[] check (cardinality(cursos) <= 10),
+  areas_interesse     text[] not null default '{}'::text[] check (cardinality(areas_interesse) <= 3),   -- slugs de vagas_areas
   sobre               text not null default '' check (char_length(sobre) <= 600),
   banco_ate           timestamptz,   -- autorização (separada, com prazo) para o banco de talentos da fase 2
   referencias_token   text unique check (referencias_token is null or referencias_token ~ '^[0-9a-f]{64}$'),  -- página pública das referências
@@ -132,6 +141,8 @@ create table if not exists public.vagas_pessoas (
   constraint vagas_pessoas_cidades_distintas check (cidade2_id is null or cidade2_id <> cidade_id)
 );
 create index if not exists vagas_pessoas_cidade_idx on public.vagas_pessoas (cidade_id);
+-- Para o aviso de vaga nova por área (fase 2): quem tem interesse numa área.
+create index if not exists vagas_pessoas_areas_idx on public.vagas_pessoas using gin (areas_interesse);
 
 -- Nome e contato: tabela separada (a RLS protege linhas, não colunas). Só o dono lê; a empresa, só depois do Combinou.
 create table if not exists public.vagas_pessoa_contato (
@@ -197,18 +208,30 @@ create table if not exists public.vagas_anuncios (
   empresa_id             uuid not null references public.vagas_empresas (id) on delete cascade,
   cidade_id              uuid not null references public.vagas_cidades (id),
   zona_id                uuid references public.vagas_zonas (id) on delete set null,
-  titulo                 text not null check (char_length(btrim(titulo)) between 4 and 80),
-  cargo                  text not null check (char_length(btrim(cargo)) between 2 and 60),
+  -- Campos fechados ("como produto de marketplace", pedido do dono; chaves do design): área, função, turno, início,
+  -- experiência, escolaridade, requisitos, selo e benefícios de listas fechadas; só a descrição e o requisito "outro" são
+  -- texto livre (filtrados). O título é a própria função (coluna gerada, para a página /v/ e as listas).
+  area                   text not null references public.vagas_areas (slug),
+  funcao                 text not null check (char_length(btrim(funcao)) between 2 and 60),
+  titulo                 text generated always as (funcao) stored,
   modalidade             text not null check (modalidade in ('clt', 'temporario', 'diaria', 'freelancer', 'estagio')),
-  descricao              text not null check (char_length(btrim(descricao)) between 20 and 3000),
-  requisitos             text not null default '' check (char_length(requisitos) <= 1500),
-  beneficios             text not null default '' check (char_length(beneficios) <= 800),
-  turnos                 text[] not null default '{}'::text[]
-                         check (turnos <@ array['manha', 'tarde', 'noite', 'madrugada', 'fim_de_semana', 'escala']::text[]),
-  escolaridade_min       text check (escolaridade_min is null or escolaridade_min in ('fundamental_incompleto', 'fundamental',
-                           'medio_incompleto', 'medio', 'tecnico', 'superior_incompleto', 'superior', 'pos')),
-  cnh                    text[] not null default '{}'::text[] check (cnh <@ array['A', 'B', 'C', 'D', 'E']::text[]),
-  experiencia_min_meses  int not null default 0 check (experiencia_min_meses between 0 and 240),
+  descricao              text not null check (char_length(btrim(descricao)) between 40 and 1500),
+  turno                  text not null check (turno in ('manha', 'tarde', 'noite', 'comercial', 'escala', 'a_combinar')),
+  fim_de_semana          boolean not null default false,
+  comissao               boolean not null default false,
+  inicio                 text not null default 'imediato' check (inicio in ('imediato', 'data')),
+  inicio_data            date,
+  experiencia            text not null check (experiencia in ('nao_precisa', 'ate_1', '1_a_3', 'mais_3')),
+  escolaridade           text not null default 'nao_exigida'
+                         check (escolaridade in ('nao_exigida', 'fundamental', 'medio', 'tecnico', 'superior')),
+  requisitos             text[] not null default '{}'::text[]
+                         check (requisitos <@ array['cnh_a', 'cnh_b', 'cnh_d', 'curso_registro', 'disponibilidade', 'outro']::text[]),
+  requisito_outro        text not null default '' check (char_length(requisito_outro) <= 80),
+  selo                   text check (selo is null or selo ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),   -- teste que a vaga valoriza: informativo, NUNCA filtro
+  beneficios             text[] not null default '{}'::text[]
+                         check (beneficios <@ array['vt', 'refeicao', 'saude', 'moradia', 'comissao']::text[]),
+  horas_dia              int check (horas_dia is null or horas_dia between 1 and 6),              -- estágio (Lei 11.788/2008)
+  prazo_horas            int check (prazo_horas is null or prazo_horas between 48 and 168),       -- diária: horas no ar
   quantidade             int not null default 1 check (quantidade between 1 and 100),
   valor_min_centavos     int not null check (valor_min_centavos between 100 and 10000000),
   valor_max_centavos     int check (valor_max_centavos is null or (valor_max_centavos >= valor_min_centavos and valor_max_centavos <= 10000000)),
@@ -234,10 +257,16 @@ create table if not exists public.vagas_anuncios (
     (modalidade in ('clt', 'temporario', 'estagio') and valor_unidade in ('mes', 'hora'))
     or (modalidade = 'diaria' and valor_unidade = 'dia')
     or (modalidade = 'freelancer' and valor_unidade in ('servico', 'hora', 'dia'))),
-  constraint vagas_anuncios_no_ar check (status not in ('publicado', 'pausado') or (publicado_em is not null and expira_em is not null))
+  constraint vagas_anuncios_no_ar check (status not in ('publicado', 'pausado') or (publicado_em is not null and expira_em is not null)),
+  constraint vagas_anuncios_inicio check ((inicio = 'data') = (inicio_data is not null)),
+  constraint vagas_anuncios_comissao check (comissao = ('comissao' = any (beneficios))),
+  constraint vagas_anuncios_outro check (('outro' = any (requisitos)) = (requisito_outro <> '')),
+  constraint vagas_anuncios_estagio check ((modalidade = 'estagio') = (horas_dia is not null)),
+  constraint vagas_anuncios_prazo check ((modalidade = 'diaria') = (prazo_horas is not null))
 );
 create index if not exists vagas_anuncios_lista_idx on public.vagas_anuncios (cidade_id, status, publicado_em desc, id desc);
 create index if not exists vagas_anuncios_empresa_idx on public.vagas_anuncios (empresa_id, criado_em desc);
+create index if not exists vagas_anuncios_area_idx on public.vagas_anuncios (area, cidade_id, publicado_em desc);
 
 -- Pular (a pessoa não quer ver de novo).
 create table if not exists public.vagas_pulos (
@@ -657,6 +686,33 @@ returns text[] language sql immutable set search_path = '' as $$
   select array['fundamental_incompleto', 'fundamental', 'medio_incompleto', 'medio', 'tecnico', 'superior_incompleto', 'superior', 'pos'];
 $$;
 
+-- Listas fechadas do anúncio (iguais às de VAGAS_REGRAS).
+create or replace function vagas_interno.turnos_vaga()
+returns text[] language sql immutable set search_path = '' as $$
+  select array['manha', 'tarde', 'noite', 'comercial', 'escala', 'a_combinar'];
+$$;
+create or replace function vagas_interno.experiencias_vaga()
+returns text[] language sql immutable set search_path = '' as $$
+  select array['nao_precisa', 'ate_1', '1_a_3', 'mais_3'];
+$$;
+create or replace function vagas_interno.escolaridades_vaga()
+returns text[] language sql immutable set search_path = '' as $$
+  select array['nao_exigida', 'fundamental', 'medio', 'tecnico', 'superior'];
+$$;
+create or replace function vagas_interno.requisitos_vaga()
+returns text[] language sql immutable set search_path = '' as $$
+  select array['cnh_a', 'cnh_b', 'cnh_d', 'curso_registro', 'disponibilidade', 'outro'];
+$$;
+create or replace function vagas_interno.beneficios_vaga()
+returns text[] language sql immutable set search_path = '' as $$
+  select array['vt', 'refeicao', 'saude', 'moradia', 'comissao'];
+$$;
+-- Testes que uma vaga pode citar como "valoriza o selo" (os 5 da migração 20261023; informativo, nunca filtro).
+create or replace function vagas_interno.testes_selo()
+returns text[] language sql immutable set search_path = '' as $$
+  select array['atendimento', 'vendas', 'administrativo', 'caixa', 'portugues'];
+$$;
+
 create or replace function vagas_interno.modalidades()
 returns text[] language sql immutable set search_path = '' as $$
   select array['clt', 'temporario', 'diaria', 'freelancer', 'estagio'];
@@ -770,6 +826,23 @@ exception when others then
 end;
 $$;
 
+-- Foto OPCIONAL da pessoa: arquivo <user_id>/foto.jpg no bucket PRIVADO 'vagas-fotos' do Storage (sem coluna no banco: a
+-- verdade é o próprio arquivo). Nunca vai para o cartão cego; a empresa só recebe uma URL assinada curta depois do Combinou
+-- (Edge Function vagas-conta, ação 'foto', que confere tudo em public.vagas_conta_foto).
+create or replace function vagas_interno.tem_foto(p_user uuid)
+returns boolean language plpgsql stable security definer set search_path = '' as $$
+declare
+  r boolean := false;
+begin
+  if p_user is null or to_regclass('storage.objects') is null then return false; end if;
+  execute 'select exists (select 1 from storage.objects o where o.bucket_id = $1 and o.name = $2)' into r
+    using 'vagas-fotos', p_user::text || '/foto.jpg';
+  return coalesce(r, false);
+exception when others then
+  return false;
+end;
+$$;
+
 -- Conta do Vagas sem Caos de quem chama, já conferida. Promove 'pendente' -> 'ativa' quando o e-mail foi confirmado.
 -- -> {ok:true, userId, tipo} | {ok:false, erro, sessaoExpirada|semConta|suspensa|confirmar}
 create or replace function vagas_interno.conta_atual(p_tipo text)
@@ -862,12 +935,10 @@ returns boolean language sql stable security definer set search_path = '' as $$
                  and (a.modalidade <> 'diaria' or a.data_trabalho >= vagas_interno.hoje(c.fuso)));
 $$;
 
--- Prazo no ar: diária fica de 48 h a 7 dias (até o fim do dia do trabalho, dentro dessa janela); o resto, dias_no_ar.
+-- Prazo no ar: diária fica prazo_horas (48 h a 7 dias; depois do dia do trabalho ela sai do ar sozinha); o resto, dias_no_ar.
 create or replace function vagas_interno.expira_calculada(a public.vagas_anuncios)
 returns timestamptz language sql stable security definer set search_path = '' as $$
-  select case when a.modalidade = 'diaria' then
-      greatest(now() + interval '48 hours', least(now() + interval '7 days',
-        ((a.data_trabalho + 1)::timestamp at time zone (select c.fuso from public.vagas_cidades c where c.id = a.cidade_id))))
+  select case when a.modalidade = 'diaria' then now() + make_interval(hours => coalesce(a.prazo_horas, 48))
     else now() + make_interval(days => a.dias_no_ar) end;
 $$;
 
@@ -875,7 +946,9 @@ $$;
 create or replace function vagas_interno.anuncio_resumo(a public.vagas_anuncios, p_revelar boolean)
 returns jsonb language sql stable security definer set search_path = '' as $$
   select jsonb_build_object(
-    'id', a.id, 'codigo', a.codigo, 'titulo', a.titulo, 'cargo', a.cargo, 'modalidade', a.modalidade,
+    'id', a.id, 'codigo', a.codigo, 'titulo', a.titulo, 'funcao', a.funcao, 'modalidade', a.modalidade,
+    'area', jsonb_build_object('slug', a.area, 'nome', (select ar.nome from public.vagas_areas ar where ar.slug = a.area)),
+    'turno', a.turno, 'fimDeSemana', a.fim_de_semana, 'experiencia', a.experiencia, 'comissao', a.comissao, 'selo', a.selo,
     'valor', jsonb_build_object('minCentavos', a.valor_min_centavos, 'maxCentavos', a.valor_max_centavos, 'unidade', a.valor_unidade),
     'cidade', jsonb_build_object('slug', c.slug, 'nome', c.nome),
     'zona', case when z.id is null then null else jsonb_build_object('slug', z.slug, 'nome', z.nome) end,
@@ -886,7 +959,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'diaria', case when a.modalidade = 'diaria' then jsonb_build_object('data', to_char(a.data_trabalho, 'YYYY-MM-DD'),
       'inicio', to_char(a.hora_inicio, 'HH24:MI'), 'fim', to_char(a.hora_fim, 'HH24:MI')) else null end,
     'paraHoje', a.modalidade = 'diaria' and a.data_trabalho = vagas_interno.hoje(c.fuso),
-    'quantidade', a.quantidade, 'turnos', to_jsonb(a.turnos),
+    'quantidade', a.quantidade,
     'publicadoEm', disc_interno.iso(a.publicado_em), 'expiraEm', disc_interno.iso(a.expira_em))
   from public.vagas_cidades c
   join public.vagas_empresas e on e.id = a.empresa_id
@@ -894,11 +967,25 @@ returns jsonb language sql stable security definer set search_path = '' as $$
   where c.id = a.cidade_id;
 $$;
 
+-- Requisitos em frases curtas (para a página da vaga e a prévia do link).
+create or replace function vagas_interno.requisitos_lista(p_req text[], p_outro text)
+returns jsonb language sql immutable set search_path = '' as $$
+  select coalesce(jsonb_agg(x.t order by x.o), '[]'::jsonb) from (values
+    (1, case when 'cnh_a' = any (p_req) then 'CNH categoria A' end),
+    (2, case when 'cnh_b' = any (p_req) then 'CNH categoria B' end),
+    (3, case when 'cnh_d' = any (p_req) then 'CNH categoria D' end),
+    (4, case when 'curso_registro' = any (p_req) then 'Curso com registro na área' end),
+    (5, case when 'disponibilidade' = any (p_req) then 'Disponibilidade de horário' end),
+    (6, case when 'outro' = any (p_req) then nullif(p_outro, '') end)) as x(o, t) where x.t is not null;
+$$;
+
 -- Página do anúncio: resumo + descrição, requisitos, benefícios e a empresa (sem setor/descrição se confidencial).
 create or replace function vagas_interno.anuncio_detalhe(a public.vagas_anuncios, p_revelar boolean)
 returns jsonb language sql stable security definer set search_path = '' as $$
-  select x.r || jsonb_build_object('descricao', a.descricao, 'requisitos', a.requisitos, 'beneficios', a.beneficios,
-      'escolaridadeMin', a.escolaridade_min, 'cnh', to_jsonb(a.cnh), 'experienciaMinMeses', a.experiencia_min_meses,
+  select x.r || jsonb_build_object('descricao', a.descricao, 'requisitos', to_jsonb(a.requisitos), 'requisitoOutro', a.requisito_outro,
+      'requisitosLista', vagas_interno.requisitos_lista(a.requisitos, a.requisito_outro), 'beneficios', to_jsonb(a.beneficios),
+      'escolaridade', a.escolaridade, 'inicio', a.inicio, 'inicioData', coalesce(to_char(a.inicio_data, 'YYYY-MM-DD'), ''),
+      'horasDia', a.horas_dia,
       'empresa', (x.r -> 'empresa') || case when a.confidencial and not p_revelar then jsonb_build_object('setor', '', 'descricao', '')
         else jsonb_build_object('setor', e.setor, 'descricao', e.descricao) end)
   from (select vagas_interno.anuncio_resumo(a, p_revelar) as r) x
@@ -909,7 +996,7 @@ $$;
 create or replace function vagas_interno.anuncio_empresa(a public.vagas_anuncios)
 returns jsonb language sql stable security definer set search_path = '' as $$
   select vagas_interno.anuncio_detalhe(a, true) || jsonb_build_object(
-    'empresaId', a.empresa_id, 'confidencial', a.confidencial, 'diasNoAr', a.dias_no_ar, 'status', a.status,
+    'empresaId', a.empresa_id, 'confidencial', a.confidencial, 'diasNoAr', a.dias_no_ar, 'prazoHoras', a.prazo_horas, 'status', a.status,
     'statusMotivo', a.status_motivo, 'noAr', vagas_interno.no_ar(a),
     'expirado', a.expira_em is not null and a.expira_em <= now(),
     'encerradoEm', disc_interno.iso(a.encerrado_em), 'criadoEm', disc_interno.iso(a.criado_em),
@@ -1236,7 +1323,9 @@ begin
     if new.data_trabalho < v_hoje then raise exception 'A data da diária já passou. Escolha outra data.'; end if;
     if new.data_trabalho > v_hoje + 7 then raise exception 'A diária precisa ser para os próximos 7 dias.'; end if;
   end if;
-  foreach x in array array[new.titulo, new.cargo, new.descricao, new.requisitos, new.beneficios] loop
+  if new.comissao and not ('comissao' = any (new.beneficios)) then new.beneficios := new.beneficios || 'comissao'::text; end if;
+  if 'comissao' = any (new.beneficios) then new.comissao := true; end if;
+  foreach x in array array[new.funcao, new.descricao, new.requisito_outro] loop
     t := vagas_interno.conferir_texto(x, 'anuncio');
     if t is not null then raise exception '%', t ->> 'erro'; end if;
   end loop;
@@ -1342,8 +1431,12 @@ returns text language sql immutable set search_path = '' as $$
 $$;
 
 -- Lista de anúncios no ar das cidades dadas, do mais novo para o mais antigo (sem ranking), 20 por página, com cursor.
--- p_pessoa: tira os que ela pulou ou em que já se candidatou.
-create or replace function vagas_interno.listar_anuncios(p_cidades uuid[], p_filtro jsonb, p_pessoa uuid)
+-- Filtros (só sobre a VAGA): zona, modalidade[], paraHoje, busca (função e nome da área), areas[] (OU entre elas), turno[],
+-- salarioMin (centavos por mês: a faixa conta pelo teto; diária = valor do dia × 22; por hora × 220; "por serviço" fica de
+-- fora), semExperiencia (experiencia = 'nao_precisa'), somenteTotal (só a contagem, para o botão "Ver N vagas").
+-- Regra fixa: nenhum filtro por nota, selo, referência, idade ou sexo (chaves desconhecidas são ignoradas).
+-- p_pessoa: tira os que ela pulou ou em que já se candidatou. p_areas_padrao: áreas usadas quando o filtro não traz "areas".
+create or replace function vagas_interno.listar_anuncios(p_cidades uuid[], p_filtro jsonb, p_pessoa uuid, p_areas_padrao text[])
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare
   f jsonb := case when jsonb_typeof(p_filtro) = 'object' then p_filtro else '{}'::jsonb end;
@@ -1352,6 +1445,12 @@ declare
   v_mods text[] := vagas_interno.lista_enum(f -> 'modalidade', vagas_interno.modalidades());
   v_hoje boolean := coalesce(f -> 'paraHoje' = 'true'::jsonb, false);
   v_busca text := left(vagas_interno.normalizar(disc_interno.texto(f -> 'busca')), 60);
+  v_areas text[];
+  v_padrao boolean := false;
+  v_turnos text[] := vagas_interno.lista_enum(f -> 'turno', vagas_interno.turnos_vaga());
+  v_sal int := vagas_interno.inteiro(f -> 'salarioMin');
+  v_sem_exp boolean := coalesce(f -> 'semExperiencia' = 'true'::jsonb, false);
+  v_total boolean := coalesce(f -> 'somenteTotal' = 'true'::jsonb, false);
   v_depois text := disc_interno.texto(f -> 'depois');
   v_dep_em timestamptz := null;
   v_dep_id uuid := null;
@@ -1366,7 +1465,16 @@ begin
                                                         else f -> 'zona' end, 60)));
   end if;
   if cardinality(v_mods) = 0 then v_mods := null; end if;
-  if v_depois ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+  if f ? 'areas' then
+    v_areas := array(select ar.slug from public.vagas_areas ar
+                      where ar.slug = any (vagas_interno.lista_texto(case when jsonb_typeof(f -> 'areas') = 'string'
+                                                                          then jsonb_build_array(f -> 'areas') else f -> 'areas' end, 40))
+                      order by ar.ordem);
+  else
+    v_areas := coalesce(p_areas_padrao, array[]::text[]);
+    v_padrao := cardinality(v_areas) > 0;
+  end if;
+  if v_depois ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' and not v_total then
     v_dep_em := split_part(v_depois, '_', 1)::timestamptz;
     v_dep_id := split_part(v_depois, '_', 2)::uuid;
   end if;
@@ -1379,20 +1487,29 @@ begin
        and (v_zonas is null or x.zona_id = any (v_zonas))
        and (v_mods is null or x.modalidade = any (v_mods))
        and (not v_hoje or (x.modalidade = 'diaria' and x.data_trabalho = vagas_interno.hoje(c.fuso)))
-       and (v_busca = '' or strpos(vagas_interno.normalizar(x.titulo || ' ' || x.cargo), v_busca) > 0)
+       and (cardinality(v_areas) = 0 or x.area = any (v_areas))
+       and (cardinality(v_turnos) = 0 or x.turno = any (v_turnos))
+       and (v_sal is null or coalesce(x.valor_max_centavos, x.valor_min_centavos)::bigint
+              * (case x.valor_unidade when 'mes' then 1 when 'dia' then 22 when 'hora' then 220 else 0 end) >= v_sal)
+       and (not v_sem_exp or x.experiencia = 'nao_precisa')
+       and (v_busca = '' or strpos(vagas_interno.normalizar(x.funcao || ' ' || (select ar.nome from public.vagas_areas ar where ar.slug = x.area)), v_busca) > 0)
        and (v_dep_em is null or (x.publicado_em, x.id) < (v_dep_em, v_dep_id))
        and (p_pessoa is null or (not exists (select 1 from public.vagas_pulos p where p.pessoa_id = p_pessoa and p.anuncio_id = x.id)
                                  and not exists (select 1 from public.vagas_candidaturas k where k.pessoa_id = p_pessoa and k.anuncio_id = x.id)))
      order by x.publicado_em desc, x.id desc
-     limit v_lim + 1
+     limit case when v_total then 100000 else v_lim + 1 end
   loop
     n := n + 1;
+    continue when v_total;
     exit when n > v_lim;
     lista := lista || jsonb_build_array(vagas_interno.anuncio_resumo(a, false));
     v_prox := to_char(a.publicado_em at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') || '_' || a.id;
   end loop;
+  if v_total then
+    return jsonb_build_object('total', n, 'areasAplicadas', to_jsonb(v_areas), 'areasPadrao', v_padrao);
+  end if;
   if n <= v_lim then v_prox := ''; end if;
-  return jsonb_build_object('anuncios', lista, 'proximo', v_prox);
+  return jsonb_build_object('anuncios', lista, 'proximo', v_prox, 'areasAplicadas', to_jsonb(v_areas), 'areasPadrao', v_padrao);
 end;
 $$;
 
@@ -1405,7 +1522,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'zona', (select jsonb_build_object('slug', z.slug, 'nome', z.nome) from public.vagas_zonas z where z.id = p.zona_id),
     'maior18', p.maior_18, 'cargos', to_jsonb(p.cargos), 'escolaridade', p.escolaridade, 'turnos', to_jsonb(p.turnos),
     'cnh', to_jsonb(p.cnh), 'modalidades', to_jsonb(p.modalidades), 'pretensaoCentavos', p.pretensao_centavos,
-    'cursos', to_jsonb(p.cursos), 'sobre', p.sobre,
+    'cursos', to_jsonb(p.cursos), 'areas', to_jsonb(p.areas_interesse), 'sobre', p.sobre, 'temFoto', vagas_interno.tem_foto(p.user_id),
     'nome', coalesce(ct.nome, ''), 'whatsapp', coalesce(ct.whatsapp, ''), 'email', coalesce(ct.email, ''),
     'experiencias', coalesce((select jsonb_agg(jsonb_build_object('funcao', x.funcao, 'empregador', x.empregador,
         'inicio', to_char(x.inicio, 'YYYY-MM'), 'fim', coalesce(to_char(x.fim, 'YYYY-MM'), ''), 'informal', x.informal) order by x.ordem)
@@ -1428,7 +1545,15 @@ returns json language sql stable security definer set search_path = '' as $$
     from public.vagas_cidades c where c.status in ('ativa', 'lista_espera')), '[]'::jsonb)));
 $$;
 
--- Mural da cidade (e do entorno da praça, por padrão).
+-- Áreas das vagas (lista fechada, na ordem da tela).
+create or replace function public.vagas_areas_publicas()
+returns json language sql stable security definer set search_path = '' as $$
+  select vagas_interno.ok(jsonb_build_object('areas', coalesce((select jsonb_agg(jsonb_build_object('slug', a.slug, 'nome', a.nome) order by a.ordem, a.nome)
+    from public.vagas_areas a where a.ativa), '[]'::jsonb)));
+$$;
+
+-- Mural da cidade (e do entorno da praça, por padrão). Com login de pessoa e sem "areas" no filtro, usa as áreas de
+-- interesse dela (devolve areasAplicadas/areasPadrao; "areas": [] mostra todas).
 create or replace function public.vagas_anuncios_publicos(p_filtro jsonb)
 returns json language plpgsql stable security definer set search_path = '' as $$
 declare
@@ -1448,7 +1573,8 @@ begin
     v_cids := v_cids || array(select x.id from public.vagas_cidades x where x.praca_id = c.id and x.status = 'ativa');
   end if;
   return vagas_interno.ok(jsonb_build_object('cidade', jsonb_build_object('slug', c.slug, 'nome', c.nome))
-    || vagas_interno.listar_anuncios(v_cids, f, null));
+    || vagas_interno.listar_anuncios(v_cids, f, null,
+         (select p.areas_interesse from public.vagas_pessoas p where p.user_id = auth.uid())));
 end;
 $$;
 
@@ -1689,7 +1815,7 @@ begin
   insert into public.vagas_consentimentos (user_id, tipo, versao, aceito) values (v_uid, 'termos', v_versao, true), (v_uid, 'privacidade', v_versao, true);
   if d ? 'bancoTalentos' and c.tipo = 'pessoa' then
     v_banco := coalesce(d -> 'bancoTalentos' = 'true'::jsonb, false);
-    if v_banco then v_ate := now() + interval '12 months'; end if;
+    if v_banco then v_ate := now() + interval '180 days'; end if;   -- prazo de conteudo/vagas-textos (pessoa_banco_talentos)
     insert into public.vagas_consentimentos (user_id, tipo, versao, aceito, ate) values (v_uid, 'banco_talentos', v_versao, v_banco, v_ate);
     update public.vagas_pessoas set banco_ate = v_ate where user_id = v_uid;
   end if;
@@ -1737,6 +1863,7 @@ declare
   v_whats text := vagas_interno.normalizar_whatsapp(disc_interno.texto(d -> 'whatsapp'));
   v_email text := btrim(disc_interno.texto(d -> 'email'));
   v_exps jsonb := coalesce(d -> 'experiencias', '[]'::jsonb);
+  v_areas text[] := null;
   x jsonb;
   v_ini date;
   v_fim date;
@@ -1771,6 +1898,12 @@ begin
   end if;
   v_cursos := vagas_interno.lista_texto(d -> 'cursos', 80);
   if cardinality(v_cursos) > 10 then return vagas_interno.erro('Informe até 10 cursos.'); end if;
+  if d ? 'areas' or d ? 'areasInteresse' then
+    v_areas := array(select ar.slug from public.vagas_areas ar
+                      where ar.ativa and ar.slug = any (vagas_interno.lista_texto(vagas_interno.chave(d, 'areas', 'areasInteresse'), 40))
+                      order by ar.ordem);
+    if cardinality(v_areas) > 3 then return vagas_interno.erro('Escolha até 3 áreas de interesse.'); end if;
+  end if;
   if char_length(v_sobre) > 600 then return vagas_interno.erro('O texto "Sobre você" pode ter até 600 caracteres.'); end if;
   v_sobre := vagas_interno.limpar_multilinha(v_sobre, 600);
   if not disc_interno.nome_valido(v_nome) then return vagas_interno.erro('Informe seu nome e sobrenome.'); end if;
@@ -1802,11 +1935,12 @@ begin
 
   begin
     insert into public.vagas_pessoas as p (user_id, cidade_id, cidade2_id, zona_id, maior_18, cargos, escolaridade, turnos, cnh,
-      modalidades, pretensao_centavos, cursos, sobre)
-    values (v_uid, c1.id, v_cid2, v_zona, true, v_cargos, v_esc, v_turnos, v_cnh, v_mods, v_pret, v_cursos, v_sobre)
+      modalidades, pretensao_centavos, cursos, areas_interesse, sobre)
+    values (v_uid, c1.id, v_cid2, v_zona, true, v_cargos, v_esc, v_turnos, v_cnh, v_mods, v_pret, v_cursos, coalesce(v_areas, '{}'::text[]), v_sobre)
     on conflict (user_id) do update set cidade_id = excluded.cidade_id, cidade2_id = excluded.cidade2_id, zona_id = excluded.zona_id,
       maior_18 = true, cargos = excluded.cargos, escolaridade = excluded.escolaridade, turnos = excluded.turnos, cnh = excluded.cnh,
-      modalidades = excluded.modalidades, pretensao_centavos = excluded.pretensao_centavos, cursos = excluded.cursos, sobre = excluded.sobre;
+      modalidades = excluded.modalidades, pretensao_centavos = excluded.pretensao_centavos, cursos = excluded.cursos,
+      areas_interesse = coalesce(v_areas, p.areas_interesse), sobre = excluded.sobre;
     insert into public.vagas_pessoa_contato as ct (user_id, nome, whatsapp, email) values (v_uid, v_nome, v_whats, coalesce(v_email, ''))
     on conflict (user_id) do update set nome = excluded.nome, whatsapp = excluded.whatsapp, email = excluded.email, atualizado_em = now();
     delete from public.vagas_experiencias where user_id = v_uid;
@@ -1839,7 +1973,7 @@ begin
   select * into p from public.vagas_pessoas where user_id = v_uid;
   if not found then return vagas_interno.erro('Complete seu cadastro para ver as vagas.', '{"completar": true}'); end if;
   v_cids := array(select c.id from public.vagas_cidades c where c.id in (p.cidade_id, p.cidade2_id) and c.status = 'ativa');
-  return vagas_interno.ok(vagas_interno.listar_anuncios(v_cids, p_filtro, v_uid));
+  return vagas_interno.ok(vagas_interno.listar_anuncios(v_cids, p_filtro, v_uid, p.areas_interesse));
 end;
 $$;
 
@@ -2241,45 +2375,70 @@ begin
 end;
 $$;
 
--- Lê os dados do anúncio. -> {ok:true, campos} | {ok:false, erro}
+-- Primeiro valor presente entre as chaves (camelCase do contrato + snake_case usado nas telas do design).
+create or replace function vagas_interno.chave(d jsonb, variadic p_chaves text[])
+returns jsonb language sql immutable set search_path = '' as $$
+  select (select d -> k from unnest(p_chaves) with ordinality as x(k, i) where d ? k order by i limit 1);
+$$;
+
+-- Lê o anúncio (campos fechados; chaves em docs/VAGAS-SPEC.md §8.4). -> {ok:true, campos:{...}} | {ok:false, erro}
 create or replace function vagas_interno.ler_anuncio(d jsonb, p_cidade_padrao uuid)
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare
-  v_titulo text := disc_interno.limpar_texto(disc_interno.texto(d -> 'titulo'), 80);
-  v_cargo text := disc_interno.limpar_texto(disc_interno.texto(d -> 'cargo'), 60);
+  v_area text := lower(btrim(disc_interno.texto(d -> 'area')));
+  v_funcao text := disc_interno.limpar_texto(disc_interno.texto(d -> 'funcao'), 60);
   v_mod text := disc_interno.texto(d -> 'modalidade');
   v_desc text := disc_interno.texto(d -> 'descricao');
-  v_req text := disc_interno.texto(d -> 'requisitos');
-  v_ben text := disc_interno.texto(d -> 'beneficios');
-  v_esc text := nullif(btrim(disc_interno.texto(d -> 'escolaridadeMin')), '');
-  v_exp int := coalesce(vagas_interno.inteiro(d -> 'experienciaMinMeses'), 0);
+  v_turno text := disc_interno.texto(d -> 'turno');
+  v_exp text := disc_interno.texto(d -> 'experiencia');
+  v_esc text := coalesce(nullif(btrim(disc_interno.texto(d -> 'escolaridade')), ''), 'nao_exigida');
+  v_ini text := coalesce(nullif(btrim(disc_interno.texto(d -> 'inicio')), ''), 'imediato');
+  v_ini_data date := null;
+  v_req text[] := vagas_interno.lista_enum(d -> 'requisitos', vagas_interno.requisitos_vaga());
+  v_outro text := disc_interno.texto(vagas_interno.chave(d, 'requisitoOutro', 'requisito_outro'));
+  v_selo text := lower(btrim(disc_interno.texto(d -> 'selo')));
+  v_ben text[] := vagas_interno.lista_enum(d -> 'beneficios', vagas_interno.beneficios_vaga());
+  v_comissao boolean := coalesce(d -> 'comissao' = 'true'::jsonb, false);
+  v_fds boolean := coalesce(vagas_interno.chave(d, 'fimDeSemana', 'fim_de_semana') = 'true'::jsonb, false);
   v_qtd int := coalesce(vagas_interno.inteiro(d -> 'quantidade'), 1);
-  v_min int := vagas_interno.inteiro(d -> 'valorMinCentavos');
-  v_max int := vagas_interno.inteiro(d -> 'valorMaxCentavos');
-  v_uni text := btrim(disc_interno.texto(d -> 'valorUnidade'));
-  v_dias int := coalesce(vagas_interno.inteiro(d -> 'diasNoAr'), 30);
+  v_min int := vagas_interno.inteiro(vagas_interno.chave(d, 'salarioDe', 'salario_de'));
+  v_max int := vagas_interno.inteiro(vagas_interno.chave(d, 'salarioAte', 'salario_ate'));
+  v_uni text := btrim(disc_interno.texto(vagas_interno.chave(d, 'valorUnidade', 'valor_unidade')));
+  v_dias int := coalesce(vagas_interno.inteiro(vagas_interno.chave(d, 'diasNoAr', 'dias_no_ar')), 30);
+  v_prazo int := coalesce(vagas_interno.inteiro(vagas_interno.chave(d, 'prazoHoras', 'prazo_horas')), 48);
+  v_horas int := vagas_interno.inteiro(vagas_interno.chave(d, 'horasDia', 'horas_dia'));
   v_cid uuid := p_cidade_padrao;
   v_zona uuid := null;
   v_data date := null;
   v_hi time := null;
   v_hf time := null;
   v_txt text;
+  v_hoje date;
 begin
-  if char_length(v_titulo) < 4 then return jsonb_build_object('ok', false, 'erro', 'Informe o título da vaga (ex.: Atendente de loja).'); end if;
-  if char_length(v_cargo) < 2 then return jsonb_build_object('ok', false, 'erro', 'Informe a função (ex.: Atendente).'); end if;
+  if not exists (select 1 from public.vagas_areas ar where ar.slug = v_area and ar.ativa) then
+    return jsonb_build_object('ok', false, 'erro', 'Escolha a área da vaga.');
+  end if;
+  if char_length(v_funcao) < 2 then return jsonb_build_object('ok', false, 'erro', 'Informe a função (ex.: Atendente).'); end if;
   if not (v_mod = any (vagas_interno.modalidades())) then
     return jsonb_build_object('ok', false, 'erro', 'Escolha o tipo de vaga: CLT, temporário, diária, freelancer ou estágio.');
   end if;
-  if char_length(v_desc) > 3000 then return jsonb_build_object('ok', false, 'erro', 'A descrição pode ter até 3.000 caracteres.'); end if;
-  v_desc := vagas_interno.limpar_multilinha(v_desc, 3000);
-  if char_length(v_desc) < 20 then return jsonb_build_object('ok', false, 'erro', 'Descreva a vaga em pelo menos 20 caracteres.'); end if;
-  if char_length(v_req) > 1500 then return jsonb_build_object('ok', false, 'erro', 'Os requisitos podem ter até 1.500 caracteres.'); end if;
-  if char_length(v_ben) > 800 then return jsonb_build_object('ok', false, 'erro', 'Os benefícios podem ter até 800 caracteres.'); end if;
-  if v_esc is not null and not (v_esc = any (vagas_interno.escolaridades())) then
-    return jsonb_build_object('ok', false, 'erro', 'Escolaridade mínima inválida.');
-  end if;
-  if v_exp < 0 or v_exp > 240 then return jsonb_build_object('ok', false, 'erro', 'Experiência mínima inválida (0 a 240 meses).'); end if;
   if v_qtd < 1 or v_qtd > 100 then return jsonb_build_object('ok', false, 'erro', 'Quantidade de vagas inválida (1 a 100).'); end if;
+  if not (v_turno = any (vagas_interno.turnos_vaga())) then return jsonb_build_object('ok', false, 'erro', 'Escolha o turno da vaga.'); end if;
+  if not (v_exp = any (vagas_interno.experiencias_vaga())) then
+    return jsonb_build_object('ok', false, 'erro', 'Escolha a experiência que a vaga pede.');
+  end if;
+  if not (v_esc = any (vagas_interno.escolaridades_vaga())) then return jsonb_build_object('ok', false, 'erro', 'Escolaridade mínima inválida.'); end if;
+  if char_length(v_outro) > 80 then return jsonb_build_object('ok', false, 'erro', 'O requisito "Outro" pode ter até 80 caracteres.'); end if;
+  v_outro := disc_interno.limpar_texto(v_outro, 80);
+  if 'outro' = any (v_req) and v_outro = '' then return jsonb_build_object('ok', false, 'erro', 'Escreva qual é o outro requisito.'); end if;
+  if v_outro <> '' and not ('outro' = any (v_req)) then v_req := vagas_interno.lista_enum(to_jsonb(v_req || 'outro'::text), vagas_interno.requisitos_vaga()); end if;
+  if v_selo in ('', 'nenhum') then v_selo := null; end if;
+  if v_selo is not null and not (v_selo = any (vagas_interno.testes_selo())) then
+    return jsonb_build_object('ok', false, 'erro', 'Escolha um dos testes da plataforma ou "nenhum".');
+  end if;
+  -- Comissão: o campo e o benefício andam juntos.
+  if v_comissao and not ('comissao' = any (v_ben)) then v_ben := vagas_interno.lista_enum(to_jsonb(v_ben || 'comissao'::text), vagas_interno.beneficios_vaga()); end if;
+  v_comissao := 'comissao' = any (v_ben);
   if v_uni = '' then v_uni := case v_mod when 'diaria' then 'dia' when 'freelancer' then 'servico' else 'mes' end; end if;
   if v_min is null or v_min < 100 then
     return jsonb_build_object('ok', false, 'erro', case v_mod
@@ -2296,6 +2455,9 @@ begin
           or (v_mod = 'freelancer' and v_uni in ('servico', 'hora', 'dia'))) then
     return jsonb_build_object('ok', false, 'erro', 'Unidade do valor inválida para este tipo de vaga.');
   end if;
+  if char_length(v_desc) > 1500 then return jsonb_build_object('ok', false, 'erro', 'A descrição pode ter até 1.500 caracteres.'); end if;
+  v_desc := vagas_interno.limpar_multilinha(v_desc, 1500);
+  if char_length(v_desc) < 40 then return jsonb_build_object('ok', false, 'erro', 'Descreva a vaga em pelo menos 40 caracteres.'); end if;
   if btrim(disc_interno.texto(d -> 'cidade')) <> '' then
     select c.id into v_cid from public.vagas_cidades c where c.slug = lower(btrim(disc_interno.texto(d -> 'cidade'))) and c.status <> 'rascunho';
     if v_cid is null then return jsonb_build_object('ok', false, 'erro', 'Cidade não encontrada.'); end if;
@@ -2304,26 +2466,87 @@ begin
     select z.id into v_zona from public.vagas_zonas z where z.cidade_id = v_cid and z.slug = lower(btrim(disc_interno.texto(d -> 'zona')));
     if v_zona is null then return jsonb_build_object('ok', false, 'erro', 'Escolha uma zona da cidade da vaga.'); end if;
   end if;
+  v_hoje := vagas_interno.hoje((select c.fuso from public.vagas_cidades c where c.id = v_cid));
+  if v_mod = 'estagio' then
+    if v_horas is null or v_horas < 1 or v_horas > 6 then
+      return jsonb_build_object('ok', false, 'erro', 'Informe as horas por dia do estágio (até 6).');
+    end if;
+  else
+    v_horas := null;
+  end if;
   if v_mod = 'diaria' then
-    v_txt := btrim(disc_interno.texto(d -> 'dataTrabalho'));
+    v_txt := btrim(disc_interno.texto(vagas_interno.chave(d, 'data', 'dataTrabalho')));
     if v_txt ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then
       begin v_data := v_txt::date; exception when others then v_data := null; end;
     end if;
-    if btrim(disc_interno.texto(d -> 'horaInicio')) ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then v_hi := btrim(disc_interno.texto(d -> 'horaInicio'))::time; end if;
-    if btrim(disc_interno.texto(d -> 'horaFim')) ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then v_hf := btrim(disc_interno.texto(d -> 'horaFim'))::time; end if;
+    v_txt := btrim(disc_interno.texto(vagas_interno.chave(d, 'horaInicio', 'hora_inicio')));
+    if v_txt ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then v_hi := v_txt::time; end if;
+    v_txt := btrim(disc_interno.texto(vagas_interno.chave(d, 'horaFim', 'hora_fim')));
+    if v_txt ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then v_hf := v_txt::time; end if;
     if v_data is null or v_hi is null or v_hf is null then
       return jsonb_build_object('ok', false, 'erro', 'Informe a data, o horário e o valor da diária.');
     end if;
-  elsif v_dias < 7 or v_dias > 60 then
-    return jsonb_build_object('ok', false, 'erro', 'Escolha de 7 a 60 dias no ar.');
+    if v_prazo < 48 or v_prazo > 168 then return jsonb_build_object('ok', false, 'erro', 'A diária fica no ar de 48 a 168 horas.'); end if;
+    v_ini := 'data';
+    v_ini_data := v_data;   -- a diária começa no dia do trabalho
+  else
+    v_prazo := null;
+    if v_dias < 7 or v_dias > 60 then return jsonb_build_object('ok', false, 'erro', 'Escolha de 7 a 60 dias no ar.'); end if;
+    if v_ini not in ('imediato', 'data') then return jsonb_build_object('ok', false, 'erro', 'Escolha quando a pessoa começa.'); end if;
+    if v_ini = 'data' then
+      v_txt := btrim(disc_interno.texto(vagas_interno.chave(d, 'inicioData', 'inicio_data')));
+      if v_txt ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then
+        begin v_ini_data := v_txt::date; exception when others then v_ini_data := null; end;
+      end if;
+      if v_ini_data is null then return jsonb_build_object('ok', false, 'erro', 'Informe a data de início (AAAA-MM-DD).'); end if;
+      if v_ini_data < v_hoje then return jsonb_build_object('ok', false, 'erro', 'A data de início não pode estar no passado.'); end if;
+    end if;
   end if;
-  return jsonb_build_object('ok', true, 'campos', jsonb_build_object('titulo', v_titulo, 'cargo', v_cargo, 'modalidade', v_mod,
-    'descricao', v_desc, 'requisitos', vagas_interno.limpar_multilinha(v_req, 1500), 'beneficios', vagas_interno.limpar_multilinha(v_ben, 800),
-    'turnos', to_jsonb(vagas_interno.lista_enum(d -> 'turnos', vagas_interno.turnos())), 'escolaridadeMin', v_esc,
-    'cnh', to_jsonb(vagas_interno.lista_enum(d -> 'cnh', array['A', 'B', 'C', 'D', 'E'])), 'experienciaMinMeses', v_exp, 'quantidade', v_qtd,
+  return jsonb_build_object('ok', true, 'campos', jsonb_build_object('area', v_area, 'funcao', v_funcao,
+    'modalidade', v_mod, 'descricao', v_desc, 'turno', v_turno, 'fimDeSemana', v_fds,
+    'comissao', v_comissao, 'inicio', v_ini, 'inicioData', v_ini_data, 'experiencia', v_exp, 'escolaridade', v_esc,
+    'requisitos', to_jsonb(v_req), 'requisitoOutro', v_outro, 'selo', v_selo, 'beneficios', to_jsonb(v_ben), 'quantidade', v_qtd,
     'valorMin', v_min, 'valorMax', v_max, 'unidade', v_uni, 'diasNoAr', case when v_mod = 'diaria' then 30 else v_dias end,
+    'prazoHoras', v_prazo, 'horasDia', v_horas,
     'cidadeId', v_cid, 'zonaId', v_zona, 'data', v_data, 'horaInicio', v_hi, 'horaFim', v_hf,
     'confidencial', coalesce(d -> 'confidencial' = 'true'::jsonb, false)));
+end;
+$$;
+
+-- Grava (cria ou atualiza) o anúncio com os campos lidos por ler_anuncio. Erros do gatilho sobem como exceção.
+create or replace function vagas_interno.gravar_anuncio(p_id uuid, p_empresa uuid, f jsonb, p_autor uuid)
+returns public.vagas_anuncios language plpgsql volatile security definer set search_path = '' as $$
+declare
+  a public.vagas_anuncios%rowtype;
+begin
+  if p_id is null then
+    insert into public.vagas_anuncios (empresa_id, cidade_id, zona_id, area, funcao, modalidade, descricao, turno, fim_de_semana,
+      comissao, inicio, inicio_data, experiencia, escolaridade, requisitos, requisito_outro, selo, beneficios, horas_dia, prazo_horas,
+      quantidade, valor_min_centavos, valor_max_centavos, valor_unidade, data_trabalho, hora_inicio, hora_fim, dias_no_ar,
+      confidencial, criado_por)
+    values (p_empresa, (f ->> 'cidadeId')::uuid, nullif(f ->> 'zonaId', '')::uuid, f ->> 'area', f ->> 'funcao',
+      f ->> 'modalidade', f ->> 'descricao', f ->> 'turno', (f ->> 'fimDeSemana')::boolean, (f ->> 'comissao')::boolean, f ->> 'inicio',
+      (f ->> 'inicioData')::date, f ->> 'experiencia', f ->> 'escolaridade', array(select jsonb_array_elements_text(f -> 'requisitos')),
+      f ->> 'requisitoOutro', f ->> 'selo', array(select jsonb_array_elements_text(f -> 'beneficios')), (f ->> 'horasDia')::int,
+      (f ->> 'prazoHoras')::int, (f ->> 'quantidade')::int, (f ->> 'valorMin')::int, (f ->> 'valorMax')::int, f ->> 'unidade',
+      (f ->> 'data')::date, (f ->> 'horaInicio')::time, (f ->> 'horaFim')::time, (f ->> 'diasNoAr')::int,
+      (f ->> 'confidencial')::boolean, p_autor)
+    returning * into a;
+  else
+    update public.vagas_anuncios set cidade_id = (f ->> 'cidadeId')::uuid, zona_id = nullif(f ->> 'zonaId', '')::uuid,
+      area = f ->> 'area', funcao = f ->> 'funcao', modalidade = f ->> 'modalidade', descricao = f ->> 'descricao',
+      turno = f ->> 'turno', fim_de_semana = (f ->> 'fimDeSemana')::boolean, comissao = (f ->> 'comissao')::boolean,
+      inicio = f ->> 'inicio', inicio_data = (f ->> 'inicioData')::date, experiencia = f ->> 'experiencia',
+      escolaridade = f ->> 'escolaridade', requisitos = array(select jsonb_array_elements_text(f -> 'requisitos')),
+      requisito_outro = f ->> 'requisitoOutro', selo = f ->> 'selo',
+      beneficios = array(select jsonb_array_elements_text(f -> 'beneficios')), horas_dia = (f ->> 'horasDia')::int,
+      prazo_horas = (f ->> 'prazoHoras')::int, quantidade = (f ->> 'quantidade')::int,
+      valor_min_centavos = (f ->> 'valorMin')::int, valor_max_centavos = (f ->> 'valorMax')::int, valor_unidade = f ->> 'unidade',
+      data_trabalho = (f ->> 'data')::date, hora_inicio = (f ->> 'horaInicio')::time, hora_fim = (f ->> 'horaFim')::time,
+      dias_no_ar = (f ->> 'diasNoAr')::int, confidencial = (f ->> 'confidencial')::boolean
+    where id = p_id returning * into a;
+  end if;
+  return a;
 end;
 $$;
 
@@ -2340,7 +2563,6 @@ declare
   a public.vagas_anuncios%rowtype;
   e public.vagas_empresas%rowtype;
   v jsonb;
-  f jsonb;
 begin
   if not (v_conta ->> 'ok')::boolean then return v_conta::json; end if;
   if v_id <> '' then
@@ -2354,40 +2576,19 @@ begin
     if v_emp !~ re then return vagas_interno.erro('Empresa não encontrada.'); end if;
     select * into e from public.vagas_empresas where id = v_emp::uuid;
     if not found or not vagas_interno.membro(e.id) then return vagas_interno.erro('Empresa não encontrada.'); end if;
-    if vagas_interno.contar('anuncio_novo', e.id::text, interval '1 day') > 30 then
-      return vagas_interno.erro('Muitas vagas criadas hoje. Tente de novo amanhã.', '{"bloqueado": true}');
-    end if;
   end if;
   if e.status = 'suspensa' then return vagas_interno.erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.'); end if;
   v := vagas_interno.ler_anuncio(d, coalesce(a.cidade_id, e.cidade_id));
   if not (v ->> 'ok')::boolean then return vagas_interno.erro(v ->> 'erro'); end if;
-  f := v -> 'campos';
+  -- Limite de vagas novas por dia (conta só as que passaram na validação).
+  if a.id is null and vagas_interno.contar('anuncio_novo', e.id::text, interval '1 day') > 30 then
+    return vagas_interno.erro('Muitas vagas criadas hoje. Tente de novo amanhã.', '{"bloqueado": true}');
+  end if;
   begin
-    if a.id is null then
-      insert into public.vagas_anuncios (empresa_id, cidade_id, zona_id, titulo, cargo, modalidade, descricao, requisitos, beneficios,
-        turnos, escolaridade_min, cnh, experiencia_min_meses, quantidade, valor_min_centavos, valor_max_centavos, valor_unidade,
-        data_trabalho, hora_inicio, hora_fim, dias_no_ar, confidencial, criado_por)
-      values (e.id, (f ->> 'cidadeId')::uuid, nullif(f ->> 'zonaId', '')::uuid, f ->> 'titulo', f ->> 'cargo', f ->> 'modalidade',
-        f ->> 'descricao', f ->> 'requisitos', f ->> 'beneficios', array(select jsonb_array_elements_text(f -> 'turnos')),
-        f ->> 'escolaridadeMin', array(select jsonb_array_elements_text(f -> 'cnh')), (f ->> 'experienciaMinMeses')::int,
-        (f ->> 'quantidade')::int, (f ->> 'valorMin')::int, (f ->> 'valorMax')::int, f ->> 'unidade',
-        (f ->> 'data')::date, (f ->> 'horaInicio')::time, (f ->> 'horaFim')::time, (f ->> 'diasNoAr')::int,
-        (f ->> 'confidencial')::boolean, v_uid)
-      returning * into a;
-    else
-      update public.vagas_anuncios set cidade_id = (f ->> 'cidadeId')::uuid, zona_id = nullif(f ->> 'zonaId', '')::uuid,
-        titulo = f ->> 'titulo', cargo = f ->> 'cargo', modalidade = f ->> 'modalidade', descricao = f ->> 'descricao',
-        requisitos = f ->> 'requisitos', beneficios = f ->> 'beneficios', turnos = array(select jsonb_array_elements_text(f -> 'turnos')),
-        escolaridade_min = f ->> 'escolaridadeMin', cnh = array(select jsonb_array_elements_text(f -> 'cnh')),
-        experiencia_min_meses = (f ->> 'experienciaMinMeses')::int, quantidade = (f ->> 'quantidade')::int,
-        valor_min_centavos = (f ->> 'valorMin')::int, valor_max_centavos = (f ->> 'valorMax')::int, valor_unidade = f ->> 'unidade',
-        data_trabalho = (f ->> 'data')::date, hora_inicio = (f ->> 'horaInicio')::time, hora_fim = (f ->> 'horaFim')::time,
-        dias_no_ar = (f ->> 'diasNoAr')::int, confidencial = (f ->> 'confidencial')::boolean
-      where id = a.id returning * into a;
-    end if;
+    a := vagas_interno.gravar_anuncio(a.id, e.id, v -> 'campos', v_uid);
   exception
     when raise_exception then return vagas_interno.erro(sqlerrm);
-    when check_violation or not_null_violation then return vagas_interno.erro('Dados inválidos. Confira os campos.');
+    when check_violation or not_null_violation or foreign_key_violation then return vagas_interno.erro('Dados inválidos. Confira os campos.');
   end;
   return vagas_interno.ok(jsonb_build_object('anuncio', vagas_interno.anuncio_empresa(a)));
 end;
@@ -2607,7 +2808,7 @@ begin
   insert into public.vagas_acessos_contato (candidatura_id, pessoa_id, empresa_id, empresa_nome, anuncio_titulo, user_id)
   values (k.id, k.pessoa_id, k.empresa_id, e.nome_fantasia, a.titulo, auth.uid());
   return vagas_interno.ok(jsonb_build_object('pessoa', jsonb_build_object('nome', ct.nome, 'whatsapp', ct.whatsapp, 'email', ct.email,
-    'sobre', p.sobre, 'cartao', vagas_interno.cartao(k.pessoa_id, k.empresa_id),
+    'sobre', p.sobre, 'temFoto', vagas_interno.tem_foto(k.pessoa_id), 'cartao', vagas_interno.cartao(k.pessoa_id, k.empresa_id),
     'referencias', coalesce((select jsonb_agg(vagas_interno.referencia_json(r, false) order by coalesce(r.fim, current_date) desc, r.inicio desc)
       from public.vagas_referencias r where r.pessoa_id = k.pessoa_id and vagas_interno.referencia_para_empresa(r, array[k.empresa_id])), '[]'::jsonb),
     'experiencias', coalesce((select jsonb_agg(jsonb_build_object('funcao', x.funcao, 'empregador', x.empregador,
@@ -3169,6 +3370,55 @@ begin
     'pessoa', jsonb_build_object('nomeExibicao', vagas_interno.nome_exibicao((select ct.nome from public.vagas_pessoa_contato ct where ct.user_id = p.user_id))),
     'referencias', coalesce((select jsonb_agg(vagas_interno.referencia_json(r, false) order by coalesce(r.fim, current_date) desc, r.inicio desc)
       from public.vagas_referencias r where r.pessoa_id = p.user_id and vagas_interno.referencia_para_empresa(r, v_minhas)), '[]'::jsonb)));
+end;
+$$;
+
+-- Vaga assistida: a operação da cidade cria ou edita a vaga de uma empresa com os MESMOS campos de vagas_anuncio_salvar
+-- (+ empresaId e, opcional, publicar:true — a operação já é a revisão; a empresa precisa estar ativa).
+create or replace function public.vagas_op_anuncio_salvar(p_dados jsonb)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  d jsonb := case when jsonb_typeof(p_dados) = 'object' then p_dados else '{}'::jsonb end;
+  v_id text := btrim(disc_interno.texto(d -> 'id'));
+  v_emp text := btrim(disc_interno.texto(d -> 'empresaId'));
+  re constant text := '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
+  a public.vagas_anuncios%rowtype;
+  e public.vagas_empresas%rowtype;
+  v jsonb;
+  v_papel text;
+begin
+  if auth.uid() is null then return vagas_interno.erro('Sessão expirada. Entre de novo.', '{"sessaoExpirada": true}'); end if;
+  if v_id <> '' then
+    if v_id !~ re then return vagas_interno.erro('Vaga não encontrada.'); end if;
+    select * into a from public.vagas_anuncios where id = v_id::uuid;
+    if not found then return vagas_interno.erro('Vaga não encontrada.'); end if;
+    select * into e from public.vagas_empresas where id = a.empresa_id;
+  else
+    if v_emp !~ re then return vagas_interno.erro('Empresa não encontrada.'); end if;
+    select * into e from public.vagas_empresas where id = v_emp::uuid;
+    if not found then return vagas_interno.erro('Empresa não encontrada.'); end if;
+  end if;
+  v_papel := vagas_interno.papel_cidade(e.cidade_id);
+  if v_papel is null then return vagas_interno.erro(case when a.id is null then 'Empresa não encontrada.' else 'Vaga não encontrada.' end); end if;
+  if v_papel = 'moderador' then return vagas_interno.erro('Sem permissão.'); end if;
+  if a.status = 'removido' then return vagas_interno.erro('Esta vaga foi removida pela moderação e não pode ser editada.'); end if;
+  if e.status = 'suspensa' then return vagas_interno.erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.'); end if;
+  v := vagas_interno.ler_anuncio(d, coalesce(a.cidade_id, e.cidade_id));
+  if not (v ->> 'ok')::boolean then return vagas_interno.erro(v ->> 'erro'); end if;
+  begin
+    a := vagas_interno.gravar_anuncio(a.id, e.id, v -> 'campos', auth.uid());
+    if d -> 'publicar' = 'true'::jsonb and a.status not in ('publicado', 'pausado') then
+      if e.status <> 'ativa' then raise exception 'Aprove a empresa antes de publicar a vaga.'; end if;
+      update public.vagas_anuncios set status = 'publicado', status_motivo = '', publicado_em = coalesce(publicado_em, now()),
+        expira_em = vagas_interno.expira_calculada(a), encerrado_em = null where id = a.id returning * into a;
+    end if;
+  exception
+    when raise_exception then return vagas_interno.erro(sqlerrm);
+    when check_violation or not_null_violation or foreign_key_violation then return vagas_interno.erro('Dados inválidos. Confira os campos.');
+  end;
+  perform vagas_interno.registrar(a.cidade_id, v_papel, 'anuncio_assistido', 'anuncio', a.id, '',
+    jsonb_build_object('publicado', a.status = 'publicado'));
+  return vagas_interno.ok(jsonb_build_object('anuncio', vagas_interno.anuncio_empresa(a)));
 end;
 $$;
 
@@ -3766,6 +4016,57 @@ returns json language sql stable security definer set search_path = '' as $$
                            where o.user_id = p_user and o.ativo and vagas_interno.conta_valida(o.user_id)), '[]'::jsonb)));
 $$;
 
+-- Edge Function (ação 'foto'): pode este usuário ver esta foto? p_candidatura null = a própria foto (pessoa).
+-- Empresa: membro ativo da empresa da candidatura, depois do Combinou e sem corte de acesso. -> {ok, caminho} | erro.
+create or replace function public.vagas_conta_foto(p_user uuid, p_candidatura uuid)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  k public.vagas_candidaturas%rowtype;
+begin
+  if p_user is null or not exists (select 1 from public.vagas_contas c where c.user_id = p_user) then
+    return vagas_interno.erro('Sessão expirada. Entre de novo.', '{"sessaoExpirada": true}');
+  end if;
+  if not vagas_interno.conta_valida(p_user) then return vagas_interno.erro('Esta conta está suspensa. Fale com a Gestão sem Caos.', '{"suspensa": true}'); end if;
+  if p_candidatura is null then
+    if not vagas_interno.tem_foto(p_user) then return vagas_interno.erro('Sem foto.', '{"semFoto": true}'); end if;
+    return vagas_interno.ok(jsonb_build_object('caminho', p_user::text || '/foto.jpg'));
+  end if;
+  select * into k from public.vagas_candidaturas where id = p_candidatura;
+  if not found or not exists (select 1 from public.vagas_empresa_membros m join public.vagas_contas c on c.user_id = m.user_id
+                               where m.empresa_id = k.empresa_id and m.user_id = p_user and m.ativo and c.tipo = 'empresa') then
+    return vagas_interno.erro('Candidatura não encontrada.');
+  end if;
+  if k.status not in ('combinou', 'contratada') then
+    return vagas_interno.erro('A foto só aparece depois do Combinou.', '{"semCombinou": true}');
+  end if;
+  if k.contato_cortado_em is not null then
+    return vagas_interno.erro('A pessoa deixou de compartilhar o contato com a sua empresa.', '{"contatoCortado": true}');
+  end if;
+  if not vagas_interno.tem_foto(k.pessoa_id) then return vagas_interno.erro('Esta pessoa não pôs foto.', '{"semFoto": true}'); end if;
+  return vagas_interno.ok(jsonb_build_object('caminho', k.pessoa_id::text || '/foto.jpg'));
+end;
+$$;
+
+-- Política do Storage: só conta de pessoa (não suspensa) grava a própria foto.
+create or replace function public.vagas_sou_pessoa()
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.vagas_contas c where c.user_id = auth.uid() and c.tipo = 'pessoa' and c.status <> 'suspensa');
+$$;
+
+-- Testes e selos da pessoa para a exportação (gancho da migração 20261023: vagas_interno.testes_exportar(uuid)). Sem ela, null.
+create or replace function vagas_interno.testes_da_pessoa(p_user uuid)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$
+declare
+  r jsonb;
+begin
+  if to_regprocedure('vagas_interno.testes_exportar(uuid)') is null then return null; end if;
+  execute 'select to_jsonb(vagas_interno.testes_exportar($1))' into r using p_user;
+  return r;
+exception when others then
+  return null;
+end;
+$$;
+
 -- Exportar os próprios dados (LGPD, portabilidade).
 create or replace function public.vagas_exportar_meus_dados()
 returns json language plpgsql volatile security definer set search_path = '' as $$
@@ -3783,6 +4084,8 @@ begin
     'consentimentos', coalesce((select jsonb_agg(jsonb_build_object('tipo', x.tipo, 'versao', x.versao, 'aceito', x.aceito,
         'ate', disc_interno.iso(x.ate), 'em', disc_interno.iso(x.em)) order by x.em) from public.vagas_consentimentos x where x.user_id = v_uid), '[]'::jsonb),
     'pessoa', vagas_interno.pessoa_json(v_uid),
+    'testes', vagas_interno.testes_da_pessoa(v_uid),
+    'foto', case when vagas_interno.tem_foto(v_uid) then 'Você tem uma foto guardada (só as empresas com Combinou a veem). Baixe pelo seu perfil.' else '' end,
     'candidaturas', coalesce((select jsonb_agg(vagas_interno.candidatura_pessoa(k) order by k.criado_em) from public.vagas_candidaturas k
                                where k.pessoa_id = v_uid), '[]'::jsonb),
     'mensagensEnviadas', coalesce((select jsonb_agg(jsonb_build_object('em', disc_interno.iso(m.criado_em), 'texto', m.texto) order by m.criado_em)
@@ -3857,6 +4160,19 @@ insert into public.vagas_cidades (slug, nome, uf, ibge, fuso, status, ordem) val
   ('rorainopolis-rr', 'Rorainópolis', 'RR', '1400472', 'America/Boa_Vista', 'lista_espera', 4)
 on conflict (slug) do nothing;
 
+insert into public.vagas_areas (slug, nome, ordem) values
+  ('atendimento', 'Atendimento e recepção', 1), ('vendas-loja', 'Vendas em loja e balcão', 2),
+  ('vendas-externas', 'Vendas externas e representação', 3), ('caixa', 'Caixa e operação de loja', 4),
+  ('administrativo', 'Administrativo e escritório', 5), ('financeiro', 'Financeiro e contabilidade', 6),
+  ('rh', 'Recursos humanos', 7), ('logistica', 'Estoque, logística e entregas', 8),
+  ('motorista', 'Motorista e transporte', 9), ('producao', 'Produção e indústria', 10), ('construcao', 'Construção civil', 11),
+  ('manutencao', 'Manutenção e reparos', 12), ('limpeza', 'Limpeza e conservação', 13), ('cozinha', 'Cozinha e restaurante', 14),
+  ('hotelaria', 'Hotelaria e eventos', 15), ('beleza', 'Beleza e estética', 16), ('saude', 'Saúde e farmácia', 17),
+  ('educacao', 'Educação e creche', 18), ('agro', 'Agropecuária e campo', 19), ('seguranca', 'Segurança e portaria', 20),
+  ('marketing', 'Marketing, design e redes sociais', 21), ('tecnologia', 'Tecnologia e informática', 22),
+  ('domesticos', 'Serviços domésticos e cuidado de pessoas', 23), ('outros', 'Outros comércios e serviços', 24)
+on conflict (slug) do nothing;
+
 update public.vagas_cidades set praca_id = (select id from public.vagas_cidades where slug = 'boa-vista-rr')
  where slug in ('mucajai-rr', 'canta-rr') and praca_id is null;
 
@@ -3887,6 +4203,7 @@ on conflict (cidade_id, slug) do nothing;
 
 alter table public.vagas_cidades enable row level security;
 alter table public.vagas_zonas enable row level security;
+alter table public.vagas_areas enable row level security;
 alter table public.vagas_contas enable row level security;
 alter table public.vagas_consentimentos enable row level security;
 alter table public.vagas_pessoas enable row level security;
@@ -3923,6 +4240,9 @@ drop policy if exists vagas_zonas_aut on public.vagas_zonas;
 create policy vagas_zonas_aut on public.vagas_zonas for select to authenticated
   using ((ativa and cidade_id in (select c.id from public.vagas_cidades c where c.status in ('ativa', 'lista_espera')))
          or (select public.e_admin()) or cidade_id in (select public.vagas_ids_minhas_cidades()));
+
+drop policy if exists vagas_areas_ver on public.vagas_areas;
+create policy vagas_areas_ver on public.vagas_areas for select to anon, authenticated using (ativa);
 
 drop policy if exists vagas_contas_dono on public.vagas_contas;
 create policy vagas_contas_dono on public.vagas_contas for select to authenticated
@@ -3975,7 +4295,7 @@ do $$
 declare
   papel text;
   t text;
-  tabelas text[] := array['vagas_cidades', 'vagas_zonas', 'vagas_contas', 'vagas_consentimentos', 'vagas_pessoas', 'vagas_pessoa_contato',
+  tabelas text[] := array['vagas_cidades', 'vagas_zonas', 'vagas_areas', 'vagas_contas', 'vagas_consentimentos', 'vagas_pessoas', 'vagas_pessoa_contato',
     'vagas_experiencias', 'vagas_empresas', 'vagas_empresa_membros', 'vagas_anuncios', 'vagas_pulos', 'vagas_candidaturas', 'vagas_conversas',
     'vagas_mensagens', 'vagas_denuncias', 'vagas_moderacao', 'vagas_operadores', 'vagas_lista_espera', 'vagas_acessos_contato', 'vagas_limites',
     'vagas_referencia_convites', 'vagas_referencias', 'vagas_referencia_historico', 'vagas_anuncio_vistas'];
@@ -3988,10 +4308,10 @@ begin
     if exists (select 1 from pg_roles where rolname = 'service_role') then execute format('grant all on public.%I to service_role', t); end if;
   end loop;
   if exists (select 1 from pg_roles where rolname = 'anon') then
-    grant select on public.vagas_cidades, public.vagas_zonas to anon;
+    grant select on public.vagas_cidades, public.vagas_zonas, public.vagas_areas to anon;
   end if;
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
-    grant select on public.vagas_cidades, public.vagas_zonas, public.vagas_contas, public.vagas_consentimentos, public.vagas_pessoas,
+    grant select on public.vagas_cidades, public.vagas_zonas, public.vagas_areas, public.vagas_contas, public.vagas_consentimentos, public.vagas_pessoas,
       public.vagas_pessoa_contato, public.vagas_experiencias, public.vagas_pulos, public.vagas_empresas, public.vagas_empresa_membros,
       public.vagas_anuncios, public.vagas_denuncias, public.vagas_moderacao, public.vagas_operadores, public.vagas_acessos_contato to authenticated;
   end if;
@@ -4004,8 +4324,8 @@ declare
   papel text;
   f record;
   publicas text[] := array['vagas_cidades_publicas', 'vagas_anuncios_publicos', 'vagas_anuncio_publico', 'vagas_lista_espera_entrar',
-    'vagas_denunciar', 'vagas_referencias_publicas', 'vagas_anuncio_vista'];
-  servico text[] := array['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar', 'vagas_conta_quem'];
+    'vagas_denunciar', 'vagas_referencias_publicas', 'vagas_anuncio_vista', 'vagas_areas_publicas'];
+  servico text[] := array['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar', 'vagas_conta_quem', 'vagas_conta_foto'];
 begin
   foreach papel in array array['anon', 'authenticated'] loop
     if exists (select 1 from pg_roles where rolname = papel) then
@@ -4031,6 +4351,35 @@ begin
       execute format('grant execute on function %s to anon', f.assinatura);
     end if;
   end loop;
+end $$;
+
+-- Storage: bucket PRIVADO 'vagas-fotos' (≤ 1 MB; jpg, png, webp). A pessoa grava, troca, lê e apaga só o próprio
+-- <user_id>/foto.jpg; ninguém mais lê direto (a empresa recebe URL assinada curta pela Edge Function, depois do Combinou).
+-- Só roda onde existe o Storage do Supabase.
+do $$
+begin
+  if to_regclass('storage.buckets') is null or to_regclass('storage.objects') is null then return; end if;
+  if exists (select 1 from information_schema.columns where table_schema = 'storage' and table_name = 'buckets' and column_name = 'allowed_mime_types') then
+    execute $q$insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+      values ('vagas-fotos', 'vagas-fotos', false, 1048576, array['image/jpeg', 'image/png', 'image/webp'])
+      on conflict (id) do update set public = false, file_size_limit = 1048576, allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp']$q$;
+  else
+    execute $q$insert into storage.buckets (id, name, public) values ('vagas-fotos', 'vagas-fotos', false)
+      on conflict (id) do update set public = false$q$;
+  end if;
+  execute 'drop policy if exists vagas_fotos_gravar on storage.objects';
+  execute $q$create policy vagas_fotos_gravar on storage.objects for insert to authenticated
+    with check (bucket_id = 'vagas-fotos' and name = (select auth.uid())::text || '/foto.jpg' and (select public.vagas_sou_pessoa()))$q$;
+  execute 'drop policy if exists vagas_fotos_trocar on storage.objects';
+  execute $q$create policy vagas_fotos_trocar on storage.objects for update to authenticated
+    using (bucket_id = 'vagas-fotos' and name = (select auth.uid())::text || '/foto.jpg')
+    with check (bucket_id = 'vagas-fotos' and name = (select auth.uid())::text || '/foto.jpg' and (select public.vagas_sou_pessoa()))$q$;
+  execute 'drop policy if exists vagas_fotos_ver_propria on storage.objects';
+  execute $q$create policy vagas_fotos_ver_propria on storage.objects for select to authenticated
+    using (bucket_id = 'vagas-fotos' and name = (select auth.uid())::text || '/foto.jpg')$q$;
+  execute 'drop policy if exists vagas_fotos_apagar on storage.objects';
+  execute $q$create policy vagas_fotos_apagar on storage.objects for delete to authenticated
+    using (bucket_id = 'vagas-fotos' and name = (select auth.uid())::text || '/foto.jpg')$q$;
 end $$;
 
 -- -----------------------------------------------------------------------------

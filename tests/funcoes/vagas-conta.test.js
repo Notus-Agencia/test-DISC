@@ -20,6 +20,9 @@ function preparar(op) {
   const chamadasLimite = [];
   const links = [];
   const excluidos = [];
+  const fotosPedidas = [];
+  const assinadas = [];
+  const removidos = [];
   let n = 0;
   (op.usuarios || []).forEach((u) => { usuarios.push(u); if (u.conta) contas[u.id] = u.conta; if (u.operador) operadores[u.id] = u.operador; });
   const db = {
@@ -44,7 +47,15 @@ function preparar(op) {
     async quem(userId) {
       return { ok: true, admin: admins.has(userId), conta: contas[userId] ? { tipo: contas[userId].tipo, status: 'ativa' } : null,
         operador: operadores[userId] || [] };
+    },
+    async foto(userId, candidatura) {
+      fotosPedidas.push({ userId, candidatura });
+      return op.foto ? op.foto(userId, candidatura) : { ok: false, erro: 'Sem foto.', semFoto: true };
     }
+  };
+  const storage = {
+    async assinar(bucket, caminho, segundos) { assinadas.push({ bucket, caminho, segundos }); return 'https://p.supabase.co/storage/v1/object/sign/' + bucket + '/' + caminho + '?token=t'; },
+    async remover(bucket, caminhos) { removidos.push({ bucket, caminhos }); }
   };
   const auth = {
     async criarUsuario(u) {
@@ -80,8 +91,8 @@ function preparar(op) {
     throw new Error('teste: chamada externa inesperada para ' + url);
   }
   const env = Object.assign({ VAGAS_SITE_URL: SITE + '/', RESEND_API_KEY: 're_teste', VAGAS_EMAIL_REMETENTE: 'Vagas sem Caos <vagas@gestaosemcaos.com.br>' }, op.env);
-  const base = { env, fetch, db, auth, aleatorio: () => 'senha-aleatoria-' + (n + 1) };
-  return { base, usuarios, contas, operadores, links, enviados, captchas, chamadasLimite, excluidos };
+  const base = { env, fetch, db, auth, storage, aleatorio: () => 'senha-aleatoria-' + (n + 1) };
+  return { base, usuarios, contas, operadores, links, enviados, captchas, chamadasLimite, excluidos, fotosPedidas, assinadas, removidos };
 }
 
 async function chamar(base, corpo, op) {
@@ -240,6 +251,27 @@ test('excluir: só com JWT e "EXCLUIR"; conta que também é do painel DISC não
     { ok: false, erro: 'Esta conta também acessa o painel DISC. Fale com a Gestão sem Caos para excluir.' });
   assert.deepEqual((await chamar(w.base, { acao: 'excluir', confirmar: 'EXCLUIR' }, { jwt: 'jwt-p' })).json, { ok: true, excluida: true });
   assert.deepEqual(w.excluidos, ['p']);
+  assert.deepEqual(w.removidos, [{ bucket: 'vagas-fotos', caminhos: ['p/foto.jpg'] }], 'a foto sai junto com a conta');
+});
+
+test('foto: só com JWT; o banco decide (vagas_conta_foto); URL assinada de 5 minutos só quando ele deixa', async () => {
+  const pode = (u, c) => (u === 'emp' && c === '11111111-2222-3333-4444-555555555555') || (u === 'p' && c === null)
+    ? { ok: true, caminho: 'p/foto.jpg' } : { ok: false, erro: 'A foto só aparece depois do Combinou.', semCombinou: true };
+  const w = preparar({ jwts: { 'jwt-emp': 'emp', 'jwt-outra': 'outra', 'jwt-p': 'p' }, foto: pode });
+  assert.deepEqual((await chamar(w.base, { acao: 'foto', candidatura: '11111111-2222-3333-4444-555555555555' })).json,
+    { ok: false, erro: 'Sessão expirada. Entre de novo.', sessaoExpirada: true });
+  assert.deepEqual((await chamar(w.base, { acao: 'foto', candidatura: 'x' }, { jwt: 'jwt-emp' })).json, { ok: false, erro: 'Candidatura não encontrada.' });
+  assert.deepEqual((await chamar(w.base, { acao: 'foto', candidatura: '11111111-2222-3333-4444-555555555555' }, { jwt: 'jwt-outra' })).json,
+    { ok: false, erro: 'A foto só aparece depois do Combinou.', semCombinou: true });
+  assert.equal(w.assinadas.length, 0, 'nada assinado sem o sim do banco');
+  const r = (await chamar(w.base, { acao: 'foto', candidatura: '11111111-2222-3333-4444-555555555555' }, { jwt: 'jwt-emp' })).json;
+  assert.equal(r.ok, true);
+  assert.equal(r.url, 'https://p.supabase.co/storage/v1/object/sign/vagas-fotos/p/foto.jpg?token=t');
+  assert.ok(Date.parse(r.expiraEm) > Date.now());
+  assert.deepEqual(w.assinadas, [{ bucket: 'vagas-fotos', caminho: 'p/foto.jpg', segundos: 300 }]);
+  assert.equal((await chamar(w.base, { acao: 'foto' }, { jwt: 'jwt-p' })).json.ok, true, 'a própria foto');
+  assert.deepEqual(w.fotosPedidas.map((x) => [x.userId, x.candidatura]), [['outra', '11111111-2222-3333-4444-555555555555'],
+    ['emp', '11111111-2222-3333-4444-555555555555'], ['p', null]]);
 });
 
 test('HTTP: CORS só do site do Vagas e localhost, OPTIONS, método, corpo, ação desconhecida e erro interno sem detalhes', async () => {
@@ -285,6 +317,12 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
         deleteUser: async (id) => { chamadas.push(['deleteUser', id]); return { error: null }; }
       },
       getUser: async (jwt) => ({ data: { user: jwt === 'ok' ? { id: 'u9', email: 'x@y.com' } : null }, error: null })
+    },
+    storage: {
+      from: (bucket) => ({
+        createSignedUrl: async (caminho, seg) => { chamadas.push(['assinar', bucket, caminho, seg]); return { data: { signedUrl: 'https://u' }, error: null }; },
+        remove: async (caminhos) => { chamadas.push(['remover', bucket, caminhos]); return { data: [], error: null }; }
+      })
     }
   };
   const b = criarBaseVagasConta(() => sbFalso, (n) => ({ SUPABASE_URL: 'https://p.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'k' }[n] || ''));
@@ -297,8 +335,13 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
   assert.deepEqual(await b.auth.usuarioDoToken('ok'), { id: 'u9', email: 'x@y.com' });
   assert.equal(await b.auth.usuarioDoToken('ruim'), null);
   await b.auth.excluirUsuario('u1');
+  await b.db.foto('u1', null);
+  assert.equal(await b.storage.assinar('vagas-fotos', 'u1/foto.jpg', 300), 'https://u');
+  await b.storage.remover('vagas-fotos', ['u1/foto.jpg']);
   assert.deepEqual(chamadas.map((c) => c[0] === 'rpc' ? c[1] : c[0]), ['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar',
-    'vagas_conta_quem', 'createUser', 'generateLink', 'deleteUser']);
+    'vagas_conta_quem', 'createUser', 'generateLink', 'deleteUser', 'vagas_conta_foto', 'assinar', 'remover']);
+  assert.deepEqual(chamadas[7][2], { p_user: 'u1', p_candidatura: null });
+  assert.deepEqual(chamadas[8], ['assinar', 'vagas-fotos', 'u1/foto.jpg', 300]);
   assert.deepEqual(chamadas[0][2], { p_acao: 'cadastrar', p_cf: '1.2.3.4', p_xff: '', p_email: 'a@b.com', p_ator: null });
   assert.deepEqual(chamadas[4][1], { email: 'a@b.com', password: 's', email_confirm: false, app_metadata: { produto: 'vagas', tipo: 'pessoa' }, user_metadata: {} });
   assert.deepEqual(chamadas[5][1], { type: 'invite', email: 'a@b.com' });

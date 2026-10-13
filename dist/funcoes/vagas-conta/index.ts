@@ -526,7 +526,11 @@ async function registrarEnvio(db, r) {
 //       Cadastro assistido: a conta nasce PENDENTE e só vale quando a pessoa confirma pelo link (é o consentimento dela).
 //       O link vai só para o e-mail da pessoa (nunca para quem fez o cadastro).
 //   operador (JWT da equipe) {email, cidade, papel:'operador'|'moderador'} -> convite de operação para a cidade.
-//   excluir (JWT) {confirmar:'EXCLUIR'} -> apaga a conta e tudo dela (LGPD). Conta que também acessa o painel DISC: recusa.
+//   excluir (JWT) {confirmar:'EXCLUIR'} -> apaga a conta e tudo dela (LGPD), inclusive a foto do Storage. Conta que também
+//       acessa o painel DISC: recusa.
+//   foto (JWT) {candidatura?} -> {ok, url, expiraEm}: URL assinada de 5 minutos da foto OPCIONAL da pessoa (bucket privado
+//       'vagas-fotos', <user_id>/foto.jpg). Sem candidatura = a própria foto (pessoa). Com candidatura = só membro da empresa
+//       daquela candidatura, depois do Combinou e sem corte de acesso (quem confere é public.vagas_conta_foto, no banco).
 // Link do e-mail: <VAGAS_SITE_URL>/entrar.html?token_hash=<hash>&type=invite|recovery (gerado com auth.admin.generateLink,
 // no domínio do site; o antivírus que "abre" o link antes da pessoa não o gasta, porque a tela só confere no clique).
 // Limites (banco, public.vagas_conta_limite): por origem (cf-connecting-ip e x-forwarded-for), por e-mail, por quem age e total.
@@ -544,6 +548,8 @@ const VAGAS_MSG_EMAIL_INVALIDO = 'E-mail inválido.';
 const VAGAS_MSG_TERMOS = 'Para criar a conta, aceite os termos de uso e o aviso de privacidade.';
 const VAGAS_MSG_TIPO = 'Escolha se a conta é para procurar emprego ou para uma empresa.';
 const VAGAS_MSG_JA_EXISTE = 'Este e-mail já tem conta. A pessoa pode entrar ou usar "Esqueci minha senha".';
+const VAGAS_BUCKET_FOTOS = 'vagas-fotos';
+const VAGAS_FOTO_SEGUNDOS = 300;
 const VAGAS_LIMITE_CORPO = 4000;
 const VAGAS_RODAPE = 'Vagas sem Caos · uma ferramenta da Gestão sem Caos. Nunca pague para se candidatar: se alguém pedir em nosso nome, é golpe.';
 
@@ -786,8 +792,23 @@ async function acaoVagasExcluir(base, corpo, origem, quem) {
   if (corpo.confirmar !== 'EXCLUIR') return erro('Para excluir, digite EXCLUIR.');
   const lim = await base.db.limite('excluir', origem.cf, origem.xff, '', quem.id);
   if (!lim || lim.ok !== true) return lim || erro(MSG_ERRO_INTERNO);
+  // A foto do Storage sai antes (o Auth não apaga usuário dono de arquivo; e a foto é dado pessoal).
+  if (base.storage) await base.storage.remover(VAGAS_BUCKET_FOTOS, [quem.id + '/foto.jpg']);
   await base.auth.excluirUsuario(quem.id);
   return { ok: true, excluida: true };
+}
+
+const UUID_VAGAS = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** URL assinada curta da foto: o banco decide se pode (vagas_conta_foto); aqui só se assina o caminho que ele devolver. */
+async function acaoVagasFoto(base, corpo, origem, quem) {
+  if (!quem) return erro('Sessão expirada. Entre de novo.', { sessaoExpirada: true });
+  const cand = String(corpo.candidatura || '').trim();
+  if (cand && !UUID_VAGAS.test(cand)) return erro('Candidatura não encontrada.');
+  const r = await base.db.foto(quem.id, cand || null);
+  if (!r || r.ok !== true) return r || erro(MSG_ERRO_INTERNO);
+  const url = await base.storage.assinar(VAGAS_BUCKET_FOTOS, r.caminho, VAGAS_FOTO_SEGUNDOS);
+  return { ok: true, url, expiraEm: new Date(Date.now() + VAGAS_FOTO_SEGUNDOS * 1000).toISOString() };
 }
 
 /** Banco (service role) e Auth (admin) reais, a partir do supabase-js. */
@@ -808,7 +829,19 @@ function criarBaseVagasConta(createClient, getEnv, extras) {
       limite: (acao, cf, xff, email, ator) => rpc('vagas_conta_limite', { p_acao: acao, p_cf: cf || '', p_xff: xff || '', p_email: email || '', p_ator: ator || null }),
       consultar: (email) => rpc('vagas_conta_consultar', { p_email: email }),
       registrar: (userId, dados) => rpc('vagas_conta_registrar', { p_user: userId, p_dados: dados }),
-      quem: (userId) => rpc('vagas_conta_quem', { p_user: userId })
+      quem: (userId) => rpc('vagas_conta_quem', { p_user: userId }),
+      foto: (userId, candidatura) => rpc('vagas_conta_foto', { p_user: userId, p_candidatura: candidatura || null })
+    },
+    storage: {
+      async assinar(bucket, caminho, segundos) {
+        const { data, error } = await sb.storage.from(bucket).createSignedUrl(caminho, segundos);
+        if (error || !data || !data.signedUrl) throw new Error('Storage: ' + String((error && error.message) || 'sem URL').substring(0, 160));
+        return data.signedUrl;
+      },
+      async remover(bucket, caminhos) {
+        const { error } = await sb.storage.from(bucket).remove(caminhos);
+        if (error) throw new Error('Storage: ' + String(error.message || 'falha ao apagar').substring(0, 160));
+      }
     },
     auth: {
       async criarUsuario(u) {
@@ -876,6 +909,7 @@ async function atenderVagasConta(req, base) {
     else if (corpo.acao === 'assistido') r = await acaoVagasAssistido(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'operador') r = await acaoVagasOperador(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'excluir') r = await acaoVagasExcluir(base, corpo, origem, await quemChamaVagas(base, req));
+    else if (corpo.acao === 'foto') r = await acaoVagasFoto(base, corpo, origem, await quemChamaVagas(base, req));
     else r = erro('Ação desconhecida.');
     return vagasResponder(r, 200, cors);
   } catch (err) {

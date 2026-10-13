@@ -86,28 +86,63 @@ test('WhatsApp, e-mail, nomes', () => {
   assert.equal(R.iniciais('Mercado Bom Dia'), 'MB');
 });
 
-test('anúncio: salário obrigatório, diária com data/horário/valor nos próximos 7 dias, 7 a 60 dias no ar, termos proibidos', () => {
-  const base = { titulo: 'Atendente de loja', cargo: 'Atendente', modalidade: 'clt', descricao: 'Atendimento no balcão e organização de prateleiras.',
-    valorMinCentavos: 162100 };
-  assert.equal(R.lerAnuncio(base, '2026-10-13').ok, true);
-  assert.equal(R.lerAnuncio(Object.assign({}, base, { valorMinCentavos: null }), '2026-10-13').erro, 'Informe o salário ou a faixa salarial.');
-  assert.equal(R.lerAnuncio(Object.assign({}, base, { modalidade: 'estagio', valorMinCentavos: 0 }), '2026-10-13').erro, 'Informe o valor da bolsa.');
-  assert.equal(R.lerAnuncio(Object.assign({}, base, { valorMaxCentavos: 100000 }), '2026-10-13').erro, 'O valor máximo da faixa não pode ser menor que o mínimo.');
-  assert.equal(R.lerAnuncio(Object.assign({}, base, { diasNoAr: 90 }), '2026-10-13').erro, 'Escolha de 7 a 60 dias no ar.');
-  const diaria = Object.assign({}, base, { modalidade: 'diaria', valorMinCentavos: 12000, dataTrabalho: '2026-10-14', horaInicio: '07:00', horaFim: '16:00' });
-  const lida = R.lerAnuncio(diaria, '2026-10-13');
-  assert.deepEqual([lida.ok, lida.campos.valor.unidade, lida.campos.diaria], [true, 'dia', { data: '2026-10-14', inicio: '07:00', fim: '16:00' }]);
-  assert.equal(R.lerAnuncio(Object.assign({}, diaria, { horaFim: '' }), '2026-10-13').erro, 'Informe a data, o horário e o valor da diária.');
-  assert.equal(R.lerAnuncio(Object.assign({}, diaria, { dataTrabalho: '2026-10-12' }), '2026-10-13').erro, 'A data da diária já passou. Escolha outra data.');
-  assert.equal(R.lerAnuncio(Object.assign({}, diaria, { dataTrabalho: '2026-10-21' }), '2026-10-13').erro, 'A diária precisa ser para os próximos 7 dias.');
-  assert.match(R.lerAnuncio(Object.assign({}, base, { requisitos: 'Boa aparência' }), '2026-10-13').erro, /aparencia|aparência/i);
+test('anúncio "como produto": campos fechados (chaves do design), salário obrigatório, diária, estágio, termos proibidos', () => {
+  const base = { area: 'atendimento', funcao: 'Atendente de loja', modalidade: 'clt', turno: 'comercial', experiencia: 'nao_precisa',
+    descricao: 'Atendimento no balcão e organização de prateleiras da loja.', salarioDe: 162100 };
+  const lida = R.lerAnuncio(base, '2026-10-13');
+  assert.equal(lida.ok, true, lida.erro);
+  assert.deepEqual([lida.campos.titulo, lida.campos.escolaridade, lida.campos.inicio, lida.campos.valor.unidade], ['Atendente de loja', 'nao_exigida', 'imediato', 'mes']);
+  const e = (extra) => R.lerAnuncio(Object.assign({}, base, extra), '2026-10-13').erro;
+  assert.equal(e({ area: 'x' }), 'Escolha a área da vaga.');
+  assert.equal(e({ funcao: 'A' }), 'Informe a função (ex.: Atendente).');
+  assert.equal(e({ turno: 'madrugada' }), 'Escolha o turno da vaga.');
+  assert.equal(e({ experiencia: 'nenhuma' }), 'Escolha a experiência que a vaga pede.');
+  assert.equal(e({ escolaridade: 'nenhuma' }), 'Escolaridade mínima inválida.');
+  assert.equal(e({ requisitos: ['outro'] }), 'Escreva qual é o outro requisito.');
+  assert.equal(e({ selo: 'astrologia' }), 'Escolha um dos testes da plataforma ou "nenhum".');
+  assert.equal(e({ salarioDe: null }), 'Informe o salário ou a faixa salarial.');
+  assert.equal(e({ modalidade: 'estagio', salarioDe: 0 }), 'Informe o valor da bolsa.');
+  assert.equal(e({ modalidade: 'estagio', salarioDe: 80000 }), 'Informe as horas por dia do estágio (até 6).');
+  assert.equal(e({ salarioAte: 100000 }), 'O valor máximo da faixa não pode ser menor que o mínimo.');
+  assert.equal(e({ descricao: 'curta demais' }), 'Descreva a vaga em pelo menos 40 caracteres.');
+  assert.equal(e({ diasNoAr: 90 }), 'Escolha de 7 a 60 dias no ar.');
+  assert.equal(e({ inicio: 'data', inicioData: '2026-10-01' }), 'A data de início não pode estar no passado.');
+  const diaria = { modalidade: 'diaria', salarioDe: 12000, data: '2026-10-14', horaInicio: '07:00', horaFim: '16:00' };
+  const d = R.lerAnuncio(Object.assign({}, base, diaria), '2026-10-13');
+  assert.deepEqual([d.ok, d.campos.valor.unidade, d.campos.diaria, d.campos.prazoHoras, d.campos.inicioData],
+    [true, 'dia', { data: '2026-10-14', inicio: '07:00', fim: '16:00' }, 48, '2026-10-14']);
+  assert.equal(e(Object.assign({}, diaria, { horaFim: '' })), 'Informe a data, o horário e o valor da diária.');
+  assert.equal(e(Object.assign({}, diaria, { data: '2026-10-12' })), 'A data da diária já passou. Escolha outra data.');
+  assert.equal(e(Object.assign({}, diaria, { data: '2026-10-21' })), 'A diária precisa ser para os próximos 7 dias.');
+  assert.equal(e(Object.assign({}, diaria, { prazoHoras: 24 })), 'A diária fica no ar de 48 a 168 horas.');
+  // snake_case do design também vale; comissão e benefício andam juntos; "outro" entra com o texto.
+  const s = R.lerAnuncio(Object.assign({}, base, { salarioDe: undefined, salario_de: 150000, salario_ate: 180000, fim_de_semana: true, requisito_outro: 'Gostar de vender',
+    beneficios: ['saude', 'plano_saude'], comissao: true, selo: 'nenhum' }), '2026-10-13').campos;
+  assert.deepEqual([s.valor.minCentavos, s.valor.maxCentavos, s.fimDeSemana, s.requisitos, s.beneficios, s.selo],
+    [150000, 180000, true, ['outro'], ['saude', 'comissao'], null]);
+  assert.match(e({ descricao: 'Procuramos atendente de boa aparência para o balcão da loja.' }), /aparencia|aparência/i);
+  assert.match(e({ requisitoOutro: 'Ligar 95 99876-5432' }), /^Tire o telefone/);
+  // Listas iguais às do banco.
+  const lista = (nome) => /select array\[([^\]]+)\]/.exec(SQL.slice(SQL.indexOf('function vagas_interno.' + nome + '()')))[1].match(/'([a-z_0-9-]+)'/g).map((x) => x.slice(1, -1));
+  assert.deepEqual(lista('turnos_vaga'), R.TURNOS_VAGA.map((x) => x.id));
+  assert.deepEqual(lista('experiencias_vaga'), R.EXPERIENCIAS_VAGA.map((x) => x.id));
+  assert.deepEqual(lista('escolaridades_vaga'), R.ESCOLARIDADES_VAGA.map((x) => x.id));
+  assert.deepEqual(lista('requisitos_vaga'), R.REQUISITOS_VAGA.map((x) => x.id));
+  assert.deepEqual(lista('beneficios_vaga'), R.BENEFICIOS.map((x) => x.id));
+  assert.deepEqual(lista('testes_selo'), R.TESTES_SELO.map((x) => x.id));
+  const semente = /insert into public\.vagas_areas \(slug, nome, ordem\) values([\s\S]*?)on conflict/.exec(SQL)[1];
+  assert.deepEqual([...semente.matchAll(/\('([a-z-]+)', '([^']+)', (\d+)\)/g)].map((m) => [m[1], m[2]]), R.AREAS.map((x) => [x.id, x.rotulo]));
+  assert.equal(R.AREAS.length, 24);
 });
 
-test('pessoa: 18+, sem campos proibidos (idade, foto, gênero… não existem no resultado)', () => {
+test('pessoa: 18+, até 3 áreas, sem campos proibidos (idade, foto, gênero… não existem no resultado)', () => {
   const d = { maior18: true, cargos: ['Atendente'], escolaridade: 'medio', turnos: ['manha'], modalidades: ['clt'], nome: 'Maria Souza',
     whatsapp: '95 99123-4567', idade: 30, genero: 'x', foto: 'data:', estadoCivil: 'x', nacionalidade: 'x' };
   const r = R.lerPessoa(d, AGORA);
   assert.equal(r.ok, true);
+  assert.equal(r.campos.areas, null, 'sem a chave, não mexe nas áreas');
+  assert.deepEqual(R.lerPessoa(Object.assign({}, d, { areas: ['cozinha', 'x'] }), AGORA).campos.areas, ['cozinha']);
+  assert.equal(R.lerPessoa(Object.assign({}, d, { areas: ['caixa', 'cozinha', 'rh', 'saude'] }), AGORA).erro, 'Escolha até 3 áreas de interesse.');
   for (const k of ['idade', 'genero', 'foto', 'estadoCivil', 'nacionalidade']) assert.ok(!(k in r.campos), k);
   assert.equal(R.lerPessoa(Object.assign({}, d, { maior18: false }), AGORA).erro, 'Para se cadastrar é preciso ter 18 anos ou mais.');
 });

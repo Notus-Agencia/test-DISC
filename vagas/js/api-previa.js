@@ -136,31 +136,42 @@
         (a.modalidade !== 'diaria' || a.diaria.data >= hoje(c.fuso));
     }
     function expiraCalculada(a) {
-      if (a.modalidade === 'diaria') {
-        var fimDoDia = Date.parse(R.somarDias(a.diaria.data, 1) + 'T04:00:00Z');   // meia-noite em Boa Vista (UTC−4)
-        return Math.max(agora() + 48 * 3600000, Math.min(agora() + 7 * DIA, fimDoDia));
-      }
+      if (a.modalidade === 'diaria') return agora() + (a.prazoHoras || 48) * 3600000;
       return agora() + a.diasNoAr * DIA;
+    }
+    function areaJson(slug) {
+      var x = R.AREAS.filter(function (z) { return z.id === slug; })[0];
+      return { slug: slug, nome: x ? x.rotulo : slug };
+    }
+    function requisitosLista(a) {
+      var l = [];
+      R.REQUISITOS_VAGA.forEach(function (r) {
+        if (a.requisitos.indexOf(r.id) < 0) return;
+        if (r.id === 'outro') { if (a.requisitoOutro) l.push(a.requisitoOutro); } else l.push(r.rotulo);
+      });
+      return l;
     }
     function anuncioResumo(a, revelar) {
       var e = empresa(a.empresaId);
       var c = cidade(a.cidade);
       var conf = !!e.cnpjConferidoEm;
       return {
-        id: a.id, codigo: a.codigo, titulo: a.titulo, cargo: a.cargo, modalidade: a.modalidade, valor: clone(a.valor),
+        id: a.id, codigo: a.codigo, titulo: a.funcao, funcao: a.funcao, modalidade: a.modalidade, area: areaJson(a.area), turno: a.turno,
+        fimDeSemana: a.fimDeSemana, experiencia: a.experiencia, comissao: a.comissao, selo: a.selo || null, valor: clone(a.valor),
         cidade: { slug: c.slug, nome: c.nome }, zona: zonaJson(a.cidade, a.zona),
         empresa: a.confidencial && !revelar ? { nome: 'Empresa confidencial', iniciais: '', confidencial: true, conferida: conf }
           : { nome: e.nomeFantasia, iniciais: R.iniciais(e.nomeFantasia), confidencial: a.confidencial, conferida: conf },
         diaria: a.modalidade === 'diaria' ? clone(a.diaria) : null,
         paraHoje: a.modalidade === 'diaria' && a.diaria.data === hoje(c.fuso),
-        quantidade: a.quantidade, turnos: a.turnos.slice(), publicadoEm: iso(a.publicadoEm), expiraEm: iso(a.expiraEm)
+        quantidade: a.quantidade, publicadoEm: iso(a.publicadoEm), expiraEm: iso(a.expiraEm)
       };
     }
     function anuncioDetalhe(a, revelar) {
       var r = anuncioResumo(a, revelar);
       var e = empresa(a.empresaId);
-      r.descricao = a.descricao; r.requisitos = a.requisitos; r.beneficios = a.beneficios; r.escolaridadeMin = a.escolaridadeMin;
-      r.cnh = a.cnh.slice(); r.experienciaMinMeses = a.experienciaMinMeses;
+      r.descricao = a.descricao; r.requisitos = a.requisitos.slice(); r.requisitoOutro = a.requisitoOutro; r.requisitosLista = requisitosLista(a);
+      r.beneficios = a.beneficios.slice(); r.escolaridade = a.escolaridade; r.inicio = a.inicio; r.inicioData = a.inicioData || '';
+      r.horasDia = a.horasDia == null ? null : a.horasDia;
       r.empresa.setor = a.confidencial && !revelar ? '' : e.setor;
       r.empresa.descricao = a.confidencial && !revelar ? '' : e.descricao;
       return r;
@@ -169,7 +180,8 @@
       var r = anuncioDetalhe(a, true);
       var ks = st.candidaturas.filter(function (k) { return k.anuncioId === a.id; });
       var conta = function (s) { return ks.filter(function (k) { return k.status === s; }).length; };
-      return Object.assign(r, { empresaId: a.empresaId, confidencial: a.confidencial, diasNoAr: a.diasNoAr, status: a.status, statusMotivo: a.statusMotivo,
+      return Object.assign(r, { empresaId: a.empresaId, confidencial: a.confidencial, diasNoAr: a.diasNoAr, prazoHoras: a.prazoHoras == null ? null : a.prazoHoras,
+        status: a.status, statusMotivo: a.statusMotivo,
         noAr: noAr(a), expirado: a.expiraEm != null && a.expiraEm <= agora(), encerradoEm: iso(a.encerradoEm), criadoEm: iso(a.criadoEm),
         atualizadoEm: iso(a.atualizadoEm), candidaturas: { total: ks.filter(function (k) { return k.status !== 'retirada'; }).length, novas: conta('enviada'),
           conversar: conta('conversar'), combinou: conta('combinou'), contratada: conta('contratada') } });
@@ -221,12 +233,14 @@
       var ct = st.contatos[uid] || {};
       return { cidade: { slug: c.slug, nome: c.nome }, cidade2: c2 ? { slug: c2.slug, nome: c2.nome } : null, zona: zonaJson(p.cidade, p.zona),
         maior18: true, cargos: p.cargos.slice(), escolaridade: p.escolaridade, turnos: p.turnos.slice(), cnh: p.cnh.slice(),
-        modalidades: p.modalidades.slice(), pretensaoCentavos: p.pretensaoCentavos, cursos: p.cursos.slice(), sobre: p.sobre,
+        modalidades: p.modalidades.slice(), pretensaoCentavos: p.pretensaoCentavos, cursos: p.cursos.slice(), areas: (p.areas || []).slice(),
+        sobre: p.sobre, temFoto: temFoto(uid),
         nome: ct.nome || '', whatsapp: ct.whatsapp || '', email: ct.email || '',
         experiencias: experiencias(uid).map(function (x) { return { funcao: x.funcao, empregador: x.empregador, inicio: x.inicio, fim: x.fim || '', informal: x.informal }; }),
         bancoTalentosAte: iso(p.bancoAte), atualizadoEm: iso(p.atualizadoEm) };
     }
     function completo(uid) { return !!(st.pessoas[uid] && st.contatos[uid]); }
+    function temFoto(uid) { return !!(st.fotos && st.fotos[uid]); }
     function naoLidas(v, lado) {
       if (!v) return 0;
       var lida = lado === 'pessoa' ? v.lidaPessoaEm : v.lidaEmpresaEm;
@@ -252,30 +266,45 @@
     }
     function tocar(x) { x.atualizadoEm = agora(); }
 
-    function listarAnuncios(cids, filtro, pessoaId) {
+    // Filtros só sobre a VAGA (iguais a vagas_interno.listar_anuncios); nada de nota, selo, referência, idade ou sexo.
+    function listarAnuncios(cids, filtro, pessoaId, areasPadrao) {
       var f = obj(filtro);
       var lim = R.inteiro(f.limite); lim = Math.min(Math.max(lim == null ? 20 : lim, 1), 20);
       var zonas = typeof f.zona === 'string' ? [f.zona] : (Array.isArray(f.zona) ? f.zona : null);
       var mods = R.listaEnum(f.modalidade, R.MODALIDADES);
       var paraHoje = f.paraHoje === true;
       var busca = R.normalizar(txt(f.busca)).slice(0, 60);
-      var dep = /^(\d{4}-\d{2}-\d{2}T[\d:.]+Z)_([0-9a-f-]{36})$/.exec(txt(f.depois));
+      var areas, padrao = false;
+      if (Object.prototype.hasOwnProperty.call(f, 'areas')) areas = R.listaEnum(typeof f.areas === 'string' ? [f.areas] : f.areas, R.AREAS);
+      else { areas = (areasPadrao || []).slice(); padrao = areas.length > 0; }
+      var turnos = R.listaEnum(f.turno, R.TURNOS_VAGA);
+      var sal = R.inteiro(f.salarioMin);
+      var semExp = f.semExperiencia === true;
+      var soTotal = f.somenteTotal === true;
+      var dep = soTotal ? null : /^(\d{4}-\d{2}-\d{2}T[\d:.]+Z)_([0-9a-f-]{36})$/.exec(txt(f.depois));
+      var mult = { mes: 1, dia: 22, hora: 220 };
       var lista = st.anuncios.filter(function (a) {
         var c = cidade(a.cidade);
         if (cids.indexOf(a.cidade) < 0 || !noAr(a)) return false;
         if (zonas && zonas.indexOf(a.zona) < 0) return false;
         if (mods.length && mods.indexOf(a.modalidade) < 0) return false;
         if (paraHoje && !(a.modalidade === 'diaria' && a.diaria.data === hoje(c.fuso))) return false;
-        if (busca && R.normalizar(a.titulo + ' ' + a.cargo).indexOf(busca) < 0) return false;
+        if (areas.length && areas.indexOf(a.area) < 0) return false;
+        if (turnos.length && turnos.indexOf(a.turno) < 0) return false;
+        if (sal != null && (a.valor.maxCentavos != null ? a.valor.maxCentavos : a.valor.minCentavos) * (mult[a.valor.unidade] || 0) < sal) return false;
+        if (semExp && a.experiencia !== 'nao_precisa') return false;
+        if (busca && R.normalizar(a.funcao + ' ' + areaJson(a.area).nome).indexOf(busca) < 0) return false;
         if (pessoaId && (st.pulos.some(function (p) { return p.pessoaId === pessoaId && p.anuncioId === a.id; }) ||
           st.candidaturas.some(function (k) { return k.pessoaId === pessoaId && k.anuncioId === a.id; }))) return false;
         if (dep && (a.publicadoEm > Date.parse(dep[1]) || (a.publicadoEm === Date.parse(dep[1]) && a.id >= dep[2]))) return false;
         return true;
       }).sort(function (a, b) { return b.publicadoEm - a.publicadoEm || (a.id < b.id ? 1 : -1); });
+      if (soTotal) return { total: lista.length, areasAplicadas: areas, areasPadrao: padrao };
       var pagina = lista.slice(0, lim);
       var ult = pagina[pagina.length - 1];
       return { anuncios: pagina.map(function (a) { return anuncioResumo(a, false); }),
-        proximo: lista.length > lim && ult ? iso(ult.publicadoEm).replace(/\.(\d{3})Z$/, '.$1000Z') + '_' + ult.id : '' };
+        proximo: lista.length > lim && ult ? iso(ult.publicadoEm).replace(/\.(\d{3})Z$/, '.$1000Z') + '_' + ult.id : '',
+        areasAplicadas: areas, areasPadrao: padrao };
     }
 
     // ------------------------------------------------------------------------------------------------- RPCs
@@ -296,7 +325,8 @@
       if (c.status === 'pausada') return erro('As vagas desta cidade estão pausadas no momento.', { pausada: true });
       var cids = [c.slug];
       if (f.entorno !== false) st.cidades.forEach(function (x) { if (x.praca === c.slug && x.status === 'ativa') cids.push(x.slug); });
-      return ok(Object.assign({ cidade: { slug: c.slug, nome: c.nome } }, listarAnuncios(cids, f, null)));
+      var eu = st.sessao && st.pessoas[st.sessao];
+      return ok(Object.assign({ cidade: { slug: c.slug, nome: c.nome } }, listarAnuncios(cids, f, null, eu ? eu.areas : [])));
     };
 
     H.vagas_anuncio_publico = function (a) {
@@ -441,7 +471,7 @@
       st.consentimentos.push({ userId: st.sessao, tipo: 'privacidade', versao: v, aceito: true, em: agora() });
       var p = st.pessoas[st.sessao];
       if (Object.prototype.hasOwnProperty.call(d, 'bancoTalentos') && ct.tipo === 'pessoa') {
-        var ate = d.bancoTalentos === true ? agora() + 365 * DIA : null;
+        var ate = d.bancoTalentos === true ? agora() + 180 * DIA : null;
         st.consentimentos.push({ userId: st.sessao, tipo: 'banco_talentos', versao: v, aceito: d.bancoTalentos === true, ate: ate, em: agora() });
         if (p) p.bancoAte = ate;
       }
@@ -478,6 +508,7 @@
       var f = l.campos;
       st.pessoas[uid] = { cidade: c1.slug, cidade2: c2 ? c2.slug : null, zona: z.slug, cargos: f.cargos, escolaridade: f.escolaridade, turnos: f.turnos,
         cnh: f.cnh, modalidades: f.modalidades, pretensaoCentavos: f.pretensaoCentavos, cursos: f.cursos, sobre: f.sobre,
+        areas: f.areas ? f.areas : (antes && antes.areas ? antes.areas : []),
         bancoAte: antes ? antes.bancoAte : null, referenciasToken: antes ? antes.referenciasToken : null, criadoEm: antes ? antes.criadoEm : agora(), atualizadoEm: agora() };
       st.contatos[uid] = { nome: f.nome, whatsapp: f.whatsapp, email: f.email || R.normalizarEmail(usuario(uid).email) };
       st.experiencias = st.experiencias.filter(function (x) { return x.userId !== uid; });
@@ -491,7 +522,7 @@
       var p = st.pessoas[st.sessao];
       if (!p) return erro('Complete seu cadastro para ver as vagas.', { completar: true });
       var cids = [p.cidade].concat(p.cidade2 ? [p.cidade2] : []).filter(function (s) { var x = cidade(s); return x && x.status === 'ativa'; });
-      return ok(listarAnuncios(cids, a.p_filtro, st.sessao));
+      return ok(listarAnuncios(cids, a.p_filtro, st.sessao, p.areas || []));
     };
 
     H.vagas_quero = function (a) {
@@ -705,6 +736,44 @@
       }).sort(function (x, y) { return x.nomeFantasia.localeCompare(y.nomeFantasia); }) });
     };
 
+    // Grava a vaga (mesmas regras de vagas_anuncio_salvar / vagas_op_anuncio_salvar). -> {ok, an} | erro
+    function gravarAnuncio(d, e, an) {
+      var cid = an ? an.cidade : e.cidade;
+      if (txt(d.cidade).trim()) {
+        var cc = cidade(txt(d.cidade).trim().toLowerCase());
+        if (!cc || cc.status === 'rascunho') return erro('Cidade não encontrada.');
+        cid = cc.slug;
+      }
+      var cobj = cidade(cid);
+      var h = hoje(cobj.fuso);
+      var l = R.lerAnuncio(d, null);
+      if (!l.ok) return l;
+      var f = l.campos;
+      if (f.inicio === 'data' && f.modalidade !== 'diaria' && f.inicioData < h) return erro('A data de início não pode estar no passado.');
+      var z = null;
+      if (txt(d.zona).trim()) { z = zona(cid, txt(d.zona).trim().toLowerCase()); if (!z) return erro('Escolha uma zona da cidade da vaga.'); }
+      if ((!an || an.cidade !== cid) && cobj.status !== 'ativa') return erro(R.MSG.CIDADE_FECHADA);
+      if (f.confidencial && !e.cnpjConferidoEm) return erro('Só empresa com CNPJ conferido pela Gestão sem Caos pode anunciar como confidencial.');
+      if (f.modalidade === 'diaria' && (!an || !an.diaria || an.diaria.data !== f.diaria.data || an.modalidade !== 'diaria')) {
+        if (f.diaria.data < h) return erro('A data da diária já passou. Escolha outra data.');
+        if (f.diaria.data > R.somarDias(h, 7)) return erro('A diária precisa ser para os próximos 7 dias.');
+      }
+      if (!an && contar('anuncio_novo', e.id, DIA) > 30) return erro('Muitas vagas criadas hoje. Tente de novo amanhã.', { bloqueado: true });
+      var campos = { cidade: cid, zona: z ? z.slug : null, area: f.area, funcao: f.funcao, titulo: f.funcao, modalidade: f.modalidade,
+        descricao: f.descricao, turno: f.turno, fimDeSemana: f.fimDeSemana, comissao: f.comissao, inicio: f.inicio, inicioData: f.inicioData,
+        experiencia: f.experiencia, escolaridade: f.escolaridade, requisitos: f.requisitos, requisitoOutro: f.requisitoOutro, selo: f.selo,
+        beneficios: f.beneficios, horasDia: f.horasDia, prazoHoras: f.prazoHoras, quantidade: f.quantidade, valor: f.valor, diaria: f.diaria,
+        diasNoAr: f.diasNoAr, confidencial: f.confidencial };
+      if (!an) {
+        an = Object.assign({ id: novoId(), codigo: novoCodigo(), empresaId: e.id, status: 'rascunho', statusMotivo: '', publicadoEm: null, expiraEm: null,
+          encerradoEm: null, criadoPor: st.sessao, criadoEm: agora(), atualizadoEm: agora() }, campos);
+        st.anuncios.push(an);
+      } else {
+        Object.assign(an, campos); tocar(an);
+      }
+      return { ok: true, an: an };
+    }
+
     H.vagas_anuncio_salvar = function (a) {
       var c = contaAtual('empresa');
       if (!c.ok) return c;
@@ -720,40 +789,47 @@
       } else {
         e = empresa(txt(d.empresaId).trim());
         if (!e || !membro(e.id)) return erro('Empresa não encontrada.');
-        if (contar('anuncio_novo', e.id, DIA) > 30) return erro('Muitas vagas criadas hoje. Tente de novo amanhã.', { bloqueado: true });
       }
       if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.');
-      var cid = an ? an.cidade : e.cidade;
-      if (txt(d.cidade).trim()) {
-        var cc = cidade(txt(d.cidade).trim().toLowerCase());
-        if (!cc || cc.status === 'rascunho') return erro('Cidade não encontrada.');
-        cid = cc.slug;
-      }
-      var cobj = cidade(cid);
-      var l = R.lerAnuncio(d, null);
-      if (!l.ok && l.erro !== 'Informe a data, o horário e o valor da diária.') return l;
-      if (!l.ok) return l;
-      var z = null;
-      if (txt(d.zona).trim()) { z = zona(cid, txt(d.zona).trim().toLowerCase()); if (!z) return erro('Escolha uma zona da cidade da vaga.'); }
-      var f = l.campos;
-      if ((!an || an.cidade !== cid) && cobj.status !== 'ativa') return erro(R.MSG.CIDADE_FECHADA);
-      if (f.confidencial && !e.cnpjConferidoEm) return erro('Só empresa com CNPJ conferido pela Gestão sem Caos pode anunciar como confidencial.');
-      if (f.modalidade === 'diaria' && (!an || !an.diaria || an.diaria.data !== f.diaria.data || an.modalidade !== 'diaria')) {
-        var h = hoje(cobj.fuso);
-        if (f.diaria.data < h) return erro('A data da diária já passou. Escolha outra data.');
-        if (f.diaria.data > R.somarDias(h, 7)) return erro('A diária precisa ser para os próximos 7 dias.');
-      }
-      var campos = { cidade: cid, zona: z ? z.slug : null, titulo: f.titulo, cargo: f.cargo, modalidade: f.modalidade, descricao: f.descricao,
-        requisitos: f.requisitos, beneficios: f.beneficios, turnos: f.turnos, escolaridadeMin: f.escolaridadeMin, cnh: f.cnh,
-        experienciaMinMeses: f.experienciaMinMeses, quantidade: f.quantidade, valor: f.valor, diaria: f.diaria, diasNoAr: f.diasNoAr, confidencial: f.confidencial };
-      if (!an) {
-        an = Object.assign({ id: novoId(), codigo: novoCodigo(), empresaId: e.id, status: 'rascunho', statusMotivo: '', publicadoEm: null, expiraEm: null,
-          encerradoEm: null, criadoPor: st.sessao, criadoEm: agora(), atualizadoEm: agora() }, campos);
-        st.anuncios.push(an);
+      var g = gravarAnuncio(d, e, an);
+      if (!g.ok) return g;
+      return ok({ anuncio: anuncioEmpresa(g.an) });
+    };
+
+    // Vaga assistida pela operação da cidade (mesmos campos; publicar:true já publica, sem a revisão).
+    H.vagas_op_anuncio_salvar = function (a) {
+      if (!st.sessao) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
+      var d = obj(a.p_dados);
+      var an = null;
+      var e;
+      if (txt(d.id).trim()) {
+        an = anuncio(txt(d.id).trim());
+        if (!an) return erro('Vaga não encontrada.');
+        e = empresa(an.empresaId);
       } else {
-        Object.assign(an, campos); tocar(an);
+        e = empresa(txt(d.empresaId).trim());
+        if (!e) return erro('Empresa não encontrada.');
       }
+      var papel = papelCidade(e.cidade);
+      if (!papel) return erro(an ? 'Vaga não encontrada.' : 'Empresa não encontrada.');
+      if (papel === 'moderador') return erro(R.MSG.SEM_PERMISSAO);
+      if (an && an.status === 'removido') return erro('Esta vaga foi removida pela moderação e não pode ser editada.');
+      if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.');
+      if (d.publicar === true && e.status !== 'ativa' && (!an || (an.status !== 'publicado' && an.status !== 'pausado'))) {
+        return erro('Aprove a empresa antes de publicar a vaga.');
+      }
+      var g = gravarAnuncio(d, e, an);
+      if (!g.ok) return g;
+      an = g.an;
+      if (d.publicar === true && an.status !== 'publicado' && an.status !== 'pausado') {
+        an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = an.publicadoEm || agora(); an.expiraEm = expiraCalculada(an); an.encerradoEm = null;
+      }
+      registrar(an.cidade, papel, 'anuncio_assistido', 'anuncio', an.id, '', { publicado: an.status === 'publicado' });
       return ok({ anuncio: anuncioEmpresa(an) });
+    };
+
+    H.vagas_areas_publicas = function () {
+      return ok({ areas: R.AREAS.map(function (x) { return { slug: x.id, nome: x.rotulo }; }) });
     };
 
     H.vagas_anuncio_publicar = function (a) {
@@ -892,7 +968,8 @@
       var e = empresa(k.empresaId);
       var ct = st.contatos[k.pessoaId];
       st.acessos.push({ candidaturaId: k.id, pessoaId: k.pessoaId, empresaId: e.id, empresaNome: e.nomeFantasia, anuncioTitulo: an.titulo, userId: st.sessao, em: agora() });
-      return ok({ pessoa: { nome: ct.nome, whatsapp: ct.whatsapp, email: ct.email, sobre: st.pessoas[k.pessoaId].sobre, cartao: cartao(k.pessoaId, k.empresaId),
+      return ok({ pessoa: { nome: ct.nome, whatsapp: ct.whatsapp, email: ct.email, sobre: st.pessoas[k.pessoaId].sobre, temFoto: temFoto(k.pessoaId),
+        cartao: cartao(k.pessoaId, k.empresaId),
         referencias: st.referencias.filter(function (r) { return r.pessoaId === k.pessoaId && referenciaParaEmpresa(r, [k.empresaId]); })
           .sort(function (x, y) { return (y.fim || '9999-99').localeCompare(x.fim || '9999-99') || y.inicio.localeCompare(x.inicio); })
           .map(function (r) { return referenciaJson(r, false); }),
@@ -1472,6 +1549,8 @@
           termosVersao: ct.termosVersao || '', termosAceitosEm: iso(ct.termosAceitosEm) },
         consentimentos: st.consentimentos.filter(function (x) { return x.userId === uid; }).map(function (x) { return { tipo: x.tipo, versao: x.versao, aceito: x.aceito, ate: iso(x.ate), em: iso(x.em) }; }),
         pessoa: pessoaJson(uid),
+        testes: null,
+        foto: temFoto(uid) ? 'Você tem uma foto guardada (só as empresas com Combinou a veem). Baixe pelo seu perfil.' : '',
         candidaturas: st.candidaturas.filter(function (k) { return k.pessoaId === uid; }).map(candidaturaPessoa),
         mensagensEnviadas: st.mensagens.filter(function (m) { return m.autorUser === uid; }).map(function (m) { return { em: iso(m.criadoEm), texto: m.texto }; }),
         acessosAoContato: st.acessos.filter(function (x) { return x.pessoaId === uid; }).map(function (x) { return { empresa: x.empresaNome, anuncio: x.anuncioTitulo, em: iso(x.em) }; }),
@@ -1492,6 +1571,9 @@
       st.links[t] = { email: email, tipo: tipo, em: agora() };
       return { tokenHash: t, tipo: tipo, caminho: 'entrar.html?token_hash=' + t + '&type=' + tipo };
     }
+    // Foto de mentira da prévia (silhueta neutra em SVG) quando a tela não manda a imagem.
+    var FOTO_PREVIA = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#eaeef4"/>' +
+      '<circle cx="32" cy="24" r="12" fill="#8a97ab"/><rect x="14" y="40" width="36" height="20" rx="10" fill="#8a97ab"/></svg>');
     function neutro(email, link) { return ok({ enviado: true, mensagem: MSG_ENVIADO, email: mascarar(email), linkPrevia: link ? link.caminho : '' }); }
     function criarUsuario(email, tipo, extra) {
       var u = Object.assign({ id: novoId(), email: email, senha: null, confirmada: false, admin: false, app: { produto: 'vagas', tipo: tipo } }, extra || {});
@@ -1585,10 +1667,44 @@
         st.membros = st.membros.filter(function (m) { return m.userId !== uid; });
         st.operadores = st.operadores.filter(function (o) { return o.userId !== uid; });
         st.consentimentos = st.consentimentos.filter(function (x) { return x.userId !== uid; });
+        if (st.fotos) delete st.fotos[uid];
         delete st.pessoas[uid]; delete st.contatos[uid]; delete st.contas[uid];
         st.usuarios = st.usuarios.filter(function (u) { return u.id !== uid; });
         st.sessao = null;
         return ok({ excluida: true });
+      },
+      // Foto opcional (na prévia, guardada como data URL neste navegador; no real, bucket privado do Storage).
+      enviarFoto: function (arq) {
+        arq = obj(arq);
+        var uid = st.sessao;
+        if (!uid) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
+        if (!st.contas[uid] || st.contas[uid].tipo !== 'pessoa') return erro(R.MSG.SO_PESSOA);
+        if (['image/jpeg', 'image/png', 'image/webp'].indexOf(txt(arq.tipo)) < 0 || !(Number(arq.tamanho) > 0) || Number(arq.tamanho) > 1048576) {
+          return erro('A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.');
+        }
+        st.fotos = st.fotos || {};
+        st.fotos[uid] = /^data:image\//.test(txt(arq.dataUrl)) && txt(arq.dataUrl).length <= 1500000 ? txt(arq.dataUrl) : FOTO_PREVIA;
+        return ok({ temFoto: true });
+      },
+      apagarFoto: function () {
+        var uid = st.sessao;
+        if (!uid) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
+        if (st.fotos) delete st.fotos[uid];
+        return ok({ temFoto: false });
+      },
+      fotoUrl: function (candId) {
+        var uid = st.sessao;
+        if (!uid) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
+        var dono = uid;
+        if (candId) {
+          var k = candidatura(txt(candId));
+          if (!k || !st.membros.some(function (m) { return m.empresaId === k.empresaId && m.userId === uid && m.ativo; })) return erro('Candidatura não encontrada.');
+          if (k.status !== 'combinou' && k.status !== 'contratada') return erro('A foto só aparece depois do Combinou.', { semCombinou: true });
+          if (k.contatoCortadoEm != null) return erro('A pessoa deixou de compartilhar o contato com a sua empresa.', { contatoCortado: true });
+          if (!temFoto(k.pessoaId)) return erro('Esta pessoa não pôs foto.', { semFoto: true });
+          dono = k.pessoaId;
+        } else if (!temFoto(uid)) return erro('Sem foto.', { semFoto: true });
+        return ok({ url: st.fotos[dono], expiraEm: iso(agora() + 300000) });
       },
       entrar: function (email, senha) {
         var u = usuarioPorEmail(R.normalizarEmail(email));
@@ -1628,7 +1744,7 @@
     function estadoVazio() {
       return { versao: 2, seq: 0, sessao: null, cidades: [], zonas: [], usuarios: [], contas: {}, consentimentos: [], pessoas: {}, contatos: {}, experiencias: [],
         empresas: [], membros: [], anuncios: [], pulos: [], candidaturas: [], conversas: [], mensagens: [], denuncias: [], moderacao: [], operadores: [],
-        listaEspera: [], acessos: [], referencias: [], convitesReferencia: [], referenciaHistorico: [], selos: {}, limites: {}, links: {} };
+        listaEspera: [], acessos: [], referencias: [], convitesReferencia: [], referenciaHistorico: [], selos: {}, fotos: {}, limites: {}, links: {} };
     }
 
     function semear() {
@@ -1705,6 +1821,8 @@
           turnos: i % 3 === 0 ? ['manha', 'tarde'] : (i % 3 === 1 ? ['tarde', 'noite'] : ['manha', 'fim_de_semana']), cnh: i % 4 === 0 ? ['B'] : (i % 7 === 0 ? ['A', 'B'] : []),
           modalidades: i % 2 === 0 ? ['clt', 'diaria'] : ['clt', 'temporario', 'freelancer'], pretensaoCentavos: i % 5 === 0 ? null : 160000 + (i % 6) * 10000,
           cursos: i % 3 === 0 ? ['Atendimento ao cliente'] : [], sobre: 'Pessoa fictícia da prévia.', bancoAte: null, referenciasToken: null,
+          areas: [['caixa', 'atendimento'], ['logistica'], ['atendimento'], ['vendas-loja', 'atendimento'], ['administrativo'], ['cozinha'],
+            ['limpeza'], ['construcao'], ['hotelaria', 'cozinha'], ['motorista', 'logistica']][i % 10],
           criadoEm: t0 - (30 - i % 20) * DIA, atualizadoEm: t0 - (10 - i % 10) * DIA };
         st.contatos[u.id] = { nome: nome, whatsapp: '55959' + ('8' + ('0000000' + (1000000 + i * 137)).slice(-7)), email: u.email };
         st.experiencias.push({ id: novoId(), userId: u.id, funcao: cg[0], empregador: 'Empregador fictício ' + (i + 1), inicio: '2023-0' + (1 + i % 9), fim: i % 3 === 0 ? null : '2025-0' + (1 + i % 9), informal: i % 4 === 3, ordem: 1 });
@@ -1729,25 +1847,36 @@
         [13, 'Montador(a) de eventos', 'Montador', 'freelancer', 25000, null, 'cidade-toda'], [14, 'Lavador(a) de carros', 'Lavador', 'clt', 162100, null, 'zona-oeste'],
         [0, 'Vendedor(a) interno(a)', 'Vendedor', 'clt', 180000, 220000, 'centro-leste', null, true], [6, 'Assistente de faturamento', 'Auxiliar administrativo', 'clt', 200000, null, 'centro-leste', null, true],
         [10, 'Supervisor(a) de rota', 'Supervisor', 'clt', 300000, 350000, 'zona-norte', null, true], [12, 'Banhista e tosador(a)', 'Banhista', 'clt', 162100, null, 'zona-oeste']];
+      var AREA_DO_CARGO = { Caixa: 'caixa', Repositor: 'logistica', 'Auxiliar de depósito': 'logistica', Padeiro: 'cozinha',
+        Balconista: 'vendas-loja', 'Estagiário(a)': 'atendimento', Vendedor: 'vendas-loja', Ajudante: 'logistica', Estoquista: 'logistica',
+        Cozinheiro: 'cozinha', 'Garçom': 'hotelaria', Recepcionista: 'atendimento', 'Auxiliar administrativo': 'administrativo',
+        'Ajudante de obra': 'construcao', 'Serviços gerais': 'limpeza', Camareira: 'hotelaria', Motorista: 'motorista', Conferente: 'logistica',
+        Montador: 'hotelaria', Lavador: 'outros', Supervisor: 'vendas-externas', Banhista: 'outros' };
       var anuncios = VAGAS.map(function (v, i) {
         var e = empresas[v[0]];
         var diaria = v[3] === 'diaria' ? { data: R.somarDias(hojeBV, v[7]), inicio: '07:00', fim: '16:00' } : null;
-        var a = { id: novoId(), codigo: '', empresaId: e.id, cidade: e.cidade, zona: v[6], titulo: v[1], cargo: v[2], modalidade: v[3],
-          descricao: 'Vaga fictícia da prévia: ' + v[1].toLowerCase() + ' em ' + e.nomeFantasia + '. Rotina de trabalho explicada na conversa.',
-          requisitos: v[3] === 'estagio' ? 'Estar matriculado(a) em curso técnico ou superior.' : 'Experiência é bem-vinda; ensinamos a rotina.',
-          beneficios: v[3] === 'clt' ? 'Vale-transporte e vale-alimentação.' : '', turnos: i % 2 ? ['manha', 'tarde'] : ['tarde', 'noite'],
-          escolaridadeMin: v[3] === 'estagio' ? 'medio' : null, cnh: v[2] === 'Motorista' ? ['B'] : [], experienciaMinMeses: 0, quantidade: 1 + i % 3,
+        var vende = v[2] === 'Vendedor' || v[2] === 'Supervisor';
+        var ben = v[3] === 'clt' ? ['vt', 'refeicao'] : [];
+        if (vende) ben.push('comissao');
+        var a = { id: novoId(), codigo: '', empresaId: e.id, cidade: e.cidade, zona: v[6], area: AREA_DO_CARGO[v[2]] || 'outros', funcao: v[1],
+          titulo: v[1], modalidade: v[3], descricao: 'Vaga fictícia da prévia: ' + v[1].toLowerCase() + ' em ' + e.nomeFantasia + '. Rotina de trabalho explicada na conversa.',
+          turno: ['comercial', 'manha', 'tarde', 'escala', 'noite', 'a_combinar'][i % 6], fimDeSemana: i % 4 === 1, comissao: vende,
+          inicio: diaria ? 'data' : 'imediato', inicioData: diaria ? diaria.data : null, experiencia: ['nao_precisa', 'ate_1', '1_a_3'][i % 3],
+          escolaridade: v[3] === 'estagio' || i % 4 === 0 ? 'medio' : 'nao_exigida',
+          requisitos: v[2] === 'Motorista' ? ['cnh_b'] : (i % 5 === 0 ? ['disponibilidade'] : []), requisitoOutro: '',
+          selo: v[2] === 'Caixa' ? 'caixa' : (v[2] === 'Recepcionista' ? 'atendimento' : null), beneficios: ben,
+          horasDia: v[3] === 'estagio' ? 6 : null, prazoHoras: diaria ? 48 : null, quantidade: 1 + i % 3,
           valor: { minCentavos: v[4], maxCentavos: v[5], unidade: v[3] === 'diaria' ? 'dia' : (v[3] === 'freelancer' ? 'servico' : 'mes') },
           diaria: diaria, diasNoAr: 30, confidencial: !!v[8], status: 'publicado', statusMotivo: '', publicadoEm: t0 - (i % 10) * DIA - i * 60000, expiraEm: null,
           encerradoEm: null, criadoPor: null, criadoEm: t0 - (i % 10) * DIA - i * 60000 - 3600000, atualizadoEm: t0 - (i % 10) * DIA };
         a.codigo = novoCodigo();
         st.anuncios.push(a);
         if (v[0] === 12) { a.status = 'em_revisao'; a.publicadoEm = null; }
-        if (a.status === 'publicado') a.expiraEm = a.modalidade === 'diaria' ? Math.max(t0 + 48 * 3600000, Date.parse(R.somarDias(diaria.data, 1) + 'T04:00:00Z')) : a.publicadoEm + 30 * DIA;
+        if (a.status === 'publicado') a.expiraEm = a.modalidade === 'diaria' ? t0 + 48 * 3600000 : a.publicadoEm + 30 * DIA;
         return a;
       });
       anuncios[25].status = 'em_revisao'; anuncios[25].publicadoEm = null; anuncios[25].expiraEm = null;
-      var rascunho = Object.assign(clone(anuncios[1]), { id: novoId(), codigo: novoCodigo(), titulo: 'Fiscal de loja', cargo: 'Fiscal', status: 'rascunho', publicadoEm: null, expiraEm: null });
+      var rascunho = Object.assign(clone(anuncios[1]), { id: novoId(), codigo: novoCodigo(), titulo: 'Fiscal de loja', funcao: 'Fiscal de loja', area: 'seguranca', status: 'rascunho', publicadoEm: null, expiraEm: null });
       st.anuncios.push(rascunho);
 
       // Candidaturas, conversas e um Combinou.

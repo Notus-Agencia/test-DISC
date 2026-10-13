@@ -48,6 +48,15 @@ const PREPARO_SUPABASE = `
   $$;
   grant usage on schema auth to anon, authenticated, service_role;
   grant execute on function auth.uid() to anon, authenticated, service_role;
+  create schema storage;
+  create table storage.buckets (id text primary key, name text not null, public boolean default false, file_size_limit bigint,
+    allowed_mime_types text[], owner uuid);
+  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text,
+    owner uuid, metadata jsonb, created_at timestamptz default now(), unique (bucket_id, name));
+  alter table storage.objects enable row level security;
+  grant usage on schema storage to anon, authenticated, service_role;
+  grant select, insert, update, delete on storage.objects to anon, authenticated, service_role;
+  grant select on storage.buckets to anon, authenticated, service_role;
 `;
 
 let pg = null;
@@ -163,10 +172,10 @@ function pessoaDados(extra) {
 
 function anuncioDados(empresaId, extra) {
   return Object.assign({
-    empresaId, titulo: 'Atendente de loja', cargo: 'Atendente', modalidade: 'clt',
+    empresaId, area: 'atendimento', funcao: 'Atendente de loja', modalidade: 'clt',
     descricao: 'Atendimento no balcão, organização de prateleiras e apoio no caixa. Escala 6x1 com folga no domingo.',
-    requisitos: 'Ensino médio completo.', beneficios: 'Vale-transporte e vale-alimentação.', turnos: ['manha', 'tarde'],
-    escolaridadeMin: 'medio', quantidade: 2, valorMinCentavos: 162100, valorMaxCentavos: 190000, cidade: 'boa-vista-rr', zona: 'centro-leste'
+    turno: 'comercial', experiencia: 'nao_precisa', escolaridade: 'medio', requisitos: ['disponibilidade'], beneficios: ['vt', 'refeicao'],
+    quantidade: 2, salarioDe: 162100, salarioAte: 190000, cidade: 'boa-vista-rr', zona: 'centro-leste'
   }, extra || {});
 }
 
@@ -241,7 +250,7 @@ test('guardas: RLS em todas as tabelas vagas_*, nenhuma política "true", nada d
     assert.notEqual(String(p.qual).trim(), 'true', p.policyname);
     assert.equal(p.cmd, 'SELECT', p.policyname + ': só políticas de leitura');
     if (String(p.roles).includes('authenticated')) {
-      assert.match(String(p.qual), /auth\.uid\(\)|e_admin\(\)|vagas_ids_minhas_|status/, p.policyname);
+      assert.match(String(p.qual), /auth\.uid\(\)|e_admin\(\)|vagas_ids_minhas_|status|ativa/, p.policyname);
     }
   }
   // Nenhum privilégio de escrita para anon/authenticated em tabela do Vagas.
@@ -255,7 +264,7 @@ test('guardas: RLS em todas as tabelas vagas_*, nenhuma política "true", nada d
   const leituraAnon = (await db.query(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind = 'r' and c.relname like 'vagas\\_%' and has_table_privilege('anon', c.oid, 'SELECT') order by 1`)).rows
     .map((x) => x.relname);
-  assert.deepEqual(leituraAnon, ['vagas_cidades', 'vagas_zonas']);
+  assert.deepEqual(leituraAnon, ['vagas_areas', 'vagas_cidades', 'vagas_zonas']);
   for (const t of ['vagas_candidaturas', 'vagas_conversas', 'vagas_mensagens', 'vagas_lista_espera', 'vagas_limites', 'vagas_referencias',
     'vagas_referencia_convites', 'vagas_referencia_historico', 'vagas_anuncio_vistas']) {
     assert.equal((await db.query(`select has_table_privilege('authenticated', 'public.${t}', 'SELECT') as x`)).rows[0].x, false, t);
@@ -264,9 +273,9 @@ test('guardas: RLS em todas as tabelas vagas_*, nenhuma política "true", nada d
   const anonVagas = (await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname like 'vagas\\_%' and has_function_privilege('anon', p.oid, 'execute') order by 1`)).rows
     .map((x) => x.proname);
-  assert.deepEqual(anonVagas, ['vagas_anuncio_publico', 'vagas_anuncio_vista', 'vagas_anuncios_publicos', 'vagas_cidades_publicas',
-    'vagas_denunciar', 'vagas_lista_espera_entrar', 'vagas_referencias_publicas']);
-  for (const fn of ['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar', 'vagas_conta_quem']) {
+  assert.deepEqual(anonVagas, ['vagas_anuncio_publico', 'vagas_anuncio_vista', 'vagas_anuncios_publicos', 'vagas_areas_publicas',
+    'vagas_cidades_publicas', 'vagas_denunciar', 'vagas_lista_espera_entrar', 'vagas_referencias_publicas']);
+  for (const fn of ['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar', 'vagas_conta_quem', 'vagas_conta_foto']) {
     const r = (await db.query(`select bool_or(has_function_privilege('authenticated', p.oid, 'execute')) a, bool_or(has_function_privilege('anon', p.oid, 'execute')) b,
       bool_and(has_function_privilege('service_role', p.oid, 'execute')) s from pg_proc p where p.proname = $1`, [fn])).rows[0];
     assert.deepEqual(r, { a: false, b: false, s: true }, fn);
@@ -482,20 +491,51 @@ test('empresa: CNPJ (numérico e alfanumérico) conferido, em análise até a op
   assert.equal(ed.empresa.cnpj, '11222333000181');
 });
 
-test('anúncio: salário obrigatório, diária com data/horário/valor e no ar de 48 h a 7 dias, termos recusados pelo banco', async () => {
+test('anúncio: salário obrigatório, diária com data/horário/valor, campos fechados, termos recusados pelo banco', async () => {
   exigirBanco();
   const salvar = (extra) => de(S.empresaConta)('vagas_anuncio_salvar', anuncioDados(S.empresa, extra));
-  erro(await salvar({ valorMinCentavos: null, valorMaxCentavos: null }), 'Informe o salário ou a faixa salarial.');
-  erro(await salvar({ modalidade: 'estagio', valorMinCentavos: 0 }), 'Informe o valor da bolsa.');
-  erro(await salvar({ modalidade: 'freelancer', valorMinCentavos: undefined }), 'Informe o valor do serviço.');
-  erro(await salvar({ valorMaxCentavos: 100000 }), 'O valor máximo da faixa não pode ser menor que o mínimo.');
-  erro(await salvar({ modalidade: 'diaria', valorMinCentavos: 12000, valorMaxCentavos: null }), 'Informe a data, o horário e o valor da diária.');
-  erro(await salvar({ modalidade: 'diaria', valorMinCentavos: 12000, valorMaxCentavos: null, dataTrabalho: await hojeBV(-1), horaInicio: '08:00', horaFim: '17:00' }),
+  erro(await salvar({ salarioDe: null, salarioAte: null }), 'Informe o salário ou a faixa salarial.');
+  erro(await salvar({ modalidade: 'estagio', salarioDe: 0, horasDia: 6 }), 'Informe o valor da bolsa.');
+  erro(await salvar({ modalidade: 'freelancer', salarioDe: undefined }), 'Informe o valor do serviço.');
+  erro(await salvar({ salarioAte: 100000 }), 'O valor máximo da faixa não pode ser menor que o mínimo.');
+  erro(await salvar({ modalidade: 'diaria', salarioDe: 12000, salarioAte: null }), 'Informe a data, o horário e o valor da diária.');
+  erro(await salvar({ modalidade: 'diaria', salarioDe: 12000, salarioAte: null, data: await hojeBV(-1), horaInicio: '08:00', horaFim: '17:00' }),
     'A data da diária já passou. Escolha outra data.');
-  erro(await salvar({ modalidade: 'diaria', valorMinCentavos: 12000, valorMaxCentavos: null, dataTrabalho: await hojeBV(8), horaInicio: '08:00', horaFim: '17:00' }),
+  erro(await salvar({ modalidade: 'diaria', salarioDe: 12000, salarioAte: null, data: await hojeBV(8), horaInicio: '08:00', horaFim: '17:00' }),
     'A diária precisa ser para os próximos 7 dias.');
-  erro(await salvar({ titulo: 'Oi' }), 'Informe o título da vaga (ex.: Atendente de loja).');
-  erro(await salvar({ descricao: 'curta' }), 'Descreva a vaga em pelo menos 20 caracteres.');
+  erro(await salvar({ modalidade: 'diaria', salarioDe: 12000, salarioAte: null, data: await hojeBV(1), horaInicio: '08:00', horaFim: '17:00',
+    prazoHoras: 200 }), 'A diária fica no ar de 48 a 168 horas.');
+  erro(await salvar({ funcao: 'A' }), 'Informe a função (ex.: Atendente).');
+  erro(await salvar({ descricao: 'curta demais para uma vaga' }), 'Descreva a vaga em pelo menos 40 caracteres.');
+  // Campos fechados (vaga "como produto"): área, turno, experiência, escolaridade, requisitos, selo, início, estágio.
+  erro(await salvar({ area: 'astronauta' }), 'Escolha a área da vaga.');
+  erro(await salvar({ turno: 'madrugada' }), 'Escolha o turno da vaga.');
+  erro(await salvar({ experiencia: undefined }), 'Escolha a experiência que a vaga pede.');
+  erro(await salvar({ escolaridade: 'doutorado' }), 'Escolaridade mínima inválida.');
+  erro(await salvar({ requisitos: ['outro'] }), 'Escreva qual é o outro requisito.');
+  erro(await salvar({ requisitoOutro: 'x'.repeat(81) }), 'O requisito "Outro" pode ter até 80 caracteres.');
+  erro(await salvar({ requisitoOutro: 'Ligar no 95 99876-5432' }), /^Tire o telefone/);
+  erro(await salvar({ selo: 'astrologia' }), 'Escolha um dos testes da plataforma ou "nenhum".');
+  erro(await salvar({ modalidade: 'estagio', salarioDe: 80000 }), 'Informe as horas por dia do estágio (até 6).');
+  erro(await salvar({ modalidade: 'estagio', salarioDe: 80000, horasDia: 8 }), 'Informe as horas por dia do estágio (até 6).');
+  erro(await salvar({ inicio: 'data' }), 'Informe a data de início (AAAA-MM-DD).');
+  erro(await salvar({ inicio: 'data', inicioData: await hojeBV(-2) }), 'A data de início não pode estar no passado.');
+  // Chaves em snake_case (as do design) também valem; comissão e benefício andam juntos; título = função.
+  const snake = ok(await de(S.empresaConta)('vagas_anuncio_salvar', { empresaId: S.empresa, area: 'vendas-loja', funcao: 'Vendedor(a) de balcão',
+    modalidade: 'clt', descricao: 'Atender clientes no balcão, montar pedidos e organizar a vitrine da loja.', turno: 'comercial',
+    fim_de_semana: true, comissao: true, inicio: 'data', inicio_data: await hojeBV(10), experiencia: 'ate_1', escolaridade: 'nao_exigida',
+    requisitos: ['cnh_b', 'curso_registro'], requisito_outro: 'Gostar de vender', selo: 'vendas', beneficios: ['saude', 'plano_saude'],
+    salario_de: 162100, salario_ate: 200000, cidade: 'boa-vista-rr', zona: 'centro-leste' })).anuncio;
+  assert.deepEqual([snake.titulo, snake.funcao, snake.area, snake.turno, snake.fimDeSemana, snake.comissao, snake.inicio, snake.inicioData,
+    snake.experiencia, snake.escolaridade, snake.selo], ['Vendedor(a) de balcão', 'Vendedor(a) de balcão', { slug: 'vendas-loja', nome: 'Vendas em loja e balcão' },
+    'comercial', true, true, 'data', await hojeBV(10), 'ate_1', 'nao_exigida', 'vendas']);
+  assert.deepEqual(snake.requisitos, ['cnh_b', 'curso_registro', 'outro']);
+  assert.equal(snake.requisitoOutro, 'Gostar de vender');
+  assert.deepEqual(snake.requisitosLista, ['CNH categoria B', 'Curso com registro na área', 'Gostar de vender']);
+  assert.deepEqual(snake.beneficios, ['saude', 'comissao'], 'benefício fora da lista é ignorado; comissão entra junto');
+  assert.deepEqual(snake.valor, { minCentavos: 162100, maxCentavos: 200000, unidade: 'mes' });
+  const est = ok(await salvar({ modalidade: 'estagio', salarioDe: 80000, horasDia: 6, funcao: 'Estagiário(a) de atendimento' })).anuncio;
+  assert.deepEqual([est.horasDia, est.valor.unidade, est.escolaridade], [6, 'mes', 'medio']);
   erro(await salvar({ zona: 'cidade-toda' }), 'Escolha uma zona da cidade da vaga.');
   // Filtro de textos (banco): discriminação, golpe, link, telefone, e-mail.
   const casos = [
@@ -510,17 +550,16 @@ test('anúncio: salário obrigatório, diária com data/horário/valor e no ar d
     ['Vaga somente para brasileiros com experiência no caixa.', /Tire o trecho "somente para brasileiros"/]
   ];
   for (const [texto, padrao] of casos) erro(await salvar({ descricao: texto }), padrao);
-  erro(await salvar({ titulo: 'Atendente (ligue 95 99876-5432)' }), /^Tire o telefone/);
+  erro(await salvar({ funcao: 'Atendente 95 99876-5432' }), /^Tire o telefone/);
   // Confidencial só com CNPJ conferido: a empresa 2 ainda está em análise.
   erro(await de(S.empresaConta)('vagas_anuncio_salvar', anuncioDados(S.empresa2, { confidencial: true })),
     'Só empresa com CNPJ conferido pela Gestão sem Caos pode anunciar como confidencial.');
   // Mesmo por fora da RPC (service_role), o gatilho recusa.
-  await rejeita(como('service_role', null, `insert into public.vagas_anuncios (empresa_id, cidade_id, titulo, cargo, modalidade, descricao,
-    valor_min_centavos, valor_unidade) select $1, c.id, 'Vaga teste', 'Caixa', 'clt', 'Trabalhar no caixa com boa aparência sempre.', 150000, 'mes'
-    from public.vagas_cidades c where c.slug = 'boa-vista-rr'`, [S.empresa]), /aparencia/);
-  await rejeita(como('service_role', null, `insert into public.vagas_anuncios (empresa_id, cidade_id, titulo, cargo, modalidade, descricao,
-    valor_min_centavos, valor_unidade) select $1, c.id, 'Vaga teste', 'Caixa', 'clt', 'Trabalhar no caixa atendendo clientes do bairro.', 0, 'mes'
-    from public.vagas_cidades c where c.slug = 'boa-vista-rr'`, [S.empresa]), /valor_min_centavos/);
+  const direto = (descricao, valor) => como('service_role', null, `insert into public.vagas_anuncios (empresa_id, cidade_id, area, funcao,
+    modalidade, descricao, turno, experiencia, valor_min_centavos, valor_unidade) select $1, c.id, 'caixa', 'Caixa', 'clt', $2, 'comercial',
+    'nao_precisa', $3, 'mes' from public.vagas_cidades c where c.slug = 'boa-vista-rr'`, [S.empresa, descricao, valor]);
+  await rejeita(direto('Trabalhar no caixa com boa aparência sempre.', 150000), /aparencia/);
+  await rejeita(direto('Trabalhar no caixa atendendo clientes do bairro.', 0), /valor_min_centavos/);
   // Textos aceitos (sem falso positivo nas palavras comuns).
   const okA = ok(await salvar({ descricao: 'Auxiliar de depósito: carregar peso, conferir notas. Plano de saúde e Vale-transporte. Salário R$ 1.621,00.' }));
   assert.equal(okA.anuncio.status, 'rascunho');
@@ -541,20 +580,20 @@ test('publicar: empresa nova passa pela revisão nas 3 primeiras; depois vai dir
   assert.equal(ap.anuncio.noAr, true);
   const dias = (await db.query(`select round(extract(epoch from expira_em - publicado_em) / 86400) d from public.vagas_anuncios where id = $1`, [S.anuncio1])).rows[0].d;
   assert.equal(Number(dias), 30);
-  const a2 = await criar({ titulo: 'Caixa de supermercado', cargo: 'Caixa', zona: 'zona-oeste' });
-  const a3 = await criar({ titulo: 'Repositor', cargo: 'Repositor', modalidade: 'temporario', diasNoAr: 15 });
+  const a2 = await criar({ funcao: 'Caixa de supermercado', area: 'caixa', zona: 'zona-oeste' });
+  const a3 = await criar({ funcao: 'Repositor', area: 'logistica', modalidade: 'temporario', diasNoAr: 15 });
   for (const id of [a2, a3]) {
     assert.equal(ok(await de(S.empresaConta)('vagas_anuncio_publicar', id)).emRevisao, true);
     ok(await de(S.operador)('vagas_op_anuncio_decidir', id, 'publicar', ''));
   }
-  // A 4ª vai direto ao ar. Diária para hoje: no ar entre 48 h e 7 dias, aparece em "para hoje".
-  const diaria = await criar({ titulo: 'Diária: ajudante de mudança', cargo: 'Ajudante', modalidade: 'diaria', valorMinCentavos: 12000,
-    valorMaxCentavos: null, dataTrabalho: await hojeBV(0), horaInicio: '07:00', horaFim: '16:00', zona: 'zona-sul' });
+  // A 4ª vai direto ao ar. Diária para hoje: no ar pelo prazo escolhido (48 h a 7 dias), aparece em "para hoje".
+  const diaria = await criar({ funcao: 'Diária: ajudante de mudança', area: 'logistica', modalidade: 'diaria', salarioDe: 12000,
+    salarioAte: null, data: await hojeBV(0), horaInicio: '07:00', horaFim: '16:00', zona: 'zona-sul', prazoHoras: 72 });
   const p4 = ok(await de(S.empresaConta)('vagas_anuncio_publicar', diaria));
   assert.equal(p4.emRevisao, false);
   assert.equal(p4.anuncio.status, 'publicado');
   const horas = (await db.query(`select extract(epoch from expira_em - publicado_em) / 3600 h from public.vagas_anuncios where id = $1`, [diaria])).rows[0].h;
-  assert.ok(Number(horas) >= 47.9 && Number(horas) <= 168.1, String(horas));
+  assert.ok(Math.abs(Number(horas) - 72) < 0.1, String(horas));
   const lista = ok(await anon('vagas_anuncios_publicos', { cidade: 'boa-vista-rr' }));
   assert.equal(lista.anuncios.length, 4);
   assert.equal(lista.anuncios[0].id, diaria, 'mais novo primeiro (sem ranking)');
@@ -577,7 +616,9 @@ test('publicar: empresa nova passa pela revisão nas 3 primeiras; depois vai dir
   const cod = lista.anuncios[1].codigo;
   const pag = ok(await anon('vagas_anuncio_publico', cod.toLowerCase()));
   assert.equal(pag.anuncio.codigo, cod);
-  assert.ok(pag.anuncio.descricao.length > 20);
+  assert.ok(pag.anuncio.descricao.length >= 40);
+  for (const k of ['area', 'funcao', 'titulo', 'turno', 'fimDeSemana', 'experiencia', 'escolaridade', 'requisitos', 'requisitoOutro',
+    'requisitosLista', 'beneficios', 'comissao', 'inicio', 'inicioData', 'selo', 'quantidade', 'valor']) assert.ok(k in pag.anuncio, k);
   assert.ok(!('empresaId' in pag.anuncio) && !('criadoPor' in pag.anuncio) && !('status' in pag.anuncio));
   erro(await anon('vagas_anuncio_publico', 'ZZZZZZ'), 'Vaga não encontrada ou já encerrada.');
   // Pausar some do mural; retomar volta; empresa suspensa some tudo; cidade pausada também.
@@ -594,7 +635,7 @@ test('publicar: empresa nova passa pela revisão nas 3 primeiras; depois vai dir
 
 test('vaga confidencial: nome escondido no mural e na candidatura até a pessoa aceitar conversar (ver a empresa)', async () => {
   exigirBanco();
-  const conf = ok(await de(S.empresaConta)('vagas_anuncio_salvar', anuncioDados(S.empresa, { titulo: 'Vendedor(a) interno(a)', cargo: 'Vendedor',
+  const conf = ok(await de(S.empresaConta)('vagas_anuncio_salvar', anuncioDados(S.empresa, { funcao: 'Vendedor(a) interno(a)', area: 'vendas-loja',
     confidencial: true, zona: 'centro-leste' }))).anuncio.id;
   ok(await de(S.empresaConta)('vagas_anuncio_publicar', conf));
   const lista = ok(await anon('vagas_anuncios_publicos', { cidade: 'boa-vista-rr' }));
@@ -812,7 +853,7 @@ test('referência profissional: só empresa verificada, só depois do aceite; no
   const contaB = await contaVagas('empresa');
   const empB = ok(await de(contaB)('vagas_empresa_cadastrar', { cnpj: cnpjCom('445566770001'), razaoSocial: 'Farmácia Central Ltda', cidade: 'boa-vista-rr' })).empresa.id;
   ok(await de(S.operador)('vagas_op_empresa_decidir', empB, 'aprovar', ''));
-  const anB = ok(await de(contaB)('vagas_anuncio_salvar', anuncioDados(empB, { titulo: 'Balconista de farmácia', cargo: 'Balconista' }))).anuncio.id;
+  const anB = ok(await de(contaB)('vagas_anuncio_salvar', anuncioDados(empB, { funcao: 'Balconista de farmácia', area: 'saude' }))).anuncio.id;
   ok(await de(contaB)('vagas_anuncio_publicar', anB));
   ok(await de(S.operador)('vagas_op_anuncio_decidir', anB, 'publicar', ''));
   const kB = ok(await de(S.pessoa)('vagas_quero', anB)).candidatura.id;
@@ -1011,6 +1052,124 @@ test('números da vaga (só totais) e "cortar acesso": a pessoa tira o contato d
   assert.equal(viu.podeCortar, true);
   assert.equal(viu.cortadoEm, '');
   assert.equal(ok(await de(S.pessoa)('vagas_combinar', S.cand)).duplicado, true);
+});
+
+test('áreas e filtros da lista (vaga como produto): áreas OU, turno, salário mensal, sem experiência, só o total; nada de filtro por dado da pessoa', async () => {
+  exigirBanco();
+  // As 24 áreas, leitura pública.
+  const areas = ok(await anon('vagas_areas_publicas')).areas;
+  assert.equal(areas.length, 24);
+  assert.deepEqual(areas.map((a) => a.slug), REGRAS.AREAS.map((a) => a.id));
+  assert.deepEqual(areas.map((a) => a.nome), REGRAS.AREAS.map((a) => a.rotulo));
+  assert.equal((await como('anon', null, `select count(*)::int n from public.vagas_areas`)).rows[0].n, 24);
+  // Empresa de Cantá; vaga assistida pela equipe (mesmos campos; publicar direto).
+  const conta = await contaVagas('empresa');
+  const emp = ok(await de(conta)('vagas_empresa_cadastrar', { cnpj: cnpjCom('778899000001'), razaoSocial: 'Comercial Cantá Ltda', cidade: 'canta-rr' })).empresa.id;
+  const base = { empresaId: emp, cidade: 'canta-rr', zona: 'cidade-toda', modalidade: 'clt', experiencia: 'nao_precisa',
+    descricao: 'Vaga de teste do filtro em Cantá, com rotina explicada na conversa pela empresa.' };
+  const opSalvar = (dados) => de(S.adminDisc)('vagas_op_anuncio_salvar', Object.assign({}, base, dados));
+  erro(await opSalvar({ area: 'caixa', funcao: 'Caixa', turno: 'manha', salarioDe: 150000, publicar: true }), 'Aprove a empresa antes de publicar a vaga.');
+  erro(await de(S.moderador)('vagas_op_anuncio_salvar', Object.assign({}, base, { area: 'caixa', funcao: 'Caixa', turno: 'manha', salarioDe: 150000 })),
+    'Empresa não encontrada.', 'moderador de outra cidade');
+  erro(await de(S.operador)('vagas_op_anuncio_salvar', Object.assign({}, base, { area: 'caixa', funcao: 'Caixa', turno: 'manha', salarioDe: 150000 })),
+    'Empresa não encontrada.', 'operador de Boa Vista não age em Cantá');
+  ok(await de(S.adminDisc)('vagas_op_empresa_decidir', emp, 'aprovar', 'CNPJ conferido'));
+  const v1 = ok(await opSalvar({ area: 'caixa', funcao: 'Operador(a) de caixa', turno: 'manha', salarioDe: 150000, salarioAte: 200000, selo: 'caixa',
+    publicar: true })).anuncio;
+  assert.equal(v1.status, 'publicado');
+  assert.equal(v1.selo, 'caixa');
+  const v2 = ok(await opSalvar({ area: 'cozinha', funcao: 'Cozinheiro(a)', turno: 'noite', salarioDe: 180000, experiencia: '1_a_3', publicar: true })).anuncio;
+  const v3 = ok(await opSalvar({ area: 'logistica', funcao: 'Ajudante de carga', turno: 'comercial', modalidade: 'diaria', salarioDe: 10000,
+    data: await hojeBV(0), horaInicio: '07:00', horaFim: '16:00', publicar: true })).anuncio;
+  const v4 = ok(await opSalvar({ area: 'vendas-loja', funcao: 'Vendedor(a) por serviço', turno: 'a_combinar', modalidade: 'freelancer',
+    salarioDe: 500000, experiencia: 'ate_1', publicar: true })).anuncio;
+  const v5 = ok(await opSalvar({ area: 'caixa', funcao: 'Estagiário(a) de caixa', turno: 'tarde', modalidade: 'estagio', salarioDe: 80000,
+    horasDia: 6, publicar: true })).anuncio;
+  const log = (await db.query(`select papel, acao from public.vagas_moderacao where alvo_id = $1`, [v1.id])).rows;
+  assert.deepEqual(log, [{ papel: 'admin', acao: 'anuncio_assistido' }]);
+  const ids = async (f) => ok(await anon('vagas_anuncios_publicos', Object.assign({ cidade: 'canta-rr', entorno: false }, f))).anuncios.map((a) => a.id).sort();
+  const so = (...vs) => vs.map((v) => v.id).sort();
+  assert.deepEqual(await ids({}), so(v1, v2, v3, v4, v5));
+  assert.deepEqual(await ids({ areas: ['caixa'] }), so(v1, v5));
+  assert.deepEqual(await ids({ areas: ['caixa', 'cozinha'] }), so(v1, v2, v5), 'áreas: OU entre elas');
+  assert.deepEqual(await ids({ turno: ['noite'] }), so(v2));
+  assert.deepEqual(await ids({ turno: 'manha' }), so(v1));
+  assert.deepEqual(await ids({ salarioMin: 190000 }), so(v1, v3), 'faixa pelo teto; diária × 22; serviço e bolsa menor ficam de fora');
+  assert.deepEqual(await ids({ semExperiencia: true }), so(v1, v3, v5));
+  assert.deepEqual(await ids({ busca: 'cozinha' }), so(v2), 'busca no nome da área');
+  assert.deepEqual(await ids({ modalidade: ['estagio', 'diaria'] }), so(v3, v5));
+  // Só o total (botão "Ver N vagas").
+  assert.deepEqual(await anon('vagas_anuncios_publicos', { cidade: 'canta-rr', entorno: false, somenteTotal: true }),
+    { ok: true, cidade: { slug: 'canta-rr', nome: 'Cantá' }, total: 5, areasAplicadas: [], areasPadrao: false });
+  assert.equal(ok(await anon('vagas_anuncios_publicos', { cidade: 'canta-rr', entorno: false, somenteTotal: true, areas: ['caixa'] })).total, 2);
+  // Regra fixa: nenhum filtro por nota, selo, referência, idade ou sexo (as chaves são ignoradas).
+  assert.deepEqual(await ids({ nota: 90, selo: 'caixa', temSelo: true, referencia: true, temReferencia: true, idade: 30, sexo: 'f', genero: 'x' }),
+    so(v1, v2, v3, v4, v5));
+  const fonte = (await db.query(`select string_agg(p.prosrc, ' ') t from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname in ('public', 'vagas_interno') and p.proname in ('listar_anuncios', 'vagas_anuncios_publicos', 'vagas_feed')`)).rows[0].t;
+  assert.ok(!/->>?\s*'(nota|selo|temSelo|referencia|temReferencia|idade|sexo|genero)'/.test(fonte));
+  // Cartão da lista: área, função, turno, experiência; sem ranking (mais novo primeiro).
+  const card = ok(await anon('vagas_anuncios_publicos', { cidade: 'canta-rr', entorno: false })).anuncios.find((a) => a.id === v2.id);
+  assert.deepEqual([card.area, card.funcao, card.turno, card.experiencia], [{ slug: 'cozinha', nome: 'Cozinha e restaurante' }, 'Cozinheiro(a)', 'noite', '1_a_3']);
+  // Pessoa: até 3 áreas de interesse; a lista abre nelas (feed e mural com login); "areas": [] mostra tudo.
+  const p = await contaVagas('pessoa');
+  const dados = pessoaDados({ cidade: 'canta-rr', zona: 'cidade-toda', nome: 'Lia Moura Santos', whatsapp: '95 98777-6655' });
+  erro(await de(p)('vagas_pessoa_salvar', Object.assign({}, dados, { areas: ['caixa', 'cozinha', 'saude', 'rh'] })), 'Escolha até 3 áreas de interesse.');
+  const salva = ok(await de(p)('vagas_pessoa_salvar', Object.assign({}, dados, { areas: ['cozinha', 'astronauta'] })));
+  assert.deepEqual(salva.pessoa.areas, ['cozinha'], 'área fora da lista é ignorada');
+  ok(await de(p)('vagas_pessoa_salvar', dados));
+  assert.deepEqual(ok(await de(p)('vagas_pessoa_minha')).pessoa.areas, ['cozinha'], 'sem a chave, as áreas ficam como estavam');
+  const feed = ok(await de(p)('vagas_feed', {}));
+  assert.deepEqual([feed.anuncios.map((a) => a.id), feed.areasAplicadas, feed.areasPadrao], [[v2.id], ['cozinha'], true]);
+  const mural = ok(await de(p)('vagas_anuncios_publicos', { cidade: 'canta-rr', entorno: false }));
+  assert.deepEqual([mural.anuncios.map((a) => a.id), mural.areasPadrao], [[v2.id], true]);
+  assert.equal(ok(await de(p)('vagas_anuncios_publicos', { cidade: 'canta-rr', entorno: false, areas: [] })).anuncios.length, 5);
+  assert.equal(ok(await anon('vagas_anuncios_publicos', { cidade: 'canta-rr', entorno: false })).areasPadrao, false, 'sem login, sem padrão');
+  S.canta = { conta, emp, pessoa: p, v1 };
+});
+
+test('foto OPCIONAL: bucket privado; a pessoa grava só a própria; ninguém lê direto; URL só para a empresa do Combinou (Edge Function)', async () => {
+  exigirBanco();
+  const bucket = (await db.query(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'vagas-fotos'`)).rows[0];
+  assert.deepEqual(bucket, { public: false, file_size_limit: '1048576', allowed_mime_types: ['image/jpeg', 'image/png', 'image/webp'] });
+  const gravar = (uid, nome) => como('authenticated', uid, `insert into storage.objects (bucket_id, name, owner) values ('vagas-fotos', $1, $2)`, [nome, uid]);
+  const ver = async (papel, uid) => (await como(papel, uid, `select name from storage.objects where bucket_id = 'vagas-fotos'`)).rows.map((r) => r.name);
+  await gravar(S.pessoa, S.pessoa + '/foto.jpg');
+  await rejeita(gravar(S.pessoa, S.pessoa2 + '/foto.jpg'), /row-level security/);
+  await rejeita(gravar(S.pessoa, S.pessoa + '/outra.jpg'), /row-level security/);
+  await rejeita(gravar(S.empresaConta, S.empresaConta + '/foto.jpg'), /row-level security/, 'conta de empresa não grava foto');
+  await rejeita(como('anon', null, `insert into storage.objects (bucket_id, name) values ('vagas-fotos', 'x/foto.jpg')`), /row-level security/);
+  assert.deepEqual(await ver('authenticated', S.pessoa), [S.pessoa + '/foto.jpg'], 'a pessoa vê a própria');
+  for (const uid of [S.pessoa2, S.empresaConta, S.operador, S.adminDisc]) assert.deepEqual(await ver('authenticated', uid), [], uid);
+  assert.deepEqual(await ver('anon', null), []);
+  assert.equal((await como('authenticated', S.pessoa2, `delete from storage.objects where bucket_id = 'vagas-fotos'`)).rowCount, 0);
+  // A ficha da pessoa diz que tem foto; o cartão cego nunca fala de foto.
+  const minha = ok(await de(S.pessoa)('vagas_pessoa_minha'));
+  assert.equal(minha.pessoa.temFoto, true);
+  assert.ok(!/foto/i.test(JSON.stringify(minha.cartao)));
+  assert.ok(!/foto/i.test(JSON.stringify(ok(await de(S.empresaConta)('vagas_cartoes', S.anuncios.conf, {})))));
+  // Depois do Combinou, a empresa daquela candidatura sabe que há foto e pede a URL pela Edge Function (vagas_conta_foto confere).
+  assert.equal(ok(await de(S.empresaConta)('vagas_contato_pessoa', S.cand)).pessoa.temFoto, true);
+  assert.deepEqual(ok(await servico('vagas_conta_foto', S.empresaConta, S.cand)), { ok: true, caminho: S.pessoa + '/foto.jpg' });
+  erro(await servico('vagas_conta_foto', null, S.cand), 'Sessão expirada. Entre de novo.');
+  erro(await servico('vagas_conta_foto', S.empresaB.conta, S.cand), 'Candidatura não encontrada.');
+  erro(await servico('vagas_conta_foto', S.pessoa2, S.cand), 'Candidatura não encontrada.');
+  erro(await servico('vagas_conta_foto', S.operador, S.cand), 'Candidatura não encontrada.');
+  const antes = (await db.query(`select id from public.vagas_candidaturas where pessoa_id = $1 and status = 'agora_nao' limit 1`, [S.pessoa2])).rows[0].id;
+  await gravar(S.pessoa2, S.pessoa2 + '/foto.jpg');
+  erro(await servico('vagas_conta_foto', S.empresaConta, antes), 'A foto só aparece depois do Combinou.');
+  ok(await de(S.pessoa)('vagas_cortar_acesso', S.cand));
+  erro(await servico('vagas_conta_foto', S.empresaConta, S.cand), 'A pessoa deixou de compartilhar o contato com a sua empresa.');
+  ok(await de(S.pessoa)('vagas_combinar', S.cand));
+  // A própria foto; sem foto; ninguém além da service_role executa a função.
+  assert.deepEqual(ok(await servico('vagas_conta_foto', S.pessoa, null)), { ok: true, caminho: S.pessoa + '/foto.jpg' });
+  erro(await servico('vagas_conta_foto', S.canta.pessoa, null), 'Sem foto.');
+  await rejeita(como('authenticated', S.empresaConta, `select public.vagas_conta_foto($1, $2)`, [S.empresaConta, S.cand]), /permission denied/);
+  await rejeita(como('anon', null, `select public.vagas_conta_foto(null, null)`), /permission denied/);
+  // Apagou a foto: não há mais URL.
+  await como('authenticated', S.pessoa, `delete from storage.objects where bucket_id = 'vagas-fotos' and name = $1`, [S.pessoa + '/foto.jpg']);
+  assert.equal(ok(await de(S.pessoa)('vagas_pessoa_minha')).pessoa.temFoto, false);
+  erro(await servico('vagas_conta_foto', S.empresaConta, S.cand), 'Esta pessoa não pôs foto.');
 });
 
 test('limites: Quero 30/dia, mensagens, contas (por origem, por e-mail, total) — sem revelar nada', async () => {

@@ -139,7 +139,7 @@ test('Edge Function vagas-conta: cadastrar SEM senha e com a versão dos termos;
   await api.cadastrar({ email: 'nova@exemplo.com', tipo: 'pessoa', senha: 'nao-vai' });
   const c = fetch.chamadas[0];
   assert.equal(c.url, URL_SB + '/functions/v1/vagas-conta');
-  assert.deepEqual(c.corpo, { acao: 'cadastrar', email: 'nova@exemplo.com', tipo: 'pessoa', nome: '', termosVersao: '2026-10', captcha: '' });
+  assert.deepEqual(c.corpo, { acao: 'cadastrar', email: 'nova@exemplo.com', tipo: 'pessoa', nome: '', termosVersao: '2026-10-13', captcha: '' });
   assert.ok(!('Authorization' in c.cabecalhos));
   await api.excluirConta();
   assert.deepEqual(fetch.chamadas[1].corpo, { acao: 'excluir', confirmar: 'EXCLUIR' });
@@ -181,4 +181,42 @@ test('o cliente não tem chave secreta nem supabase-js; config.js só com a chav
   // A mesma chave pública e o mesmo projeto do DISC.
   const disc = fs.readFileSync(path.join(__dirname, '..', 'js', 'config.js'), 'utf8');
   assert.ok(disc.includes(cfg.SUPABASE_URL) && disc.includes(cfg.SUPABASE_ANON_KEY));
+});
+
+test('foto: grava e apaga direto no Storage com o login da pessoa; URL assinada pela Edge Function; contatoPessoa traz fotoUrl', async () => {
+  const arm = memoria();
+  arm.setItem(API.CHAVE_SESSAO, JSON.stringify({ access_token: 'tok1', refresh_token: 'r', expires_at: Math.floor(relogio / 1000) + 3600, user: { id: 'u1', email: '' } }));
+  let assinar = true;
+  const { api, fetch } = criar([
+    ['/storage/v1/object/vagas-fotos/u1/foto.jpg', () => resposta(200, { Key: 'vagas-fotos/u1/foto.jpg' })],
+    ['/storage/v1/object/vagas-fotos', () => resposta(200, [{ name: 'u1/foto.jpg' }])],
+    ['/functions/v1/vagas-conta', (c) => (assinar ? resposta(200, { ok: true, url: 'https://exemplo.supabase.co/storage/v1/object/sign/vagas-fotos/p/foto.jpg?token=t',
+      expiraEm: '2026-10-13T15:05:00.000Z', pedido: c.corpo }) : resposta(200, { ok: false, erro: 'A foto só aparece depois do Combinou.', semCombinou: true }))],
+    ['/rest/v1/rpc/vagas_contato_pessoa', () => resposta(200, { ok: true, pessoa: { nome: 'Ana', temFoto: true } })]
+  ], arm);
+  const FOTO = 'A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.';
+  await assert.rejects(api.enviarFoto({ type: 'image/gif', size: 10 }), (e) => e.message === FOTO);
+  await assert.rejects(api.enviarFoto({ type: 'image/jpeg', size: 1048577 }), (e) => e.message === FOTO);
+  assert.equal(fetch.chamadas.length, 0, 'nada vai para a rede sem passar na conferência');
+  const corpo = { type: 'image/jpeg', size: 150000 };
+  fetch.chamadas.length = 0;
+  const falsoFetch = (url, o) => { fetch.chamadas.push({ url, metodo: o.method, cabecalhos: o.headers, corpoBruto: o.body }); return Promise.resolve(resposta(200, { Key: 'x' })); };
+  const api2 = API.criar({ modo: 'supabase', url: URL_SB, chave: CHAVE, fetch: falsoFetch, armazenamento: arm, agora: () => relogio });
+  assert.deepEqual(await api2.enviarFoto(corpo), { ok: true, temFoto: true });
+  const up = fetch.chamadas[0];
+  assert.equal(up.url, URL_SB + '/storage/v1/object/vagas-fotos/u1/foto.jpg');
+  assert.equal(up.metodo, 'POST');
+  assert.deepEqual([up.cabecalhos.Authorization, up.cabecalhos['Content-Type'], up.cabecalhos['x-upsert']], ['Bearer tok1', 'image/jpeg', 'true']);
+  assert.equal(up.corpoBruto, corpo, 'o arquivo vai como está');
+  assert.deepEqual(await api.apagarFoto(), { ok: true, temFoto: false });
+  const del = fetch.chamadas.find((c) => c.metodo === 'DELETE');
+  assert.equal(del.url, URL_SB + '/storage/v1/object/vagas-fotos');
+  assert.deepEqual(del.corpo, { prefixes: ['u1/foto.jpg'] });
+  const url = await api.fotoUrl('11111111-2222-3333-4444-555555555555');
+  assert.deepEqual(url.pedido, { acao: 'foto', candidatura: '11111111-2222-3333-4444-555555555555' });
+  const ct = await api.contatoPessoa('11111111-2222-3333-4444-555555555555');
+  assert.equal(ct.pessoa.fotoUrl, 'https://exemplo.supabase.co/storage/v1/object/sign/vagas-fotos/p/foto.jpg?token=t');
+  assinar = false;
+  assert.equal((await api.contatoPessoa('11111111-2222-3333-4444-555555555555')).pessoa.fotoUrl, '', 'sem URL quando o banco não deixa');
+  await assert.rejects(api.fotoUrl('11111111-2222-3333-4444-555555555555'), (e) => e.semCombinou === true);
 });

@@ -18,7 +18,7 @@
     SUPABASE_ANON_KEY: 'sb_publishable_8B735nOKFWn-CC8dYpr1sg_RQs5y_W-',
     SITE_URL: 'https://vagas.gestaosemcaos.com.br',
     TURNSTILE_SITE_KEY: '',
-    VERSAO_TERMOS: '2026-10'
+    VERSAO_TERMOS: '2026-10-13'
   };
   try {
     var loc = root.location;
