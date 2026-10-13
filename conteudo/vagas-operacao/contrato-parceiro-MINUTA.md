@@ -1,10 +1,10 @@
 # CONTRATO DE PARCERIA OPERACIONAL · PARCEIRO DE PRAÇA · Vagas sem Caos
 
-> **MINUTA · para revisão do(a) advogado(a).** Este texto foi escrito pela operação a partir da proposta aprovada (seções 4, 5 e 6) e do relatório de cidade pequena. Não é um contrato pronto: o(a) advogado(a) trabalhista e de LGPD revisa, completa a qualificação das partes, confere a lei aplicável e decide a redação final. Valores e percentuais marcados como **HIPÓTESE** são os da proposta e podem mudar. Nada neste texto vale sem assinatura.
+> **MINUTA · para revisão do(a) advogado(a).** Praça piloto: **Uruaçu (GO)**. Este contrato só é usado se o dono decidir que Uruaçu será operada por um **parceiro local**; se a operação for de uma pessoa da própria Gestão sem Caos, vale o vínculo dela com a empresa e este texto fica guardado para o futuro. Este texto foi escrito pela operação a partir da proposta aprovada (seções 4, 5 e 6) e do relatório de cidade pequena. Não é um contrato pronto: o(a) advogado(a) trabalhista e de LGPD revisa, completa a qualificação das partes, confere a lei aplicável e decide a redação final. Valores e percentuais marcados como **HIPÓTESE** são os da proposta e podem mudar. Nada neste texto vale sem assinatura.
 
-**CONTRATANTE:** [razão social da Gestão sem Caos], CNPJ [●], com sede em [●], Boa Vista/RR, neste ato representada por [●] ("**Gestão sem Caos**").
+**CONTRATANTE:** [razão social da Gestão sem Caos], CNPJ [●], com sede em [●], neste ato representada por [●] ("**Gestão sem Caos**").
 
-**CONTRATADO(A):** [nome ou razão social do parceiro], CPF/CNPJ [●], com endereço em [●], [cidade]/RR ("**Parceiro**").
+**CONTRATADO(A):** [nome ou razão social do parceiro], CPF/CNPJ [●], com endereço em [●], Uruaçu/GO ("**Parceiro**").
 
 As partes celebram este contrato, regido pelas cláusulas abaixo.
 
@@ -20,7 +20,7 @@ As partes celebram este contrato, regido pelas cláusulas abaixo.
 
 ## 2. Território (praça)
 
-2.1. A praça é: **[cidade-polo]** e os municípios do entorno **[lista]**, no estado de Roraima.
+2.1. A praça é o município de **Uruaçu**, no estado de Goiás. Municípios do entorno só entram por aditivo escrito, quando a Gestão sem Caos decidir.
 
 2.2. A praça não é exclusiva de forma absoluta: a Gestão sem Caos pode operar diretamente, vender online e firmar parcerias institucionais (prefeitura, Sine, Sebrae, escolas, rádio) na praça. A exclusividade do Parceiro vale para a função de **operador local**: a Gestão sem Caos não nomeia outro parceiro de praça para o mesmo território enquanto este contrato estiver em vigor.
 
@@ -40,6 +40,8 @@ As partes celebram este contrato, regido pelas cláusulas abaixo.
 
 3.6. **Denúncias:** tratar denúncias conforme o protocolo da Gestão sem Caos (remoção em até 1 hora quando houver pedido de dinheiro; decisão em até 24 h) e avisar a Gestão sem Caos no mesmo dia em caso de golpe ou incidente.
 
+3.6-A. **Referências profissionais:** moderar o texto livre das referências dadas por empresas em até **24 horas**, pelos motivos fechados do manual, sem acesso ao restante do perfil da pessoa; nunca montar, guardar ou repassar lista de pessoas com ou sem referência; tratar referência falsa ou coagida como denúncia.
+
 3.7. **Relatórios:** enviar toda sexta-feira os números da praça e, todo mês, o relatório de 1 página.
 
 3.8. **Treinamento:** concluir o treinamento inicial (4 horas) antes de receber acesso e as reciclagens que a Gestão sem Caos indicar.
@@ -54,7 +56,7 @@ As partes celebram este contrato, regido pelas cláusulas abaixo.
 
 4.3. **Fixar, alterar ou negociar preço**, desconto, prazo de pagamento ou gratuidade fora da tabela escrita da Gestão sem Caos.
 
-4.4. **Cobrar qualquer valor de quem procura emprego**, a qualquer título (cadastro, teste, selo, "certificado", "prioridade", "curso obrigatório"). Concorrer é grátis, sempre.
+4.4. **Cobrar qualquer valor de quem procura emprego**, a qualquer título (cadastro, teste, selo, "prioridade", "curso obrigatório", "kit", ou qualquer outro nome). Concorrer é grátis, sempre.
 
 4.5. **Receber pagamento de empresa em conta própria.** Toda venda é paga à Gestão sem Caos pelos meios oficiais da plataforma.
 
@@ -109,7 +111,7 @@ As partes celebram este contrato, regido pelas cláusulas abaixo.
 
 6.4. Não há remuneração fixa, mínimo garantido nem adiantamento.
 
-6.5. **Taxa de entrada (HIPÓTESE da proposta):** R$ 0 nas duas primeiras praças com parceiro; até R$ 3.000 nas seguintes, após duas praças "vivas". [Preencher conforme a praça.]
+6.5. **Taxa de entrada (HIPÓTESE da proposta):** R$ 0 em Uruaçu (é a primeira praça com parceiro, se houver parceiro).
 
 ## 7. Prazo e rescisão
 
@@ -147,7 +149,7 @@ As partes celebram este contrato, regido pelas cláusulas abaixo.
 
 ## 11. Foro
 
-11.1. Fica eleito o foro da comarca de **Boa Vista/RR** para qualquer questão deste contrato, com renúncia a outro, por mais privilegiado que seja. [O(a) advogado(a) avalia se cabe mediação prévia.]
+11.1. Fica eleito o foro da comarca de **[Uruaçu/GO ou a da sede da Gestão sem Caos: o(a) advogado(a) escolhe]** para qualquer questão deste contrato, com renúncia a outro, por mais privilegiado que seja. [O(a) advogado(a) avalia se cabe mediação prévia.]
 
 ---
 
