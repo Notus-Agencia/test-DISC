@@ -1,0 +1,94 @@
+/*
+ * Vagas sem Caos — classes PRÓPRIAS do painel da empresa (empresa.html e referencia.html), por cima de vagas.css e vagas-pc.css.
+ * Só tokens do notus.css; nenhuma cor nova. O que é comum a outras telas fica na casca (pedido na mesa de equipe).
+ */
+
+/* Faixa de situação (em análise / suspensa) no computador: não pode ficar embaixo do menu lateral fixo.
+   [pedido à casca: levar para vagas-pc.css] */
+body.vg-pc > .vg-faixa { margin-left: 248px; }
+/* Conta suspensa: some o que muda dados (a tela já não desenha as ações; isto é a segunda trava). */
+body.vg-so-leitura .vg-so-escrita { display: none !important; }
+
+/* Tabelas: a palavra não quebra no meio (a .caixa usa overflow-wrap: anywhere, que espreme a 1ª coluna) */
+.vg-empresa .vg-tabela td { overflow-wrap: break-word; }
+.vg-empresa .vg-tabela td:first-child { min-width: 200px; }
+
+/* Textos de apoio */
+.vg-emp-nota { margin-top: 10px; }
+.vg-emp-sub { display: block; font-size: var(--t-nota); color: var(--suave); margin-top: 2px; }
+.vg-emp-lista { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: var(--t-rotulo); color: var(--medio); }
+.vg-emp-pre { white-space: pre-line; }
+.vg-emp-situacao { margin-top: 8px; }
+.vg-emp-link-vaga { color: var(--tinta); text-decoration: none; }
+.vg-emp-link-vaga:hover { text-decoration: underline; }
+
+/* Formulários (nova vaga, cadastro, dados, referência) */
+.vg-emp-form { display: grid; gap: 0; }
+.vg-emp-bloco { border: 0; margin: 0; padding: 0; min-width: 0; }
+.vg-emp-bloco + .vg-emp-bloco { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--linha); }
+/* legend solta da borda (senão a linha do bloco atravessa o título) */
+.vg-emp-bloco__titulo { float: left; width: 100%; padding: 0; margin-bottom: 14px; font-size: var(--t-corpo); font-weight: 600; color: var(--tinta); }
+.vg-emp-bloco__titulo + * { clear: both; }
+.vg-emp-acoes-form { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.vg-emp-acoes-coluna { display: grid; gap: 8px; margin-top: 12px; }
+.vg-emp-marcar-linha { margin-top: 10px; }
+.vg-emp-faixa-valor { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; }
+.vg-emp-data, .vg-emp-mes { max-width: 160px; margin-top: 8px; }
+.vg-emp-faixa-valor .vg-emp-mes { margin-top: 0; max-width: none; }
+.vg-emp-diaria { margin-top: 4px; padding: 14px 16px; border-radius: 16px; background: var(--nevoa); }
+.vg-emp-form .vg-checks .marcar { font-size: var(--t-rotulo); }
+.vg-emp-form .vg-checks + .entrada { margin-top: 10px; }
+.vg-emp-form .aviso + .vg-emp-acoes-form, .vg-emp-form .aviso--erro { margin-top: 16px; }
+/* Escolha que abre uma janela (área da vaga): parece campo, com a seta à direita */
+.vg-emp-escolha { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 48px; padding: 10px 16px; border: 1px solid var(--linha);
+  border-radius: var(--raio-pilula); background: var(--branco); color: var(--tinta); font: inherit; font-size: var(--t-rotulo); font-weight: 600; text-align: left; cursor: pointer; }
+.vg-emp-escolha[aria-invalid="true"] { border-color: var(--erro); }
+.vg-emp-escolha__texto { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vg-emp-etiquetas { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Vaga publicada */
+.vg-emp-divulgar-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.vg-emp-acoes-vaga { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 20px; }
+.vg-emp-mensagem { margin-top: 14px; padding: 12px 16px; border-radius: 16px; background: var(--nevoa); display: grid; gap: 4px; justify-items: start; }
+.vg-emp-mensagem .botao--link { padding: 0; min-height: 0; display: inline-flex; gap: 6px; align-items: center; }
+.vg-emp-previa-vaga { max-width: 440px; }
+.vg-emp-previa-vaga .vg-vaga { box-shadow: inset 0 0 0 1px var(--linha); }
+.vg-emp-numeros dd { font-weight: 600; }
+
+/* Cartões */
+.vg-emp-mostrar { margin-bottom: 16px; }
+.vg-emp-mostrar .campo__rotulo { font-size: var(--t-rotulo); color: var(--suave); }
+.vg-emp-acao-larga { grid-column: 1 / -1; }
+.vg-emp-sem-cartoes { grid-column: 1 / -1; }
+
+/* Conversa: lateral com contato, contratada, referências e o cartão "como chegou" */
+.vg-emp-contato { display: flex; align-items: center; gap: 12px; margin: 10px 0 6px; }
+.vg-emp-contato__nome { font-size: var(--t-titulo); font-weight: 600; letter-spacing: -0.02em; }
+.vg-emp-cartao-lateral { grid-template-columns: minmax(0, 1fr); }
+.vg-emp-linha-fim { display: flex; align-items: center; gap: 8px; }
+.vg-emp-n { min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--raio-pilula); background: var(--notus); color: var(--sobre-notus); font-size: var(--t-eixo);
+  font-weight: 700; line-height: 20px; text-align: center; }
+
+/* Roteiro de entrevista estruturada (aberto e fechado na própria página; dá para imprimir) */
+.vg-emp-roteiro summary { cursor: pointer; font-size: var(--t-corpo); }
+.vg-emp-roteiro__corpo { display: grid; gap: 10px; margin-top: 14px; }
+.vg-emp-roteiro__titulo { font-size: var(--t-corpo); font-weight: 600; margin-top: 8px; }
+.vg-emp-perguntas { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 12px; }
+.vg-emp-pergunta { padding: 12px 14px; border-radius: 16px; background: var(--nevoa); font-size: var(--t-rotulo); }
+.vg-emp-pergunta__texto { margin: 6px 0; color: var(--medio); }
+.vg-emp-ancoras { margin: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 4px 10px; }
+.vg-emp-ancoras dt { color: var(--suave); font-weight: 600; }
+.vg-emp-ancoras dd { margin: 0; }
+
+/* Equipe e referências */
+.vg-emp-equipe-form { margin-top: 16px; display: grid; gap: 6px; }
+.vg-emp-pedido { margin-top: 10px; }
+.vg-emp-faixa-fase2 { border-radius: 16px; margin-bottom: 8px; }
+
+@media (max-width: 899.98px) {
+  body.vg-pc > .vg-faixa { margin-left: 0; }
+}
+@media print {
+  .menu-lateral, .vg-pc__topo, #vg-conversa-lateral, .vg-escrever { display: none !important; }
+  .vg-pc__conteudo { margin-left: 0; }
+}
