@@ -176,6 +176,7 @@ test('termos proibidos: personalidade, raciocínio, gíria, marca, religião, g�
     ['Uma mulher pediu troco. O que fazer?', /gênero/],
     ['O produto é do setor feminino. O que fazer?', /gênero/],
     ['Um cliente venezuelano pediu troco. O que fazer?', /origem/],
+    ['Um cliente goiano pediu troco. O que fazer?', /origem/],
     ['Um velhinho pediu troco. O que fazer?', /idade/],
     ['Uma cliente idosa, já velha, pediu troco. O que fazer?', /idade/],
     ['A Notus pediu troco. O que fazer?', /agência/]

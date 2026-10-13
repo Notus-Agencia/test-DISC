@@ -70,10 +70,12 @@ privada (gerado pelo validador; não tem gabarito, mas também fica fora do repo
   VI):** a tela de instruções avisa o que a prova registra (tempo de cada questão, saída da tela, cópia de texto) e que
   ninguém perde o selo só por isso.
 - **Limite por origem** (mesmo padrão da 20261020, tabela `limites_vendas`): **10 tentativas novas em 10 min ou 60 por
-  dia** por origem (colheita em massa do banco fica cara; um ponto de internet compartilhado em Boa Vista ainda cabe);
+  dia** por origem (colheita em massa do banco fica cara; um ponto de internet compartilhado, como escola, lan house ou mutirão, ainda cabe);
   na conferência pública do selo, 20 códigos inexistentes em 10 min ou 100 por dia. Monitorar `limites_vendas` com
   `chave = 'sem-ip'`: se o gateway deixar de mandar `x-forwarded-for`, todas as consultas caem no mesmo balde.
-- **Datas** mostradas (do selo, validade, "pode refazer a partir de") no fuso de Boa Vista (UTC−4); datas-hora em ISO UTC.
+- **Datas** mostradas (do selo, validade, "pode refazer a partir de") no fuso de Boa Vista (UTC−4) por enquanto; datas-hora
+  em ISO UTC. O fuso passa a ser o da cidade (reserva America/Sao_Paulo) na migração da onda 2 do banco; o `FUSO_HORAS` de
+  `vagas/js/testes.js` muda junto.
 
 ### Teste de caixa: papel e caneta sim, calculadora não
 
@@ -161,7 +163,7 @@ ao recarregar a página, `vagas_iniciar_tentativa` retoma (`retomada: true`). Ev
   "média 6" que o público conhece; e as questões cobrem o básico da primeira semana na função (a análise da função de
   cada teste), onde acertar 60% é o mínimo razoável.
 - **Provisória:** antes de abrir ao público, **Angoff modificado** com 5 a 8 juízes por teste (pessoas que contratam ou
-  supervisionam a função em Boa Vista): para cada questão, "de 100 pessoas minimamente prontas para a função, quantas
+  supervisionam a função na cidade do piloto, Uruaçu (GO)): para cada questão, "de 100 pessoas minimamente prontas para a função, quantas
   acertam?"; o corte é a média das somas, revisto depois do piloto. Aos **200 resultados** por teste: dificuldade (p),
   discriminação, distratores que ninguém escolhe e DIF por escolaridade; o corte pode mudar com nova versão do teste.
   O novo corte entra em `vagas_testes.nota_minima` (as telas leem do catálogo).
@@ -201,7 +203,7 @@ idade ou origem como rótulo de pessoa; tarefa da análise com menos de 3 quest�
 
 **Revisão humana (o que o código não confere), antes de cada versão ir ao ar:**
 
-1. **Especialista da função** (quem contrata ou supervisiona): a situação acontece em Boa Vista? A certa é a prática
+1. **Especialista da função** (quem contrata ou supervisiona): a situação acontece numa cidade pequena do interior (piloto: Uruaçu, GO)? A certa é a prática
    aceita (e não "a da minha loja")? Alguma errada também é defensável? → questão sai ou é reescrita. Itens marcados
    "a conferir por especialista" na `fonte_ou_justificativa` (ex.: nota fiscal e MEI, LC 123/2006, art. 26, § 1º).
 2. **Psicologia (com veto):** item de conhecimento e não de jeito de ser; sem pista (tamanho, palavra repetida do

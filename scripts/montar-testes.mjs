@@ -99,7 +99,7 @@ export const PROIBIDOS = [
   ['marca real', /(^|[^a-zà-ÿ])(coca-cola|nike|adidas|samsung|iphone|apple|motorola|xiaomi|mercado livre|mercado pago|magazine luiza|magalu|americanas|casas bahia|nubank|ita[úu]|bradesco|santander|caixa econ[ôo]mica|banco do brasil|sicredi|sicoob|picpay|pagbank|pagseguro|cielo|getnet|mastercard|hipercard|excel|microsoft|gmail|outlook|google|instagram|facebook|tiktok|ifood|shopee|amazon|uber|natura|botic[áa]rio|havaianas|nestl[ée]|sadia|perdig[ãa]o|brahma|skol|ambev|bombril|correios|serasa)(?![a-zà-ÿ])/i],
   ['religião (situação que favorece crença)', /(^|[^a-zà-ÿ])(igreja|culto|evang[ée]lic|cat[óo]lic|pastor|padre|missa|terreiro|umbanda|candombl|esp[íi]rita|crente|deus)/i],
   ['gênero como rótulo de pessoa', /(^|[^a-zà-ÿ])(mulher|mulheres|homem|homens|moças?|rapaz|rapazes|menin[ao]s?|dona de casa|maridos?|esposas?|namorad[oa]s?|feminin[oa]s?|masculin[oa]s?)(?![a-zà-ÿ])/i],
-  ['origem ou região como rótulo de pessoa', /(^|[^a-zà-ÿ])(nordestin|sulista|ga[úu]ch|baian|paraíba|carioca|paulist|mineir|nortista|cabocl|índi[oa]|venezuelan|haitian|cuban|gringo|estrangeir|imigrant|migrant)/i],
+  ['origem ou região como rótulo de pessoa', /(^|[^a-zà-ÿ])(nordestin|sulista|ga[úu]ch|baian|paraíba|carioca|paulist|mineir|nortista|cabocl|índi[oa]|goian|venezuelan|haitian|cuban|gringo|estrangeir|imigrant|migrant)/i],
   ['idade como rótulo de pessoa', /(^|[^a-zà-ÿ])(velh[oa]s?|velhinh[oa]s?|coroas?|novinh[oa]s?|terceira idade|jovenzinh[oa]s?)(?![a-zà-ÿ])/i],
   ['nome da agência de design', /notus/i]
 ];
