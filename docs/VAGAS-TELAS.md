@@ -78,13 +78,46 @@ Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `v
 - **Elementos:** `topo` (logo, "Vagas sem Caos", `#vg-cidade` → janela `#vg-janela-cidade` com a lista de `vagas_cidades_publicas()`:
   ativas clicáveis, lista de espera com "Avise-me", pausadas com etiqueta); `.sobretitulo` "Boa Vista e região"; `h1#vg-titulo`
   "Vagas de hoje"; subtítulo "Empresas daqui, conferidas uma a uma. Candidatar-se é grátis, sempre."; busca `#vg-busca`
-  (`type="search"`, placeholder "Buscar por cargo ou área", envia ao parar de digitar 400 ms); chips `#vg-filtros`:
-  `#vg-filtro-hoje` (`aria-pressed`, "Para hoje" = diárias de hoje/amanhã), `#vg-filtro-zona`, `#vg-filtro-area`,
-  `#vg-filtro-modalidade` (abrem janela `#vg-janela-filtro` com opções em pílulas, "Aplicar"), `#vg-filtro-entorno`
-  ("Incluir Mucajaí e Cantá"); `#vg-contagem` ("37 vagas em Boa Vista" + `#vg-limpar-filtros`); `ul#vg-lista` de `.vg-vaga`
-  (ver componente); `#vg-mais` "Ver mais 20 vagas" (`depois` = último id); `#vg-aviso-golpe`; rodapé com Termos/Privacidade.
-- **Dados:** `vagas_anuncios_publicos({cidade, entorno, zona, modalidade, paraHoje, busca, depois, limite:20})`. Filtros ficam
-  na URL (`?zona=zona-oeste&area=atendimento&hoje=1`) para compartilhar e voltar.
+  (`type="search"`, placeholder "Buscar por função (ex.: caixa, vendedor)", envia ao parar de digitar 400 ms; busca no título da
+  função e no nome da área, nunca no texto livre); **barra de filtros resumida** `#vg-filtros-barra` (pedido do dono, "igual à
+  Catho"): botão `#vg-abrir-filtros` "Filtrar" (azul-escuro, com a contagem de filtros ativos em `.vg-chip__n`; abre a folha
+  2.1a) + `#vg-filtros-ativos` (chips roláveis do que está ativo, cada um com "✕" e `data-filtro`/`data-valor` para tirar em 1 toque:
+  "Vendas em loja ✕", "Caixa ✕", "Comercial ✕", "a partir de R$ 1.600 ✕"); `#vg-contagem` ("12 vagas nas suas áreas" ou "37 vagas em
+  Boa Vista" + `#vg-limpar-filtros`); `ul#vg-lista` de `.vg-vaga` (com o nome da área na linha de meta); `#vg-mais` "Ver mais N vagas";
+  nota "Você recebe aviso por e-mail quando entra vaga nova em <áreas> · Mudar minhas áreas"; `#vg-aviso-golpe`; rodapé.
+- **Padrão ao abrir:** pessoa logada com áreas no currículo → a lista já abre filtrada nas suas áreas (até 3) e o aviso de vaga nova
+  por e-mail segue as mesmas áreas; anônimo → sem filtro, cidade lembrada. Filtros ficam salvos no aparelho (`vg.filtros.<cidade>`) e na
+  URL (`?areas=vendas-loja,caixa&turno=comercial&salarioMin=160000`) para compartilhar e voltar.
+- **Dados:** `vagas_anuncios_publicos({cidade, entorno, zona, areas[], modalidade[], turno[], salarioMin (centavos), semExperiencia,
+  paraHoje, busca, depois, limite:20})`. Chaves dos filtros = chaves dos campos fechados da vaga (seção 3.3).
+
+### 2.1a Folha de filtros — mockup `pessoa-filtros.png`
+- `section#vg-filtros` (`role="dialog"`, folha que sobe de baixo, `.vg-folha`, com alça e véu; no computador vira janela):
+  cabeçalho "Filtrar vagas" + `#vg-filtros-limpar` "Limpar tudo"; `form#vg-form-filtros` com grupos (`fieldset.vg-folha__grupo`):
+  - **Área** `#vg-filtro-areas` (chips, pode marcar várias; 6 visíveis + `#vg-filtro-areas-todas` "Ver todas as 24 áreas" que expande a
+    lista fechada abaixo, sem rolagem lateral);
+  - **Tipo de contrato** `#vg-filtro-modalidade` (CLT, Temporário, Diária, Freelancer, Estágio; várias);
+  - **Turno** `#vg-filtro-turno` (Manhã, Tarde, Noite, Comercial, Escala, A combinar; várias);
+  - **Salário a partir de** `#vg-filtro-salario` (campo numérico em reais; ajuda "Vagas com faixa contam pelo valor mais alto. Diária:
+    valor do dia × 22."; erro "Digite só o número, como 1600");
+  - **Zona** `#vg-filtro-zona` (Todas + zonas da `vagas_zonas`; uma) + `#vg-filtro-entorno` "Incluir Mucajaí e Cantá";
+  - **Mais**: `#vg-filtro-sem-experiencia` "Aceita sem experiência" (= vaga com `experiencia = nao_precisa`), `#vg-filtro-hoje` "Para
+    hoje (diárias e bicos de hoje e amanhã)".
+- Barra fixa `#vg-barra-filtros`: dica "Os filtros ficam salvos neste celular." + `#vg-filtros-fechar` + `#vg-filtros-aplicar` **"Ver N
+  vagas"** (laranja; N atualiza a cada mudança com `vagas_anuncios_publicos` em modo contagem, ou "Ver vagas" se offline).
+- **Não existe filtro** por nota do selo, idade, sexo, "tem referência", nacionalidade, escolaridade da pessoa ou qualquer dado da
+  pessoa: os filtros são só atributos da vaga (proibido por lei e pelo padrão da psicologia). "Tem selo" é filtro só da empresa
+  sobre os cartões, nunca da pessoa sobre as vagas.
+
+**Lista fechada das 24 áreas (contrato com a fundação; chave → nome exato na tela):** `atendimento` Atendimento e recepção ·
+`vendas-loja` Vendas em loja e balcão · `vendas-externas` Vendas externas e representação · `caixa` Caixa e operação de loja ·
+`administrativo` Administrativo e escritório · `financeiro` Financeiro e contabilidade · `rh` Recursos humanos · `logistica` Estoque,
+logística e entregas · `motorista` Motorista e transporte · `producao` Produção e indústria · `construcao` Construção civil ·
+`manutencao` Manutenção e reparos · `limpeza` Limpeza e conservação · `cozinha` Cozinha e restaurante · `hotelaria` Hotelaria e
+eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educacao` Educação e creche · `agro` Agropecuária e campo ·
+`seguranca` Segurança e portaria · `marketing` Marketing, design e redes sociais · `tecnologia` Tecnologia e informática ·
+`domesticos` Serviços domésticos e cuidado de pessoas · `outros` Outros comércios e serviços. (Em `vagas/js/regras.js`:
+`VAGAS_REGRAS.AREAS`; a mesma lista no currículo, na vaga, nos filtros e nos cartões.)
 - **Estados:** carregando (3 esqueletos `.vg-vaga` em `--nevoa`, sem pulo); vazio ("Nenhuma vaga com esses filtros. Tire um
   filtro ou veja todas." + botão "Ver todas"); erro; offline (`pessoa-offline.png`: faixa + última lista guardada em
   `localStorage` `vg.lista.<cidade>` com data e "Tentar de novo"); cidade em lista de espera (`pessoa-espera.png`);
@@ -158,12 +191,18 @@ Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `v
 - **Cabeçalho de passo:** `.progresso-topo` ("2 de 5" com `.progresso-num` + nome do passo), `#vg-cv-passos` (5 segmentos:
   feito azul-escuro, atual laranja, resto trilho), `#vg-cv-rascunho` ("Rascunho salvo neste aparelho às 14:32", `aria-live`).
 - **Passos e campos:**
-  1. **Onde e o quê:** cidades de interesse (`#vg-cv-cidades`, até 2 pílulas; erro "Escolha pelo menos uma cidade"), zona onde mora
-     (`#vg-cv-zona`, pílulas da `vagas_zonas`), áreas (`#vg-cv-areas`, pílulas da lista fechada de `regras.js`, até 3),
-     cargos (`#vg-cv-cargos`, campo com sugestões, até 3).
-  2. **Experiência (`pessoa-curriculo-2.png`):** `#vg-exp-cargo` (obrigatório se houver experiência), `#vg-exp-onde`, tempo
-     (`#vg-exp-tempo`, 4 pílulas), carteira assinada (`#vg-exp-carteira`: Sim / Não / Prefiro não dizer), `#vg-exp-adicionar`
-     (até 5), `#vg-exp-nenhuma` "Ainda não trabalhei" (pula com `sem_experiencia=true`).
+  1. **Onde:** cidades de interesse (`#vg-cv-cidades`, até 2 pílulas; erro "Escolha pelo menos uma cidade"), zona onde mora
+     (`#vg-cv-zona`, pílulas da `vagas_zonas`), **foto (opcional)** `#vg-cv-foto-campo` (pedido do dono, regra fechada com a
+     psicologia): avatar vazio `#vg-cv-foto-previa` + `#vg-cv-foto-escolher` "Escolher foto" (+ `#vg-cv-foto-tirar` quando houver),
+     frase fixa "A empresa só vê sua foto depois que vocês combinarem de conversar. Sem foto não muda nada na sua candidatura."
+     (imagem redimensionada no aparelho para 512 px, JPEG, ≤ 200 KB; guardada em bucket privado; **nunca** sai no cartão cego, na
+     busca do banco nem para o operador; o mockup mostra o campo no passo 2 porque o passo 1 não tem mockup).
+  2. **Áreas e experiência (`pessoa-curriculo-2.png`):** `h1` "Em que áreas você quer trabalhar?" + "Marque até 3. A lista de vagas já
+     abre nas suas áreas e você recebe aviso de vaga nova nelas."; `#vg-cv-areas` (chips da lista fechada das 24 áreas, chave
+     `areas[]`, mínimo 1 e máximo 3; 8 visíveis + `#vg-cv-areas-todas` "Ver todas as 24 áreas"; ajuda "2 de 3 marcadas: …"; erro
+     "Marque pelo menos uma área" / "Só dá para marcar 3"); depois "Onde você já trabalhou?": `#vg-exp-cargo` (obrigatório se
+     houver experiência), `#vg-exp-onde`, tempo (`#vg-exp-tempo`, 4 pílulas), carteira assinada (`#vg-exp-carteira`: Sim / Não /
+     Prefiro não dizer), `#vg-exp-adicionar` (até 5), `#vg-exp-nenhuma` "Ainda não trabalhei" (pula com `sem_experiencia=true`).
   3. **Escolaridade e cursos:** `#vg-cv-escolaridade` (pílulas: Fundamental incompleto … Superior completo), `#vg-cv-cursos`
      (texto curto, ≤ 120), `#vg-cv-cnh` (Não tem / A / B / AB / C ou mais).
   4. **Disponibilidade e contato:** `#vg-cv-turnos` (Manhã / Tarde / Noite / Madrugada / Fins de semana; múltipla),
@@ -171,7 +210,9 @@ Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `v
      faixa para a empresa"), `#vg-cv-whatsapp` (tel, DDD + 9 dígitos; erro "Digite o WhatsApp com DDD, como (95) 99999-0000";
      ajuda "Só aparece para a empresa depois do Combinou. Sem confirmação por código nesta fase.").
   5. **Revisar (`pessoa-curriculo-5.png`):** `#vg-cv-previa` = cartão cego exatamente como a empresa vê (componente
-     `.vg-cartao`, "assim a empresa vê o seu cartão"), `#vg-cv-banco` (consentimento separado: "Quero entrar no banco de talentos
+     `.vg-cartao`, "assim a empresa vê o seu cartão · sem foto, sem nome"; **continua sem foto** mesmo que a pessoa tenha enviado),
+     linha fixa `#vg-cv-previa-nota` "Sua foto, nome e contato só aparecem depois do Combinou. Antes disso a empresa vê só este
+     cartão.", `#vg-cv-banco` (consentimento separado: "Quero entrar no banco de talentos
      por 6 meses…" — opcional; grava `bancoTalentos` em `vagas_aceitar_termos`), nota "Candidatar-se a uma vaga não depende dessa
      autorização.", `#vg-cv-concluir` "Salvar currículo" (laranja).
 - **Barra fixa `#vg-barra-cv`:** dica "Você pode parar e continuar depois: fica salvo aqui no celular." + `#vg-cv-voltar` +
@@ -310,16 +351,39 @@ Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `v
 - Vazio (sem vagas): card grande "Publique a primeira vaga em 5 minutos" + botão; as 3 primeiras passam por revisão (aviso).
 
 ### 3.3 Nova vaga (`#vaga/nova`, `#vaga/<id>` em edição) — `empresa-nova-vaga.png`
-- `form#vg-form-vaga` em `.form-grade` (2 colunas; 1 no celular). Campos: `#vg-vaga-modalidade` (rádio em pílulas: CLT / Temporário /
-  Diária ou bico / Freelancer / Estágio), `#vg-vaga-titulo` (obrigatório, ≤ 60; ajuda "Escreva como as pessoas falam"), `#vg-vaga-area`
-  (escolha em pílula da lista fechada), `#vg-vaga-zona` (obrigatório), **salário** `#vg-vaga-salario-de` (obrigatório, inteiro em
-  reais; `#vg-vaga-salario-ate` opcional ≥ de; erro "Informe o salário. Vaga sem salário não vai ao ar." / "O 'até' precisa ser
-  maior que o 'de'"), `#vg-vaga-extras`, `#vg-vaga-horario`, `#vg-vaga-inicio`, `#vg-vaga-descricao` (obrigatório, 40–1500),
-  `#vg-vaga-requisitos` (≤ 800), `#vg-vaga-selo` (Nenhum / um dos 5 testes; serviços gerais e entregador(a) não têm teste: o campo
-  some para essas áreas), `#vg-vaga-confidencial` ("Mostrar '<nome>'" / "Confidencial"; ajuda explica). **Diária/bico:** aparecem
-  `#vg-vaga-data` (data, hoje a +7), `#vg-vaga-hora-inicio`/`-fim`, `#vg-vaga-valor-dia` (obrigatório), `#vg-vaga-prazo` (48 h a
-  7 dias no ar) e o aviso "Diarista 3 ou mais dias por semana na mesma casa é emprego doméstico (LC 150/2015)". Estágio: `#vg-vaga-bolsa`
-  e `#vg-vaga-horas` (até 6 h/dia).
+- **Princípio (pedido do dono):** a vaga é cadastrada **como produto de marketplace**: campos de lista fechada OBRIGATÓRIOS antes do
+  texto livre, porque são eles que os filtros da pessoa (2.1a) encontram. O texto livre não entra na busca. Subtítulo: "Primeiro os
+  campos fechados (é por eles que as pessoas acham a vaga nos filtros), depois a descrição. Salário é obrigatório."
+- `form#vg-form-vaga` em 4 blocos (`.form-grade`, 2 colunas; 1 no celular). **Chave do campo → id → opções:**
+  1. **O que é a vaga:** `area` → `#vg-vaga-area` (escolha em pílula das 24 áreas; obrigatório; ajuda "Lista fechada de 24 áreas: é
+     o que a pessoa filtra."); `funcao` → `#vg-vaga-funcao` (título curto ≤ 60, obrigatório, com sugestões por área, ex.: "Vendedor(a)
+     de loja"); `modalidade` → `#vg-vaga-modalidade` (`clt|temporario|diaria|freelancer|estagio`, obrigatório); `quantidade` →
+     `#vg-vaga-quantidade` (inteiro ≥ 1, padrão 1); `salario_de`/`salario_ate` → `#vg-vaga-salario-de` (obrigatório; centavos no
+     dado) / `#vg-vaga-salario-ate` (opcional ≥ de; erro "Informe o salário. Vaga sem salário não vai ao ar." / "O 'até' precisa ser
+     maior que o 'de'"; diária = valor do dia; estágio = bolsa); `comissao` → `#vg-vaga-comissao` (caixa "Tem comissão"); `turno` →
+     `#vg-vaga-turno` (`manha|tarde|noite|comercial|escala|a_combinar`, obrigatório); `fim_de_semana` → `#vg-vaga-fim-de-semana`
+     (caixa "Trabalha fim de semana"); `inicio` → `#vg-vaga-inicio` (`imediato|data`) + `inicio_data` → `#vg-vaga-inicio-data`
+     (habilita com "Em uma data"; erro "Use dd/mm/aaaa"); `zona` → `#vg-vaga-zona` (slug da `vagas_zonas`, obrigatório).
+  2. **O que a vaga pede:** `experiencia` → `#vg-vaga-experiencia` (`nao_precisa|ate_1|1_a_3|mais_3`; padrão `nao_precisa`;
+     alimenta o filtro "Aceita sem experiência"); `escolaridade` → `#vg-vaga-escolaridade` (`nao_exigida|fundamental|medio|tecnico|
+     superior`; ajuda "Só marque se a função exige de verdade: cada exigência tira gente boa da lista."); `requisitos[]` →
+     `#vg-vaga-requisitos` (checklist `cnh_a|cnh_b|cnh_d|curso_registro|disponibilidade|outro` + `requisito_outro` →
+     `#vg-vaga-requisito-outro`, ≤ 80, habilita com "Outro"); `selo` → `#vg-vaga-selo` (`nenhum` ou slug do teste; opcional; some
+     nas áreas sem teste; ajuda "Quem não tem o selo ainda pode se candidatar; você vê quem tem. Sem nota mínima.").
+  3. **O que a vaga oferece:** `beneficios[]` → `#vg-vaga-beneficios` (checklist `vt|refeicao|saude|moradia|comissao`; "Comissão"
+     marca junto `comissao`); `confidencial` → `#vg-vaga-confidencial` (`nao|sim`; ajuda explica).
+  4. **Descrição:** `descricao` → `#vg-vaga-descricao` ("O que a pessoa vai fazer no dia a dia", obrigatório, 40–1500) — o único texto
+     livre; passa pela recusa de termo proibido (abaixo) e o erro diz "Os requisitos vão nos campos acima."
+- **Diária/bico (`modalidade=diaria`):** aparecem `data` → `#vg-vaga-data` (hoje a +7), `hora_inicio`/`hora_fim` →
+  `#vg-vaga-hora-inicio`/`-fim`, `valor_dia` (= `salario_de`), `prazo_horas` → `#vg-vaga-prazo` (48–168 h no ar) e o aviso
+  "Diarista 3 ou mais dias por semana na mesma casa é emprego doméstico (LC 150/2015)". Estágio: `horas_dia` → `#vg-vaga-horas`
+  (até 6 h/dia). Os campos de 1–3 continuam obrigatórios.
+- **Lateral "Como a vaga aparece nos filtros"** (`caixa--destaque`): etiquetas geradas ao vivo dos campos fechados (área, contrato,
+  turno, fim de semana, salário + comissão, zona, experiência, escolaridade, benefícios) com a nota "Cada campo fechado vira um filtro
+  para quem procura. O texto livre não entra na busca." Ajuda a empresa a ver o que está faltando.
+- **Cartão da vaga (lista) e página da vaga** mostram os campos fechados como etiquetas/linhas: área na meta, "Sem experiência",
+  "CNH B", "Fim de semana", benefícios em "O que a vaga oferece"; `#vg-vaga-requisitos` (página) passa a ser a lista objetiva + a
+  escolaridade; os antigos `#vg-vaga-extras|horario|titulo` deixam de existir (`horario` = turno + fim de semana; `titulo` = `funcao`).
 - **Recusa de termos proibidos (na hora, no campo):** `regras.js` confere título, descrição e requisitos ao sair do campo e ao enviar:
   (a) discriminação ("boa aparência", "até N anos", "solteira", sexo, "sem filhos", nacionalidade…) → `.campo__erro` "Não dá para
   publicar assim. '<termo>' é critério proibido por lei (Lei 9.029/1995 e CLT art. 373-A). Descreva o que a pessoa vai fazer e o
@@ -360,9 +424,11 @@ Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `v
 - **Não aparece:** nome, foto, idade, nacionalidade, gênero, e-mail/WhatsApp, DISC, "compatibilidade", pontuação, ordenação por nota.
 
 ### 3.6 Conversa, Combinou, contato liberado e "Contratada" (`#conversa/<id>`) — `empresa-conversa.png`
-- `#vg-conversa` igual ao da pessoa (lados invertidos). Antes do aceite: cabeçalho "2º · Pessoa candidata · esperando aceitar";
-  lateral "Contato" em cinza: "O nome e o WhatsApp aparecem quando a pessoa aceitar." Depois do Combinou: cabeçalho com o nome;
-  lateral `#vg-contato` (`caixa--destaque`): nome, WhatsApp, e-mail, `#vg-contato-whatsapp` (mensagem pronta), `#vg-contato-curriculo`
+- `#vg-conversa` igual ao da pessoa (lados invertidos). Antes do aceite: cabeçalho "2º · Pessoa candidata · esperando aceitar"
+  (sem foto, sem nome); lateral "Contato" em cinza: "O nome e o WhatsApp aparecem quando a pessoa aceitar." Depois do Combinou:
+  cabeçalho com a **foto pequena** `#vg-conversa-foto` (`.vg-foto__mini`, 40 px, só se a pessoa enviou; senão iniciais do nome) e o
+  nome; lateral `#vg-contato` (`caixa--destaque`): `#vg-contato-foto` (48 px) + nome, WhatsApp, e-mail, nota "Foto, nome e contato
+  liberados pela pessoa no Combinou (ela pode cortar o acesso).", `#vg-contato-whatsapp` (mensagem pronta), `#vg-contato-curriculo`
   "Ver currículo completo" (janela com o currículo: experiências, escolaridade, cursos, turnos; ainda sem foto/idade); a abertura
   chama `vagas_contato_pessoa` e fica registrada (aviso "Esta abertura fica registrada para ela").
 - Card "Contratou?": `#vg-marcar-contratada` (laranja) → confirmação "Marcar Ana Exemplo como contratada? A vaga pode continuar no
@@ -513,6 +579,9 @@ Grupo "Vagas" no menu lateral (entre Empresas e Vendas): **Cidades e praças** (
 
 ## 7. O que NÃO aparece (lista de conferência para o QA)
 
+- Nos filtros da pessoa: nada sobre a pessoa (nota, idade, sexo, "tem referência", escolaridade da pessoa); só atributos da vaga.
+- A foto (opcional) da pessoa: nunca no cartão cego, na busca do banco, na prévia do passo 5 nem para o operador; só depois do
+  Combinou, junto com nome e contato (`#vg-conversa-foto`, `#vg-contato-foto`).
 - No cartão cego e na busca: nome, foto, idade, nacionalidade, gênero, estado civil, filhos, cor, religião, saúde, antecedentes,
   contato, DISC, nota mínima, pontuação, ordenação por nota, "compatibilidade", texto e nome da empresa das referências.
 - No selo: "aprovado", "reprovado", percentil, comparação; o selo sempre traz teste, nota, data, validade, "online, sem supervisão"
@@ -548,6 +617,9 @@ sem mudar: `.topo/.topo-interno/.topo-nome`, `.conteudo`, `.acoes`, `.progresso-
 | Navegação inferior | `.vg-nav`, `.vg-nav__item[aria-current]`, `.vg-nav__n` | pessoa logada; 4 destinos; alvo 48 px |
 | Faixa de estado | `.vg-faixa`, `.vg-faixa--offline` | cidade pausada/espera, sem internet, empresa em análise/suspensa |
 | Chips de filtro | `.vg-chips`, `.vg-chip[aria-pressed|aria-expanded]`, `.vg-busca`, `.vg-contagem` | lista pública; também opções em formulários (`.vg-opcoes`) |
+| Barra de filtros resumida | `.vg-filtros-barra`, `.vg-chip--filtrar`, `.vg-chip__n`, `.vg-chips--ativos` | lista: "Filtrar (n)" + chips do que está ativo com ✕ |
+| Folha de filtros | `.vg-folha-veu`, `.vg-folha/__cab/__alca/__grupo`, `.vg-checks` | sobe de baixo no celular; janela no computador; botão único "Ver N vagas" na `.barra-nav` |
+| Foto opcional | `.vg-foto/__previa[--vazia]/__acoes`, `.vg-foto__mini[--grande]` | currículo (campo); conversa e contato da empresa depois do Combinou |
 | Iniciais da empresa | `.vg-iniciais`, `--grande`, `--confidencial` | em vez de foto/logo |
 | **Cartão de vaga** | `.vg-vagas > li > .vg-vaga`, `--destaque`, `__corpo/__titulo/__empresa/__valor/__meta/__etiquetas/__quando` | lista, prévia na empresa, boletim visual |
 | Etiquetas | `.vg-etiqueta`, `--urgente` (laranja), `--destaque` (contorno), `--hoje` (azul-escuro), `--selo` (nevoa) | modalidade, pede selo, urgente, destaque |
