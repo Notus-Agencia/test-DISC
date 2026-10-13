@@ -1,0 +1,604 @@
+# Vagas sem Caos — especificação das telas (UX)
+
+Fonte da verdade para quem vai codificar as telas da onda 2. Base: `scratchpad/vagas/proposta.md` (aprovada), `produto.md`,
+`marca.md`, a mesa de equipe (`EQUIPE.md`: contrato de RPCs da fundação, padrão obrigatório da psicologia, acréscimo da
+referência profissional) e `docs/IDENTIDADE-VISUAL.md`. Mockups estáticos (HTML + PNG, dados fictícios de Boa Vista) em
+`scratchpad/vagas/telas/` (`pessoa-*.png` a 390 px; `empresa-*`, `operador-*`, `painel-*` a 1280 px); o gerador está em
+`scratchpad/vagas/telas-src/` e a proposta de `vagas/assets/vagas.css` na seção 9.
+
+Regras que valem para TODAS as telas (não repetidas em cada uma):
+
+- **Marca:** "Vagas sem Caos" por inteiro; rodapé "uma ferramenta da Gestão sem Caos". Logo oficial `assets/marca/gsc-logo.svg`
+  (claro), `gsc-logo-preto.svg` (moldura laranja), `gsc-logo-negativo.svg` (azul-escuro). Nunca "Notus", nunca a estrela.
+- **Palavras proibidas em tela:** "Tinder", "swipe", "match", "aprovado/reprovado" (no selo e na prova), "perfil ideal",
+  "compatibilidade", "o teste prevê", "currículo verificado", "ranking", "DISC" (fora da tela "contratada" da empresa).
+  O nome público do interesse mútuo é **Combinou**. A pessoa usa **Quero** / **Pular**; a empresa **Quero conversar** / **Agora não**.
+- **Onde a tela explica o que o teste mede:** "conhecimento prático da função"; deixar o marcador `[REVISÃO PSICOLOGIA]` até o
+  parecer do agente psicologia (marcador visível nos mockups; some antes de publicar).
+- **Frase anti-golpe (fixa, igual em tudo):** "Nunca pague para se candidatar. Se alguém pedir dinheiro, Pix ou documento em
+  nome do Vagas sem Caos, é golpe." (versão curta do boletim: "Nunca pague para se candidatar. Se alguém pedir em nosso nome,
+  é golpe.") Aparece na lista, na vaga, no cadastro, no convite e na conversa.
+- **Linguagem:** português simples, sem jargão de RH, sem gênero ("a pessoa", "quem se candidata", "chamada(o)" só quando inevitável).
+  Botões com só a primeira letra maiúscula. Toda tela responde "o que eu faço aqui" (título) e "o que acontece depois" (subtítulo ou barra).
+- **Visual:** só tokens e peças de `assets/notus.css` (copiado para `vagas/comum/`), sem cor nova. Cards brancos ou `--nevoa`;
+  um `caixa--vidro` por tela no máximo; um botão laranja por tela; `.sobretitulo` + título `t-pagina` como no painel; janelas
+  quase opacas (`vidro-janela`); sem `<select>` nativo (pílulas `vg-chip`/`escolha`); nada pula de lugar.
+- **Acessibilidade:** todo campo com `<label for>`; erro em `.campo__erro` com `role="alert"` e `aria-describedby`; foco visível
+  (outline laranja do notus.css); alvos de toque ≥ 44 px (botões `botao--grande` = 48 px; chips 40–44 px; opções da prova 56 px);
+  contraste AA (laranja só como `--notus-forte` em texto pequeno); `aria-live` para "salvo", "enviado", "reconectando";
+  `h1` por tela com `tabindex="-1"` e foco ao trocar de tela (como `app.js`); `prefers-reduced-motion` respeitado.
+- **Celular (pessoa):** 390 px de referência, sem rolagem lateral, campos com 16 px, `.conteudo` com 16 px de margem e
+  `max-width: 720px`. Barra fixa inferior (`.barra-nav`, do teste) para a ação principal e `.vg-nav` (4 destinos) quando a pessoa
+  está logada; nunca as duas na mesma tela.
+- **Computador (empresa, operador, painel):** 1280 px de referência, menu lateral igual ao de `admin.html` (`.menu-lateral`,
+  `.aba`, grupos), cabeçalho `.cabecalho` + `.resumo`, tabelas `.vg-tabela`. Abaixo de 900 px o menu some e vira o botão "Menu"
+  (gaveta, como no painel): precisa funcionar para a empresa pequena no celular, sem prioridade.
+- **Estados padrão (todas as telas com dado remoto):** `carregando` (`.giro` + "Carregando…"), `vazio` (`.vazio` com uma frase
+  e um botão), `erro` (`.aviso--erro` com "Não deu para carregar. Tentar de novo."), `offline` (`.vg-faixa--offline` + último
+  conteúdo em cache do aparelho), `sessaoExpirada` (flag das RPCs → volta para `entrar.html` com `?voltar=`), `confirmar`
+  (flag → tela "Confirme seu e-mail" com "Reenviar"), `suspensa` (flag → aviso fixo "Sua conta está suspensa. Fale com a praça.").
+- **Rascunho no aparelho:** currículo, nova vaga, mensagem e resposta da prova ficam em `localStorage` (`vg.rascunho.<tela>`)
+  a cada mudança; a tela mostra "Rascunho salvo neste aparelho às HH:MM" (`.vg-rascunho`). Ids de envio gerados no aparelho
+  (`crypto.randomUUID()`), como no DISC, para repetir sem duplicar.
+- **Dinheiro** sempre em centavos no dado; na tela "R$ 1.620" (sem centavos quando for inteiro) e "R$ 14,90". Datas "13/10/2026",
+  horas "14:32", relativas "hoje", "ontem", "há 2 h", "há 3 dias".
+- **Peso (lista pública, primeira visita):** ≤ 100 KB transferidos: `notus.css` (15 KB) + fonte latin (27 KB, preload; latin-ext só
+  por `unicode-range`) + `vagas.css` (≤ 10 KB) + `config.js` + `regras.js` + `api.js` (fetch direto, **sem supabase-js em
+  nenhuma tela**) + `vagas-lista.js` (≤ 12 KB) + HTML. Sem fotos nem imagens além do logo SVG; empresa com iniciais
+  (`.vg-iniciais`). 20 vagas por página ("Ver mais 20 vagas"). CI confere o peso (gancho em `scripts/montar-vagas.mjs`).
+
+## 1. Mapa de arquivos, rotas e ids de raiz
+
+| Arquivo (em `vagas/`) | Rota pública | Quem | Dispositivo | Carrega |
+|---|---|---|---|---|
+| `index.html` | `/` | todos | celular | escolha/lembrança da cidade (`vg.cidade` no aparelho) → redireciona para `/<cidade>/` |
+| `cidade.html` | `/boa-vista-rr/` (rewrite em `_redirects`) | pessoa, anônimo | celular | lista pública + filtros; estados espera/pausada |
+| `vaga.html` | `/v/K7M2QX` (Pages Function monta o HTML da prévia; abre sem JS) | pessoa, anônimo | celular | página da vaga + Quero/Pular |
+| `entrar.html` | `/entrar.html?token_hash=…&type=…` | pessoa e empresa | celular/computador | entrar, criar conta, esqueci, confirmação (verifyOtp por fetch) |
+| `eu.html` | `#curriculo/1…5`, `#candidaturas`, `#conversa/<id>`, `#quem-viu`, `#dados`, `#referencias`, `#referencia/pedir`, `#referencia/<id>` | pessoa logada | celular | área da pessoa |
+| `testes.html` | `#catalogo`, `#teste/<slug>`, `#prova`, `#resultado/<tentativa>` | pessoa logada | celular | motor dos testes (`vagas/js/testes.js`) |
+| `selo.html` | `/selo?codigo=Q8V3N2KD` | qualquer pessoa | celular | conferência pública |
+| `empresa.html` | `#inicio`, `#vagas`, `#vaga/nova`, `#vaga/<id>`, `#vaga/<id>/cartoes`, `#conversas`, `#conversa/<id>`, `#referencias`, `#referencia/dar`, `#banco`, `#compras`, `#comprar/<produto>/<vaga>`, `#dados` | empresa logada | computador | painel da empresa |
+| `operador.html` | `#fila`, `#denuncias`, `#empresas`, `#assistido`, `#boletim`, `#repasse`, `#zonas` | operador logado (ou equipe) | computador | operação da praça |
+| `../admin.html` | aba "Vagas" (`data-aba="vg-cidades" | "vg-operadores" | "vg-moderacao" | "vg-numeros"`) | equipe (`e_admin()`) | computador | painel da Gestão sem Caos |
+
+Ids de raiz comuns: `#app` (celular) / `#conteudo` (computador) com `tabindex="-1"`; `#aviso` (`role="status"`, oculto, para
+leitores de tela); `#vg-aviso-geral` (aviso flutuante, como `#aviso-geral` do painel); `#vg-faixa-cidade` (cidade pausada/espera),
+`#vg-faixa-offline`; `#vg-cidade` (pílula da cidade no topo); `#vg-nav` com `#vg-nav-vagas|testes|candidaturas|eu`.
+
+Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `vg-prova-responder`, `vg-emp-cadastrar`,
+`vg-op-fila`, `vg-adm-cidades`, `vg-ref-aceitar`. Listas geradas usam `data-*` no item (`data-anuncio`, `data-candidatura`,
+`data-acao`) em vez de id numerado; os ids numerados dos mockups (`vg-vaga-1`) são só para a prévia.
+
+## 2. Telas da pessoa (celular, 390 px)
+
+### 2.1 Início da cidade (`cidade.html`) — mockup `pessoa-inicio.png`
+- **Objetivo:** ver as vagas de hoje da cidade e filtrar em 1 toque; entender que é grátis e seguro.
+- **Quem/estado:** anônimo ou logado (logado ganha `.vg-nav`). Cidade lembrada em `localStorage` (`vg.cidade`), sem GPS.
+- **Elementos:** `topo` (logo, "Vagas sem Caos", `#vg-cidade` → janela `#vg-janela-cidade` com a lista de `vagas_cidades_publicas()`:
+  ativas clicáveis, lista de espera com "Avise-me", pausadas com etiqueta); `.sobretitulo` "Boa Vista e região"; `h1#vg-titulo`
+  "Vagas de hoje"; subtítulo "Empresas daqui, conferidas uma a uma. Candidatar-se é grátis, sempre."; busca `#vg-busca`
+  (`type="search"`, placeholder "Buscar por cargo ou área", envia ao parar de digitar 400 ms); chips `#vg-filtros`:
+  `#vg-filtro-hoje` (`aria-pressed`, "Para hoje" = diárias de hoje/amanhã), `#vg-filtro-zona`, `#vg-filtro-area`,
+  `#vg-filtro-modalidade` (abrem janela `#vg-janela-filtro` com opções em pílulas, "Aplicar"), `#vg-filtro-entorno`
+  ("Incluir Mucajaí e Cantá"); `#vg-contagem` ("37 vagas em Boa Vista" + `#vg-limpar-filtros`); `ul#vg-lista` de `.vg-vaga`
+  (ver componente); `#vg-mais` "Ver mais 20 vagas" (`depois` = último id); `#vg-aviso-golpe`; rodapé com Termos/Privacidade.
+- **Dados:** `vagas_anuncios_publicos({cidade, entorno, zona, modalidade, paraHoje, busca, depois, limite:20})`. Filtros ficam
+  na URL (`?zona=zona-oeste&area=atendimento&hoje=1`) para compartilhar e voltar.
+- **Estados:** carregando (3 esqueletos `.vg-vaga` em `--nevoa`, sem pulo); vazio ("Nenhuma vaga com esses filtros. Tire um
+  filtro ou veja todas." + botão "Ver todas"); erro; offline (`pessoa-offline.png`: faixa + última lista guardada em
+  `localStorage` `vg.lista.<cidade>` com data e "Tentar de novo"); cidade em lista de espera (`pessoa-espera.png`);
+  cidade pausada (`pessoa-pausada.png`).
+- **Não aparece:** nome da empresa confidencial; foto; "Tinder"; contagem de candidatos (evita corrida); nota de selo exigida.
+
+### 2.2 Cidade em lista de espera — `pessoa-espera.png`
+- `section#vg-espera.caixa--vidro`: "Ainda não chegamos aqui" + "Estamos reunindo empresas de Rorainópolis…" + total
+  ("112 pessoas já pediram", só o número é público); `form#vg-form-espera`: `#vg-espera-email` (obrigatório; erro "Digite um e-mail
+  válido, como nome@exemplo.com"), `#vg-espera-pessoa|empresa` (rádio em pílulas), `#vg-espera-enviar` "Me avise quando abrir"
+  (laranja). Sucesso: substitui o formulário por `.aviso--ok` "Pronto. A gente avisa por e-mail quando Rorainópolis abrir."
+  Limite por e-mail: 2ª tentativa mostra o mesmo sucesso (resposta neutra). RPC `vagas_lista_espera_entrar`.
+- Card "Enquanto isso": link para Boa Vista e para os testes (o selo vale em qualquer cidade).
+
+### 2.3 Cidade pausada — `pessoa-pausada.png`
+- `#vg-faixa-cidade` (azul-escuro, âmbar no destaque): "Caracaraí está em pausa. As vagas e os cadastros desta cidade ficam
+  guardados e voltam quando a praça reabrir." + `#vg-vazio-cidade` com "Ver vagas de Boa Vista" e "Fazer um teste".
+  Pessoa logada da cidade pausada entra normalmente em `eu.html` (dados preservados); `vaga.html` de vaga pausada mostra
+  "Esta vaga não está no ar" + 3 vagas parecidas.
+
+### 2.4 Página da vaga (`vaga.html`) — `pessoa-vaga.png`, `pessoa-vaga-enviada.png`
+- **Objetivo:** decidir em uma tela: "Quero" ou "Pular". Abre sem JS (HTML montado pela Pages Function) com os botões que, sem JS,
+  levam para `entrar.html?voltar=/v/K7M2QX`.
+- **Elementos:** `#vg-voltar` ("Vagas de Boa Vista"); `article#vg-vaga` (`data-anuncio`, `data-codigo`): etiquetas
+  (modalidade, "Pede selo: <teste>", "Urgente hoje", "Destaque", "Para hoje"), `h1#vg-vaga-titulo`, bloco da empresa
+  (`.vg-iniciais` ou `--confidencial` com "?"; `#vg-vaga-empresa` = nome ou "Empresa confidencial"; `.vg-verificada` "Empresa
+  verificada · CNPJ conferido pela Gestão sem Caos. O nome aparece se ela chamar você para conversar."), `#vg-vaga-valor`
+  (faixa salarial ou "R$ 120 por dia"), `dl#vg-vaga-dados` (Onde, Horário, Começa, Publicada/fica no ar até; diária: Data,
+  Horário, Valor do dia, "Pagamento combinado direto com a empresa"), "O que a pessoa vai fazer" `#vg-vaga-descricao`,
+  "O que precisa" `#vg-vaga-requisitos`, bloco do selo pedido (`.vg-selo--mini`: "Você já tem o selo de …" com nota e data, ou
+  "Você ainda não tem o selo de …" + `#vg-vaga-fazer-teste` "Fazer o teste agora (15 min)"; quem não tem o selo **pode**
+  se candidatar), `#vg-aviso-golpe`, links "Denunciar esta vaga" (janela `#vg-janela-denuncia`: motivo em pílulas — "Pede
+  dinheiro", "Pede documento", "Discriminação", "Parece falsa", "Outro" — + texto ≤ 300 + "Enviar denúncia"; anônimo pode;
+  RPC `vagas_denunciar`) e "Compartilhar no WhatsApp" (`https://wa.me/?text=` com cargo, zona, valor e o link curto).
+- **Barra fixa `#vg-barra-vaga`:** dica "Você escolhe: nada acontece sem o seu 'Quero'." + `#vg-pular` (claro) + `#vg-quero`
+  (laranja, "Quero esta vaga"). Logado sem currículo completo → "Quero" leva ao passo que falta com aviso "Falta terminar
+  o currículo (passo 3 de 5). Depois a candidatura é enviada sozinha." Anônimo → `entrar.html?voltar=` (a intenção fica em
+  `localStorage` `vg.quero=<anuncio>` e é enviada ao entrar). Já candidatada → barra vira "Candidatura enviada em 12/10 ·
+  Retirar". "Pular" (`vagas_pular`) só esconde a vaga da lista desta pessoa; "Desfazer" no `#vg-aviso-geral` por 6 s.
+- **Depois do Quero (`pessoa-vaga-enviada.png`):** `#vg-quero-ok`: ícone ok, "Candidatura enviada", texto do que a empresa recebe
+  (cartão sem nome/foto) e "Se ela quiser conversar, você recebe um aviso aqui e por e-mail."; "A empresa costuma responder em
+  até 7 dias."; `#vg-quero-ok-voltar` "Ver mais vagas" (principal) e `#vg-quero-ok-candidaturas`. Diária: texto "A empresa vê seu
+  cartão e, se chamar, libera o WhatsApp dela para combinar o dia."
+- **Estados:** vaga encerrada/pausada/suspensa ("Esta vaga não está mais no ar" + parecidas); limite de candidaturas ativas
+  (RPC devolve erro → `.aviso--erro` com a mensagem da RPC); offline (página em cache abre; "Quero" guarda a intenção e avisa
+  "Sem internet. Vamos enviar assim que voltar.").
+
+### 2.5 Entrar, criar conta, esqueci, confirmação (`entrar.html`) — `pessoa-entrar.png`, `pessoa-esqueci.png`
+- **Moldura:** card `moldura-laranja` com `gsc-logo-preto.svg`, "Vagas sem Caos" e "Vagas de Boa Vista com habilidade testada.
+  Grátis para quem procura emprego." (no computador, metade laranja / metade azul-escura como o login do painel).
+- **Segmento `#vg-aba-entrar` / `#vg-aba-criar`.** Criar (`form#vg-form-criar`): `#vg-criar-nome` ("Como quer ser chamada(o)",
+  obrigatório, 2–60 caracteres; erro "Escreva o seu nome"), `#vg-criar-email` (obrigatório; erro "Esse e-mail parece incompleto.
+  Confira se tem o '.com' no fim."; ajuda "Não tem e-mail? Peça ajuda no WhatsApp da praça."), `#vg-criar-senha` (≥ 8; erro
+  "A senha precisa ter pelo menos 8 caracteres"; ajuda com a dica das três palavras), `#vg-criar-termos` (obrigatório: "Tenho 18
+  anos ou mais e li os Termos de uso e a Política de privacidade. Sei que candidatar-se é sempre grátis."; erro "Marque a caixa
+  para continuar"), `#vg-criar-enviar` "Criar conta" (laranja). Chama a Edge Function `vagas-conta` `cadastrar` {tipo:'pessoa',
+  termosVersao}. Resposta sempre neutra → tela `#vg-confirmar-email` "Abra o seu e-mail e toque no link para confirmar"
+  + `#vg-reenviar` (bloqueado 60 s com contador) + "Trocar o e-mail".
+- **Entrar (`form#vg-form-entrar`):** `#vg-entrar-email`, `#vg-entrar-senha`, `#vg-entrar-enviar`, link `#vg-ir-esqueci`; erro
+  único "E-mail ou senha não conferem." (não diz qual); `confirmar` → "Confirme o e-mail antes de entrar" + reenviar.
+- **Esqueci (`#vg-esqueci`, `pessoa-esqueci.png`):** `#vg-esqueci-email` + `#vg-esqueci-enviar`; sempre `.aviso--ok` "Se esse e-mail
+  tiver conta, o link chega em alguns minutos. Olhe também a caixa de spam." (botão vira "Enviado", desabilitado 60 s).
+- **Volta do link (`?token_hash&type`):** `signup` → "E-mail confirmado" + continua (`voltar`, senão `eu.html#curriculo/1`);
+  `recovery` → `form#vg-form-nova-senha` (`#vg-ns-senha`, `#vg-ns-confirmar`; erro "As senhas não são iguais");
+  `invite` (cadastro assistido) → "A operação da praça criou a sua conta. Crie a sua senha para ela valer." + mesmo formulário;
+  token inválido → "Este link venceu ou já foi usado. Peça outro." + esqueci.
+- **Empresa:** o mesmo arquivo com `?tipo=empresa` mostra o cadastro da empresa (seção 3.1).
+
+### 2.6 Currículo em 5 passos (`eu.html#curriculo/<n>`) — `pessoa-curriculo-2.png`, `pessoa-curriculo-5.png`
+- **Objetivo:** montar o cartão em 5 telas curtas, no ritmo da pessoa, com rascunho no aparelho.
+- **Cabeçalho de passo:** `.progresso-topo` ("2 de 5" com `.progresso-num` + nome do passo), `#vg-cv-passos` (5 segmentos:
+  feito azul-escuro, atual laranja, resto trilho), `#vg-cv-rascunho` ("Rascunho salvo neste aparelho às 14:32", `aria-live`).
+- **Passos e campos:**
+  1. **Onde e o quê:** cidades de interesse (`#vg-cv-cidades`, até 2 pílulas; erro "Escolha pelo menos uma cidade"), zona onde mora
+     (`#vg-cv-zona`, pílulas da `vagas_zonas`), áreas (`#vg-cv-areas`, pílulas da lista fechada de `regras.js`, até 3),
+     cargos (`#vg-cv-cargos`, campo com sugestões, até 3).
+  2. **Experiência (`pessoa-curriculo-2.png`):** `#vg-exp-cargo` (obrigatório se houver experiência), `#vg-exp-onde`, tempo
+     (`#vg-exp-tempo`, 4 pílulas), carteira assinada (`#vg-exp-carteira`: Sim / Não / Prefiro não dizer), `#vg-exp-adicionar`
+     (até 5), `#vg-exp-nenhuma` "Ainda não trabalhei" (pula com `sem_experiencia=true`).
+  3. **Escolaridade e cursos:** `#vg-cv-escolaridade` (pílulas: Fundamental incompleto … Superior completo), `#vg-cv-cursos`
+     (texto curto, ≤ 120), `#vg-cv-cnh` (Não tem / A / B / AB / C ou mais).
+  4. **Disponibilidade e contato:** `#vg-cv-turnos` (Manhã / Tarde / Noite / Madrugada / Fins de semana; múltipla),
+     `#vg-cv-diarias` ("Topo diárias e bicos" sim/não), `#vg-cv-pretensao` ("A partir de R$", inteiro; ajuda "Só aparece como
+     faixa para a empresa"), `#vg-cv-whatsapp` (tel, DDD + 9 dígitos; erro "Digite o WhatsApp com DDD, como (95) 99999-0000";
+     ajuda "Só aparece para a empresa depois do Combinou. Sem confirmação por código nesta fase.").
+  5. **Revisar (`pessoa-curriculo-5.png`):** `#vg-cv-previa` = cartão cego exatamente como a empresa vê (componente
+     `.vg-cartao`, "assim a empresa vê o seu cartão"), `#vg-cv-banco` (consentimento separado: "Quero entrar no banco de talentos
+     por 6 meses…" — opcional; grava `bancoTalentos` em `vagas_aceitar_termos`), nota "Candidatar-se a uma vaga não depende dessa
+     autorização.", `#vg-cv-concluir` "Salvar currículo" (laranja).
+- **Barra fixa `#vg-barra-cv`:** dica "Você pode parar e continuar depois: fica salvo aqui no celular." + `#vg-cv-voltar` +
+  `#vg-cv-avancar` "Continuar". Validação ao avançar; o erro aparece no campo e o foco vai para ele; nada muda de posição.
+- **Dados:** `vagas_pessoa_minha()` para preencher; `vagas_pessoa_salvar(p_dados)` a cada passo concluído (idempotente) e no fim.
+  Rascunho `vg.rascunho.curriculo` por passo; ao abrir, se houver rascunho mais novo que o servidor: "Você tem um rascunho de
+  13/10 às 14:32. Continuar dele?" (Continuar / Descartar).
+- **Não existe:** foto, idade (só a caixa "18 anos ou mais" do cadastro), gênero, estado civil, filhos, cor, religião,
+  nacionalidade, saúde, antecedentes, CPF/RG.
+
+### 2.7 Testes de habilidade (`testes.html`) — `pessoa-testes.png`, `pessoa-prova-instrucoes.png`, `pessoa-prova.png`, `pessoa-resultado.png`
+- **Catálogo (`#vg-testes-lista`):** 5 itens `.vg-teste` (`#vg-teste-<slug>`): nome, linha de info ("18 questões · 15 min · pedido por
+  9 vagas" / "Selo válido até … · nota 82" / "pode refazer em 18 dias"), ação ("Começar" principal; etiqueta "Selo"; ou
+  "Em 18 dias" sem botão). Subtítulo: "Grátis. Cerca de 15 minutos cada, no celular. O selo mostra o teste, a nota e a data, e
+  vale 12 meses. Pode refazer depois de 30 dias." Aviso: "Os testes são de conhecimento prático da função … Não medem inteligência,
+  personalidade nem 'perfil'. Nenhuma vaga pode cobrar por eles. [REVISÃO PSICOLOGIA]". Número de questões, tempo e nota mínima
+  do selo vêm de `docs/VAGAS-TESTES.md` (agente testes: 15 questões, 20 min, caixa 25; a tela lê do catálogo, não fixa número).
+- **Instruções (`#vg-instrucoes`):** 5 linhas com ícone (questões/uma por tela/não volta; tempo por questão; internet cai e a
+  prova espera; nota e selo no fim; 1 tentativa a cada 30 dias), aviso "É um teste online, sem supervisão: o selo diz isso para a
+  empresa. Faça sozinha(o): é assim que ele vale.", `#vg-prova-comecar` (laranja) e `#vg-prova-depois`. Caixa/matemática:
+  acrescenta "Pode usar papel e caneta. Calculadora não." Português/redação: "Colar texto fica bloqueado na redação."
+- **Prova (`#vg-prova`, `data-questao`):** topo `.vg-prova__topo` com "7 de 18" e `#vg-prova-tempo` (`role="timer"`,
+  `#vg-prova-segundos` "0:42"; `--pouco` com ≤ 10 s; sem som); `.vg-prova__barra` (feito azul-escuro, trilho liso);
+  `h1#vg-prova-enunciado` (18 px); apoio opcional `.vg-prova__apoio` (tabela de preços, texto base, em `--nevoa`); opções
+  `ul#vg-prova-opcoes` (`role="radiogroup"`, botões `.retrato.vg-opcao` ≥ 56 px, letra A–D em bolinha, `aria-pressed`;
+  ordem embaralhada pelo servidor); redação: `textarea#vg-prova-texto` com contador e `onpaste` bloqueado; barra fixa
+  `#vg-barra-prova` com dica "Depois de responder não dá para voltar." e `#vg-prova-responder` (principal; desabilitado até
+  escolher). Tempo zerado → envia o que estiver marcado (ou "sem resposta") e vai à próxima, com aviso "Tempo esgotado nesta
+  questão" no `#aviso`. Queda de internet: `#vg-prova-reconectando` ("Reconectando… sua resposta está guardada."), resposta
+  fica em `localStorage` `vg.prova.<tentativa>` e é reenviada (id gerado no aparelho; o servidor tolera ~10 s). Sair da tela:
+  `beforeunload` só avisa; a tentativa continua no servidor (trocar de aba vira sinal, não anula).
+- **Resultado (`#vg-resultado`):** "Você ganhou o selo" (ou, abaixo da nota mínima: "Prova concluída" + "Desta vez não saiu o selo.
+  Você pode refazer em 30 dias; até lá, continue se candidatando." — nunca "reprovado"); componente `#vg-selo` com
+  `#vg-selo-codigo`; "Como você foi em cada parte" (`#vg-resultado-partes`, barras por competência "5 de 6"; redação: "A sua
+  redação vai para a empresa como você escreveu, sem nota."); aviso "O selo não diz 'aprovado' nem 'reprovado': mostra a sua nota e
+  quem decide é a empresa, na conversa. Pode refazer de graça depois de 30 dias."; `#vg-resultado-vagas` "Ver 9 vagas que pedem
+  este selo" (laranja) e `#vg-resultado-compartilhar` (`navigator.share` com o link `selo.html?codigo=`).
+- **Não aparece:** gabarito, ranking, comparação com outras pessoas, "aprovado", percentil.
+
+### 2.8 Conferência pública do selo (`selo.html`) — `pessoa-selo-conferir.png`
+- `form#vg-form-conferir`: `#vg-conferir-codigo` (8 caracteres, maiúsculas automáticas, aceita com ou sem hífen; erro "O código
+  tem 8 letras e números, como Q8V3N2KD") + `#vg-conferir-enviar`. RPC `vagas_selo_publico(p_codigo)` (agente testes).
+- Resultado: `.vg-conferir` (ícone ok + "Selo válido" / relógio + "Selo vencido em 13/10/2026" / "Código não encontrado. Confira as
+  letras ou peça o código de novo à pessoa.") + componente `.vg-selo` completo (teste, nota, data, validade, "Online, sem
+  supervisão", "Emitido pelo Vagas sem Caos…"). Nunca mostra nome, e-mail ou cidade da pessoa. Aviso fixo "O teste é de conhecimento
+  prático da função, feito online e sem supervisão. Ele não confere identidade nem substitui a entrevista. [REVISÃO PSICOLOGIA]".
+  Limite de consultas por IP (resposta "Muitas consultas. Tente em alguns minutos.").
+
+### 2.9 Minhas candidaturas (`eu.html#candidaturas`) — `pessoa-candidaturas.png`
+- `h1#vg-cand-titulo` "Candidaturas"; segmento `#vg-cand-aba-andando` / `#vg-cand-aba-fechadas`; `ul#vg-cand-lista` de `.vg-linha`
+  (`data-candidatura`): iniciais, cargo, "empresa · situação", `.vg-status`. Mapa de status → rótulo: `enviada` "Enviada",
+  `conversar` "Responder" (laranja; abre o convite), `combinou` "Combinou", `contratada` "Contratada", `agora_nao` "Encerrada"
+  (não exibe "a empresa disse não"), `retirada` "Retirada", `recusada` "Você recusou". Toque: enviada → página da vaga com
+  "Retirar candidatura" (confirmação na página); conversar → 2.10; combinou/contratada → conversa.
+- Nota "Enviada há mais de 7 dias sem resposta? A vaga pode ter sido preenchida…". Vazio: "Você ainda não se candidatou. As vagas de
+  Boa Vista estão a um toque." + botão. `.vg-nav` mostra `vg-nav__n` com convites a responder.
+
+### 2.10 Conversa: o convite e o Combinou (`eu.html#conversa/<id>`) — `pessoa-conversa-convite.png`, `pessoa-conversa.png`
+- **Momento 1 — convite (`#vg-convite`, status `conversar`):** sobretítulo = cargo; "A empresa quer conversar com você";
+  bloco `#vg-convite-empresa` com o **nome real** (mesmo se a vaga era confidencial: "esta era a 'empresa confidencial'") e
+  `.vg-verificada`; `#vg-convite-mensagem` (primeira mensagem da empresa, se houver); lista "Se você aceitar:" (nome e currículo
+  completo liberados; WhatsApp liberado nos dois sentidos; fica registrado em "quem viu"); "Se recusar, a empresa não vê nada
+  além do cartão e a conversa fecha. Nenhuma das duas respostas aparece para outras empresas."; `#vg-convite-recusar` "Agora não"
+  (claro) e `#vg-convite-aceitar` "Combinou: liberar meu contato" (laranja). Antes de aceitar a pessoa já vê o nome da empresa
+  (RPC `vagas_ver_empresa`); aceitar = `vagas_combinar`; recusar = `vagas_recusar` (confirmação na página: "Recusar o convite da
+  Loja Nova Exemplo? A conversa fecha e não dá para reabrir.").
+- **Momento 2 — conversa (`#vg-conversa`, status `combinou`/`contratada`):** cabeçalho com voltar, iniciais, `#vg-conversa-nome`,
+  cargo + `.vg-status`; `ul#vg-mensagens` (`.vg-msg` da empresa à esquerda, `--minha` à direita em azul-escuro, `--sistema`
+  centralizada: "Candidatura enviada em 07/10", "Vocês combinaram em 09/10. Nome e contato liberados para os dois lados.");
+  `#vg-conversa-whatsapp` "Chamar no WhatsApp" (`wa.me/<numero da empresa>?text=` com mensagem pronta); `form#vg-form-mensagem`
+  (`#vg-mensagem-texto` ≤ 1000, `#vg-mensagem-enviar`); `#vg-conversa-bloqueio` "Pedidos de dinheiro, Pix ou documento não passam
+  por aqui. Algo estranho? Denunciar." Mensagem bloqueada pelo filtro de `regras.js` → erro inline "Essa mensagem tem algo que
+  não pode ir (Pix, dinheiro, documento ou link encurtado). Reescreva sem isso." Antes do Combinou a pessoa também pode
+  responder por mensagem (sem liberar contato); o campo some se a conversa fechou ("Conversa encerrada").
+- **Dados:** `vagas_conversa(p_candidatura)`, `vagas_mensagem_enviar(p_candidatura, p_texto, p_id)`; atualização por
+  consulta a cada 20 s com a tela aberta (sem websocket). Novas mensagens chegam por e-mail (textos do agente textos).
+
+### 2.11 Quem viu meu contato (`eu.html#quem-viu`) — `pessoa-quem-viu.png`
+- `#vg-quem-viu-lista`: por empresa (`.vg-item`): nome, cargo, "abriu em 09/10 às 15:18 · Marta E." (primeiro nome + inicial de quem
+  abriu) ou "ainda não abriu (você combinou hoje)". Aviso "Ninguém mais tem o seu contato: nem o operador da praça, nem outras
+  empresas." Toque na empresa → "Cortar o acesso desta empresa" (confirmação; encerra a candidatura). RPC `vagas_quem_viu_meu_contato`.
+  Vazio: "Nenhuma empresa abriu o seu contato ainda. Isso só acontece depois de um Combinou."
+
+### 2.12 Eu: meus dados, baixar e excluir (`eu.html#dados`) — `pessoa-meus-dados.png`, `pessoa-excluir-confirmar.png`
+- `h1#vg-eu-titulo` = nome; subtítulo e-mail · cidades. `#vg-eu-lista`: Meu currículo (`#vg-eu-curriculo` Editar), Meus selos
+  (`#vg-eu-selos`), Referências (`#vg-eu-referencias`), Banco de talentos (`#vg-eu-banco` "Sair do banco" / "Entrar no banco", com a
+  validade), Quem viu meu contato (`#vg-eu-quem-viu`), Cidades (`#vg-eu-cidades`, até 2).
+- `section#vg-meus-dados`: "Você pode levar uma cópia de tudo ou apagar a conta. Contas paradas por 24 meses são apagadas sozinhas."
+  `#vg-dados-baixar` "Baixar meus dados (arquivo)" (`vagas_exportar_meus_dados()` → JSON baixado como `meus-dados-vagas.json`;
+  inclui referências recebidas); `#vg-dados-excluir` (perigo) → janela `#vg-confirmar-excluir`: "Excluir a conta de vez?",
+  consequências, campo `#vg-confirmar-excluir-texto` (digitar EXCLUIR habilita `#vg-confirmar-excluir-sim`), `#vg-confirmar-excluir-cancelar`.
+  Edge Function `vagas-conta` `excluir` {confirmar:'EXCLUIR'} → tela final "Conta excluída. Obrigado por usar o Vagas sem Caos." e sai.
+- `#vg-sair` "Sair da conta" (link).
+
+### 2.13 Referência profissional — lado da pessoa — `pessoa-referencia-pedir.png`, `pessoa-referencia-aceitar.png`, `pessoa-referencias.png`
+- **Pedir (`#vg-ref-pedir`, `eu.html#referencia/pedir`):** "Pedir referência"; subtítulo explica (só empresa verificada; só aparece
+  depois do aceite); `form#vg-ref-form-pedir`: `#vg-ref-pedir-empresa` (busca nas empresas verificadas da cidade; se não achar,
+  mostra "Não achou? Mande o convite por WhatsApp"), `#vg-ref-pedir-funcao`, `#vg-ref-pedir-inicio` / `#vg-ref-pedir-fim` (mês/ano;
+  erro "Use mês/ano, como 03/2024") ou `#vg-ref-pedir-atual`; consentimento fixo "É pública…"; `#vg-ref-pedir-enviar` (laranja,
+  pela plataforma: `vagas_referencia_pedir`) e `#vg-ref-pedir-whatsapp` (gera link `/r/<codigo>` do convite e abre `wa.me/?text=`).
+  Sucesso: "Pedido enviado. A empresa tem 30 dias para responder; você vê aqui quando ela responder."
+- **Receber (`#vg-ref-receber`, `eu.html#referencia/<id>`, status `pendente`):** "A Padaria Modelo deu uma referência para você";
+  "Só você está vendo."; componente `.vg-ref.vg-ref--pendente` completo; consentimento (o que aparece antes/depois do Combinou;
+  pode ocultar/excluir; a empresa é avisada); `#vg-ref-recusar` "Não quero mostrar" e `#vg-ref-aceitar` "Aceitar e mostrar" (laranja);
+  "Denunciar a referência" (mesma janela de denúncia, alvo `referencia`); "A empresa não vê se você recusou."
+  RPC `vagas_referencia_responder(p_referencia, 'aceitar'|'recusar'|'ocultar'|'mostrar'|'excluir')`.
+- **Lista (`#vg-ref-lista`, `eu.html#referencias`):** "Referências" + "Sem nota, sem estrelas: é uma carta, não uma avaliação.";
+  `#vg-ref-novo-pedido`; `ul.vg-refs` com `.vg-ref` e `.vg-ref__acoes` (`.vg-status` Visível/Oculta/Pendente; `data-acao`
+  ocultar/mostrar/excluir — excluir com confirmação na página); "Pedidos enviados" (`.vg-item` com "Lembrar", 1 lembrete a cada
+  7 dias); aviso do que a empresa vê antes/depois do Combinou. Perfil público (opcional, fase 2): toggle "Mostrar minhas
+  referências na minha página pública" — desenhar só quando a página pública existir.
+- **Não existe:** estrelas, média, "nota" de referência, referência negativa, referência de empresa não verificada, referência
+  anônima/confidencial.
+
+## 3. Telas da empresa (computador, 1280 px; funciona no celular)
+
+### 3.1 Cadastro CNPJ/MEI e entrar (`entrar.html?tipo=empresa`) — `empresa-cadastro.png`
+- Metade laranja: logo preto, frase "Vagas de Boa Vista com quem fez o teste da função.", apoio, 3 passos (cadastre o CNPJ ou
+  MEI; publique com salário; chame para conversar), "Já é cliente da consultoria? A gente cadastra para você."
+- Metade azul-escura (`form#vg-emp-form-cadastro`): `#vg-emp-cnpj` (máscara 00.000.000/0001-00; validação de dígitos de
+  `regras.js`; erro "CNPJ inválido. Confira os 14 números."; MEI é CNPJ normal), `#vg-emp-nome` (nome como aparece; 2–60),
+  `#vg-emp-responsavel`, `#vg-emp-email`, `#vg-emp-whatsapp` ("aparece só depois do Combinou"), `#vg-emp-senha`, `#vg-emp-termos`
+  (Termos para empresas: salário obrigatório, nada de pedir dinheiro/documento, anúncio sem discriminação), `#vg-emp-erro`,
+  `#vg-emp-cadastrar` "Cadastrar e confirmar o e-mail" (branco sobre azul-escuro), `#vg-emp-ir-entrar`. Nota: "Depois de confirmar
+  o e-mail, a operação confere o CNPJ (em geral no mesmo dia útil). Você já pode escrever a vaga enquanto espera."
+  Fluxo: `vagas-conta` `cadastrar` {tipo:'empresa'} → confirmar e-mail → `vagas_empresa_cadastrar(p_dados)` → status `em_analise`.
+- Empresa `em_analise` entra no painel com faixa fixa "Seu CNPJ está em conferência pela operação da praça. Dá para escrever vagas;
+  elas vão ao ar depois da liberação." Empresa `suspensa`: faixa "Conta suspensa. Motivo: … Fale com a praça." e tudo só leitura.
+
+### 3.2 Painel da empresa (`empresa.html#inicio`) — `empresa-painel.png`
+- Cabeçalho "Bom dia, Marcos" (saudação pela hora, sem gênero) + "3 vagas no ar, 2 pessoas esperando sua resposta. O ideal é
+  responder em até 7 dias." + `#vg-emp-nova-vaga` (laranja). `#vg-emp-resumo` (4 cards: Vagas no ar; Esperando sua resposta
+  em `caixa--destaque`; Combinou; Contratações). `table#vg-emp-vagas-tabela` (Vaga, Status, Quero, Novos, No ar até, ação
+  "Ver cartões" / "Editar"). Lateral: "Como funciona" (4 passos) e "Regras da casa". Menu: Início, Minhas vagas (n), Conversas (n),
+  Referências, Buscar no banco (fase 2: etiqueta), Compras, Dados da empresa.
+- Vazio (sem vagas): card grande "Publique a primeira vaga em 5 minutos" + botão; as 3 primeiras passam por revisão (aviso).
+
+### 3.3 Nova vaga (`#vaga/nova`, `#vaga/<id>` em edição) — `empresa-nova-vaga.png`
+- `form#vg-form-vaga` em `.form-grade` (2 colunas; 1 no celular). Campos: `#vg-vaga-modalidade` (rádio em pílulas: CLT / Temporário /
+  Diária ou bico / Freelancer / Estágio), `#vg-vaga-titulo` (obrigatório, ≤ 60; ajuda "Escreva como as pessoas falam"), `#vg-vaga-area`
+  (escolha em pílula da lista fechada), `#vg-vaga-zona` (obrigatório), **salário** `#vg-vaga-salario-de` (obrigatório, inteiro em
+  reais; `#vg-vaga-salario-ate` opcional ≥ de; erro "Informe o salário. Vaga sem salário não vai ao ar." / "O 'até' precisa ser
+  maior que o 'de'"), `#vg-vaga-extras`, `#vg-vaga-horario`, `#vg-vaga-inicio`, `#vg-vaga-descricao` (obrigatório, 40–1500),
+  `#vg-vaga-requisitos` (≤ 800), `#vg-vaga-selo` (Nenhum / um dos 5 testes; serviços gerais e entregador(a) não têm teste: o campo
+  some para essas áreas), `#vg-vaga-confidencial` ("Mostrar '<nome>'" / "Confidencial"; ajuda explica). **Diária/bico:** aparecem
+  `#vg-vaga-data` (data, hoje a +7), `#vg-vaga-hora-inicio`/`-fim`, `#vg-vaga-valor-dia` (obrigatório), `#vg-vaga-prazo` (48 h a
+  7 dias no ar) e o aviso "Diarista 3 ou mais dias por semana na mesma casa é emprego doméstico (LC 150/2015)". Estágio: `#vg-vaga-bolsa`
+  e `#vg-vaga-horas` (até 6 h/dia).
+- **Recusa de termos proibidos (na hora, no campo):** `regras.js` confere título, descrição e requisitos ao sair do campo e ao enviar:
+  (a) discriminação ("boa aparência", "até N anos", "solteira", sexo, "sem filhos", nacionalidade…) → `.campo__erro` "Não dá para
+  publicar assim. '<termo>' é critério proibido por lei (Lei 9.029/1995 e CLT art. 373-A). Descreva o que a pessoa vai fazer e o
+  que precisa saber; sexo, idade e aparência não podem ser requisito."; (b) golpe ("taxa", "Pix", "investimento", link encurtado,
+  telefone) → "Tire '<termo>'. Vagas não podem pedir dinheiro, Pix nem contato fora da plataforma: a conversa acontece aqui."
+  `#vg-vaga-publicar` fica desabilitado enquanto houver erro. A lista oficial de termos vem de `regras.js` (fundação) e os
+  motivos da operação.
+- Ações: `#vg-vaga-salvar-rascunho` (claro; `vagas_anuncio_salvar`), `#vg-vaga-publicar` "Enviar para publicar" (laranja;
+  `vagas_anuncio_publicar` → `em_revisao` nas 3 primeiras, senão `publicado`). Sucesso → 3.4. Rascunho local `vg.rascunho.vaga`.
+  Lateral: "O que não entra no anúncio" e "Diária ou bico".
+
+### 3.4 Vaga publicada (`#vaga/<id>`) — `empresa-vaga-publicada.png`
+- Cabeçalho: sobretítulo "Minhas vagas · <status>" (`.vg-status`: Publicada / Em revisão ("A operação confere em até 1 dia útil") /
+  Pausada / Encerrada / Suspensa ("3 denúncias: a operação está analisando") / Removida (com o motivo)), `h1` cargo, texto
+  "No ar desde 12/10, até 11/11. Confidencial. 11 pessoas disseram 'Quero'; 2 cartões novos." Ações: `#vg-vaga-ver-cartoes`
+  (principal), `#vg-vaga-editar`, `#vg-vaga-pausar`/"Retomar", `#vg-vaga-renovar` (quando faltar ≤ 5 dias), `#vg-vaga-encerrar`
+  (perigo; confirmação "Encerrar a vaga? Quem está em conversa continua; os cartões novos param de chegar.").
+- "Divulgar": `#vg-vaga-link` (readonly, `.codigo`), `#vg-vaga-copiar` (feedback "Copiado" por 2 s no próprio botão),
+  `#vg-vaga-whatsapp` (`wa.me/?text=`), texto da mensagem pronta; "Como aparece para as pessoas" (cartão `.vg-vaga` renderizado).
+- Lateral `#vg-vaga-extras` (`caixa--destaque`): Destaque 30 dias (preço local da cidade; "Contratar" → 3.8), Urgente hoje 48 h
+  (só diária; senão "só diária"), nota "Preço de fundador… Pago antes, sem renovação automática." Com direito ativo: "Destaque até
+  12/11" e sem botão. "Números desta vaga": vistas, Quero, com selo, conversas, Combinou.
+
+### 3.5 Candidatos em cartões cegos (`#vaga/<id>/cartoes`) — `empresa-candidatos.png`
+- Cabeçalho "11 pessoas querem esta vaga" + "Por ordem de chegada. Sem nome, foto, idade ou nacionalidade até vocês combinarem.
+  Não existe ranking: quem decide é você." Filtros `#vg-cartoes-filtros` (lista fechada): Selo ("Tem selo de <teste pedido>" /
+  "Tem algum selo" / "Todos"; sem nota mínima), Zona, Turno, Escolaridade, CNH, Pretensão (faixas), Mostrar (Novos e em conversa /
+  Agora não / Todos). Ordem única: chegada.
+- `ul#vg-cartoes` de `.vg-cartao` (componente 9.4): ordem ("1º"), "Pessoa candidata" + "chegou em 12/10, 15:40" + `.vg-status`
+  (Novo / Você chamou / Combinou / Agora não), `dl` (Zona, Quer trabalhar com, Experiência, Escolaridade, Turnos, CNH,
+  Pretensão "A partir de R$ 1.600"), selos (`.vg-etiqueta--selo` com teste · nota · data), referências
+  (`#vg-ref-cartao-<n>`: "2 referências de empresas verificadas" + pontos fortes; "Nome das empresas e texto: depois do Combinou"),
+  redação (se o teste for português: "Ver redação" abre janela com o texto, sem nota), ações `data-acao="agora_nao"` (claro) /
+  `"conversar"` (principal; abre janela `#vg-janela-chamar` com `#vg-chamar-texto` opcional "Escreva a primeira mensagem (ex.: dia e
+  hora da entrevista)" e "Chamar para conversar") → status "Você chamou · Esperando a pessoa aceitar". Agora não → cartão
+  `--decidido` com "Desfazer". `vagas_cartoes(p_anuncio, p_filtro)`, `vagas_empresa_decidir`.
+- Vazio: "Ninguém se candidatou ainda. Compartilhe o link no WhatsApp: é por lá que as pessoas chegam." + botão.
+- **Não aparece:** nome, foto, idade, nacionalidade, gênero, e-mail/WhatsApp, DISC, "compatibilidade", pontuação, ordenação por nota.
+
+### 3.6 Conversa, Combinou, contato liberado e "Contratada" (`#conversa/<id>`) — `empresa-conversa.png`
+- `#vg-conversa` igual ao da pessoa (lados invertidos). Antes do aceite: cabeçalho "2º · Pessoa candidata · esperando aceitar";
+  lateral "Contato" em cinza: "O nome e o WhatsApp aparecem quando a pessoa aceitar." Depois do Combinou: cabeçalho com o nome;
+  lateral `#vg-contato` (`caixa--destaque`): nome, WhatsApp, e-mail, `#vg-contato-whatsapp` (mensagem pronta), `#vg-contato-curriculo`
+  "Ver currículo completo" (janela com o currículo: experiências, escolaridade, cursos, turnos; ainda sem foto/idade); a abertura
+  chama `vagas_contato_pessoa` e fica registrada (aviso "Esta abertura fica registrada para ela").
+- Card "Contratou?": `#vg-marcar-contratada` (laranja) → confirmação "Marcar Ana Exemplo como contratada? A vaga pode continuar no
+  ar." → `vagas_marcar_contratada`; depois: "Contratada em 15/10" + "Encerrar a vaga" + card "Integração dos 90 dias: a consultoria
+  oferece o Mapa DISC de integração (só depois da contratação; nunca na seleção)" com botão "Quero saber mais" (abre WhatsApp da
+  consultoria; fase 2 liga ao multiempresa). **Única tela em que "DISC" aparece para a empresa.**
+- `#vg-ref-combinou`: referências completas da pessoa (componente `.vg-ref`), com "Liberada com o Combinou".
+- "Cartão (como chegou)" para lembrar o contexto.
+
+### 3.7 Busca no banco (`#banco`) — `empresa-banco.png` — **fase 2**
+- Faixa "Fase 2. Esta tela abre quando Boa Vista tiver gente com selo suficiente." No MVP o item do menu leva a esta tela com a faixa
+  e os filtros desabilitados. Desenho: selo do passe ("30 contatos · até 12/11"), filtros fechados (área, selo, zona, escolaridade,
+  CNH, turno, pretensão), "23 cartões · ordem: mais recentes no banco primeiro (sem ranking por perfil)", cartões cegos com "No
+  banco desde 02/10 · autorizou até …" e ação "Convidar para uma vaga" (escolhe a vaga; gasta 1 contato só se a pessoa aceitar).
+  Só pessoas com `visivel_banco` e prazo válido. Perfil em evidência (rótulo) só aqui, nunca nas candidaturas.
+
+### 3.8 Compras: pedido com Pix ou cartão (`#comprar/<produto>/<vaga>`) — `empresa-compra.png`
+- Reaproveita o checkout do DISC (`checkout.js` puro + `stripe-pagamento.js`): `#vg-pedido` ("O que você está comprando",
+  `ul#vg-pedido-produtos` como rádio — Vaga destaque 30 dias / Vaga extra 30 dias / Vaga assistida / Urgente hoje — com preço da
+  cidade, preço de fundador riscado, `#vg-pedido-cupom` + `#vg-pedido-cupom-aplicar` (mínimo R$ 0,50 do cupom), `#vg-pedido-cnpj`
+  readonly para a NFS-e) e `#vg-pagamento` ("Falta só pagar", total, selo "Pix: aprovado na hora", abas `#vg-pag-pix` /
+  `#vg-pag-cartao` (Payment Element com Pix primeiro), `#vg-pagar` "Gerar o Pix de R$ 59" (laranja; muda para "Pagar R$ 59" no
+  cartão), "Já paguei" (aparece depois do Pix gerado), `#vg-pedido-trocar`, letra miúda Stripe/Gestão sem Caos/sem renovação/Termos
+  para empresas). Depois do pago: "Pronto. A vaga está em destaque até 12/11." e volta à vaga; a tela confere o **direito**, nunca o
+  pedido. Lista de compras (`#compras`): tabela com produto, vaga, pago em, válido até, NFS-e (link quando houver).
+- Depende do dono: preços finais, NFS-e, data de início da cobrança (até lá a tela mostra "Grátis no lançamento" e os botões
+  "Contratar" ficam ocultos).
+
+### 3.9 Referência profissional — lado da empresa — `empresa-referencia-dar.png`, `empresa-referencias.png`
+- **Dar (`#referencia/dar`, `form#vg-ref-form-dar`):** `#vg-ref-dar-pessoa` (vem do pedido, readonly; sem pedido: busca por e-mail
+  exato da pessoa — "Só pessoas com conta"; nunca lista pessoas), `#vg-ref-dar-funcao` (obrigatório), `#vg-ref-dar-vinculo` (rádio em
+  pílulas), `#vg-ref-dar-inicio`/`-fim` (mês/ano; erro "Use mês/ano, como 09/2025"; fim ≥ início) ou `#vg-ref-dar-atual`,
+  `#vg-ref-dar-recomenda` (escolha múltipla da lista de funções), `#vg-ref-dar-pontos` (pílulas, lista fechada do agente psicologia;
+  mínimo 1, máximo 3 — ao marcar a 4ª, aviso "Escolha até 3"), `#vg-ref-dar-texto` (opcional, ≤ 300, `#vg-ref-dar-contador`;
+  passa pelo filtro de `regras.js`: dado sensível, termo discriminatório, contato → erro inline), `#vg-ref-dar-declaro`
+  (obrigatório: "Declaro que a pessoa trabalhou nesta empresa no período informado e que esta referência é pública…"),
+  `#vg-ref-dar-cancelar`, `#vg-ref-dar-enviar` "Enviar referência" (laranja). Sucesso: "Referência enviada para a moderação da praça
+  e depois para a pessoa. Ela decide se aceita; você é avisado." Limites: 1 por pessoa; 20/mês (erro da RPC exibido). RPC
+  `vagas_referencia_oferecer`. Lateral: "Como aparece" (contagem + pontos antes; carta inteira depois) e "Regras".
+- **Lista (`#referencias`):** `table#vg-ref-tabela` (Pessoa, Função · período, Pontos fortes, Status — Esperando a pessoa aceitar /
+  Em moderação / Pública desde … / Ocultada pela pessoa / Removida pela moderação —, Quem deu, Ver); referência recusada/excluída:
+  só a linha "Pessoa (recusou/excluiu)" sem nome. Lateral: "Pedidos recebidos (n)" (`.vg-item` + "Responder"; "Não lembra da pessoa
+  ou não quer recomendar? Só não responda; ela não é avisada de recusa.") e "Por que vale a pena". `#vg-ref-nova` (laranja).
+
+## 4. Telas do operador da praça (`operador.html`, computador)
+
+Cabeçalho do menu: "Vagas sem Caos · Operação" + cidade(s) do operador (`minhas_cidades()`); selo fixo "Cada ato fica registrado".
+O operador **nunca** vê currículo, selos, candidaturas, conversas nem contato de pessoas: nas telas só aparecem e-mail de cadastro
+(assistido), conteúdo denunciado, vagas e empresas.
+
+### 4.1 Fila de moderação (`#fila`) — `operador-fila.png`
+- Segmento `#vg-op-fila-vagas` (n) / `#vg-op-fila-empresas` (n) / `#vg-op-fila-decididas` (hoje). `ul#vg-op-fila` de `.vg-fila__item`
+  (`data-anuncio` ou `data-empresa`): quando chegou + por que está na fila ("1ª vaga da empresa (revisão obrigatória)", "3 denúncias
+  de contas diferentes (suspensa automaticamente)", "empresa nova"), título + `.vg-status`, linha da empresa (nome, situação do CNPJ,
+  zona, modalidade, valor), trecho com `<mark>` nos sinais encontrados por `regras.js`, `.vg-fila__motivos` (etiquetas: sinal/bloqueio/
+  ok), ações `data-acao="publicar"` (principal) / `"devolver"` (claro) / `"remover"` (perigo). Empresas: CNPJ, nome, responsável,
+  e-mail, data; ações Aprovar / Pedir documento (devolve com motivo) / Recusar; link "Consultar na Receita" (externo).
+- Janela `#vg-op-confirmar` (devolver/recusar): motivo em pílulas `#vg-op-motivo` (lista fechada: pede documento ou dado pessoal;
+  telefone ou link no texto; falta salário ou valor; critério discriminatório; CNPJ não confere; empresa não respondeu; outro) +
+  `#vg-op-motivo-texto` (recado, ≤ 500) + `#vg-op-confirmar-cancelar` / `#vg-op-confirmar-sim`. Publicar não pede motivo.
+  Tudo via `vagas_op_anuncio_decidir` / `vagas_op_empresa_decidir` com `p_motivo`; a decisão aparece no `#vg-aviso-geral` com "Desfazer"
+  por 8 s (que registra um novo ato de reversão).
+- Meta na tela: "decidir em até 24 h"; item com mais de 24 h ganha etiqueta "Atrasada". Vazio: "Fila vazia. Nada esperando você."
+
+### 4.2 Cadastro assistido (`#assistido`) — `operador-assistido.png`
+- Segmento Pessoa / Empresa. `form#vg-op-form-assistido`: `#vg-op-ass-nome`, `#vg-op-ass-email` (obrigatório; ajuda "Sem e-mail? Ajude a
+  criar um no celular dela… Nunca use o seu."; bloqueia e-mails já usados por operador), `#vg-op-ass-cidade`, "Onde está sendo feito"
+  (Mutirão / Balcão / SINE → `codigo_evento`), `#vg-op-ass-leu` (obrigatório: "Li para a pessoa, em voz alta, o aviso: …"),
+  `#vg-op-ass-criar` "Criar conta pendente e enviar o link" (laranja). Empresa: CNPJ, nome, responsável, e-mail, WhatsApp
+  (`vagas_op_empresa_cadastrar` + `vagas-conta` `assistido` com `empresaId`); "Vincular pessoa já cadastrada" (`vagas_op_vincular_membro`).
+- Lateral "Pendentes de confirmação (n)": e-mail, criada quando, origem, "expira em", `Reenviar link` (1 por dia); "Contas não
+  confirmadas em 7 dias são apagadas." Card "O que você não vê".
+
+### 4.3 Denúncias (`#denuncias`) — `operador-denuncias.png`
+- `table#vg-op-denuncias`: Quando, Alvo (vaga / mensagem / referência, com empresa), Motivo, Trecho (só o conteúdo denunciado),
+  Status (Aberta / Suspensa (3 denúncias) / Improcedente · data / Removida), ações por tipo: vaga → Remover / Improcedente; mensagem →
+  Avisar a empresa (manda o aviso padrão por e-mail e registra) / Suspender empresa / Improcedente; referência → Remover /
+  Improcedente. Nunca mostra quem denunciou. Golpe confirmado: botão "Avisar quem liberou contato" (`vagas_op_avisar_contatos`,
+  proposta da operação) com o texto padrão e confirmação; o operador não vê a lista de pessoas.
+- Filtro Abertas / Todas; meta "decidir em 24 h"; nota "Toda decisão grava o motivo no registro de moderação. A equipe da Gestão sem
+  Caos pode reverter."
+
+### 4.4 Empresas (`#empresas`)
+- Tabela: nome, CNPJ, status (`em_analise`/`ativa`/`suspensa`), vagas ativas, membros, cadastrada em, último ato; ações Aprovar /
+  Suspender (motivo) / Reativar; busca por nome/CNPJ. Detalhe em janela: dados, histórico de moderação, vagas.
+
+### 4.5 Boletim do dia (`#boletim`) — `operador-boletim.png`
+- `#vg-op-boletim-periodo` (novas desde ontem / últimas 24 h / semana), `#vg-op-boletim-cidade` (praça inteira ou uma cidade),
+  `pre#vg-op-boletim-texto` (texto fixo gerado: cabeçalho, lista numerada "cargo · zona · modalidade · valor" + link curto, link da
+  lista completa, frase anti-golpe curta, assinatura), `#vg-op-boletim-copiar` "Copiar boletim" (laranja; feedback "Copiado").
+  Modelo de texto: `conteudo/vagas-operacao/boletim-e-radio.md` (operação) com revisão de textos. Lateral "Onde postar" e "Ontem"
+  (postado, cliques do link, Quero). Sem disparador: a tela só copia.
+
+### 4.6 Repasse do mês (`#repasse`) — `operador-repasse.png`
+- Seletor do mês; 4 cards (receita líquida da praça, seu repasse em destaque + status "aguardando nota / pago em", vendas pelo
+  parceiro 50 %, vendas online 20 %; presencial 80 %); `table#vg-op-repasse-tabela` (data, empresa, produto, origem, pago, %, repasse;
+  estornos negativos); `#vg-op-repasse-baixar` CSV. Boa Vista (operação própria): tela mostra só a receita, sem repasse ("Em Boa Vista
+  não há repasse"). Fase 1: cálculo por função do banco, Pix manual (status muda pela equipe no painel).
+
+### 4.7 Zonas e textos (`#zonas`)
+- Lista das zonas da cidade (nome, bairros, ordem) com Adicionar / Editar / Desativar (`vagas_adm_zona_salvar`); textos locais da
+  cidade (WhatsApp da praça, endereço do balcão, horário do mutirão) que aparecem nas telas da pessoa. Status e preços: só leitura
+  ("Só a equipe muda").
+
+## 5. Aba "Vagas" no painel da Gestão sem Caos (`admin.html`) — `painel-vagas-cidades.png`, `painel-vagas-numeros.png`, `painel-vagas-moderacao.png`
+
+Grupo "Vagas" no menu lateral (entre Empresas e Vendas): **Cidades e praças** (`data-aba="vg-cidades"`), **Operadores**
+(`vg-operadores`), **Moderação geral** (`vg-moderacao`, com contagem de pendências), **Números da praça** (`vg-numeros`). Só para
+`e_admin()`; some do menu sem a migração `20261022120000_vagas` (como as outras abas fazem com `versaoBanco`).
+
+- **Cidades e praças (`ul#vg-adm-cidades`):** card por cidade (`.vg-cidade-card`, `data-cidade`): nome, `.vg-status` (Rascunho / Lista
+  de espera / Ativa / Ativa (entorno) / Pausada), linha da praça (polo + entorno, operador, desde), números (vagas ativas / alvo,
+  pessoas com selo, empresas ativas, fila; lista de espera: "112 / 200" com barra), ações Zonas (n) / Preços locais (janela com os
+  produtos e preço da cidade) / Pausar / Reativar / "Ativar (faltam 88)" (desabilitado até a meta). `#vg-adm-nova-cidade` (janela:
+  nome, slug, IBGE, UF, entorno, status inicial rascunho; `vagas_adm_cidade_salvar`). Mudar status pede confirmação na página com o
+  efeito ("Pausar Caracaraí esconde 8 vagas e bloqueia cadastros; nada é apagado.").
+- **Operadores (`table#vg-adm-operadores`):** pessoa, cidade, papel (operador/moderador/equipe), contrato (versão · data), repasse
+  (20/50/80 ou 0 % para operação própria), último ato, ações Editar / Desligar (confirmação; `vagas_adm_operador_salvar` +
+  `vagas-conta` `operador`). "Novo operador": e-mail, cidade, papel, percentuais, versão do contrato.
+- **Moderação geral (`table#vg-adm-moderacao`):** todos os atos (`vagas_op_moderacao`) com cidade, quem, ato, alvo, motivo e
+  "Reverter" (registra um ato novo); filtros cidade/tipo/busca; pendências de todas as cidades no topo.
+- **Números da praça (`#vg-adm-numeros`):** seletor de praça e período; cards `.vg-numero` com valor, alvo e barra (lista fechada de
+  `conteudo/vagas-operacao/indicadores.json`, 15 chaves: `vagas_ativas`, `pessoas_com_selo_por_funcao`, `vagas_3_interessados_72h`,
+  `vagas_combinou_7d`, `primeira_resposta_empresa_dias`, `contratacoes`, `empresas_ativas_mes`, `empresas_buscando_semana`,
+  `empresas_pagantes`, `receita_liquida_centavos`, `denuncia_tempo_decisao_h`, `emails_mes`, `fila_moderacao`, `lista_espera`,
+  `cadastros_assistidos_confirmados`); cor pela regra da operação (verde/amarelo/vermelho só como etiqueta `.vg-status`, nunca como
+  bloco de cor); `table#vg-adm-selos` (pessoas com selo por função, vagas que pedem, tentativas, nota mediana — acompanhamento do
+  teste, nunca aparece para empresa [REVISÃO PSICOLOGIA]); gatilhos da proposta como etiquetas ("Antes de cobrar: 3 de 5 metas").
+  Dados: `vagas_op_resumo()` no formato sugerido pela operação `{numeros:{<chave>:{valor, alvo, cor}}}`.
+
+## 6. Estados, erros e mensagens (resumo transversal)
+
+| Situação | Onde | Mensagem |
+|---|---|---|
+| Carregando | todas | "Carregando…" (`.giro`), esqueletos sem pulo |
+| Erro de rede | todas | "Não deu para carregar. Tentar de novo." |
+| Sem internet | pessoa | faixa "Sem internet. Mostrando o que você viu por último. Suas respostas e rascunhos ficam guardados no celular." |
+| Sessão expirada | logadas | volta ao entrar com "Sua sessão venceu. Entre de novo para continuar." |
+| E-mail não confirmado | logadas | "Confirme o e-mail para continuar. Não chegou? Reenviar." |
+| Conta/empresa suspensa | logadas | "Conta suspensa. Fale com a praça pelo WhatsApp." (só leitura) |
+| Cidade em lista de espera | lista, vaga | tela 2.2 |
+| Cidade pausada | lista, vaga | tela 2.3 |
+| Vaga fora do ar | vaga | "Esta vaga não está mais no ar." + parecidas |
+| Campo obrigatório vazio | formulários | "Preencha <o campo>" (sempre nomeando o campo) |
+| Termo proibido | nova vaga, mensagem, referência | mensagens da seção 3.3 |
+| Limite (candidaturas, tentativas, referências) | RPC | a mensagem da RPC, em `.aviso--erro`, sem código técnico |
+| Sucesso de ação | todas | `#vg-aviso-geral` 4 s: "Salvo", "Enviado", "Copiado", "Candidatura retirada" |
+
+## 7. O que NÃO aparece (lista de conferência para o QA)
+
+- No cartão cego e na busca: nome, foto, idade, nacionalidade, gênero, estado civil, filhos, cor, religião, saúde, antecedentes,
+  contato, DISC, nota mínima, pontuação, ordenação por nota, "compatibilidade", texto e nome da empresa das referências.
+- No selo: "aprovado", "reprovado", percentil, comparação; o selo sempre traz teste, nota, data, validade, "online, sem supervisão"
+  (ou "presencial, documento conferido" na fase 2) e código.
+- Em toda a plataforma: "Tinder", "swipe", "match", "perfil ideal", "o teste prevê", "currículo verificado", "ranking", "Notus",
+  estrela da Notus, estrelas/média em referência, preço para a pessoa (nada é cobrado da pessoa no MVP).
+- Para o operador: qualquer dado de pessoa além do e-mail de cadastro assistido e do conteúdo denunciado.
+
+## 8. Fluxos resumidos (o que acontece depois)
+
+1. **Pessoa:** lista → vaga → Quero → (entrar/criar conta → currículo 5 passos) → "Candidatura enviada" → aviso por e-mail → convite
+   (nome da empresa aparece) → Combinou (contato liberado) → conversa/WhatsApp → "contratada" (marcada pela empresa) → e-mail
+   "Parabéns" (sem DISC para a pessoa).
+2. **Teste:** catálogo → instruções → prova (1 questão por tela) → resultado e selo → vagas que pedem o selo.
+3. **Empresa:** cadastro → confirmar e-mail → (em análise) nova vaga (rascunho) → liberação do CNPJ → publicar (revisão nas 3 primeiras)
+   → link curto/WhatsApp → cartões cegos → Quero conversar → pessoa aceita → contato liberado → Contratada → integração (DISC, fase 2).
+4. **Referência:** pessoa pede (ou empresa oferece) → empresa preenche → moderação → pessoa aceita → contagem no cartão cego →
+   carta inteira depois do Combinou.
+5. **Operador:** fila (vaga/empresa) → decide com motivo → registro; denúncia → decide em 24 h; mutirão → cadastro assistido →
+   pessoa confirma pelo link; manhã → copiar boletim → Canal/grupos; mês → repasse.
+
+## 9. Componentes reutilizáveis e classes (`vagas/assets/vagas.css`)
+
+CSS completo proposto (só tokens do `notus.css`) está em `scratchpad/vagas/telas-src/casca.mjs` (`VAGAS_CSS`) e
+`telas-referencia.mjs` (`REF_CSS`); o agente das telas copia para `vagas/assets/vagas.css` e ajusta. Peças do teste reaproveitadas
+sem mudar: `.topo/.topo-interno/.topo-nome`, `.conteudo`, `.acoes`, `.progresso-*`, `.barra-nav/.barra-dica/.barra-botoes`,
+`.retrato/.escolha-marca`, `.codigo`, `.rodape`; do painel: `.menu-lateral/.aba/.menu-grupo`, `.cabecalho`, `.resumo`, `.filtros/.escolha`,
+`.segmento`, `.vazio`, `.confirmar/.janela__caixa`, `.form-grade`, `.login*`.
+
+| Componente | Classes | Uso |
+|---|---|---|
+| Pílula da cidade | `.vg-cidade` | topo da pessoa; abre a janela de cidades |
+| Navegação inferior | `.vg-nav`, `.vg-nav__item[aria-current]`, `.vg-nav__n` | pessoa logada; 4 destinos; alvo 48 px |
+| Faixa de estado | `.vg-faixa`, `.vg-faixa--offline` | cidade pausada/espera, sem internet, empresa em análise/suspensa |
+| Chips de filtro | `.vg-chips`, `.vg-chip[aria-pressed|aria-expanded]`, `.vg-busca`, `.vg-contagem` | lista pública; também opções em formulários (`.vg-opcoes`) |
+| Iniciais da empresa | `.vg-iniciais`, `--grande`, `--confidencial` | em vez de foto/logo |
+| **Cartão de vaga** | `.vg-vagas > li > .vg-vaga`, `--destaque`, `__corpo/__titulo/__empresa/__valor/__meta/__etiquetas/__quando` | lista, prévia na empresa, boletim visual |
+| Etiquetas | `.vg-etiqueta`, `--urgente` (laranja), `--destaque` (contorno), `--hoje` (azul-escuro), `--selo` (nevoa) | modalidade, pede selo, urgente, destaque |
+| Empresa verificada | `.vg-verificada` | sempre com o ícone de check laranja; texto "verificada" |
+| **Aviso anti-golpe** | `.vg-golpe` | texto fixo; ícone escudo em `--notus-forte` |
+| **Selo habilidade testada** | `.vg-selo`, `--destaque`, `--mini`, `__topo/__icone/__rotulo/__nome/__nota/__linha/__codigo` | resultado, catálogo, vaga, conferência; nunca "aprovado" |
+| **Cartão cego da pessoa** | `.vg-cartoes > li.caixa.vg-cartao`, `--decidido`, `__topo/__ordem/__quem/__chegou/__linhas(dl)/__selos/__refs/__acoes/__status` | empresa (candidatos, banco), prévia no passo 5 |
+| **Barra de progresso da prova** | `.vg-prova__topo`, `.vg-tempo[--pouco]`, `.vg-prova__barra/.vg-prova__feito` (trilho liso), `.vg-prova__enunciado/__apoio/__opcoes`, `.vg-opcao/__letra`, `.vg-reconectando` | prova |
+| Catálogo de testes | `.vg-testes`, `.vg-teste/__nome/__info/__acao` | testes.html |
+| **Caixa de conversa** | `.vg-conversa__cab/__quem/__nome/__vaga`, `.vg-mensagens`, `.vg-msg`, `--minha`, `--sistema`, `__hora`, `.vg-escrever`, `.vg-bloqueio` | pessoa e empresa |
+| Convite (nome aparece) | `.vg-convite/__titulo/__empresa/__lista` | pessoa |
+| Linhas com status | `.vg-linhas > li > .vg-linha/__titulo/__sub`, `.vg-status--enviada|conversar|combinou|contratada|agora-nao|retirada|encerrada|revisao|suspensa|removida` | candidaturas, vagas, tabelas |
+| Passos do currículo | `.vg-passos > .vg-passo[--feito|--atual]`, `.vg-rascunho` | 5 passos; nova vaga reutiliza `.vg-rascunho` |
+| Item com ação | `.vg-item/__texto/__titulo/__sub` | quem viu, meus dados, pendentes |
+| Tabela | `.vg-tabela`, `th`, `td.num`, `.vg-tabela__acoes`, `.nao-quebra` | operador e painel |
+| Fila de moderação | `.vg-fila > li.caixa.vg-fila__item`, `__motivos`, `__trecho mark`, `__acoes` | operador |
+| Grade com lateral | `.vg-grade`, `.vg-lateral`, `.vg-link-curto` | computador; 1 coluna abaixo de 900 px |
+| Boletim | `.vg-boletim` (pre) | operador |
+| Pedido/pagamento | `.vg-pedido`, `.vg-produtos > .vg-produto[aria-pressed]/__nome/__sub/__preco`, `.vg-pedido__total`, `.vg-pagamento-abas` | compras da empresa (padrão do checkout) |
+| Conferência do selo | `.vg-conferir/__ok` | selo.html |
+| Números da praça | `.vg-numeros > .caixa.vg-numero/__rotulo/__valor/__alvo/__barra/__feito`, `.vg-cidades > li.vg-cidade-card/__nome/__linha` | painel |
+| **Referência profissional** | `.vg-refs > li > .vg-ref[--pendente]/__topo/__quem/__empresa/__meta/__pontos/__recomenda/__texto/__assina/__acoes`, `.vg-ref-contagem`, `.vg-contador` | pessoa, empresa, cartão cego (só contagem + pontos) |
+
+Regras das peças: cores só por token; destaque (`--notus`) apenas em "olhe aqui" (etiqueta urgente, chip selecionado, convite,
+contato liberado, número em foco); verde/vermelho só em ok/erro; barras sempre azul-escuro sobre trilho liso; cantos 20–24 px nos
+cards e 999 px nas pílulas; `font-variant-numeric: tabular-nums` em listas e tabelas.
+
+## 10. Decisões de UX e por quê
+
+1. **Uma ação principal por tela, na barra fixa inferior (celular).** A pessoa com celular simples não procura botão: Quero/Pular,
+   Continuar, Responder ficam sempre no mesmo lugar (padrão do teste DISC).
+2. **Cartão cego é literalmente o passo 5 do currículo.** A pessoa vê o que a empresa vê; reduz medo e reclamação de "não me acham".
+3. **O nome da empresa confidencial aparece no convite, antes de a pessoa liberar o contato.** Ninguém libera WhatsApp para uma
+   empresa que não sabe qual é; a assimetria some no momento certo (acréscimo aprovado na mesa).
+4. **"Agora não" não é comunicado como recusa.** A candidatura muda para "Encerrada" sem frase negativa: evita desânimo e evita a
+   empresa ter de "rejeitar"; o operador acompanha o tempo de resposta pelo painel.
+5. **Prova com confirmação ("Responder") em vez de avançar ao tocar.** Toque acidental em tela pequena é comum; o custo de um toque a
+   mais é menor que perder uma questão sem volta.
+6. **Filtros em chips com janela, nunca `<select>`.** Regra da identidade; no celular a janela em pílulas é mais fácil de tocar.
+7. **Recusa de termo proibido explica a lei em uma frase e diz o que escrever no lugar.** Evita a empresa achar que é censura.
+8. **Operador não tem tela de "pessoas".** O desenho garante a regra LGPD (operador = quem não vê currículo) na interface, não só no RLS.
+9. **Preços e botões de compra ficam ocultos até o dono liberar** (fase de lançamento grátis): a tela já existe, o direito manda.
+10. **Referência é "carta", não "avaliação":** sem estrelas, sem média, só positiva, com aceite da pessoa; no cartão cego só a
+    contagem e os pontos fortes (lista fechada da psicologia) para não virar ranking indireto.
+
+## 11. Dúvidas para o dono
+
+1. A pessoa escolhe até 2 cidades: a lista mostra as duas misturadas ou uma de cada vez com a pílula do topo? (desenhado: uma de cada
+   vez, com "Incluir Mucajaí e Cantá" como entorno).
+2. "Quero" sem currículo completo: enviar assim mesmo com o que houver ou exigir os 5 passos? (desenhado: exige terminar; a intenção é guardada).
+3. A empresa pode escrever a primeira mensagem ao chamar para conversar? (desenhado: sim, opcional).
+4. Lista de espera: pedir só e-mail ou também WhatsApp? (desenhado: só e-mail, resposta neutra).
+5. Referência pública no perfil público da pessoa: existe perfil público no MVP? (desenhado só o toggle, marcado fase 2).
+6. Preços locais por cidade aparecem já na tela de compras do lançamento ou tudo "grátis no lançamento" até a semana 11?
