@@ -241,8 +241,15 @@
       '</div>';
   }
 
+  // Título com palavra longa ("Acompanhamento"): o texto do canto vai para baixo e o título ganha a largura toda,
+  // para a palavra não quebrar no meio ("Acompanhament / o") no computador e no tablet.
+  function tituloLongo(t) {
+    return String(t || '').split(/\s+/).some(function (p) { return p.length >= 13; });
+  }
+
   function divisor(secao, alt) {
-    return '<div class="divisor' + (alt ? ' divisor--alt' : '') + '" aria-hidden="true">' +
+    var longo = tituloLongo(secao.curto || secao.titulo);
+    return '<div class="divisor' + (alt ? ' divisor--alt' : '') + (longo ? ' divisor--longo' : '') + '" aria-hidden="true">' +
       '<span class="divisor__num">' + esc(secao.n) + '</span>' +
       '<span class="divisor__titulo">' + esc(secao.curto || secao.titulo) + '</span>' +
       '<span class="divisor__meta">' + esc(secao.meta) + '</span>' +

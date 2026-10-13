@@ -30,6 +30,9 @@ const secoesDe = (html) => [...html.matchAll(/data-secao="([a-z-]+)"/g)].map((m)
 
 test('relatório do líder: os 11 capítulos (com DISC aceito), marca confidencial em cada página, sem número, nota, semáforo ou média da empresa', () => {
   const html = V.montarHtml(snapshot(resultado(), { disc: { codigo: 'DC' } }));
+  // Palavra longa no título do capítulo ("Acompanhamento"): divisor com o texto do canto embaixo (a palavra não quebra no meio).
+  assert.match(html, /<div class="divisor[^"]*divisor--longo"[^>]*>\s*<span class="divisor__num">10<\/span>\s*<span class="divisor__titulo">Acompanhamento<\/span>/);
+  assert.doesNotMatch(html, /divisor--longo"[^>]*>\s*<span class="divisor__num">0?1<\/span>\s*<span class="divisor__titulo">Como ler</);
   assert.deepEqual(secoesDe(html), ['capa', 'indice', 'como-ler', 'resumo', 'temas', 'comportamentos', 'diferencas', 'comentarios', 'estilo', 'equipe', 'plano',
     'acompanhamento', 'metodo', 'rodape']);
   const marca = F.TEXTOS.marca('Ana P.');

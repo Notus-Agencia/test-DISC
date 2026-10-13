@@ -270,6 +270,8 @@ em { font-family: var(--ff-serif); font-style: italic; font-weight: 400; letter-
 @media (min-width: 640px), print {
   .divisor { grid-template-columns: auto minmax(0, 1fr) auto; gap: 40px; padding: 72px var(--margem) 56px; }
   .divisor__meta { grid-column: auto; text-align: right; max-width: 220px; line-height: 1.8; }
+  .divisor--longo { grid-template-columns: auto minmax(0, 1fr); row-gap: 16px; }
+  .divisor--longo .divisor__meta { grid-column: 1 / -1; text-align: left; max-width: none; }
 }
 
 /* ---------- Títulos e textos ---------- */
