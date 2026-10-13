@@ -270,7 +270,7 @@
     var empresa = empresaDe(av);
     var nome = av && (av.vaga || av.nome) ? String(av.vaga || av.nome) : '';
     var parte2 = !!(av && av.config && av.config.formulario && av.config.formulario.parte2 === 'ligada');
-    var tempo = '\n\nLeva cerca de ' + (parte2 ? '15' : '10') + ' minutos e não existe resposta certa ou errada. Faça com calma, num lugar tranquilo.';
+    var tempo = '\n\nLeva cerca de ' + minutosTeste(parte2 ? 'ligada' : 'desligada') + ' minutos e não existe resposta certa ou errada. Faça com calma, num lugar tranquilo.';
     if (av && av.tipo === 'equipe') {
       return 'Olá! ' + (empresa ? 'A ' + empresa + ' está' : 'Estamos') + ' fazendo uma avaliação de perfil da equipe' +
         (av.nome ? ' (' + av.nome + ')' : '') + '. Responda pelo link abaixo:\n' + link + tempo;
@@ -520,7 +520,7 @@
   /* ---------- Parte 2: perfil exigido pelo trabalho (DISC_EXIGIDO) ---------- */
 
   var PARTE2 = { desligada: 'Desligada', ligada: 'Ligada' };
-  var ROTULO_PARTE2 = 'Segunda parte do teste (perfil exigido pelo trabalho)';
+  var ROTULO_PARTE2 = 'Teste DISC: só a parte 1 ou as partes 1 e 2?';
   var FAIXAS_ESFORCO = { baixa: 'Esforço baixo', moderada: 'Esforço moderado', alta: 'Esforço alto', muito_alta: 'Esforço muito alto' };
   var CLASSE_ESFORCO = { baixa: 'selo--verde', moderada: '', alta: 'selo--laranja', muito_alta: 'selo--vermelho' };
 
@@ -529,8 +529,107 @@
 
   function textoParte2(parte2) {
     return parte2 === 'ligada'
-      ? 'Ligada: depois dos 25 grupos, a pessoa responde mais 10 pensando em como o trabalho exige que ela seja.'
-      : 'Desligada: só o perfil natural (25 grupos).';
+      ? 'Ligada: a pessoa responde os 25 grupos pensando em como ela é e, depois, mais 10 pensando em como o trabalho exige que ela seja.'
+      : 'Desligada: a pessoa responde só os 25 grupos, pensando em como ela é.';
+  }
+
+  /* ---------- Para que é o link (processo.tipo) e o que a pessoa vai responder ---------- */
+
+  // Tempo do teste, do início ao fim: os MESMOS números do convite (mensagemConvite) e da abertura do teste em js/app.js
+  // ('cerca de ' + (p2 ? 15 : 10) + ' minutos'; tests/admin.test.js confere). Os tempos por passo somam esse total.
+  var MINUTOS_TESTE = { desligada: 10, ligada: 15 };
+  function minutosTeste(parte2) { return parte2 === 'ligada' ? MINUTOS_TESTE.ligada : MINUTOS_TESTE.desligada; }
+  var TEMPOS_PASSO = { dados: '1 a 2 min', parte1: 'cerca de 8 min', parte2: 'cerca de 5 min' };
+
+  // Os dois propósitos do link, nos cartões do formulário e na página do processo.
+  var PROPOSITOS = {
+    selecao: {
+      titulo: 'Selecionar candidatos para uma vaga', curto: 'Seleção de candidatos',
+      quem: 'Quem responde: candidatos a uma vaga.',
+      resultado: 'Gera o relatório do processo seletivo: candidatos em ordem pelas notas das etapas, com a aderência de cada um ao perfil DISC da vaga.'
+    },
+    equipe: {
+      titulo: 'Conhecer a equipe de uma empresa', curto: 'Avaliação de equipe',
+      quem: 'Quem responde: quem já trabalha na empresa.',
+      resultado: 'As respostas entram como colaboradores da empresa escolhida e servem para o relatório da equipe e o "Como liderar".'
+    }
+  };
+  function propositoValido(tipo) { return tipo === 'selecao' || tipo === 'equipe' ? tipo : ''; }
+
+  // Recomendação da parte 2 conforme o propósito (null sem propósito): {parte2, titulo, porque}.
+  function recomendacaoParte2(tipo) {
+    if (tipo === 'selecao') {
+      return { parte2: 'desligada', titulo: 'Recomendado para seleção: só a parte 1.',
+        porque: 'Quem se candidata ainda não conhece as exigências reais do cargo (tende a responder o que imagina que o recrutador quer), ' +
+          'os 5 minutos a mais aumentam a desistência e a comparação entre o natural e o que o cargo pede é leitura técnica, que não entra no relatório do processo.' };
+    }
+    if (tipo === 'equipe') {
+      return { parte2: 'ligada', titulo: 'Recomendado para equipe: partes 1 e 2.',
+        porque: 'A pessoa conhece o próprio trabalho, e a distância entre o jeito natural e o que o cargo pede orienta conversas de desenvolvimento ' +
+          '(lida na versão técnica do relatório, por psicólogo(a)).' };
+    }
+    return null;
+  }
+
+  // Linha discreta quando a escolha da parte 2 vai contra a recomendação ('' quando segue ou sem propósito). Não bloqueia.
+  function avisoParte2(tipo, parte2) {
+    var r = recomendacaoParte2(tipo);
+    var p2 = parte2 === 'ligada' ? 'ligada' : 'desligada';
+    if (!r || r.parte2 === p2) return '';
+    return tipo === 'selecao'
+      ? 'Diferente do recomendado: o teste passa a levar cerca de ' + minutosTeste('ligada') + ' minutos, e a parte 2 aparece só no detalhe de cada pessoa aqui no painel.'
+      : 'Diferente do recomendado: sem a parte 2, o relatório da equipe e o "Como liderar" ficam sem a distância entre o jeito natural e o que o cargo pede.';
+  }
+
+  // Campos da identificação como a pessoa vê, na ordem da tela do teste (js/app.js, telaIdentificacao):
+  // [{rotulo, modo, texto, extra?}]; em seleção o teste pede também a vaga pretendida (opcional); em equipe a função
+  // vira "Cargo/função".
+  function itensIdentificacao(formulario, tipo) {
+    var equipe = tipo === 'equipe';
+    var out = [];
+    resumoFormulario(formulario).forEach(function (it, i) {
+      var item = { rotulo: it.rotulo, modo: it.modo, texto: it.texto };
+      if (it.extra) { item.extra = true; item.rotulo = 'Pergunta: ' + it.rotulo; }
+      if (!it.extra && it.rotulo === 'Função atual ou última' && equipe) item.rotulo = 'Cargo/função';
+      out.push(item);
+      if (i === 1 && !equipe) out.push({ rotulo: 'Vaga pretendida', modo: 'opcional', texto: 'Opcional' });
+    });
+    return out;
+  }
+
+  // O que a pessoa vai responder com esta configuração. proc: {tipo, mostrarResultado, formulario}.
+  // -> {tipo, parte2, minutos, total, passos:[{chave, num, titulo, tempo, texto, ...}]} (a parte 2 desligada vem com num 0).
+  function passosResposta(proc) {
+    var pr = proc || {};
+    var tipo = propositoValido(pr.tipo);
+    var f = normalizarFormulario(pr.formulario);
+    var itens = itensIdentificacao(f, tipo);
+    var ligada = f.parte2 === 'ligada';
+    var minutos = minutosTeste(f.parte2);
+    var num = 0;
+    var passos = [{
+      chave: 'dados', num: ++num, titulo: 'Identificação', tempo: TEMPOS_PASSO.dados,
+      texto: tipo === 'equipe'
+        ? 'Antes do teste, com o aceite do uso dos dados e o aviso de que o resultado é compartilhado com a empresa.'
+        : 'Antes do teste, com o aceite do uso dos dados (LGPD).',
+      itens: itens.filter(function (it) { return it.modo !== 'oculto'; }),
+      fora: itens.filter(function (it) { return it.modo === 'oculto'; }).map(function (it) { return it.rotulo; }),
+      nota: f.perguntas.length ? 'Perguntas abertas podem levar um pouco mais de tempo.' : ''
+    }, {
+      chave: 'parte1', num: ++num, titulo: 'Teste DISC · parte 1: o jeito natural', tempo: TEMPOS_PASSO.parte1,
+      texto: '25 grupos de 4 palavras: em cada um, a pessoa ordena da palavra que mais combina com ela à que menos combina.'
+    }, {
+      chave: 'parte2', num: ligada ? ++num : 0, ligada: ligada, titulo: 'Parte 2: o que o cargo exige', tempo: ligada ? TEMPOS_PASSO.parte2 : '',
+      texto: ligada ? '10 grupos com a mesma mecânica, agora pensando em como o trabalho exige que ela seja.'
+        : 'Não faz parte deste link.'
+    }, {
+      chave: 'fim', num: ++num, titulo: 'No fim', tempo: '',
+      texto: 'Confirma o resultado em 2 telas rápidas e envia.', mostra: pr.mostrarResultado === true,
+      resultado: pr.mostrarResultado === true
+        ? 'Vê o próprio relatório DISC na tela (sem vaga, função ou aderência).'
+        : 'Não vê o resultado: recebe só a confirmação do envio, com um código.'
+    }];
+    return { tipo: tipo, parte2: f.parte2, minutos: minutos, total: 'cerca de ' + minutos + ' minutos', passos: passos };
   }
 
   function pctValido(p) {
@@ -2339,6 +2438,13 @@
     descendentes: descendentes,
     parte2Padrao: parte2Padrao,
     textoParte2: textoParte2,
+    MINUTOS_TESTE: MINUTOS_TESTE,
+    minutosTeste: minutosTeste,
+    PROPOSITOS: PROPOSITOS,
+    recomendacaoParte2: recomendacaoParte2,
+    avisoParte2: avisoParte2,
+    itensIdentificacao: itensIdentificacao,
+    passosResposta: passosResposta,
     exigidoDoRegistro: exigidoDoRegistro,
     eixosDe: eixosDe,
     esforcoDe: esforcoDe,
@@ -4240,6 +4346,115 @@
     ].concat(filhos));
   }
 
+  // "Para que é este link?": 2 cartões sempre à vista (listbox #proc-tipo-lista, opções [data-valor="selecao"|"equipe"])
+  // e o botão #proc-tipo, que guarda o valor (value: 'selecao' | 'equipe' | '' sem escolha), diz o que está escolhido
+  // e leva o foco aos cartões. Escolher dispara "change" no botão (como o seletor em pílula que ele substitui).
+  function criarProposito(valor) {
+    var atual = propositoValido(valor);
+    var texto = el('span', { classe: 'proposito__estado-texto', id: 'proc-tipo-texto' });
+    var botao = el('button', { type: 'button', id: 'proc-tipo', classe: 'proposito__estado', value: atual,
+      'aria-controls': 'proc-tipo-lista', 'aria-labelledby': 'proc-tipo-rotulo proc-tipo-texto' }, texto);
+    var opcoes = ['selecao', 'equipe'].map(function (t) {
+      var pr = PROPOSITOS[t];
+      return el('li', { role: 'option', id: 'proc-tipo-op-' + t, 'data-valor': t, classe: 'proposito__opcao', tabindex: '-1', 'aria-selected': 'false' }, [
+        el('span', { classe: 'proposito__cabeca' }, [
+          el('span', { classe: 'proposito__titulo', texto: pr.titulo }),
+          el('span', { classe: 'proposito__marca', 'aria-hidden': 'true' }, icone(ICONE_CHECK, 'proposito__check'))
+        ]),
+        el('span', { classe: 'proposito__quem', texto: pr.quem }),
+        el('span', { classe: 'proposito__linha', texto: pr.resultado })
+      ]);
+    });
+    var lista = el('ul', { role: 'listbox', id: 'proc-tipo-lista', classe: 'proposito__opcoes', 'aria-labelledby': 'proc-tipo-rotulo' }, opcoes);
+    function definir(v) {
+      atual = propositoValido(v);
+      botao.value = atual;
+      botao.setAttribute('data-valor', atual);
+      texto.textContent = atual ? 'Escolhido: ' + PROPOSITOS[atual].curto : 'Nada escolhido ainda';
+      opcoes.forEach(function (o, i) {
+        var sel = o.getAttribute('data-valor') === atual;
+        o.setAttribute('aria-selected', sel ? 'true' : 'false');
+        o.tabIndex = sel || (!atual && i === 0) ? 0 : -1;
+      });
+    }
+    function escolher(o) {
+      var v = o.getAttribute('data-valor');
+      var mudou = v !== atual;
+      definir(v);
+      o.focus();
+      if (mudou) botao.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    botao.addEventListener('click', function () { (lista.querySelector('[aria-selected="true"]') || opcoes[0]).focus(); });
+    lista.addEventListener('click', function (e) {
+      var o = e.target.closest ? e.target.closest('[role="option"]') : null;
+      if (o) escolher(o);
+    });
+    lista.addEventListener('keydown', function (e) {
+      var i = opcoes.indexOf(document.activeElement);
+      if (i === -1) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); opcoes[(i + 1) % opcoes.length].focus(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); opcoes[(i + opcoes.length - 1) % opcoes.length].focus(); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); escolher(opcoes[i]); }
+    });
+    definir(atual);
+    return { botao: botao, lista: lista, valor: function () { return atual; }, definir: definir };
+  }
+
+  // Quadro "O que a pessoa vai responder" (no formulário, ao vivo; e na página do processo).
+  // proc: {tipo, mostrarResultado, formulario}; op: {id, idParte2, classe, compacto (campos em fichas), acoes (nó no fim)}. Os passos são <div role="listitem">
+  // (os <li> ficam só para os campos da identificação, com data-modo).
+  function caixaResposta(proc, op) {
+    var o = op || {};
+    var r = passosResposta(proc);
+    var passos = r.passos.map(function (ps) {
+      var fora = ps.chave === 'parte2' && !ps.ligada;
+      var corpo = [
+        el('p', { classe: 'resposta-passo__cabeca' }, [
+          el('span', { classe: 'resposta-passo__titulo', texto: ps.titulo }),
+          ps.chave === 'parte2' ? el('span', { classe: 'selo' + (ps.ligada ? ' selo--noite' : ''), texto: PARTE2[ps.ligada ? 'ligada' : 'desligada'] }) : null,
+          ps.tempo ? el('span', { classe: 'resposta-passo__tempo', texto: ps.tempo }) : null
+        ]),
+        el('p', { classe: 'resposta-passo__texto', texto: ps.texto })
+      ];
+      if (ps.chave === 'dados') {
+        // Compacto (formulário, ao lado): os campos em fichas, "(opcional)" nos opcionais. Página: uma linha por campo.
+        corpo.push(o.compacto
+          ? el('ul', { classe: 'resposta-fichas' }, ps.itens.map(function (it) {
+            return el('li', { 'data-modo': it.modo, texto: it.rotulo + (it.modo === 'opcional' ? ' (opcional)' : '') });
+          }))
+          : el('ul', { classe: 'lista-simples resposta-campos' }, ps.itens.map(function (it) {
+            return el('li', { 'data-modo': it.modo }, [
+              el('span', { classe: 'resposta-campos__nome', texto: it.rotulo }),
+              el('span', { classe: 'selo' + (it.modo === 'opcional' ? '' : ' selo--noite'), texto: it.texto })
+            ]);
+          })));
+        if (ps.fora.length) corpo.push(el('p', { classe: 'texto-suave t-rotulo proc-formulario__fora', texto: 'Não perguntamos: ' + ps.fora.join(', ') + '.' }));
+        if (ps.nota) corpo.push(el('p', { classe: 'texto-suave t-nota', texto: ps.nota }));
+      }
+      if (ps.resultado) corpo.push(el('p', { classe: 'resposta-passo__resultado', 'data-mostra': ps.mostra ? 'sim' : 'nao', texto: ps.resultado }));
+      return el('div', { role: 'listitem', classe: 'resposta-passo' + (fora ? ' resposta-passo--fora' : ''), 'data-passo': ps.chave,
+        id: ps.chave === 'parte2' && o.idParte2 ? o.idParte2 : null, 'data-parte2': ps.chave === 'parte2' ? r.parte2 : null }, [
+        el('span', { classe: 'resposta-passo__num', 'aria-hidden': fora ? 'true' : null, texto: fora ? '' : String(ps.num) }),
+        el('div', { classe: 'resposta-passo__corpo' }, corpo)
+      ]);
+    });
+    return el('section', { classe: 'caixa proc-resposta' + (o.classe ? ' ' + o.classe : ''), id: o.id || null,
+      'data-minutos': String(r.minutos), 'data-tipo': r.tipo || 'nenhum' }, [
+      el('div', { classe: 'proc-resposta__topo' }, [
+        el('h3', { classe: 'caixa__titulo', texto: 'O que a pessoa vai responder' }),
+        el('p', { classe: 'proc-resposta__total', id: o.id ? o.id + '-total' : null }, [
+          el('span', { classe: 'texto-suave t-rotulo', texto: 'cerca de ' }),
+          el('span', { classe: 'proc-resposta__minutos negrito', texto: String(r.minutos) }),
+          el('span', { classe: 'texto-suave t-rotulo', texto: ' min' })
+        ])
+      ]),
+      el('div', { role: 'list', classe: 'proc-resposta__passos' }, passos),
+      el('p', { classe: 'proc-resposta__rodape', id: o.id ? o.id + '-rodape' : null,
+        texto: 'Total: ' + r.total + ' do início ao fim, o mesmo que o convite e a abertura do teste dizem.' }),
+      o.acoes || null
+    ]);
+  }
+
   function renderizarFormProcesso(box, p) {
     // Rascunho guardado (sessão expirada ou página recarregada antes de salvar): o formulário volta como estava.
     var rasc = lerJsonSs(CHAVE_RASCUNHO_FORM);
@@ -4262,34 +4477,54 @@
     var per = (base && base.periodo) || {};
     var preset = (!p && estado.proc.preset) || {};
 
-    // Tipo do processo e empresa cadastrada (Supabase/prévia): equipe + empresa = link do teste da equipe.
-    var escTipo = criarEscolha({ id: 'proc-tipo', rotulo: 'Tipo', rotuloId: 'proc-tipo-rotulo', classe: 'escolha--campo escolha--larga',
-      valor: (base && base.tipo) || preset.tipo || 'selecao',
-      opcoes: ['selecao', 'equipe'].map(function (t) { return { valor: t, rotulo: TIPOS[t] }; }) });
+    // Para que é este link (tipo). Processo novo começa sem escolha (se ninguém escolher, salva como seleção, como antes);
+    // o atalho da página da empresa já vem com "equipe"; ao editar, vale o salvo.
+    var tipoInicial = p ? (propositoValido(base && base.tipo) || 'selecao') : propositoValido(rasc ? base.tipo : preset.tipo);
+    var escTipo = criarProposito(tipoInicial);
+    function tipoAtual() { return escTipo.valor(); }
+
+    // Empresa cadastrada (Supabase/prévia): em equipe, as respostas entram no cadastro dela; em seleção é opcional.
+    // Se a lista de empresas ainda não chegou do servidor (abriu direto no formulário), o seletor é refeito quando chegar.
+    var textoEquipe = el('p', { classe: 'form-secao__texto proc-equipe-texto', id: 'proc-equipe-texto', 'aria-live': 'polite' });
+    var rotuloEmpresa = el('span', { classe: 'campo__rotulo', id: 'proc-empresa-id-rotulo', texto: 'Empresa cadastrada' });
+    var areaEmpresa = el('div', { classe: 'proposito__empresa', id: 'proc-proposito-empresa' });
+    var empLigada = (base && base.empresaId) || preset.empresaId || '';
     var escEmpresa = null;
-    if (empresasOk()) {
+    function montarEmpresa(valor) {
       // A empresa já ligada (ou a do atalho da página da empresa) aparece mesmo arquivada, marcada "(arquivada)".
-      var empLigada = (base && base.empresaId) || preset.empresaId || '';
-      var empsForm = (estado.emp.lista || []).filter(function (e) { return e.ativo !== false || (empLigada && e.id === empLigada); });
+      var emps = (estado.emp.lista || []).filter(function (e) { return e.ativo !== false || (e.id === valor || e.id === empLigada); });
       escEmpresa = criarSeletorBusca({ id: 'proc-empresa-id', rotulo: 'Empresa cadastrada', rotuloId: 'proc-empresa-id-rotulo', vazio: 'Nenhuma (só o nome em texto)',
         placeholder: 'Buscar ou cadastrar empresa…', criar: cadastroEmpresaRapido(),
-        valor: empLigada, opcoes: empsForm.map(function (e) { return { valor: e.id, rotulo: e.nome + (e.ativo === false ? ' (arquivada)' : ''), sub: e.cidade || '' }; }) });
+        valor: valor, opcoes: emps.map(function (e) { return { valor: e.id, rotulo: e.nome + (e.ativo === false ? ' (arquivada)' : ''), sub: e.cidade || '' }; }) });
+      escEmpresa.aoMudar(function () {
+        var nome = nomeEmpresa(escEmpresa.valor());
+        var campoEmp = $('proc-empresa');
+        if (nome && campoEmp && !campoEmp.value.trim()) campoEmp.value = nome;
+        atualizarTipo();
+      });
+      limpar(areaEmpresa);
+      adicionar(areaEmpresa, [el('div', { classe: 'campo' }, [rotuloEmpresa, escEmpresa.caixa]), textoEquipe]);
     }
-    var textoEquipe = el('p', { classe: 'form-secao__texto proc-equipe-texto', id: 'proc-equipe-texto', 'aria-live': 'polite' });
+    if (empresasOk()) {
+      montarEmpresa(empLigada);
+      if (estado.emp.lista === null) {
+        carregarEmpresas().then(function () {
+          if (!escEmpresa || !document.body.contains(escEmpresa.caixa) || escEmpresa.botao.getAttribute('aria-expanded') === 'true') return;
+          montarEmpresa(escEmpresa.valor());
+          atualizarTipo();
+        });
+      }
+    } else areaEmpresa.appendChild(textoEquipe);
     function atualizarTipo() {
-      var eqp = escTipo.botao.value === 'equipe';
+      var t = tipoAtual();
+      var eqp = t === 'equipe';
       var empId = escEmpresa ? escEmpresa.valor() : '';
+      areaEmpresa.hidden = !t || (!escEmpresa && !eqp);
+      rotuloEmpresa.textContent = eqp ? 'Empresa da equipe' : 'Empresa cadastrada (opcional)';
       textoEquipe.hidden = !eqp;
       textoEquipe.textContent = !eqp ? '' : (empId ? textoEquipeEmpresa(nomeEmpresa(empId))
         : (escEmpresa ? 'Escolha a empresa cadastrada para que as respostas entrem no cadastro dela como colaboradores.' : 'Avaliação de perfil dos colaboradores de uma empresa.'));
     }
-    escTipo.botao.addEventListener('change', atualizarTipo);
-    if (escEmpresa) escEmpresa.aoMudar(function () {
-      var nome = nomeEmpresa(escEmpresa.valor());
-      var campoEmp = $('proc-empresa');
-      if (nome && campoEmp && !campoEmp.value.trim()) campoEmp.value = nome;
-      atualizarTipo();
-    });
 
     // Sair do formulário: volta à empresa (quando veio do atalho dela), à página do processo ou à lista.
     function sairDoForm() {
@@ -4301,7 +4536,8 @@
       });
     }
     box.appendChild(cabecalhoVista(p ? 'Editar processo · código ' + p.codigo : 'Novo processo', p ? p.nome : 'Novo processo',
-      'Preencha os dados, ligue a lista do ClickUp e diga como o relatório deve pontuar os candidatos.',
+      p ? 'O formulário mostra só o que vale para o propósito deste link, e o quadro "O que a pessoa vai responder" acompanha cada mudança.'
+        : 'Comece dizendo para que é este link: o formulário mostra só o que vale para ele, e o quadro "O que a pessoa vai responder" acompanha cada escolha.',
       [botao('botao--claro', '← Voltar', sairDoForm, { id: 'btn-voltar-form-processo' })]));
     if (rasc) box.appendChild(el('p', { classe: 'aviso proc-aviso', id: 'proc-rascunho-recuperado', role: 'status',
       texto: 'Recuperamos o que você tinha preenchido antes de sair (sessão expirada ou página recarregada). Confira e salve.' }));
@@ -4309,43 +4545,59 @@
     var form = el('form', { classe: 'form-processo', id: 'form-processo', novalidate: true });
     form.addEventListener('input', marcar);
     form.addEventListener('change', marcar);
+    // Duas colunas no computador largo: as seções à esquerda e, fixo à direita, o que a pessoa vai responder.
+    var principal = el('div', { classe: 'proc-form-principal' });
+    var ladoResposta = el('aside', { classe: 'proc-form-lado', 'aria-label': 'O que a pessoa vai responder' });
+    form.appendChild(el('div', { classe: 'proc-form-colunas' }, [principal, ladoResposta]));
+
+    // 0. Para que é este link?
+    var notaSemEscolha = el('p', { classe: 'form-secao__texto proposito__nota', id: 'proc-tipo-nota', texto: 'Se ninguém escolher, o link é salvo como seleção de candidatos.' });
+    principal.appendChild(el('section', { classe: 'caixa form-secao form-secao--proposito', id: 'proc-proposito' }, [
+      el('div', { classe: 'proposito__topo' }, [el('h3', { classe: 'caixa__titulo', id: 'proc-tipo-rotulo', texto: 'Para que é este link?' }), escTipo.botao]),
+      el('p', { classe: 'form-secao__texto', texto: 'Escolha o objetivo. O resto do formulário se ajusta a ele.' }),
+      escTipo.lista,
+      notaSemEscolha,
+      areaEmpresa
+    ]));
 
     // 1. Dados
-    form.appendChild(secaoForm('Dados do processo', null, [
+    var campoEmpresaTexto = campoCom('proc-empresa', 'Empresa contratante', (base && empresaDe(base)) || preset.empresa || '', { maxlength: 80 });
+    var campoVaga = campoCom('proc-vaga', 'Vaga', base && base.vaga, { maxlength: 120 });
+    var campoContratante = campoCom('proc-contratante', 'Quem recebe o relatório (nome)', base && base.contratante, { maxlength: 80 });
+    var marcaMostrar = campoMarcar('proc-mostrar', 'Mostrar ao participante o relatório DISC completo dele no final (os 4 fatores, perfil principal e secundário e características; sem vaga, função ou aderência)', base ? !!base.mostrarResultado : false);
+    principal.appendChild(secaoForm('Dados do processo', null, [
       el('div', { classe: 'form-grade' }, [
         campoCom('proc-nome', 'Nome do processo', (base && base.nome) || preset.nome || '', { maxlength: 80, placeholder: 'Ex.: Escrevente de atendimento 2026' }),
-        campoCom('proc-empresa', 'Empresa contratante', (base && empresaDe(base)) || preset.empresa || '', { maxlength: 80 }),
-        campoCom('proc-vaga', 'Vaga', base && base.vaga, { maxlength: 120 }),
+        campoEmpresaTexto,
+        campoVaga,
         campoCom('proc-cidade', 'Cidade', base && base.cidade, { maxlength: 80, placeholder: 'Ex.: Boa Vista / RR' }),
         campoCom('proc-consultor', 'Consultor responsável', base && base.consultor, { maxlength: 80 }),
-        campoCom('proc-contratante', 'Quem recebe o relatório (nome)', base && base.contratante, { maxlength: 80 }),
+        campoContratante,
         campoCom('proc-inicio', 'Início', per.inicio, { type: 'date' }),
         campoCom('proc-fim', 'Fim', per.fim, { type: 'date' })
       ]),
-      el('div', { classe: 'form-grade' }, [
-        campoEscolha('Tipo', escTipo, 'proc-tipo-rotulo'),
-        escEmpresa ? campoEscolha('Empresa cadastrada', escEmpresa, 'proc-empresa-id-rotulo') : null
-      ]),
-      textoEquipe,
       el('div', { classe: 'form-marcas' }, [
         campoMarcar('proc-ativa', 'Processo ativo (o link aceita respostas)', base ? base.ativa !== false : true),
-        campoMarcar('proc-mostrar', 'Mostrar ao participante o relatório DISC completo dele no final (os 4 fatores, perfil principal e secundário e características; sem vaga, função ou aderência)', base ? !!base.mostrarResultado : false)
+        marcaMostrar
       ])
     ]));
 
-    // 1b. O que perguntar ao candidato (config.formulario)
+    // 2. O que perguntar antes do teste (config.formulario)
     var formBase = normalizarFormulario(cfgBase.formulario);
     f.campos = formBase.campos;
     f.perguntas = formBase.perguntas.map(function (q) { return { id: q.id, texto: q.texto, obrigatoria: q.obrigatoria }; });
     var fixos = el('ul', { classe: 'pergunta-fixos', id: 'proc-campos-fixos' }, ['Nome completo', 'WhatsApp'].map(function (t) {
       return el('li', { classe: 'pergunta-campo' }, [el('span', { classe: 'pergunta-campo__rotulo', texto: t }), el('span', { classe: 'selo selo--noite', texto: 'Sempre pedido' })]);
     }));
+    var rotuloFuncao = null;
     var camposConfig = el('ul', { classe: 'pergunta-campos', id: 'proc-campos' }, CAMPOS_FORMULARIO.map(function (c) {
       var rotuloId = 'proc-campo-' + c.chave + '-rotulo';
       var esc = criarEscolha({ id: 'proc-campo-' + c.chave, rotulo: c.rotulo, rotuloId: rotuloId, classe: 'escolha--campo', valor: f.campos[c.chave],
         opcoes: ['obrigatorio', 'opcional', 'oculto'].map(function (m) { return { valor: m, rotulo: MODOS_CAMPO[m] }; }) });
       esc.botao.addEventListener('change', function () { f.campos[c.chave] = esc.botao.value; });
-      return el('li', { classe: 'pergunta-campo', 'data-campo': c.chave }, [el('span', { classe: 'pergunta-campo__rotulo', id: rotuloId, texto: c.rotulo }), esc.caixa]);
+      var rotulo = el('span', { classe: 'pergunta-campo__rotulo', id: rotuloId, texto: c.rotulo });
+      if (c.chave === 'funcao') rotuloFuncao = rotulo;
+      return el('li', { classe: 'pergunta-campo', 'data-campo': c.chave }, [rotulo, esc.caixa]);
     }));
     var listaPerguntas = el('ol', { classe: 'config-lista', id: 'proc-perguntas' });
     var btnAddPergunta = botao('botao--contorno', 'Adicionar pergunta', function () {
@@ -4358,8 +4610,9 @@
     var notaPerguntas = el('p', { classe: 'form-secao__texto', id: 'proc-perguntas-nota', 'aria-live': 'polite' });
     function desenharPerguntas() {
       limpar(listaPerguntas);
+      var exemplo = tipoAtual() === 'equipe' ? 'Ex.: Há quanto tempo você está na empresa?' : 'Ex.: Qual sua pretensão salarial?';
       f.perguntas.forEach(function (q, i) {
-        var texto = campoCom('pergunta-texto-' + i, 'Pergunta ' + (i + 1), q.texto, { maxlength: 200, placeholder: 'Ex.: Qual sua pretensão salarial?' });
+        var texto = campoCom('pergunta-texto-' + i, 'Pergunta ' + (i + 1), q.texto, { maxlength: 200, placeholder: exemplo });
         var entrada = texto.querySelector('input');
         var erroQ = el('p', { classe: 'campo__erro pergunta-erro', id: 'pergunta-erro-' + i, role: 'alert' });
         function conferir() { erroQ.textContent = perguntaSensivel(entrada.value) ? msgPerguntaSensivel(entrada.value) : ''; }
@@ -4378,66 +4631,151 @@
       btnAddPergunta.disabled = f.perguntas.length >= MAX_PERGUNTAS;
       notaPerguntas.textContent = f.perguntas.length >= MAX_PERGUNTAS ? 'Limite de ' + MAX_PERGUNTAS + ' perguntas extras.'
         : 'Até ' + MAX_PERGUNTAS + ' perguntas abertas. Não pergunte dados sensíveis (sexo, gênero, estado civil, filhos, religião, gravidez, raça, saúde, antecedentes…).';
+      atualizarResposta();
     }
-    form.appendChild(secaoForm('O que perguntar ao candidato', 'Na identificação, antes do teste. Nome completo e WhatsApp são sempre pedidos (o WhatsApp liga as respostas da mesma pessoa).', [
+    var secPerguntas = secaoForm('O que perguntar antes do teste', '', [
       fixos, camposConfig,
       el('h4', { classe: 'conf-subtitulo', texto: 'Perguntas extras' }),
       notaPerguntas, listaPerguntas, btnAddPergunta
-    ], 'form-secao--perguntas'));
-    desenharPerguntas();
+    ], 'form-secao--perguntas');
+    var textoPerguntas = el('p', { classe: 'form-secao__texto', id: 'proc-perguntas-texto' });
+    secPerguntas.insertBefore(textoPerguntas, fixos);
+    principal.appendChild(secPerguntas);
 
-    // 1c. Segunda parte do teste (perfil exigido pelo trabalho). Ao criar, segue o tipo até a pessoa mexer; ao editar, fica o salvo.
-    f.parte2 = p || rasc ? formBase.parte2 : parte2Padrao(escTipo.botao.value);
+    // 3. Teste DISC: parte 1 ou partes 1 e 2 (formulario.parte2). Ao criar, segue o propósito até a pessoa mexer;
+    // ao editar, fica o salvo. O interruptor #proc-parte2 manda; os dois lados só explicam (e também trocam ao clicar).
+    f.parte2 = p || rasc ? formBase.parte2 : parte2Padrao(tipoInicial);
     var parte2Tocada = !!(p || rasc);
-    var estadoParte2 = el('span', { classe: 'pilula-liga__texto', id: 'proc-parte2-estado' });
-    var pilulaParte2 = el('button', { type: 'button', classe: 'pilula-liga', id: 'proc-parte2', role: 'switch', 'aria-labelledby': 'proc-parte2-rotulo' }, [
-      el('span', { classe: 'pilula-liga__trilho', 'aria-hidden': 'true' }, el('span', { classe: 'pilula-liga__bola' })),
-      estadoParte2
-    ]);
-    var notaParte2 = el('p', { classe: 'form-secao__texto', id: 'proc-parte2-nota', 'aria-live': 'polite' });
+    var pilulaParte2 = el('button', { type: 'button', classe: 'pilula-liga pilula-liga--so-trilho', id: 'proc-parte2', role: 'switch',
+      'aria-labelledby': 'proc-parte2-rotulo', 'aria-describedby': 'proc-parte2-nota' },
+      el('span', { classe: 'pilula-liga__trilho', 'aria-hidden': 'true' }, el('span', { classe: 'pilula-liga__bola' })));
+    function ladoParte2(valor, titulo) {
+      var selo = el('span', { classe: 'selo selo--noite parte2-opcao__selo', texto: 'Recomendado', hidden: true });
+      var caixa = el('div', { classe: 'parte2-opcao', 'data-lado': valor, onclick: function () { if (f.parte2 !== valor) alternarParte2(); } }, [
+        el('span', { classe: 'parte2-opcao__titulo', texto: titulo }),
+        el('span', { classe: 'parte2-opcao__tempo', texto: 'cerca de ' + minutosTeste(valor) + ' min' }),
+        selo
+      ]);
+      return { caixa: caixa, selo: selo };
+    }
+    var ladoP1 = ladoParte2('desligada', 'Só o jeito natural (parte 1)');
+    var ladoP2 = ladoParte2('ligada', 'Jeito natural + o que o cargo exige (partes 1 e 2)');
+    var notaParte2 = el('p', { classe: 'form-secao__texto parte2-nota', id: 'proc-parte2-nota', 'aria-live': 'polite' });
+    var recParte2 = el('p', { classe: 'parte2-recomendacao t-rotulo', id: 'proc-parte2-recomendacao' });
+    var contraParte2 = el('p', { classe: 'parte2-contra t-rotulo', id: 'proc-parte2-contra', role: 'status' });
     function desenharParte2() {
       var ligada = f.parte2 === 'ligada';
       pilulaParte2.setAttribute('aria-checked', ligada ? 'true' : 'false');
       pilulaParte2.setAttribute('data-valor', f.parte2);
-      estadoParte2.textContent = PARTE2[f.parte2];
+      ladoP1.caixa.setAttribute('data-ativa', ligada ? 'false' : 'true');
+      ladoP2.caixa.setAttribute('data-ativa', ligada ? 'true' : 'false');
       notaParte2.textContent = textoParte2(f.parte2);
+      var t = tipoAtual();
+      var r = recomendacaoParte2(t);
+      ladoP1.selo.hidden = !(r && r.parte2 === 'desligada');
+      ladoP2.selo.hidden = !(r && r.parte2 === 'ligada');
+      limpar(recParte2);
+      if (r) adicionar(recParte2, [el('span', { classe: 'seminegrito', texto: r.titulo }), ' ' + r.porque]);
+      else recParte2.textContent = 'A recomendação depende do propósito: escolha acima para que é este link.';
+      contraParte2.textContent = avisoParte2(t, f.parte2);
+      contraParte2.hidden = !contraParte2.textContent;
     }
-    pilulaParte2.addEventListener('click', function () {
+    function alternarParte2() {
       parte2Tocada = true;
       marcar();
       f.parte2 = f.parte2 === 'ligada' ? 'desligada' : 'ligada';
       desenharParte2();
-    });
-    escTipo.botao.addEventListener('change', function () {
-      if (parte2Tocada) return;
-      f.parte2 = parte2Padrao(escTipo.botao.value);
-      desenharParte2();
-    });
-    form.appendChild(secaoForm(ROTULO_PARTE2, 'Depois do teste, a pessoa responde 10 grupos pensando em como o trabalho exige que ela seja. O painel compara com o perfil natural e mostra o esforço de adaptação. Recomendado para avaliação de equipe.', [
-      el('div', { classe: 'parte2-linha' }, [el('span', { classe: 'campo__rotulo', id: 'proc-parte2-rotulo', texto: 'Segunda parte do teste' }), pilulaParte2]),
-      notaParte2
+      atualizarResposta();
+    }
+    pilulaParte2.addEventListener('click', alternarParte2);
+    principal.appendChild(secaoForm(ROTULO_PARTE2, 'A parte 1 mostra o jeito natural da pessoa. A parte 2 é opcional: pergunta como o trabalho exige que ela seja.', [
+      el('span', { classe: 'visualmente-oculto', id: 'proc-parte2-rotulo', texto: 'Incluir a parte 2 (o que o cargo exige)' }),
+      el('div', { classe: 'parte2-escolha' }, [ladoP1.caixa, el('div', { classe: 'parte2-escolha__chave' }, pilulaParte2), ladoP2.caixa]),
+      notaParte2, recParte2, contraParte2
     ], 'form-secao--parte2'));
-    desenharParte2();
 
-    // 2. ClickUp
-    var clickupCorpo = el('div', { classe: 'clickup-corpo', id: 'proc-clickup' });
-    form.appendChild(secaoForm('Lista do ClickUp', 'Os candidatos do processo vêm dessa lista: notas das etapas, status e respostas do formulário.', [clickupCorpo]));
-    var listaAtual = base ? String(base.clickupListId || '') : '';
-    var lerLista = montarClickup(clickupCorpo, listaAtual);
-
-    // 3. Link do teste
+    // 4. Link do teste
+    var textoLink = null;
     if (p) {
       var link = linkDe(p);
-      form.appendChild(secaoForm('Link do teste DISC', 'Envie aos candidatos. As respostas chegam ligadas a este processo.', [
+      var secLink = secaoForm('Link do teste DISC', 'Envie aos candidatos. As respostas chegam ligadas a este processo.', [
         el('p', { classe: 'av-link', id: 'proc-link', texto: link }),
         el('div', { classe: 'gestao-card__acoes' }, [
           botao('botao--claro botao--pequeno', 'Copiar link', function () { copiar(link, 'Link copiado.'); }),
           botao('botao--claro botao--pequeno', 'Copiar mensagem', function () { copiar(mensagemConvite(p, link), 'Mensagem copiada. Cole no WhatsApp.'); })
         ])
-      ]));
+      ]);
+      textoLink = secLink.querySelector('.form-secao__texto');
+      principal.appendChild(secLink);
     }
 
-    // 4. Perfil ideal
+    // 5. Só do processo seletivo (pontuação do relatório do processo): em equipe ficam recolhidas, com o que está salvo guardado.
+    var soSelecao = el('div', { classe: 'proc-so-selecao', id: 'proc-so-selecao' });
+    var mostrarSelecao = false;
+    var btnSelecao = botao('botao--claro botao--pequeno', 'Mostrar essas seções', function () { mostrarSelecao = !mostrarSelecao; aplicarSoSelecao(); },
+      { id: 'btn-mostrar-selecao', 'aria-controls': 'proc-so-selecao', 'aria-expanded': 'false' });
+    var listaAtual = base ? String(base.clickupListId || '') : '';
+    var temConfigSelecao = !!(listaAtual || f.perfil || f.etapas.length || f.bonus.length);
+    var notaSelecao = el('div', { classe: 'caixa caixa--suave proc-selecao-nota', id: 'proc-selecao-nota', hidden: true }, [
+      el('p', { classe: 'seminegrito proc-selecao-nota__titulo', texto: 'Pontuação do processo seletivo: não se aplica à avaliação de equipe' }),
+      el('p', { classe: 'texto-medio t-rotulo', texto: 'Perfil DISC ideal, etapas, bônus, corte e lista do ClickUp servem só para o relatório do processo seletivo.' +
+        (temConfigSelecao ? ' Este processo tem configuração salva nessas seções: ela continua guardada.' : ' Nada do que estiver preenchido se perde.') }),
+      btnSelecao
+    ]);
+    principal.appendChild(notaSelecao);
+    principal.appendChild(soSelecao);
+    function aplicarSoSelecao() {
+      var eqp = tipoAtual() === 'equipe';
+      notaSelecao.hidden = !eqp;
+      soSelecao.hidden = eqp && !mostrarSelecao;
+      btnSelecao.textContent = mostrarSelecao ? 'Esconder essas seções' : 'Mostrar essas seções';
+      btnSelecao.setAttribute('aria-expanded', !eqp || mostrarSelecao ? 'true' : 'false');
+    }
+
+    // 5a. ClickUp
+    var clickupCorpo = el('div', { classe: 'clickup-corpo', id: 'proc-clickup' });
+    soSelecao.appendChild(secaoForm('Lista do ClickUp', 'Os candidatos do processo vêm dessa lista: notas das etapas, status e respostas do formulário.', [clickupCorpo]));
+    var lerLista = montarClickup(clickupCorpo, listaAtual);
+
+    // O que a pessoa vai responder (ao vivo) e o que muda com o propósito.
+    function atualizarResposta() {
+      limpar(ladoResposta);
+      ladoResposta.appendChild(caixaResposta({
+        tipo: tipoAtual(),
+        mostrarResultado: marcaMostrar.querySelector('input').checked,
+        formulario: { campos: f.campos, perguntas: f.perguntas.filter(function (q) { return String(q.texto || '').trim(); }), parte2: f.parte2 }
+      }, { id: 'proc-resposta', idParte2: 'proc-resposta-parte2', compacto: true }));
+    }
+    function aplicarProposito() {
+      var t = tipoAtual();
+      var eqp = t === 'equipe';
+      form.setAttribute('data-proposito', t || 'nenhum');
+      notaSemEscolha.hidden = !!t;
+      atualizarTipo();
+      campoVaga.hidden = eqp;
+      campoContratante.hidden = eqp;
+      campoEmpresaTexto.querySelector('.campo__rotulo').textContent = eqp ? 'Nome da empresa' : 'Empresa contratante';
+      textoPerguntas.textContent = eqp
+        ? 'Na identificação, antes do teste. Nome completo e WhatsApp são sempre pedidos (o WhatsApp liga as respostas da mesma pessoa e a encontra no cadastro da empresa).'
+        : 'Na identificação, antes do teste. Nome completo e WhatsApp são sempre pedidos (o WhatsApp liga as respostas da mesma pessoa).' +
+          (t ? ' No link de seleção, o teste pede também a vaga pretendida (opcional).' : '');
+      if (rotuloFuncao) rotuloFuncao.textContent = eqp ? 'Cargo/função' : 'Função atual ou última';
+      Array.prototype.forEach.call(listaPerguntas.querySelectorAll('input[id^="pergunta-texto-"]'), function (n) {
+        n.setAttribute('placeholder', eqp ? 'Ex.: Há quanto tempo você está na empresa?' : 'Ex.: Qual sua pretensão salarial?');
+      });
+      if (textoLink) textoLink.textContent = eqp ? 'Envie às pessoas da equipe. As respostas chegam ligadas a este processo.' : 'Envie aos candidatos. As respostas chegam ligadas a este processo.';
+      aplicarSoSelecao();
+      desenharParte2();
+      atualizarResposta();
+    }
+    escTipo.botao.addEventListener('change', function () {
+      if (!parte2Tocada) f.parte2 = parte2Padrao(tipoAtual());
+      aplicarProposito();
+    });
+    form.addEventListener('change', function (ev) { if (ev.target && (ev.target.id === 'proc-mostrar' || /^proc-campo-/.test(ev.target.id || '') || /^pergunta-obrig-/.test(ev.target.id || ''))) atualizarResposta(); });
+    form.addEventListener('input', function (ev) { if (ev.target && /^pergunta-texto-/.test(ev.target.id || '')) atualizarResposta(); });
+
+    // 5b. Perfil ideal
     var codigoPerfil = el('span', { classe: 'badge perfil-codigo', id: 'proc-perfil-codigo' });
     var explicacao = el('p', { classe: 'perfil-explicacao', id: 'proc-perfil-explicacao', 'aria-live': 'polite' });
     var letras = LETRAS.map(function (l) {
@@ -4458,7 +4796,7 @@
       codigoPerfil.className = 'badge perfil-codigo' + (f.perfil ? ' disc-' + f.perfil.charAt(0) : ' perfil-codigo--vazio');
       explicacao.textContent = explicarPerfil(f.perfil);
     }
-    form.appendChild(secaoForm('Perfil DISC ideal', 'Toque em 1 ou 2 letras. A primeira é o traço principal; a segunda, o traço de apoio.', [
+    soSelecao.appendChild(secaoForm('Perfil DISC ideal', 'Toque em 1 ou 2 letras. A primeira é o traço principal; a segunda, o traço de apoio.', [
       el('div', { classe: 'perfil-escolha', role: 'group', 'aria-label': 'Letras do perfil ideal' }, letras),
       el('p', { classe: 'perfil-resumo' }, [el('span', { classe: 'texto-suave', texto: 'Perfil ideal: ' }), codigoPerfil]),
       explicacao,
@@ -4466,7 +4804,7 @@
     ]));
     atualizarPerfil();
 
-    // 5. Etapas
+    // 5c. Etapas
     var listaEtapas = el('ol', { classe: 'config-lista', id: 'proc-etapas' });
     var somaEtapas = el('p', { classe: 'form-secao__texto tabular', id: 'proc-etapas-soma', 'aria-live': 'polite' });
     function atualizarPesos() {
@@ -4501,7 +4839,7 @@
       });
       atualizarPesos();
     }
-    form.appendChild(secaoForm('Etapas avaliadas', 'Cada etapa tem uma nota de 0 a 10 num campo numérico do ClickUp. Etapa sem nenhuma nota ainda aparece como "peso em aberto".', [
+    soSelecao.appendChild(secaoForm('Etapas avaliadas', 'Cada etapa tem uma nota de 0 a 10 num campo numérico do ClickUp. Etapa sem nenhuma nota ainda aparece como "peso em aberto".', [
       somaEtapas, listaEtapas,
       botao('botao--contorno', 'Adicionar etapa', function () {
         marcar();
@@ -4512,7 +4850,7 @@
     ]));
     desenharEtapas();
 
-    // 6. Bônus
+    // 5d. Bônus
     var listaBonus = el('ol', { classe: 'config-lista', id: 'proc-bonus' });
     function desenharBonus() {
       limpar(listaBonus);
@@ -4557,7 +4895,7 @@
         ]));
       });
     }
-    form.appendChild(secaoForm('Bônus', 'Pontos extras somados por fora da nota técnica (ex.: graduação na área).', [
+    soSelecao.appendChild(secaoForm('Bônus', 'Pontos extras somados por fora da nota técnica (ex.: graduação na área).', [
       listaBonus,
       botao('botao--contorno', 'Adicionar bônus', function () {
         marcar();
@@ -4568,10 +4906,10 @@
     ]));
     desenharBonus();
 
-    // 7. Corte, faixa e finalistas
+    // 5e. Corte, faixa e finalistas
     var cfgCorte = cfgBase.corte == null ? 70 : cfgBase.corte;
     var cfgFaixa = cfgBase.faixaAvaliar == null ? 55 : cfgBase.faixaAvaliar;
-    form.appendChild(secaoForm('Corte e finalistas', 'Score total = nota técnica (0 a 100) + bônus. Quem passa do corte é "aprovado"; entre a faixa e o corte, "avaliar".', [
+    soSelecao.appendChild(secaoForm('Corte e finalistas', 'Score total = nota técnica (0 a 100) + bônus. Quem passa do corte é "aprovado"; entre a faixa e o corte, "avaliar".', [
       el('div', { classe: 'form-grade' }, [
         campoCom('proc-corte', 'Nota de corte (aprovado)', cfgCorte, { type: 'number', min: 0, step: 'any', inputmode: 'decimal' }),
         campoCom('proc-faixa', 'A partir de (faixa "avaliar")', cfgFaixa, { type: 'number', min: 0, step: 'any', inputmode: 'decimal' })
@@ -4641,7 +4979,8 @@
       return dados;
     }
 
-    formProcesso.coletar = montarDados;
+    // Rascunho (sessão expirada/F5): guarda também "nada escolhido" no propósito, para voltar igual.
+    formProcesso.coletar = function () { var d = montarDados(); if (!tipoAtual()) d.tipo = ''; return d; };
 
     // Erro ao lado do campo: borda vermelha, mensagem logo abaixo, rolagem até ele e foco (e também no rodapé).
     function limparErrosCampos() {
@@ -4651,6 +4990,8 @@
     function erroNoCampo(id, msg) {
       var alvo = id ? $(id) : null;
       if (!alvo || !form.contains(alvo)) return false;
+      // Erro numa seção de seleção recolhida (link de equipe): mostra as seções antes de apontar o campo.
+      if (soSelecao.hidden && soSelecao.contains(alvo)) { mostrarSelecao = true; aplicarSoSelecao(); }
       var idErro = id + '-erro-campo';
       alvo.setAttribute('aria-invalid', 'true');
       alvo.setAttribute('aria-describedby', idErro);
@@ -4706,7 +5047,8 @@
         });
     });
     box.appendChild(form);
-    atualizarTipo();
+    desenharPerguntas();
+    aplicarProposito();
   }
 
   // Bloco da lista do ClickUp. Configurado: seletor em pílula com as listas. Senão: passo a passo + campo do ID.
@@ -4850,6 +5192,7 @@
     var sec = el('section', { classe: 'caixa proc-relatorios', id: 'proc-relatorios' }, [el('h3', { classe: 'caixa__titulo', texto: 'Relatórios deste processo' })]);
     var lista = estado.relatorios[p.id];
     if (!lista) {
+      if (p.tipo === 'equipe') sec.hidden = true;
       sec.appendChild(el('p', { classe: 'texto-suave t-rotulo', texto: 'Carregando…' }));
       api('relatoriosListar', p.id).then(function (resp) {
         estado.relatorios[p.id] = resp.relatorios || [];
@@ -4861,6 +5204,8 @@
       return sec;
     }
     if (!lista.length) {
+      // Equipe não gera relatório do processo seletivo: sem nenhum antigo, o bloco nem aparece.
+      if (p.tipo === 'equipe') { sec.hidden = true; return sec; }
       sec.appendChild(el('p', { classe: 'texto-suave t-corpo', texto: 'Nenhum relatório ainda. Use "Gerar rascunho do relatório".' }));
       return sec;
     }
@@ -4889,10 +5234,13 @@
     var n = Number(p.respostas) || 0;
     var link = linkDe(p);
     var cfg = p.config || configPadrao();
-    var semLista = !p.clickupListId;
-    var btnGerar = botao('botao--laranja', 'Gerar rascunho do relatório', function () { gerarRascunho(p, btnGerar); }, { id: 'btn-gerar-rascunho',
+    var tipo = propositoValido(p.tipo) || 'selecao';
+    var equipe = tipo === 'equipe';
+    // Equipe não usa o relatório do processo seletivo (ClickUp, pontuação): a página mostra para onde vão as respostas.
+    var semLista = !equipe && !p.clickupListId;
+    var btnGerar = equipe ? null : botao('botao--laranja', 'Gerar rascunho do relatório', function () { gerarRascunho(p, btnGerar); }, { id: 'btn-gerar-rascunho',
       disabled: semLista ? true : null, title: semLista ? 'Ligue a lista do ClickUp ao processo primeiro: o relatório lê os candidatos de lá.' : null });
-    box.appendChild(cabecalhoVista('Processo seletivo · código ' + p.codigo, p.nome, textoLocal(p) || null, [
+    box.appendChild(cabecalhoVista(TIPOS[tipo] + ' · código ' + p.codigo, p.nome, textoLocal(p) || null, [
       botao('botao--claro', '← Processos', function () { irParaProcessos('lista'); }),
       botao('botao--claro', 'Editar', function () { irParaProcessos('form', p.id); }, { id: 'btn-editar-processo' }),
       botao('botao--claro', 'Ver participantes', function () { verParticipantes(p); }, { id: 'btn-ver-participantes' }),
@@ -4908,37 +5256,24 @@
     var dados = el('section', { classe: 'caixa' }, [
       el('h3', { classe: 'caixa__titulo', texto: 'Dados' }),
       el('dl', { classe: 'det-dl' }, [
-        dlItem('Empresa', empresaDe(p)), dlItem('Vaga', p.vaga), dlItem('Cidade', p.cidade),
-        dlItem('Período', textoPeriodo(p.periodo)), dlItem('Consultor', p.consultor), dlItem('Recebe o relatório', p.contratante),
-        dlItem('Lista do ClickUp', p.clickupListId, 'proc-lista-ligada'),
+        dlItem('Para que é este link', PROPOSITOS[tipo].titulo, 'proc-proposito', true),
+        dlItem('Empresa', empresaDe(p)), equipe ? null : dlItem('Vaga', p.vaga), dlItem('Cidade', p.cidade),
+        dlItem('Período', textoPeriodo(p.periodo)), dlItem('Consultor', p.consultor), equipe ? null : dlItem('Recebe o relatório', p.contratante),
+        equipe && !p.clickupListId ? null : dlItem('Lista do ClickUp', p.clickupListId, 'proc-lista-ligada'),
         dlItem('Respostas do teste DISC', String(n), 'proc-respostas'),
         dlItem('Situação', p.ativa ? 'Ativo (link aceita respostas)' : 'Desativado', null, true),
         dlItem('Ao terminar o teste', p.mostrarResultado ? 'O participante vê o relatório DISC completo dele (sem vaga nem função)' : 'O participante não vê o resultado', 'proc-mostra-resultado', true)
       ])
     ]);
-    var formBox = el('section', { classe: 'caixa proc-formulario', id: 'proc-formulario' }, [
-      el('h3', { classe: 'caixa__titulo', texto: 'O que o candidato responde' }),
-      el('ul', { classe: 'lista-simples proc-formulario__lista' }, resumoFormulario(cfg.formulario).filter(function (it) { return it.modo !== 'oculto'; }).map(function (it) {
-        return el('li', { 'data-modo': it.modo }, [
-          el('span', { classe: 'proc-etapas-resumo__nome', texto: (it.extra ? 'Pergunta: ' : '') + it.rotulo }),
-          el('span', { classe: 'selo' + (it.modo === 'opcional' ? '' : ' selo--noite'), texto: it.texto })
-        ]);
-      })),
-      (function () {
-        var fora = resumoFormulario(cfg.formulario).filter(function (it) { return it.modo === 'oculto'; }).map(function (it) { return it.rotulo; });
-        return fora.length ? el('p', { classe: 'texto-suave t-rotulo proc-formulario__fora', texto: 'Não perguntamos: ' + fora.join(', ') + '.' }) : null;
-      })(),
-      (function () {
-        var p2 = normalizarFormulario(cfg.formulario).parte2;
-        return el('div', { classe: 'proc-parte2', id: 'proc-parte2-resumo', 'data-parte2': p2 }, [
-          el('p', { classe: 'proc-parte2__topo' }, [
-            el('span', { classe: 'proc-etapas-resumo__nome', texto: 'Segunda parte do teste' }),
-            el('span', { classe: 'selo' + (p2 === 'ligada' ? ' selo--noite' : ''), texto: PARTE2[p2] })
-          ]),
-          el('p', { classe: 'texto-suave t-rotulo', texto: textoParte2(p2) })
-        ]);
-      })()
+    // O que a pessoa vai responder + "Ver como a pessoa vê" (o link normal: nada chega ao painel antes do envio).
+    var verComo = el('div', { classe: 'proc-resposta__acoes' }, [
+      el('a', { classe: 'botao botao--claro botao--pequeno', id: 'btn-ver-como-pessoa', href: link, target: '_blank', rel: 'noopener', texto: 'Ver como a pessoa vê' }),
+      el('p', { classe: 'texto-suave t-nota', id: 'proc-ver-nota', texto: p.ativa
+        ? 'Abre o teste numa aba nova. Nada chega ao painel enquanto você não enviar; se enviar, vira uma resposta deste link.'
+        : 'O processo está desativado: a aba nova mostra o aviso de link encerrado.' })
     ]);
+    var formBox = caixaResposta({ tipo: tipo, mostrarResultado: p.mostrarResultado === true, formulario: cfg.formulario },
+      { id: 'proc-formulario', idParte2: 'proc-parte2-resumo', classe: 'proc-formulario', acoes: verComo });
     var linkBox = el('section', { classe: 'caixa' }, [
       el('h3', { classe: 'caixa__titulo', texto: 'Link do teste DISC' }),
       el('p', { classe: 'av-link', id: 'proc-link', texto: link }),
@@ -4947,6 +5282,23 @@
         botao('botao--claro botao--pequeno', 'Copiar mensagem', function () { copiar(mensagemConvite(p, link), 'Mensagem copiada. Cole no WhatsApp.'); }, { 'data-acao': 'copiar-mensagem' })
       ])
     ]);
+    if (equipe) {
+      var empNome = p.empresaId ? (nomeEmpresa(p.empresaId) || empresaDe(p)) : '';
+      var destino = el('section', { classe: 'caixa proc-destino', id: 'proc-destino' }, [
+        el('h3', { classe: 'caixa__titulo', texto: 'Para onde vão as respostas' }),
+        el('p', { classe: 'proc-destino__texto', texto: !empresasOk() ? 'As respostas aparecem em Participantes (use "Ver participantes").'
+          : p.empresaId ? textoEquipeEmpresa(empNome)
+          : 'Este link não está ligado a uma empresa cadastrada: as respostas ficam só em Participantes. Edite o processo e escolha a empresa para que entrem como colaboradores.' }),
+        empresasOk() ? el('p', { classe: 'texto-suave t-rotulo', texto: 'O relatório da equipe e o "Como liderar" são gerados na página da empresa. A pontuação do processo seletivo (ClickUp, perfil ideal, etapas) não se aplica aqui.' }) : null,
+        p.empresaId && empresasOk() ? el('div', { classe: 'gestao-card__acoes' },
+          botao('botao--claro botao--pequeno', 'Abrir a empresa', function () { irParaEmpresas('pagina', p.empresaId); }, { id: 'btn-abrir-empresa' })) : null
+      ]);
+      box.appendChild(el('div', { classe: 'proc-grade' }, [
+        el('div', { classe: 'det-lado' }, [dados, linkBox, formBox]),
+        el('div', { classe: 'det-lado' }, [destino, blocoRelatorios(p)])
+      ]));
+      return;
+    }
     var pct = pesosNormalizados(cfg.etapas);
     var configBox = el('section', { classe: 'caixa proc-config' }, [
       el('h3', { classe: 'caixa__titulo', texto: 'Como o relatório pontua' }),

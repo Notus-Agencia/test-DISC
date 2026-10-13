@@ -1414,3 +1414,71 @@ test('faixa do banco: diz o que deixa de funcionar com as migrações que faltam
     'Pode não funcionar: fotos; mover resposta de processo e contratar.');
   assert.match(AD.impactoBanco({ ok: true, faltando: [], semFuncao: true }), /Algumas funções/);
 });
+
+test('o que a pessoa vai responder: passos, tempos e total iguais ao teste (10 / 15 minutos)', () => {
+  // O total é o MESMO número da abertura do teste (js/app.js) e do convite: se mudar lá, muda aqui.
+  const app = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'js', 'app.js'), 'utf8');
+  assert.match(app, /Leva cerca de ' \+ \(p2 \? 15 : 10\) \+ ' minutos/);
+  assert.deepEqual(AD.MINUTOS_TESTE, { desligada: 10, ligada: 15 });
+  assert.equal(AD.minutosTeste('ligada'), 15);
+  assert.equal(AD.minutosTeste('qualquer'), 10);
+
+  // Seleção, formulário padrão, sem a parte 2 e sem mostrar o resultado
+  const sel = AD.passosResposta({ tipo: 'selecao', mostrarResultado: false, formulario: null });
+  assert.equal(sel.minutos, 10);
+  assert.equal(sel.total, 'cerca de 10 minutos');
+  assert.deepEqual(sel.passos.map((p) => p.chave), ['dados', 'parte1', 'parte2', 'fim']);
+  assert.deepEqual(sel.passos.map((p) => p.num), [1, 2, 0, 3]);
+  const dados = sel.passos[0];
+  assert.deepEqual(dados.itens.map((i) => i.rotulo), ['Nome completo', 'WhatsApp', 'Vaga pretendida', 'Idade', 'Função atual ou última', 'Empresa atual ou última', 'Foto']);
+  assert.deepEqual(dados.itens.map((i) => i.modo), ['sempre', 'sempre', 'opcional', 'obrigatorio', 'opcional', 'opcional', 'opcional']);
+  assert.deepEqual(dados.fora, ['E-mail', 'Cidade onde mora']);
+  assert.equal(dados.tempo, '1 a 2 min');
+  assert.equal(sel.passos[2].ligada, false);
+  assert.equal(sel.passos[3].mostra, false);
+  assert.match(sel.passos[3].resultado, /^Não vê o resultado/);
+
+  // Equipe com a parte 2, campos e pergunta extra: sem vaga, função vira "Cargo/função", 4 passos numerados, 15 min
+  const eqp = AD.passosResposta({ tipo: 'equipe', mostrarResultado: true, formulario: {
+    campos: { idade: 'oculto', email: 'obrigatorio' }, perguntas: [{ texto: 'Há quanto tempo está na empresa?', obrigatoria: true }], parte2: 'ligada' } });
+  assert.equal(eqp.minutos, 15);
+  assert.equal(eqp.total, 'cerca de 15 minutos');
+  assert.deepEqual(eqp.passos.map((p) => p.num), [1, 2, 3, 4]);
+  const r2 = eqp.passos[0].itens.map((i) => i.rotulo);
+  assert.ok(r2.indexOf('Vaga pretendida') === -1 && r2.indexOf('Cargo/função') !== -1 && r2.indexOf('Idade') === -1);
+  assert.deepEqual(eqp.passos[0].itens[eqp.passos[0].itens.length - 1], { rotulo: 'Pergunta: Há quanto tempo está na empresa?', modo: 'obrigatorio', texto: 'Obrigatória', extra: true });
+  assert.deepEqual(eqp.passos[0].fora, ['Idade', 'Cidade onde mora']);
+  assert.match(eqp.passos[0].texto, /compartilhado com a empresa/);
+  assert.match(eqp.passos[0].nota, /Perguntas abertas/);
+  assert.equal(eqp.passos[2].tempo, 'cerca de 5 min');
+  assert.equal(eqp.passos[3].mostra, true);
+  assert.match(eqp.passos[3].resultado, /^Vê o próprio relatório DISC/);
+
+  // Sem propósito (processo novo sem escolha): vale o formulário; os tempos por passo cabem no total
+  const nada = AD.passosResposta({ tipo: '', formulario: { parte2: 'desligada' } });
+  assert.equal(nada.tipo, '');
+  assert.equal(nada.minutos, 10);
+  assert.equal(AD.passosResposta({ tipo: 'outro' }).tipo, '');
+});
+
+test('parte 2: recomendação conforme o propósito e aviso só quando a escolha é outra', () => {
+  assert.equal(AD.recomendacaoParte2(''), null);
+  assert.equal(AD.recomendacaoParte2('selecao').parte2, 'desligada');
+  assert.equal(AD.recomendacaoParte2('equipe').parte2, 'ligada');
+  assert.match(AD.recomendacaoParte2('selecao').titulo, /só a parte 1/);
+  assert.match(AD.recomendacaoParte2('equipe').titulo, /partes 1 e 2/);
+  assert.match(AD.recomendacaoParte2('selecao').porque, /recrutador/);
+  assert.match(AD.recomendacaoParte2('equipe').porque, /psicólogo\(a\)/);
+  assert.equal(AD.avisoParte2('selecao', 'desligada'), '');
+  assert.equal(AD.avisoParte2('equipe', 'ligada'), '');
+  assert.equal(AD.avisoParte2('', 'ligada'), '');
+  assert.match(AD.avisoParte2('selecao', 'ligada'), /^Diferente do recomendado: o teste passa a levar cerca de 15 minutos/);
+  assert.match(AD.avisoParte2('equipe', 'desligada'), /^Diferente do recomendado: sem a parte 2/);
+  // Textos do propósito e da recomendação: marca certa, sem promessa (painel científico) e sem gênero na pessoa
+  const textos = [AD.PROPOSITOS.selecao, AD.PROPOSITOS.equipe].map((p) => Object.values(p).join(' '))
+    .concat(['selecao', 'equipe'].map((t) => AD.recomendacaoParte2(t).titulo + ' ' + AD.recomendacaoParte2(t).porque))
+    .concat([AD.avisoParte2('selecao', 'ligada'), AD.avisoParte2('equipe', 'desligada')]).join(' ');
+  assert.doesNotMatch(textos, /Notus|garant|comprovad|diagnóstic/i);
+  assert.equal(AD.PROPOSITOS.selecao.titulo, 'Selecionar candidatos para uma vaga');
+  assert.equal(AD.PROPOSITOS.equipe.titulo, 'Conhecer a equipe de uma empresa');
+});

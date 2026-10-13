@@ -589,6 +589,110 @@
 .pergunta-erro:empty { display: none; }
 .form-secao--perguntas .conf-subtitulo { margin: 4px 0 -8px; }
 
+/* Formulário do processo: as seções à esquerda e, no computador largo, "O que a pessoa vai responder" fixo à direita
+   (abaixo de 1200px o quadro vai para o fim, antes dos botões: assim ele nunca empurra o que a pessoa está mexendo). */
+.proc-form-colunas { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+.proc-form-principal { display: grid; gap: 12px; min-width: 0; }
+.proc-so-selecao { display: grid; gap: 12px; }
+@media (min-width: 1200px) {
+  .proc-form-colunas { grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; }
+  .proc-form-colunas .perfil-escolha { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .proc-form-lado { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; border-radius: var(--raio-caixa); }
+}
+@media (min-width: 1500px) { .proc-form-colunas .perfil-escolha { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* "Para que é este link?": 2 cartões (o escolhido ganha o contorno laranja e a marca) */
+.proposito__topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.proposito__topo .caixa__titulo { margin: 0; font-size: var(--t-titulo); }
+.proposito__estado {
+  display: inline-flex; align-items: center; min-height: 30px; padding: 4px 14px; border: 0; border-radius: var(--raio-pilula);
+  background: var(--fundo); color: var(--suave); font: inherit; font-size: var(--t-nota); cursor: pointer;
+}
+.proposito__estado[data-valor="selecao"], .proposito__estado[data-valor="equipe"] { background: var(--nevoa); color: var(--tinta); font-weight: 600; }
+.proposito__opcoes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 640px) { .proposito__opcoes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.proposito__opcao {
+  display: grid; align-content: start; gap: 6px; padding: 18px 20px; border-radius: 20px; cursor: pointer;
+  background: var(--branco); color: var(--tinta); box-shadow: inset 0 0 0 1px var(--linha);
+  transition: box-shadow .15s, background-color .15s;
+}
+.proposito__opcao:hover { box-shadow: inset 0 0 0 1px var(--tinta-30); }
+.proposito__opcao:focus-visible { outline: 2px solid var(--tinta); outline-offset: 2px; }
+.proposito__opcao[aria-selected="true"] { box-shadow: inset 0 0 0 2px var(--notus); }
+.proposito__cabeca { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.proposito__titulo { font-size: var(--t-corpo); font-weight: 600; line-height: 1.35; }
+.proposito__marca {
+  display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--cinza-claro); color: transparent; transition: background-color .15s;
+}
+.proposito__opcao[aria-selected="true"] .proposito__marca { background: var(--notus); box-shadow: none; color: var(--sobre-notus); }
+.proposito__quem { font-size: var(--t-rotulo); font-weight: 600; color: var(--medio); }
+.proposito__linha { font-size: var(--t-rotulo); color: var(--suave); line-height: 1.5; }
+.proposito__nota { margin-top: -4px; }
+.proposito__empresa { display: grid; gap: 12px; max-width: 560px; }
+.proposito__empresa .proc-equipe-texto { margin-top: -6px; }
+
+/* Equipe: as seções de pontuação do processo seletivo ficam recolhidas, com o motivo */
+.proc-selecao-nota { display: grid; gap: 8px; justify-items: start; }
+.proc-selecao-nota__titulo { font-size: var(--t-corpo); color: var(--tinta); }
+
+/* Parte 1 × partes 1 e 2: os dois lados explicam; o interruptor (#proc-parte2) no meio manda */
+.parte2-escolha { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: stretch; }
+@media (min-width: 640px) { .parte2-escolha { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); } }
+.parte2-escolha__chave { display: grid; place-items: center; }
+.parte2-opcao {
+  display: grid; align-content: start; gap: 4px; padding: 14px 16px; border-radius: 16px; cursor: pointer;
+  background: var(--branco); color: var(--suave); box-shadow: inset 0 0 0 1px var(--linha); transition: box-shadow .15s, color .15s;
+}
+.parte2-opcao:hover { box-shadow: inset 0 0 0 1px var(--tinta-30); }
+.parte2-opcao[data-ativa="true"] { color: var(--tinta); box-shadow: inset 0 0 0 2px var(--notus); cursor: default; }
+.parte2-opcao__titulo { font-size: var(--t-corpo); font-weight: 600; line-height: 1.35; }
+.parte2-opcao__tempo { font-size: var(--t-rotulo); }
+.parte2-opcao__selo { justify-self: start; margin-top: 4px; }
+.pilula-liga--so-trilho { padding: 4px; gap: 0; }
+.form-secao .parte2-nota { margin-top: 0; }
+.parte2-recomendacao { color: var(--medio); line-height: 1.55; max-width: 60rem; }
+.parte2-recomendacao .seminegrito { color: var(--tinta); }
+.parte2-contra { color: var(--medio); line-height: 1.5; padding-left: 10px; box-shadow: inset 2px 0 0 var(--laranja); max-width: 60rem; }
+
+/* "O que a pessoa vai responder": passos numerados com o tempo de cada um e o total */
+.proc-resposta { display: grid; gap: 14px; }
+.proc-resposta .caixa__titulo { margin: 0; }
+.proc-resposta__topo { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.proc-resposta__total { margin: 0; white-space: nowrap; color: var(--tinta); }
+.proc-resposta__minutos { font-size: var(--t-indicador); }
+.proc-resposta__passos { display: grid; }
+.resposta-passo { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--linha); }
+.resposta-passo:first-child { border-top: 0; padding-top: 0; }
+.resposta-passo__num {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--tinta); color: var(--branco); font-size: var(--t-nota); font-weight: 600;
+}
+.resposta-passo--fora .resposta-passo__num { background: var(--trilho); }
+.resposta-passo__corpo { display: grid; gap: 6px; min-width: 0; }
+.resposta-passo__cabeca { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; }
+.resposta-passo__titulo { font-size: var(--t-corpo); font-weight: 600; color: var(--tinta); margin-right: auto; overflow-wrap: anywhere; }
+.resposta-passo__tempo { font-size: var(--t-nota); color: var(--medio); white-space: nowrap; }
+.resposta-passo__texto { font-size: var(--t-rotulo); color: var(--medio); line-height: 1.5; margin: 0; }
+.resposta-passo--fora .resposta-passo__titulo, .resposta-passo--fora .resposta-passo__texto { color: var(--suave); }
+.resposta-passo__resultado { font-size: var(--t-rotulo); font-weight: 600; color: var(--tinta); margin: 0; }
+.proc-resposta .resposta-campos li { justify-content: space-between; gap: 8px; padding: 6px 0; }
+.resposta-fichas { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.resposta-fichas li {
+  display: inline-block; padding: 2px 10px; border-radius: var(--raio-pilula); background: var(--fundo); color: var(--medio);
+  font-size: var(--t-nota); line-height: 1.6; overflow-wrap: anywhere;
+}
+.resposta-fichas li[data-modo="sempre"], .resposta-fichas li[data-modo="obrigatorio"] { background: var(--nevoa); color: var(--tinta); font-weight: 600; }
+.resposta-campos__nome { font-size: var(--t-rotulo); min-width: 0; overflow-wrap: anywhere; }
+.proc-resposta .proc-formulario__fora { margin-top: 0; }
+.proc-resposta__rodape { font-size: var(--t-nota); color: var(--suave); margin: 0; line-height: 1.5; }
+.proc-resposta__acoes { display: grid; gap: 6px; justify-items: start; padding-top: 12px; border-top: 1px solid var(--linha); }
+.proc-destino { display: grid; gap: 10px; }
+.proc-destino .caixa__titulo { margin: 0; }
+.proc-destino__texto { font-size: var(--t-corpo); color: var(--tinta); line-height: 1.55; }
+.proc-destino .gestao-card__acoes { margin-top: 4px; }
+@media (prefers-reduced-motion: reduce) { .proposito__opcao, .proposito__marca, .parte2-opcao { transition: none; } }
+
 /* Página do processo */
 .proc-grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
 @media (min-width: 900px) { .proc-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

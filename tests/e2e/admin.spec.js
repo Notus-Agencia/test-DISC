@@ -576,7 +576,7 @@ test.describe('Admin com API (servidor simulado por page.route)', () => {
     expect(erros.filter((e) => !/Blocked script execution in 'about:srcdoc'/.test(e))).toEqual([]);
   });
 
-  test('processo: "O que perguntar ao candidato" salva config.formulario, recusa pergunta sensível e mostra o resumo', async ({ page }) => {
+  test('processo: "O que perguntar antes do teste" salva config.formulario, recusa pergunta sensível e mostra o resumo', async ({ page }) => {
     const erros = coletarErros(page);
     const TOKEN = 'token-e2e-form';
     const processos = [];
@@ -2922,5 +2922,190 @@ test.describe('Painel: empresa nova na hora, prévia em nova aba e envio por e-m
     await page.click('#btn-email-conexoes');
     await expect(page.locator('#janela-enviar-email')).toHaveCount(0);
     await expect(page.locator('#vista-conexoes')).toBeVisible();
+  });
+});
+
+// Configuração do link do processo (out/2026): "Para que é este link?" em 2 cartões, só o que vale para cada propósito,
+// o quadro "O que a pessoa vai responder" ao vivo (mesmos 10/15 minutos do teste) e a recomendação da parte 2.
+test.describe('Processo: para que é o link e o que a pessoa vai responder (prévia)', () => {
+  const quadro = (page) => page.locator('#proc-resposta');
+
+  test('cartões do propósito: começa sem escolha, equipe recolhe a pontuação da seleção e o quadro acompanha', async ({ page, context }) => {
+    const erros = coletarErros(page);
+    await entrarPrevia(page, context);
+    await abrirAba(page, 'processos');
+    await page.click('#btn-novo-processo');
+
+    // Nada escolhido: os 2 cartões, o aviso do padrão e o quadro com o tempo do teste (10 min, sem a parte 2)
+    await expect(page.locator('#proc-tipo-lista [role="option"]')).toHaveText([/Selecionar candidatos para uma vaga/, /Conhecer a equipe de uma empresa/]);
+    await expect(page.locator('#proc-tipo')).toHaveAttribute('value', '');
+    await expect(page.locator('#proc-tipo-lista [aria-selected="true"]')).toHaveCount(0);
+    await expect(page.locator('#proc-tipo-nota')).toHaveText('Se ninguém escolher, o link é salvo como seleção de candidatos.');
+    await expect(page.locator('#proc-proposito-empresa')).toBeHidden();
+    await expect(quadro(page)).toHaveAttribute('data-minutos', '10');
+    await expect(page.locator('#proc-resposta-total')).toHaveText('cerca de 10 min');
+    await expect(page.locator('#proc-resposta-rodape')).toContainText('cerca de 10 minutos');
+    await expect(page.locator('#proc-resposta-parte2')).toHaveAttribute('data-parte2', 'desligada');
+    await expect(page.locator('#proc-parte2-recomendacao')).toHaveText('A recomendação depende do propósito: escolha acima para que é este link.');
+    await expect(page.locator('#proc-so-selecao')).toBeVisible();
+
+    // Equipe: escolhe a empresa, a parte 2 liga (padrão ao criar), a pontuação da seleção recolhe e o quadro muda
+    await page.locator('#proc-tipo-lista [data-valor="equipe"]').click();
+    await expect(page.locator('#proc-tipo')).toHaveAttribute('value', 'equipe');
+    await expect(page.locator('#proc-tipo-texto')).toHaveText('Escolhido: Avaliação de equipe');
+    await expect(page.locator('#proc-tipo-lista [data-valor="equipe"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#proc-tipo-nota')).toBeHidden();
+    await expect(page.locator('#proc-empresa-id-rotulo')).toHaveText('Empresa da equipe');
+    await expect(page.locator('#proc-equipe-texto')).toContainText('Escolha a empresa cadastrada');
+    await escolherBusca(page, 'proc-empresa-id', 'Clínica Exemplo');
+    await expect(page.locator('#proc-equipe-texto')).toContainText('cadastro da empresa Clínica Exemplo');
+    await expect(page.locator('#proc-parte2')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('#proc-selecao-nota')).toBeVisible();
+    await expect(page.locator('#proc-selecao-nota')).toContainText('não se aplica à avaliação de equipe');
+    await expect(page.locator('#proc-so-selecao')).toBeHidden();
+    await expect(page.locator('#proc-vaga')).toBeHidden();
+    await expect(page.locator('#proc-contratante')).toBeHidden();
+    await expect(page.locator('#proc-campo-funcao-rotulo')).toHaveText('Cargo/função');
+    await expect(page.locator('#proc-perguntas-texto')).toContainText('cadastro da empresa');
+    await expect(quadro(page)).toHaveAttribute('data-minutos', '15');
+    await expect(page.locator('#proc-resposta-total')).toHaveText('cerca de 15 min');
+    await expect(page.locator('#proc-resposta-parte2')).toHaveAttribute('data-parte2', 'ligada');
+    await expect(page.locator('#proc-resposta [data-passo]')).toHaveCount(4);
+    await expect(page.locator('#proc-resposta [data-passo] .resposta-passo__num')).toHaveText(['1', '2', '3', '4']);
+    await expect(page.locator('#proc-resposta [data-passo="dados"]')).toContainText('compartilhado com a empresa');
+    await expect(page.locator('#proc-resposta [data-passo="dados"] li')).toHaveText(['Nome completo', 'WhatsApp', 'Idade', 'Cargo/função (opcional)', 'Empresa atual ou última (opcional)', 'Foto (opcional)']);
+    await expect(page.locator('#proc-resposta [data-passo="dados"]')).toContainText('Não perguntamos: E-mail, Cidade onde mora.');
+
+    // Mostrar as seções recolhidas (o que estiver salvo nelas continua) e esconder de novo
+    await page.click('#btn-mostrar-selecao');
+    await expect(page.locator('#proc-so-selecao')).toBeVisible();
+    await expect(page.locator('#btn-mostrar-selecao')).toHaveText('Esconder essas seções');
+    await page.click('#btn-mostrar-selecao');
+    await expect(page.locator('#proc-so-selecao')).toBeHidden();
+
+    // O quadro acompanha o formulário: campo, pergunta extra e "mostrar o resultado"
+    await escolher(page, '#proc-campo-idade', 'oculto');
+    await page.click('#btn-add-pergunta');
+    await page.fill('#pergunta-texto-0', 'Há quanto tempo você está na empresa?');
+    await page.check('#proc-mostrar');
+    await expect(page.locator('#proc-resposta [data-passo="dados"] li')).toHaveText(['Nome completo', 'WhatsApp', 'Cargo/função (opcional)', 'Empresa atual ou última (opcional)', 'Foto (opcional)', 'Pergunta: Há quanto tempo você está na empresa? (opcional)']);
+    await expect(page.locator('#proc-resposta [data-passo="dados"]')).toContainText('Não perguntamos: Idade, E-mail, Cidade onde mora.');
+    await expect(page.locator('#proc-resposta [data-passo="fim"] .resposta-passo__resultado')).toHaveAttribute('data-mostra', 'sim');
+    await expect(page.locator('#proc-resposta [data-passo="fim"]')).toContainText('Vê o próprio relatório DISC na tela');
+
+    // Seleção: volta tudo, o quadro pede a vaga pretendida (opcional) e a parte 2 (não tocada) desliga
+    await page.locator('#proc-tipo-lista [data-valor="selecao"]').click();
+    await expect(page.locator('#proc-tipo')).toHaveAttribute('value', 'selecao');
+    await expect(page.locator('#proc-empresa-id-rotulo')).toHaveText('Empresa cadastrada (opcional)');
+    await expect(page.locator('#proc-equipe-texto')).toBeHidden();
+    await expect(page.locator('#proc-selecao-nota')).toBeHidden();
+    await expect(page.locator('#proc-so-selecao')).toBeVisible();
+    await expect(page.locator('#proc-vaga')).toBeVisible();
+    await expect(page.locator('#proc-campo-funcao-rotulo')).toHaveText('Função atual ou última');
+    await expect(page.locator('#proc-parte2')).toHaveAttribute('aria-checked', 'false');
+    await expect(quadro(page)).toHaveAttribute('data-minutos', '10');
+    await expect(page.locator('#proc-resposta [data-passo] .resposta-passo__num')).toHaveText(['1', '2', '', '3']);
+    await expect(page.locator('#proc-resposta [data-passo="dados"] li').nth(2)).toHaveText('Vaga pretendida (opcional)');
+
+    // Salva: o tipo e a parte 2 vão como escolhidos
+    await page.fill('#proc-nome', 'Recepção E2E propósito');
+    await page.click('#btn-salvar-processo');
+    await expect(page.locator('#aviso-geral')).toContainText('Processo criado');
+    await expect(page.locator('#proc-proposito')).toHaveText('Selecionar candidatos para uma vaga');
+    const salvo = await page.evaluate(() => window.DISC_API.processosListar(sessionStorage.getItem('disc_admin_token'))
+      .then((r) => r.processos.find((x) => x.nome === 'Recepção E2E propósito')));
+    expect(salvo.tipo).toBe('selecao');
+    expect(salvo.config.formulario.parte2).toBe('desligada');
+    expect(salvo.mostrarResultado).toBe(true);
+
+    // Editar: o propósito salvo aparece escolhido
+    await page.click('#btn-editar-processo');
+    await expect(page.locator('#proc-tipo')).toHaveAttribute('value', 'selecao');
+    await expect(page.locator('#proc-tipo-lista [data-valor="selecao"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#proc-tipo-texto')).toHaveText('Escolhido: Seleção de candidatos');
+    expect(erros).toEqual([]);
+  });
+
+  test('parte 2: rótulos sem jargão, recomendação conforme o propósito e linha discreta quando a escolha é outra', async ({ page, context }) => {
+    const erros = coletarErros(page);
+    await entrarPrevia(page, context);
+    await abrirAba(page, 'processos');
+    await page.click('#btn-novo-processo');
+    const p2 = page.locator('#proc-parte2');
+    await expect(p2).toHaveAttribute('role', 'switch');
+    await expect(page.locator('.parte2-opcao[data-lado="desligada"]')).toContainText('Só o jeito natural (parte 1)');
+    await expect(page.locator('.parte2-opcao[data-lado="desligada"]')).toContainText('cerca de 10 min');
+    await expect(page.locator('.parte2-opcao[data-lado="ligada"]')).toContainText('Jeito natural + o que o cargo exige (partes 1 e 2)');
+    await expect(page.locator('.parte2-opcao[data-lado="ligada"]')).toContainText('cerca de 15 min');
+
+    // Seleção: recomendado só a parte 1; ligar mostra a linha (não bloqueia)
+    await page.locator('#proc-tipo-lista [data-valor="selecao"]').click();
+    await expect(page.locator('#proc-parte2-recomendacao')).toContainText('Recomendado para seleção: só a parte 1.');
+    await expect(page.locator('#proc-parte2-recomendacao')).toContainText('responder o que imagina que o recrutador quer');
+    await expect(page.locator('.parte2-opcao[data-lado="desligada"] .parte2-opcao__selo')).toBeVisible();
+    await expect(page.locator('.parte2-opcao[data-lado="ligada"] .parte2-opcao__selo')).toBeHidden();
+    await expect(page.locator('#proc-parte2-contra')).toBeHidden();
+    await p2.click();
+    await expect(p2).toHaveAttribute('aria-checked', 'true');
+    await expect(p2).toHaveAttribute('data-valor', 'ligada');
+    await expect(page.locator('#proc-parte2-contra')).toBeVisible();
+    await expect(page.locator('#proc-parte2-contra')).toContainText('Diferente do recomendado: o teste passa a levar cerca de 15 minutos');
+    await expect(quadro(page)).toHaveAttribute('data-minutos', '15');
+    await expect(page.locator('#btn-salvar-processo')).toBeEnabled();
+
+    // Equipe: recomendado partes 1 e 2 (a escolha feita à mão fica); tocar no lado "parte 1" desliga
+    await page.locator('#proc-tipo-lista [data-valor="equipe"]').click();
+    await expect(p2).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('#proc-parte2-recomendacao')).toContainText('Recomendado para equipe: partes 1 e 2.');
+    await expect(page.locator('#proc-parte2-recomendacao')).toContainText('psicólogo(a)');
+    await expect(page.locator('.parte2-opcao[data-lado="ligada"] .parte2-opcao__selo')).toBeVisible();
+    await expect(page.locator('#proc-parte2-contra')).toBeHidden();
+    await page.locator('.parte2-opcao[data-lado="desligada"]').click();
+    await expect(p2).toHaveAttribute('aria-checked', 'false');
+    await expect(page.locator('#proc-parte2-nota')).toHaveText('Desligada: a pessoa responde só os 25 grupos, pensando em como ela é.');
+    await expect(page.locator('#proc-parte2-contra')).toContainText('sem a parte 2, o relatório da equipe e o "Como liderar" ficam sem a distância');
+    await expect(page.locator('#proc-resposta-parte2')).toHaveAttribute('data-parte2', 'desligada');
+    await expect(page.locator('#proc-resposta-parte2')).toContainText('Não faz parte deste link.');
+    expect(erros).toEqual([]);
+  });
+
+  test('página do processo de equipe: propósito, para onde vão as respostas e "Ver como a pessoa vê" sem gravar nada', async ({ page, context }) => {
+    const erros = coletarErros(page);
+    await entrarPrevia(page, context);
+    await abrirAba(page, 'processos');
+    await page.locator('#lista-processos li[data-codigo="EQP1"] [data-acao="abrir"]').click();
+    await expect(page.locator('#vista-processos .sobretitulo')).toHaveText('Avaliação de equipe · código EQP1');
+    await expect(page.locator('#proc-proposito')).toHaveText('Conhecer a equipe de uma empresa');
+    await expect(page.locator('#btn-gerar-rascunho')).toHaveCount(0);
+    await expect(page.locator('#proc-aviso-clickup')).toHaveCount(0);
+    await expect(page.locator('#proc-destino')).toContainText('cadastro da empresa Clínica Exemplo');
+    await expect(page.locator('#btn-abrir-empresa')).toBeVisible();
+    const box = page.locator('#proc-formulario');
+    await expect(box.locator('.caixa__titulo')).toHaveText('O que a pessoa vai responder');
+    await expect(box).toHaveAttribute('data-minutos', '15');
+    await expect(box.locator('.proc-resposta__total')).toHaveText('cerca de 15 min');
+    await expect(page.locator('#proc-parte2-resumo')).toContainText('Ligada');
+    await expect(box.locator('li[data-modo="sempre"]')).toHaveCount(2);
+    await expect(box.locator('li', { hasText: 'Vaga pretendida' })).toHaveCount(0);
+    await expect(box.locator('[data-passo="fim"] .resposta-passo__resultado')).toHaveAttribute('data-mostra', 'sim');
+    const respostas = await page.locator('#proc-respostas').innerText();
+
+    // "Ver como a pessoa vê": o link normal numa aba nova (abre a tela de boas-vindas e não envia nada)
+    const ver = page.locator('#btn-ver-como-pessoa');
+    await expect(ver).toHaveAttribute('href', BASE + '/index.html?a=EQP1');
+    await expect(ver).toHaveAttribute('target', '_blank');
+    await expect(page.locator('#proc-ver-nota')).toContainText('Nada chega ao painel enquanto você não enviar');
+    const [aba] = await Promise.all([context.waitForEvent('page'), ver.click()]);
+    await aba.waitForLoadState();
+    await expect(aba.locator('.boasvindas-sobre')).toContainText('Avaliação de equipe');
+    await aba.close();
+    const n = await page.evaluate(() => window.DISC_API.processosListar(sessionStorage.getItem('disc_admin_token'))
+      .then((r) => String(r.processos.find((x) => x.codigo === 'EQP1').respostas)));
+    expect(n).toBe(respostas);
+
+    // "Abrir a empresa" leva à página da empresa
+    await page.click('#btn-abrir-empresa');
+    await expect(page.locator('#vista-empresas')).toBeVisible();
+    expect(erros).toEqual([]);
   });
 });
