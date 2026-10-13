@@ -42,7 +42,7 @@ Adaptado de Haladyna, Downing & Rodriguez (2002, *Applied Measurement in Educati
 ### Estilo
 12. Revisar e corrigir cada item (ortografia, concordância, pontuação).
 13. Gramática correta e **consistente entre enunciado e alternativas** (se o enunciado pede "o que fazer", todas as alternativas começam com verbo).
-14. **Mínimo de leitura:** enunciado ≤ 35 palavras; alternativa ≤ 15 palavras; nenhum item com mais de 90 palavras no total.
+14. **Mínimo de leitura:** enunciado ≤ 35 palavras; alternativa ≤ 15 palavras; nenhum item com mais de 90 palavras no total. **Exceção:** itens "escolha a melhor mensagem" (português/escrita, atendimento/WhatsApp) podem ter alternativas de até 20 palavras, desde que as quatro tenham tamanho parecido (±4 palavras). Itens de interpretação com texto-base: texto ≤ 45 palavras + pergunta ≤ 20.
 
 ### Enunciado
 15. A instrução está clara no enunciado (o que está sendo perguntado, sem precisar ler as alternativas).
