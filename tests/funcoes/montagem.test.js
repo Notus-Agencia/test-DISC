@@ -14,11 +14,11 @@ import { criarDb } from '../../supabase/funcoes-compartilhadas/supabase-adaptado
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SITE = 'https://disc.gestaosemcaos.com.br';
 const VENDAS = ['pagamento', 'asaas-webhook', 'infinitepay-webhook', 'stripe-webhook'];
-const SEM_MOTOR = VENDAS.concat(['clima']); // não precisam do motor do relatório
+const SEM_MOTOR = VENDAS.concat(['clima', 'vagas-conta']); // não precisam do motor do relatório
 const IMPORT_SUPABASE = "import { createClient } from 'jsr:@supabase/supabase-js@2';";
 
 test('gerados em dia: motores-gerado.js e dist/funcoes/<nome>/index.ts (rode npm run montar:funcoes)', () => {
-  assert.deepEqual(funcoes(), ['admin', 'asaas-webhook', 'clickup-webhook', 'clima', 'disc-sync', 'infinitepay-webhook', 'pagamento', 'stripe-webhook']);
+  assert.deepEqual(funcoes(), ['admin', 'asaas-webhook', 'clickup-webhook', 'clima', 'disc-sync', 'infinitepay-webhook', 'pagamento', 'stripe-webhook', 'vagas-conta']);
   for (const g of gerarTudo()) {
     assert.ok(existsSync(g.caminho), g.caminho);
     assert.equal(readFileSync(g.caminho, 'utf8'), g.conteudo, g.caminho + ' desatualizado: rode npm run montar:funcoes');

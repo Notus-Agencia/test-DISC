@@ -36,3 +36,8 @@ verify_jwt = false
 # Pesquisa de Clima (link pessoal): clima manda o código de confirmação; o banco confere o token e aplica os limites.
 [functions.clima]
 verify_jwt = false
+
+# Vagas sem Caos (vagas.gestaosemcaos.com.br): vagas-conta cria as contas (o cadastro aberto do Auth continua desligado);
+# as ações de operação e exclusão conferem o JWT sozinhas; limites por origem e por e-mail no banco.
+[functions.vagas-conta]
+verify_jwt = false
