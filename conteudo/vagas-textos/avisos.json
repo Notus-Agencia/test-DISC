@@ -70,12 +70,34 @@
     "conta_parada": "Conta sem uso há {{meses}} meses. Contas paradas por 24 meses são apagadas, com aviso 30 dias antes.",
     "denuncia_ok": "Denúncia recebida. Ela é confidencial: quem foi denunciado não sabe quem denunciou. Decidimos em até 24 horas.",
     "denuncia_motivos": [
-      "Pede dinheiro",
-      "Pede documento",
-      "Discriminação",
-      "Parece falsa",
-      "Assédio ou ofensa",
-      "Outro"
+      {
+        "chave": "golpe",
+        "texto": "Pede dinheiro"
+      },
+      {
+        "chave": "documento",
+        "texto": "Pede documento"
+      },
+      {
+        "chave": "discriminacao",
+        "texto": "Discriminação"
+      },
+      {
+        "chave": "falsa",
+        "texto": "Parece falsa"
+      },
+      {
+        "chave": "ofensa",
+        "texto": "Assédio ou ofensa"
+      },
+      {
+        "chave": "contato",
+        "texto": "Pede contato fora da plataforma"
+      },
+      {
+        "chave": "outro",
+        "texto": "Outro"
+      }
     ],
     "whatsapp_opcional": "O botão de WhatsApp só aparece quando os dois lados quiserem. Você pode conversar só por aqui.",
     "whatsapp_nao_confirmado": "Nesta versão, o WhatsApp é informado por você e não é confirmado por código. Confira o número antes de salvar.",
@@ -435,7 +457,7 @@
     }
   },
   "mensagem": {
-    "_sobre": "Conversa pela plataforma. `bloqueada_*` é o que quem escreveu vê quando a mensagem não é entregue. `padroes` são regex (sem acento, minúsculas) usados pela RPC vagas_mensagem_enviar e pela tela.",
+    "_sobre": "Conversa pela plataforma. `bloqueada_*` é o que quem escreveu vê quando a mensagem não é entregue. A RPC vagas_mensagem_enviar devolve `{bloqueada:true, tipo:'golpe'|'contato'|'link'|'documento'|'discriminacao', erro}`; a tela mapeia `golpe → bloqueada_dinheiro`, `documento → bloqueada_documento`, `link → bloqueada_link`, `contato` e `discriminacao → bloqueada_generica` (ou mostra `erro` direto). `padroes` são regex (sem acento, minúsculas) usadas pela RPC e pela tela.",
     "bloqueada_dinheiro": "Mensagem não enviada. Pedir dinheiro, Pix, transferência, boleto ou pagamento de taxa não é permitido aqui. Concorrer é grátis, sempre, e isso vale para os dois lados.",
     "bloqueada_documento": "Mensagem não enviada. Pedir foto ou cópia de documento (CPF, RG, CNH, comprovante), senha ou código não é permitido antes da contratação. Documentos são conferidos pessoalmente, na admissão.",
     "bloqueada_link": "Mensagem não enviada. Links encurtados não são permitidos aqui. Escreva o endereço completo ou combine pelo WhatsApp depois do Combinou.",
@@ -471,7 +493,8 @@
     "limite_envios": "Muitas tentativas em pouco tempo. Espere {{minutos}} minutos e tente de novo.",
     "captcha": "Confirme que você não é um robô.",
     "foto_formato": "Envie uma imagem JPG ou PNG.",
-    "foto_tamanho": "A foto passou de {{maximo_mb}} MB. Tente uma menor."
+    "foto_tamanho": "A foto passou de {{maximo_mb}} MB. Tente uma menor.",
+    "login_invalido": "E-mail ou senha não conferem."
   },
   "_revisao_psicologia": {
     "_sobre": "[REVISÃO PSICOLOGIA] Chaves que descrevem o que os testes e o selo são (e o que não são). Nada aqui descreve capacidade, potencial ou perfil. Parecer do(a) psicólogo(a) antes de publicar.",
@@ -578,7 +601,7 @@
     }
   },
   "foto": {
-    "_sobre": "Foto OPCIONAL da pessoa (pedido do dono, 13/10): visível só depois do Combinou, para a empresa daquela vaga; nunca no cartão cego, na busca nem no perfil público. [REVISÃO JURÍDICA]",
+    "_sobre": "Foto OPCIONAL da pessoa (pedido do dono, 13/10): visível só depois do Combinou, para a empresa daquela vaga; nunca no cartão cego, na busca nem no perfil público. Na primeira versão NÃO há conferência da foto pela operação (a operação não vê foto): foto indevida é denunciada pela empresa depois do Combinou (botão Denunciar, motivo `ofensa`/`outro`). As chaves em `_fase2` só entram quando houver conferência. [REVISÃO JURÍDICA]",
     "explicacao": "A empresa só vê sua foto depois que vocês combinarem de conversar. Sem foto não muda nada na sua candidatura.",
     "opcional": "Foto é opcional. Se quiser, envie uma foto do rosto, simples, sem outras pessoas.",
     "quem_ve": "Nunca aparece no cartão cego, na busca das empresas nem no seu perfil público. Só a empresa com quem você combinou de conversar vê, enquanto a conversa estiver aberta.",
@@ -586,6 +609,11 @@
     "recusada_moderacao": "Sua foto não foi aceita: precisa ser uma foto sua, do rosto, sem outras pessoas, sem documento, sem texto e sem conteúdo impróprio. Você pode enviar outra ou seguir sem foto: nada muda na sua candidatura.",
     "em_moderacao": "Foto enviada. Ela passa por uma conferência rápida antes de ficar disponível para as empresas com quem você combinar.",
     "empresa": "A foto da pessoa aparece só depois do Combinou, para esta vaga. Ela é opcional: quem não enviou foto está em igualdade com quem enviou. Não use a foto para decidir.",
-    "limites": "Arquivo JPG ou PNG, até {{maximo_mb}} MB."
+    "limites": "Arquivo JPG ou PNG, até {{maximo_mb}} MB.",
+    "_fase2": [
+      "em_moderacao",
+      "recusada_moderacao"
+    ],
+    "denunciar_empresa": "Foto imprópria, de outra pessoa ou com documento? Denuncie: a foto some para você e a equipe apura."
   }
 }

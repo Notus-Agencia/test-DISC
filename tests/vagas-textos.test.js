@@ -94,6 +94,11 @@ test('avisos.json: chaves obrigatórias e o aviso anti-golpe exato', () => {
   assert.deepEqual([av.botoes.quero, av.botoes.pular, av.botoes.quero_conversar, av.botoes.agora_nao], ['Quero', 'Pular', 'Quero conversar', 'Agora não']);
   assert.match(av.avisos.bico_diarista, /LC 150\/2015/);
   assert.match(av.avisos.combinou_pessoa, /{{empresa_nome}}/);
+  assert.deepEqual(av.avisos.denuncia_motivos.map((m) => m.chave), ['golpe', 'documento', 'discriminacao', 'falsa', 'ofensa', 'contato', 'outro']);
+  assert.ok(av.avisos.denuncia_motivos.every((m) => typeof m.texto === 'string' && m.texto.length > 2));
+  assert.equal(av.validacao.login_invalido, 'E-mail ou senha não conferem.');
+  assert.deepEqual(av.foto._fase2, ['em_moderacao', 'recusada_moderacao']);
+  assert.equal(json('moderacao.json').motivos.find((x) => x.chave === 'foto_indevida').fase, 2);
   assert.match(av.avisos.cidade_lista_espera, /{{cidade}}/);
   for (const k of ['bloqueada_dinheiro', 'bloqueada_documento', 'bloqueada_link', 'bloqueada_generica', 'aviso_pessoa']) assert.equal(typeof av.mensagem[k], 'string', 'mensagem.' + k);
   for (const k of ['dinheiro', 'documento', 'link']) assert.doesNotThrow(() => new RegExp(av.mensagem.padroes[k], 'i'), 'regex ' + k);

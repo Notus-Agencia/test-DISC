@@ -298,7 +298,9 @@
       "texto_empresa": "Sua foto não foi aceita ({{detalhe}}). A foto precisa ser sua, do rosto, sem outras pessoas, sem documento, sem texto, sem símbolo e sem conteúdo impróprio.",
       "correcao": "Envie outra foto ou siga sem foto: nada muda na sua candidatura. Foto é opcional e só aparece depois do Combinou.",
       "lei": "LGPD art. 11 (inferência de dado sensível); Lei 9.029/1995; termos de uso, seção 4.7",
-      "frase_curta": "Foto não aceita: precisa ser sua, do rosto, sem outras pessoas, documento ou texto."
+      "frase_curta": "Foto não aceita: precisa ser sua, do rosto, sem outras pessoas, documento ou texto.",
+      "fase": 2,
+      "_sobre": "Fase 2: na primeira versão a operação não vê foto; a empresa denuncia depois do Combinou e a equipe remove a foto (sem este motivo na tela do operador)."
     },
     {
       "chave": "referencia_qualidade_pessoal",
