@@ -1,5 +1,5 @@
 /*
- * Vagas sem Caos — PRÉVIA: um "banco" de mentira guardado só neste navegador (localStorage 'vagas_previa_v3'), com as MESMAS
+ * Vagas sem Caos — PRÉVIA: um "banco" de mentira guardado só neste navegador (chave 'vagas_previa_v3'), com as MESMAS
  * RPCs, regras e mensagens das migrações 20261022120000_vagas.sql e 20261024120000_vagas_onda2.sql. Carregado sob demanda por
  * vagas/js/api.js quando VAGAS_CONFIG.MODO = 'previa' (precisa de vagas/js/regras.js carregado antes). Nada sai do navegador;
  * nenhum e-mail é enviado.
@@ -30,9 +30,24 @@
   var DIA = 86400000;
   var ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
+  // localStorage -> sessionStorage -> memória: a prévia abre mesmo em navegador que bloqueia o armazenamento (na memória os dados
+  // fictícios duram só enquanto a página estiver aberta). Cada backend tem a sua memória.
+  function armazenamentoPadrao() {
+    var nomes = ['localStorage', 'sessionStorage'];
+    for (var i = 0; i < nomes.length; i++) {
+      try {
+        var s = root[nomes[i]];
+        if (s) { s.setItem('vagas.__teste', '1'); s.removeItem('vagas.__teste'); return s; }
+      } catch (e) { /* bloqueado: tenta o próximo */ }
+    }
+    var m = {};
+    return { getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },
+      setItem: function (k, v) { m[k] = String(v); }, removeItem: function (k) { delete m[k]; } };
+  }
+
   function criarBackend(op) {
     op = op || {};
-    var arm = op.armazenamento !== undefined ? op.armazenamento : (function () { try { return root.localStorage || null; } catch (e) { return null; } })();
+    var arm = op.armazenamento !== undefined ? op.armazenamento : armazenamentoPadrao();
     var relogio = op.agora || function () { return Date.now(); };
     var st = null;
 
