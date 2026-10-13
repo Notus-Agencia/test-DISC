@@ -97,6 +97,9 @@ test.describe('Pesquisa de clima com identificação: celular', () => {
     await expect(page.locator('[data-escolha="identificar"]')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('#clima-confirmar')).toBeVisible();
     await expect(page.locator('#clima-confirmar')).toContainText('l***@c***.com.br');
+    // Diz de onde veio o e-mail (a pessoa não digita: o código vai para o contato do cadastro).
+    await expect(page.locator('#clima-codigo-destino')).toHaveText('Vamos enviar um código de 6 números para o e-mail que a empresa informou no seu cadastro: l***@c***.com.br. Não é mais o seu e-mail? Avise quem enviou este link para corrigir o cadastro.');
+    await capturar(page, 'confirmacao-antes', { fullPage: true });
     await page.click('[data-acao="enviar"]');
     await expect(page.locator('#clima-erro')).toHaveText('Peça o código e digite os 6 números que chegarem.');
     await page.click('[data-acao="pedir-codigo"]');
