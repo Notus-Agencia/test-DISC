@@ -374,7 +374,8 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
 2. **Função `vagas-conta`:** crie como no passo 8 (arquivo `dist/funcoes/vagas-conta/index.ts`) com **Verify JWT
    desligado** (o cadastro é feito por quem ainda não tem login; as ações que exigem login conferem o token sozinhas).
 3. **Segredos** (passo 9): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`, e os opcionais `VAGAS_EMAIL_REMETENTE` e
-   `TURNSTILE_SECRET`. Nenhuma chave secreta vai para o site: `vagas/js/config.js` leva só a URL do projeto e a chave
+   `TURNSTILE_SECRET`. A `vagas-conta` também lê o `SITE_URL` do DISC (o mesmo segredo do passo 9) para aceitar chamadas do
+   painel do DISC (convite de operador pela aba "Vagas"); sem ele, aceita `https://disc.gestaosemcaos.com.br`. Nenhuma chave secreta vai para o site: `vagas/js/config.js` leva só a URL do projeto e a chave
    **pública** (as mesmas de `js/config.js`).
 4. **Redirect URL** (passo 5): `https://vagas.gestaosemcaos.com.br/**`.
 5. **Cadastro aberto do Auth continua fechado** (passo 4): as contas do Vagas são criadas só pela função `vagas-conta`

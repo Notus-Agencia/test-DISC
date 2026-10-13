@@ -5,7 +5,8 @@
 // lista de espera com WhatsApp opcional (resposta neutra, saída), indicadores da praça (só agregados, só a própria cidade,
 // alvo pelo porte, cor pela regra do arquivo, o mesmo catálogo do arquivo e do JS), convite de equipe pela empresa (só
 // dono(a), token de uso único guardado com hash, validade, resposta neutra, limites, remover sem deixar a empresa sem dono)
-// e o fuso da cidade da conta nos testes de habilidade (nada fixo em Roraima).
+// e o fuso da cidade da conta nos testes de habilidade (nada fixo em Roraima); e os pedidos da operação (resumo com repasse,
+// cidades e operadores para a equipe, cadastros assistidos pendentes com e-mail mascarado).
 //
 // Rodar: npm run test:supabase
 const test = require('node:test');
@@ -225,7 +226,8 @@ test('guardas: tabela nova com RLS e sem acesso direto; funções novas com a li
     'vagas_cidades_publicas', 'vagas_denunciar', 'vagas_lista_espera_entrar', 'vagas_lista_espera_sair', 'vagas_referencias_publicas',
     'vagas_selo_publico', 'vagas_testes_catalogo']);
   for (const fn of ['vagas_op_indicadores', 'vagas_equipe_empresa', 'vagas_equipe_convite', 'vagas_equipe_convite_aceitar',
-    'vagas_equipe_convite_cancelar', 'vagas_equipe_remover', 'vagas_adm_cidade_salvar', 'vagas_pessoa_salvar', 'vagas_iniciar_tentativa']) {
+    'vagas_equipe_convite_cancelar', 'vagas_equipe_remover', 'vagas_adm_cidade_salvar', 'vagas_pessoa_salvar', 'vagas_iniciar_tentativa',
+    'vagas_op_resumo', 'vagas_adm_cidades', 'vagas_adm_operadores', 'vagas_op_assistidos']) {
     const r = (await db.query(`select bool_and(has_function_privilege('authenticated', p.oid, 'execute')) a, bool_or(has_function_privilege('anon', p.oid, 'execute')) b
       from pg_proc p where p.proname = $1 and p.pronamespace = 'public'::regnamespace`, [fn])).rows[0];
     assert.deepEqual(r, { a: true, b: false }, fn);
@@ -243,8 +245,10 @@ test('guardas: tabela nova com RLS e sem acesso direto; funções novas com a li
   assert.deepEqual((await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where (n.nspname = 'vagas_interno' or p.proname like 'vagas\\_%') and p.prosecdef
       and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search_path=%')`)).rows, []);
-  // Indicadores só leem.
-  assert.equal((await db.query(`select provolatile v from pg_proc where proname = 'vagas_op_indicadores'`)).rows[0].v, 's');
+  // Indicadores e os pedidos da operação só leem.
+  for (const fn of ['vagas_op_indicadores', 'vagas_op_resumo', 'vagas_adm_cidades', 'vagas_adm_operadores', 'vagas_op_assistidos']) {
+    assert.equal((await db.query(`select provolatile v from pg_proc where proname = $1`, [fn])).rows[0].v, 's', fn);
+  }
   // Nenhum fuso fixo de Roraima no código do Vagas (padrão neutro: America/Sao_Paulo).
   assert.deepEqual((await db.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where (n.nspname = 'vagas_interno' or (n.nspname = 'public' and p.proname like 'vagas\\_%')) and p.prosrc like '%Boa\\_Vista%'`)).rows, []);
@@ -370,10 +374,10 @@ test('indicadores: catálogo = arquivo = JS; cor pela regra do arquivo; porte es
   exigirBanco();
   const arq = JSON.parse(fs.readFileSync(ARQ_INDICADORES, 'utf8'));
   const cat = (await db.query(`select vagas_interno.indicadores_catalogo() c`)).rows[0].c;
-  // O arquivo nomeia os alvos pela cidade de exemplo antiga ("boaVista") ou pelo porte; o banco e o JS, só pelo porte.
+  // O arquivo nomeia os alvos pelo porte por extenso ("cidadePequena"; versão 2); o banco e o JS, por 'pequena'/'grande'.
   const porte = (o) => {
     if (o === undefined) return undefined;
-    const x = { grande: o.grande !== undefined ? o.grande : (o.cidadeGrande !== undefined ? o.cidadeGrande : o.boaVista),
+    const x = { grande: o.grande !== undefined ? o.grande : o.cidadeGrande,
       pequena: o.pequena !== undefined ? o.pequena : o.cidadePequena };
     Object.keys(x).forEach((k) => x[k] === undefined && delete x[k]);
     return x;
@@ -713,4 +717,97 @@ test('fuso: os testes de habilidade usam o fuso da cidade da conta (Uruaçu = Br
   // Sem cidade (conta sem currículo nem empresa): reserva America/Sao_Paulo.
   assert.equal((await db.query(`select vagas_interno.fuso_conta($1) f`, [crypto.randomUUID()])).rows[0].f, 'America/Sao_Paulo');
   assert.equal((await db.query(`select vagas_interno.fuso_conta($1) f`, [S.operadorCapital])).rows[0].f, 'America/Sao_Paulo');
+});
+
+test('pedidos da operação: resumo com repasse; cidades e operadores só para a equipe; assistidos pendentes mascarados e só de quem criou', async () => {
+  exigirBanco();
+  const semLogin = (fn, ...args) => rpcComo('authenticated', null, fn, args);
+  // vagas_op_resumo: igual ao da fundação + repassePercentual da própria linha (null para a equipe).
+  await db.query(`update public.vagas_operadores set repasse_percentual = 12.5 where user_id = $1`, [S.operador]);
+  const res = ok(await de(S.operador)('vagas_op_resumo'));
+  assert.deepEqual(res.cidades.map((c) => [c.slug, c.papel, c.repassePercentual]), [['uruacu-go', 'operador', 12.5]]);
+  assert.deepEqual(Object.keys(res.cidades[0].contagens).sort(), ['anunciosEmRevisao', 'anunciosNoAr', 'anunciosSuspensos', 'denunciasAbertas',
+    'empresasAtivas', 'empresasEmAnalise', 'listaEspera', 'pessoas']);
+  assert.equal(ok(await de(S.moderador)('vagas_op_resumo')).cidades[0].repassePercentual, 0);
+  const resEq = ok(await de(S.adminDisc)('vagas_op_resumo'));
+  assert.ok(resEq.cidades.length >= 5 && resEq.cidades.every((c) => c.repassePercentual === null && c.papel === 'admin'));
+  erro(await de(S.pessoa)('vagas_op_resumo'), 'Sem permissão.');
+  erro(await semLogin('vagas_op_resumo'), 'Sessão expirada. Entre de novo.');
+
+  // vagas_adm_cidades: todas (inclusive rascunho), com UF, IBGE, fuso, porte, praça e TODAS as zonas; só a equipe.
+  for (const quem of [S.operador, S.pessoa]) erro(await de(quem)('vagas_adm_cidades'), 'Sem permissão.');
+  ok(await de(S.adminDisc)('vagas_adm_zona_salvar', { cidade: 'capital-go', slug: 'antiga', nome: 'Zona antiga', ativa: false }));
+  const cids = ok(await de(S.adminDisc)('vagas_adm_cidades')).cidades;
+  const uru = cids.find((c) => c.slug === 'uruacu-go');
+  const nOps = (await db.query(`select count(*)::int n from public.vagas_operadores o join public.vagas_cidades c on c.id = o.cidade_id
+    where c.slug = 'uruacu-go' and o.ativo`)).rows[0].n;
+  assert.deepEqual([uru.nome, uru.uf, uru.ibge, uru.fuso, uru.status, uru.porte, uru.praca, uru.ordem, uru.zonas.length, uru.operadoresAtivos],
+    ['Uruaçu', 'GO', '5221601', 'America/Sao_Paulo', 'ativa', 'pequena', null, 1, 6, nOps]);
+  assert.equal(cids.find((c) => c.slug === 'vizinha-go').praca, 'uruacu-go');
+  assert.ok(cids.filter((c) => c.uf === 'RR').length === 4 && cids.filter((c) => c.uf === 'RR').every((c) => c.status === 'rascunho'));
+  assert.deepEqual(cids.find((c) => c.slug === 'capital-go').zonas.map((z) => [z.slug, z.ativa]), [['centro', true], ['antiga', false]]);
+  assert.ok(!('interessados' in uru), 'nada da lista de espera além do que o resumo já conta');
+
+  // vagas_adm_operadores: só a equipe; e-mail da conta de operação, papel, repasse, contrato e o último ato na cidade.
+  erro(await de(S.operador)('vagas_adm_operadores', {}), 'Sem permissão.');
+  erro(await de(S.adminDisc)('vagas_adm_operadores', { cidade: 'nao-existe-go' }), 'Cidade não encontrada.');
+  ok(await de(S.operador)('vagas_adm_zona_salvar', { cidade: 'uruacu-go', slug: 'regiao-leste', nome: 'Região Leste', bairros: [] }));
+  const ops = ok(await de(S.adminDisc)('vagas_adm_operadores', { cidade: 'uruacu-go' })).operadores;
+  const emailOp = await emailDe(S.operador);
+  const emailMod = await emailDe(S.moderador);
+  assert.deepEqual(ops.map((o) => [o.email, o.cidade.slug, o.papel, o.ativo, o.repassePercentual]),
+    [[emailMod, 'uruacu-go', 'moderador', true, 0], [emailOp, 'uruacu-go', 'operador', true, 12.5]]);
+  const op = ops.find((o) => o.email === emailOp);
+  assert.equal(op.ultimoAto.acao, 'zona_salvar');
+  assert.deepEqual(Object.keys(op).sort(), ['ativo', 'cidade', 'contaStatus', 'contratoAceitoEm', 'contratoVersao', 'criadoEm', 'email', 'papel',
+    'repassePercentual', 'ultimoAto']);
+  assert.equal(op.contaStatus, 'ativa');
+  const todos = ok(await de(S.adminDisc)('vagas_adm_operadores', {})).operadores;
+  assert.ok(todos.some((o) => o.cidade.slug === 'capital-go') && todos.length >= 3);
+
+  // vagas_op_assistidos: pendentes do cadastro assistido; operador(a) só os que criou; equipe todos; e-mail mascarado.
+  // (Os testes anteriores já deixaram contas assistidas pendentes: conta-se a partir delas.)
+  const lista = async (uid, filtro) => ok(await de(uid)('vagas_op_assistidos', filtro || {})).contas;
+  const antesOp = (await lista(S.operador)).length;
+  const antesEquipeUru = (await lista(S.adminDisc, { cidade: 'uruacu-go' })).length;
+  const antesEquipe = (await lista(S.adminDisc)).length;
+  const antesCapital = (await lista(S.operadorCapital)).length;
+  const pendente = async (email, tipo, por, cidade, codigo) => {
+    const id = await usuarioAuth(email, { app: { produto: 'vagas', tipo }, confirmado: false });
+    ok(await servico('vagas_conta_registrar', id, { tipo, assistidaPor: por, cidade, codigoEvento: codigo }));
+    return id;
+  };
+  await pendente('rosa.alves@exemplo.com', 'pessoa', S.operador, 'uruacu-go', 'MUTIRAO-01');
+  await pendente('loja.nova@empresa.com.br', 'empresa', S.operador, 'uruacu-go', '');
+  await pendente('outra.pessoa@exemplo.com', 'pessoa', S.adminDisc, 'uruacu-go', 'MUTIRAO-02');
+  const confirmou = await pendente('ja.confirmou@exemplo.com', 'pessoa', S.operador, 'uruacu-go', 'MUTIRAO-01');
+  await db.query(`update auth.users set email_confirmed_at = now() where id = $1`, [confirmou]);
+  const antiga = await pendente('antiga@exemplo.com', 'pessoa', S.operador, 'uruacu-go', '');
+  await db.query(`set session_replication_role = replica`);   // o gatilho não deixa mudar criado_em
+  await db.query(`update public.vagas_contas set criado_em = now() - interval '31 days' where user_id = $1`, [antiga]);
+  await db.query(`set session_replication_role = origin`);
+  await pendente('capital.pessoa@exemplo.com', 'pessoa', S.operadorCapital, 'capital-go', '');
+  const meus = await lista(S.operador);
+  assert.equal(meus.length, antesOp + 2, 'confirmada, antiga (31 dias) e de outra pessoa da operação ficam de fora');
+  assert.deepEqual(meus.slice(0, 2).map((c) => [c.email, c.tipo, c.cidade, c.codigoEvento]).sort(),
+    [['l***@e***.com.br', 'empresa', 'uruacu-go', ''], ['r***@e***.com', 'pessoa', 'uruacu-go', 'MUTIRAO-01']], 'mais novas primeiro');
+  assert.ok(meus.every((c) => Object.keys(c).sort().join() === 'cidade,codigoEvento,criadoEm,email,tipo'));
+  assert.ok(!/rosa|alves|loja\.nova|exemplo|empresa\.com|[0-9a-f]{8}-[0-9a-f]{4}-/.test(JSON.stringify(meus)), 'nada além do e-mail mascarado');
+  assert.ok(!meus.some((c) => ['o***@e***.com', 'j***@e***.com', 'a***@e***.com', 'c***@e***.com'].includes(c.email)));
+  const daEquipe = await lista(S.adminDisc, { cidade: 'uruacu-go' });
+  assert.equal(daEquipe.length, antesEquipeUru + 3);
+  assert.deepEqual(daEquipe.slice(0, 3).map((c) => c.email).sort(), ['l***@e***.com.br', 'o***@e***.com', 'r***@e***.com']);
+  assert.equal((await lista(S.adminDisc)).length, antesEquipe + 4);
+  const capital = await lista(S.operadorCapital);
+  assert.equal(capital.length, antesCapital + 1);
+  assert.equal(capital[0].email, 'c***@e***.com');
+  erro(await de(S.operadorCapital)('vagas_op_assistidos', { cidade: 'uruacu-go' }), 'Sem permissão.');
+  erro(await de(S.moderador)('vagas_op_assistidos', {}), 'Sem permissão.');
+  erro(await de(S.pessoa)('vagas_op_assistidos', {}), 'Sem permissão.');
+  erro(await semLogin('vagas_op_assistidos', {}), 'Sessão expirada. Entre de novo.');
+  // A máscara é a mesma da Edge Function.
+  const { mascararEmailVagas } = await import('../../supabase/funcoes-compartilhadas/vagas-conta.js');
+  for (const e of ['ana.souza@empresa.com.br', 'X@Y.CO', 'sem-arroba']) {
+    assert.equal((await db.query(`select vagas_interno.mascarar_email($1) m`, [e])).rows[0].m, mascararEmailVagas(e.toLowerCase()), e);
+  }
 });

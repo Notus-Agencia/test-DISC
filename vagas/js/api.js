@@ -24,10 +24,12 @@
  *   publicarReferencias(ligar); operação — opResumo, opEmpresas(filtro), opEmpresaDecidir(id, acao, motivo), opEmpresaCadastrar(dados),
  *   opVincularMembro(empresaId, email), opAnuncios(filtro), opAnuncioSalvar(dados) (vaga assistida), opAnuncioDecidir(id, acao, motivo), opDenuncias(filtro),
  *   opDenunciaDecidir(id, dados), opModeracao(filtro), opReferencias(filtro), opReferenciaDecidir(id, acao, motivo),
- *   indicadores(cidade) (painel da praça: só números agregados; migração 20261024);
+ *   indicadores(cidade) = opIndicadores(cidade) (painel da praça: só números agregados; migração 20261024),
+ *   opAssistidos(filtro) (cadastros assistidos pendentes, e-mail mascarado; 20261024);
  *   equipe da empresa (20261024) — equipeDaEmpresa(empresaId), cancelarConvite(conviteId), removerMembro(empresaId, userId),
  *   conviteEquipe(token), aceitarConviteEquipe(token);
- *   equipe da Gestão sem Caos — admCidadeSalvar(dados), admZonaSalvar(dados), admOperadorSalvar(dados).
+ *   equipe da Gestão sem Caos — admCidadeSalvar(dados), admZonaSalvar(dados), admOperadorSalvar(dados), admCidades(),
+ *   admOperadores(filtro) (as duas da 20261024).
  * Conta e sessão: cadastrar({email, tipo, nome?, termosVersao?, captcha?}), reenviarConfirmacao(email, captcha?),
  *   esqueciSenha(email, captcha?), cadastroAssistido({email, tipo, cidade, empresaId?, nome?, codigoEvento?}),
  *   convidarOperador({email, cidade, papel, cidadeNome?}), convidarEquipe(empresaId, email) (só dono(a); resposta neutra),
@@ -130,6 +132,10 @@
     opReferencias: { rpc: 'vagas_op_referencias', p: ['p_filtro'] },
     opReferenciaDecidir: { rpc: 'vagas_op_referencia_decidir', p: ['p_referencia', 'p_acao', 'p_motivo'] },
     indicadores: { rpc: 'vagas_op_indicadores', p: ['p_cidade'] },
+    opIndicadores: { rpc: 'vagas_op_indicadores', p: ['p_cidade'] },   // o mesmo, com o prefixo das outras da operação
+    opAssistidos: { rpc: 'vagas_op_assistidos', p: ['p_filtro'] },
+    admCidades: { rpc: 'vagas_adm_cidades', p: [] },
+    admOperadores: { rpc: 'vagas_adm_operadores', p: ['p_filtro'] },
     equipeDaEmpresa: { rpc: 'vagas_equipe_empresa', p: ['p_empresa'] },
     cancelarConvite: { rpc: 'vagas_equipe_convite_cancelar', p: ['p_convite'] },
     removerMembro: { rpc: 'vagas_equipe_remover', p: ['p_empresa', 'p_membro'] },

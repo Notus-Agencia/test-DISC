@@ -584,3 +584,38 @@ test('adaptador da prévia: convidarEquipe e os métodos de equipe e do painel p
   await assert.rejects(api.indicadores('uruacu-go'), (e) => e.message === 'Sem permissão.');
   await assert.rejects(api.aceitarConviteEquipe('0'.repeat(64)), (e) => e.message === R.MSG.CONVITE_INVALIDO);
 });
+
+test('pedidos da operação na prévia: resumo com repasse, cidades e operadores só para a equipe, assistidos pendentes mascarados', async () => {
+  const b = novo();
+  await entrar(b, 'operador@previa.com');
+  assert.deepEqual((await ok(b.rpc('vagas_op_resumo', {}))).cidades.map((c) => [c.slug, c.papel, c.repassePercentual]), [['uruacu-go', 'operador', 0]]);
+  await erro(b.rpc('vagas_adm_cidades', {}), 'Sem permissão.');
+  await erro(b.rpc('vagas_adm_operadores', { p_filtro: {} }), 'Sem permissão.');
+  assert.deepEqual((await ok(b.rpc('vagas_op_assistidos', { p_filtro: {} }))).contas, []);
+  await ok(b.conta.cadastroAssistido({ email: 'rosa.alves@exemplo.com', tipo: 'pessoa', cidade: 'uruacu-go', codigoEvento: 'MUTIRAO-01' }));
+  const ass = (await ok(b.rpc('vagas_op_assistidos', { p_filtro: {} }))).contas;
+  assert.deepEqual(ass.map((c) => [c.email, c.tipo, c.cidade, c.codigoEvento]), [['r***@e***.com', 'pessoa', 'uruacu-go', 'MUTIRAO-01']]);
+  assert.deepEqual(Object.keys(ass[0]).sort(), ['cidade', 'codigoEvento', 'criadoEm', 'email', 'tipo']);
+  await erro(b.rpc('vagas_op_assistidos', { p_filtro: { cidade: 'niquelandia-go' } }), 'Sem permissão.');
+  await ok(b.conta.sair());
+  await entrar(b, 'empresa@previa.com');
+  await erro(b.rpc('vagas_op_assistidos', { p_filtro: {} }), 'Sem permissão.');
+  await ok(b.conta.sair());
+  await entrar(b, 'admin@previa.com');
+  const cids = (await ok(b.rpc('vagas_adm_cidades', {}))).cidades;
+  assert.deepEqual(cids.map((c) => [c.slug, c.uf, c.ibge, c.status, c.porte, c.praca]), [['uruacu-go', 'GO', '5221601', 'ativa', 'pequena', null],
+    ['campinorte-go', 'GO', '5204706', 'ativa', null, 'uruacu-go'], ['niquelandia-go', 'GO', '5214606', 'lista_espera', null, null]]);
+  assert.deepEqual(cids[0].zonas.map((z) => [z.slug, z.ativa]).slice(0, 2), [['centro', true], ['regiao-norte', true]]);
+  assert.equal(cids[0].operadoresAtivos, 1);
+  const ops = (await ok(b.rpc('vagas_adm_operadores', { p_filtro: { cidade: 'uruacu-go' } }))).operadores;
+  assert.deepEqual(ops.map((o) => [o.email, o.cidade.slug, o.papel, o.ativo, o.repassePercentual, o.contaStatus]),
+    [['operador@previa.com', 'uruacu-go', 'operador', true, 0, 'ativa']]);
+  assert.deepEqual(Object.keys(ops[0]).sort(), ['ativo', 'cidade', 'contaStatus', 'contratoAceitoEm', 'contratoVersao', 'criadoEm', 'email', 'papel',
+    'repassePercentual', 'ultimoAto']);
+  await erro(b.rpc('vagas_adm_operadores', { p_filtro: { cidade: 'nao-existe-go' } }), 'Cidade não encontrada.');
+  assert.ok((await ok(b.rpc('vagas_op_resumo', {}))).cidades.every((c) => c.repassePercentual === null && c.papel === 'admin'));
+  assert.equal((await ok(b.rpc('vagas_op_assistidos', { p_filtro: { cidade: 'uruacu-go' } }))).contas.length, 1, 'a equipe vê os de todos');
+  const api = API.criar({ modo: 'previa', backend: b });
+  assert.equal(typeof api.opIndicadores, 'function');
+  assert.deepEqual((await api.opIndicadores('uruacu-go')).indicadores.map((i) => i.chave), (await api.indicadores('uruacu-go')).indicadores.map((i) => i.chave));
+});

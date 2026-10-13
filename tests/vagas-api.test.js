@@ -242,6 +242,10 @@ test('onda 2: painel da praça, equipe da empresa e convite por e-mail (Edge Fun
   assert.deepEqual(['indicadores', 'equipeDaEmpresa', 'cancelarConvite', 'removerMembro', 'conviteEquipe', 'aceitarConviteEquipe'].map((m) => API.METODOS[m].rpc),
     ['vagas_op_indicadores', 'vagas_equipe_empresa', 'vagas_equipe_convite_cancelar', 'vagas_equipe_remover', 'vagas_equipe_convite', 'vagas_equipe_convite_aceitar']);
   assert.ok(['indicadores', 'equipeDaEmpresa', 'cancelarConvite', 'removerMembro', 'conviteEquipe', 'aceitarConviteEquipe'].every((m) => !API.METODOS[m].publico));
+  // Pedidos da operação: opIndicadores (= indicadores, com o prefixo das outras da operação), opAssistidos, admCidades, admOperadores.
+  assert.deepEqual(['opIndicadores', 'opAssistidos', 'admCidades', 'admOperadores'].map((m) => [API.METODOS[m].rpc, API.METODOS[m].p, !!API.METODOS[m].publico]),
+    [['vagas_op_indicadores', ['p_cidade'], false], ['vagas_op_assistidos', ['p_filtro'], false], ['vagas_adm_cidades', [], false],
+      ['vagas_adm_operadores', ['p_filtro'], false]]);
   const arm = memoria();
   arm.setItem(API.CHAVE_SESSAO, JSON.stringify({ access_token: 'tok1', refresh_token: 'ref1', expires_at: relogio / 1000 + 3600, user: { id: 'u1', email: 'a@b.co' } }));
   const { api, fetch } = criar([

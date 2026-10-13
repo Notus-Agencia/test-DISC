@@ -401,11 +401,13 @@ test('convite_equipe: erro genérico quando o envio ou o registro falham (sem de
   assert.equal(linkConviteEquipe({}, TOKEN, { hash: 'h1', tipo: 'magiclink' }), SITE + '/entrar.html?token_hash=h1&type=magiclink&convite=' + TOKEN);
 });
 
-test('HTTP: CORS só do site do Vagas e localhost, OPTIONS, método, corpo, ação desconhecida e erro interno sem detalhes', async () => {
+test('HTTP: CORS só do site do Vagas, do painel do DISC e localhost, OPTIONS, método, corpo, ação desconhecida e erro interno sem detalhes', async () => {
   const w = preparar();
   assert.equal((await chamar(w.base, { acao: 'x' }, { origem: 'https://golpe.example' })).cors, null);
   assert.equal((await chamar(w.base, { acao: 'x' }, { origem: 'http://localhost:4321' })).cors, 'http://localhost:4321');
-  assert.equal((await chamar(w.base, { acao: 'x' }, { origem: 'https://disc.gestaosemcaos.com.br' })).cors, null);
+  // Pedido da operação (onda 2): o painel do DISC convida operador pela aba "Vagas"; o token da equipe continua obrigatório.
+  assert.equal((await chamar(w.base, { acao: 'x' }, { origem: 'https://disc.gestaosemcaos.com.br' })).cors, 'https://disc.gestaosemcaos.com.br');
+  assert.equal((await chamar(w.base, { acao: 'x' }, { origem: 'https://disc.gestaosemcaos.com.br.golpe.example' })).cors, null);
   const opt = await chamar(w.base, null, { metodo: 'OPTIONS' });
   assert.equal(opt.status, 204);
   assert.equal((await chamar(w.base, null, { metodo: 'GET' })).status, 405);
@@ -431,7 +433,14 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
   assert.equal(linkVagas({}, 'abc', 'recovery'), SITE + '/entrar.html?token_hash=abc&type=recovery');
   assert.equal(linkVagas({ VAGAS_SITE_URL: 'https://vagas-gestaosemcaos.pages.dev/' }, 'abc', 'invite'), 'https://vagas-gestaosemcaos.pages.dev/entrar.html?token_hash=abc&type=invite');
   assert.equal(vagasCors(new Request('https://x', { headers: { origin: SITE } }), {})['Access-Control-Allow-Origin'], SITE);
-  assert.deepEqual(Object.keys(lerEnvVagasConta(() => ' v ')).sort(), ['EMAIL_REMETENTE', 'RESEND_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL',
+  // O painel do DISC (convite de operador pela aba "Vagas") também lê a resposta; qualquer outra origem, não.
+  const cors = (origin, env) => vagasCors(new Request('https://x', { headers: { origin } }), env || {})['Access-Control-Allow-Origin'];
+  assert.equal(cors('https://disc.gestaosemcaos.com.br'), 'https://disc.gestaosemcaos.com.br');
+  assert.equal(cors('https://painel.exemplo.com', { SITE_URL: 'https://painel.exemplo.com/' }), 'https://painel.exemplo.com');
+  assert.equal(cors('https://disc.gestaosemcaos.com.br', { SITE_URL: 'https://painel.exemplo.com' }), undefined);
+  assert.equal(cors('https://golpe.exemplo.com'), undefined);
+  assert.equal(cors('http://localhost:4315'), 'http://localhost:4315');
+  assert.deepEqual(Object.keys(lerEnvVagasConta(() => ' v ')).sort(), ['EMAIL_REMETENTE', 'RESEND_API_KEY', 'SITE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL',
     'TURNSTILE_SECRET', 'VAGAS_EMAIL_REMETENTE', 'VAGAS_SITE_URL']);
   // Adaptador real com um supabase-js falso: chama as RPCs certas e o admin do Auth com os parâmetros certos.
   const chamadas = [];

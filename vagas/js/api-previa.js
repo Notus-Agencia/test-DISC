@@ -1294,7 +1294,9 @@
       return ok({ cidades: st.cidades.filter(function (c) { return cids.indexOf(c.slug) >= 0; }).sort(function (a, b) { return a.ordem - b.ordem; }).map(function (c) {
         var es = st.empresas.filter(function (e) { return e.cidade === c.slug; });
         var as = st.anuncios.filter(function (a) { return a.cidade === c.slug; });
-        return { id: c.id, slug: c.slug, nome: c.nome, status: c.status, papel: papelCidade(c.slug), contagens: {
+        var minha = st.operadores.filter(function (o) { return o.userId === st.sessao && o.cidade === c.slug && o.ativo; })[0];
+        return { id: c.id, slug: c.slug, nome: c.nome, status: c.status, papel: papelCidade(c.slug),
+          repassePercentual: minha ? minha.repassePercentual : null, contagens: {
           empresasEmAnalise: es.filter(function (e) { return e.status === 'em_analise'; }).length, empresasAtivas: es.filter(function (e) { return e.status === 'ativa'; }).length,
           anunciosEmRevisao: as.filter(function (a) { return a.status === 'em_revisao'; }).length, anunciosSuspensos: as.filter(function (a) { return a.status === 'suspenso'; }).length,
           anunciosNoAr: as.filter(noAr).length, denunciasAbertas: st.denuncias.filter(function (d) { return d.cidade === c.slug && d.status === 'aberta'; }).length,
@@ -1603,6 +1605,56 @@
       if (Object.prototype.hasOwnProperty.call(d, 'contratoVersao')) o.contratoVersao = R.limparTexto(d.contratoVersao, 40);
       registrar(c.slug, 'admin', 'operador_salvar', 'operador', null, '', { papel: o.papel, ativo: o.ativo });
       return ok({ operador: { cidade: c.slug, papel: o.papel, ativo: o.ativo, repassePercentual: o.repassePercentual, contratoVersao: o.contratoVersao } });
+    };
+
+    // ---- Pedidos da operação (iguais aos da 20261024; só leitura).
+    H.vagas_adm_cidades = function () {
+      if (!eAdmin()) return erro(R.MSG.SEM_PERMISSAO);
+      return ok({ cidades: st.cidades.slice().sort(function (a, b) { return a.ordem - b.ordem || a.nome.localeCompare(b.nome); }).map(function (c) {
+        return { id: c.id, slug: c.slug, nome: c.nome, uf: c.uf, ibge: c.ibge || null, fuso: c.fuso, status: c.status, porte: c.porte || null,
+          praca: c.praca || null, metaListaEspera: c.metaListaEspera == null ? null : c.metaListaEspera, ordem: c.ordem,
+          zonas: st.zonas.filter(function (z) { return z.cidade === c.slug; }).sort(function (a, b) { return a.ordem - b.ordem || a.nome.localeCompare(b.nome); })
+            .map(function (z) { return { id: z.id, slug: z.slug, nome: z.nome, bairros: z.bairros.slice(), ordem: z.ordem, ativa: z.ativa }; }),
+          operadoresAtivos: st.operadores.filter(function (o) { return o.cidade === c.slug && o.ativo; }).length };
+      }) });
+    };
+
+    H.vagas_adm_operadores = function (a) {
+      if (!eAdmin()) return erro(R.MSG.SEM_PERMISSAO);
+      var f = obj(a.p_filtro);
+      var slug = txt(f.cidade).trim().toLowerCase();
+      if (slug && !cidade(slug)) return erro('Cidade não encontrada.');
+      var ordem = function (o) { var c = cidade(o.cidade); return c ? c.ordem : 0; };
+      return ok({ operadores: st.operadores.filter(function (o) { return !slug || o.cidade === slug; }).slice().sort(function (x, y) {
+        var ux = usuario(x.userId) || {}; var uy = usuario(y.userId) || {};
+        return ordem(x) - ordem(y) || (y.ativo - x.ativo) || x.papel.localeCompare(y.papel) || String(ux.email).localeCompare(String(uy.email));
+      }).map(function (o) {
+        var u = usuario(o.userId) || {};
+        var ct = st.contas[o.userId] || {};
+        var atos = st.moderacao.filter(function (m) { return m.ator === o.userId && m.cidade === o.cidade; });
+        var ult = atos.length ? atos[atos.length - 1] : null;
+        var c = cidade(o.cidade);
+        return { email: u.email || '', cidade: { slug: c.slug, nome: c.nome }, papel: o.papel, ativo: o.ativo, repassePercentual: o.repassePercentual,
+          contratoVersao: o.contratoVersao || '', contaStatus: ct.status === 'suspensa' ? 'suspensa' : (u.confirmada ? 'ativa' : 'pendente'),
+          contratoAceitoEm: iso(ct.termosAceitosEm), criadoEm: iso(o.criadoEm || ct.criadoEm),
+          ultimoAto: ult ? { acao: ult.acao, em: iso(ult.em) } : null };
+      }) });
+    };
+
+    // Cadastros assistidos ainda pendentes: operador(a) só os que criou, equipe todos; e-mail MASCARADO (a operação nunca
+    // lê contato de pessoa); moderador(a) não faz cadastro assistido.
+    H.vagas_op_assistidos = function (a) {
+      var x = exigirOperacao(); if (x) return x;
+      var cids = cidadesDoFiltro(obj(a.p_filtro)).filter(function (s) { var p = papelCidade(s); return p === 'admin' || p === 'operador'; });
+      if (!cids.length) return erro(R.MSG.SEM_PERMISSAO);
+      var adm = eAdmin();
+      return ok({ contas: Object.keys(st.contas).map(function (uid) { return { uid: uid, c: st.contas[uid], u: usuario(uid) }; })
+        .filter(function (y) {
+          return y.c.status === 'pendente' && y.c.assistidaPor && cids.indexOf(y.c.cidade) >= 0 && (y.c.tipo === 'pessoa' || y.c.tipo === 'empresa')
+            && y.c.criadoEm > agora() - 30 * DIA && (adm || y.c.assistidaPor === st.sessao) && y.u && !y.u.confirmada;
+        }).sort(function (p, q) { return q.c.criadoEm - p.c.criadoEm; }).slice(0, 200).map(function (y) {
+          return { email: mascarar(y.u.email), tipo: y.c.tipo, cidade: y.c.cidade, codigoEvento: y.c.codigoEvento || '', criadoEm: iso(y.c.criadoEm) };
+        }) });
     };
 
     H.vagas_exportar_meus_dados = function () {

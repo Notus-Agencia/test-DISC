@@ -813,7 +813,8 @@ Filtro comum `{cidade?}` (slug, dentro das cidades que a pessoa opera). Erros co
 
 | RPC (VAGAS_API) | Entrada | Resposta |
 |---|---|---|
-| `vagas_op_resumo()` (`opResumo`) | — | `{cidades:[{id, slug, nome, status, papel, contagens:{empresasEmAnalise, empresasAtivas, anunciosEmRevisao, anunciosSuspensos, anunciosNoAr, denunciasAbertas, pessoas, listaEspera}}]}` |
+| `vagas_op_resumo()` (`opResumo`) | — | `{cidades:[{id, slug, nome, status, papel, repassePercentual, contagens:{empresasEmAnalise, empresasAtivas, anunciosEmRevisao, anunciosSuspensos, anunciosNoAr, denunciasAbertas, pessoas, listaEspera}}]}` — `repassePercentual` (20261024): o da linha de quem chama em `vagas_operadores` (> 0: praça com parceiro; 0: operação própria); `null` para a equipe |
+| `vagas_op_assistidos(p_filtro)` (`opAssistidos`; 20261024) | `{cidade?}` | `{contas:[{email:'r***@e***.com', tipo:'pessoa'|'empresa', cidade, codigoEvento, criadoEm}]}` — cadastros assistidos ainda pendentes (e-mail não confirmado) dos últimos 30 dias, até 200, mais novos primeiro. Operador(a) vê só os que criou; equipe, todos. E-mail MASCARADO (a operação nunca lê contato de pessoa): para mandar o link de novo, a tela pede o e-mail completo (`cadastroAssistido` / `reenviarConfirmacao`). Sem `expiraEm` (a validade do link é do Auth, não do banco). Erros `Sem permissão.` (moderador(a), ou cidade fora das operadas) |
 | `vagas_op_empresas(p_filtro)` (`opEmpresas`) | `{cidade?, status?[], busca?}` | `{empresas:[<empresa> + anuncios:{total,noAr}, denunciasAbertas, membros]}` (em análise primeiro) |
 | `vagas_op_empresa_decidir(p_empresa, p_acao, p_motivo)` (`opEmpresaDecidir`) | `'aprovar'|'recusar'|'suspender'|'reativar'` (`recusar`: continua `em_analise` com `statusMotivo` = chave de `moderacao.json`, para a empresa corrigir) | `{empresa}` · erros `Empresa não encontrada.` · `Sem permissão.` (moderador não aprova/recusa/reativa) · `Empresa suspensa: use "Reativar".` · `Informe o motivo.` · `Só dá para recusar uma empresa em análise.` · `Esta empresa não está suspensa.` · `Ação inválida.` |
 | `vagas_op_empresa_cadastrar(p_dados)` (`opEmpresaCadastrar`) | como `vagas_empresa_cadastrar` | `{empresa}` já `ativa` (CNPJ conferido na hora) |
@@ -869,6 +870,8 @@ para quem não é da equipe) · `Cidade não encontrada.` (só para a equipe).
 |---|---|---|
 | `vagas_adm_cidade_salvar(p_dados)` (`admCidadeSalvar`) | `{slug:'nova-cidade-uf', nome, uf, ibge, fuso?, status?, porte?, praca?, metaListaEspera?, ordem?}` (cria ou altera só o que vier; cidade nova sem `fuso` fica `America/Sao_Paulo`; `porte`: `pequena`, `grande` ou `''`/`null` para tirar — 20261024) | `{cidade}` (+ `porte`) · `Sem permissão.` · `Endereço da cidade inválido (ex.: nome-da-cidade-uf).` · `Status da cidade inválido.` · `Porte da cidade inválido (grande ou pequena).` · `Cidade-polo não encontrada.` · `Fuso horário inválido.` · `Dados da cidade inválidos. Confira nome, UF e IBGE.` |
 | `vagas_adm_zona_salvar(p_dados)` (`admZonaSalvar`) | `{cidade, slug, nome, bairros[], ordem?, ativa?}` | `{zona:{id, slug, nome, bairros, ordem, ativa}}` · `Cidade não encontrada.` · `Sem permissão.` · `Endereço da zona inválido (ex.: zona-oeste).` · `Dados da zona inválidos. Confira o nome.` |
+| `vagas_adm_cidades()` (`admCidades`; 20261024) | — | `{cidades:[{id, slug, nome, uf, ibge, fuso, status, porte, praca, metaListaEspera, ordem, zonas:[{id, slug, nome, bairros, ordem, ativa}], operadoresAtivos}]}` — TODAS as cidades (inclusive `rascunho` e `pausada`) e todas as zonas (inclusive desligadas) · `Sem permissão.` |
+| `vagas_adm_operadores(p_filtro)` (`admOperadores`; 20261024) | `{cidade?}` | `{operadores:[{email, cidade:{slug, nome}, papel, ativo, repassePercentual, contratoVersao, contaStatus:'pendente'|'ativa'|'suspensa', contratoAceitoEm, criadoEm, ultimoAto:{acao, em}|null}]}` (`pendente` = ainda não confirmou o e-mail do convite; `contratoAceitoEm` = aceite do 1º acesso da conta de operação; `ultimoAto` = último registro dela na moderação daquela cidade) · `Sem permissão.` · `Cidade não encontrada.` |
 | `vagas_adm_operador_salvar(p_dados)` (`admOperadorSalvar`) | `{cidade, email, papel:'operador'|'moderador', ativo?, repassePercentual?, contratoVersao?}` (a conta vem do convite da Edge Function) | `{operador:{cidade, papel, ativo, repassePercentual, contratoVersao}}` · `Sem permissão.` · `Cidade não encontrada.` · `Papel inválido.` · `Não há conta de operação com este e-mail. Use o convite de operador.` · `Percentual de repasse inválido (0 a 100).` |
 
 ### 8.9 Só para a Edge Function (service_role; nem anon nem authenticated executam)
@@ -895,7 +898,8 @@ abertos. Cancele algum antes de convidar outra pessoa.` · `Sem permissão.`
 
 `POST /functions/v1/vagas-conta` (Verify JWT **desligado**; quem precisa de login manda `Authorization: Bearer <token>` e a
 função confere). Corpo `{acao, ...}`; resposta sempre HTTP 200 com `{ok, ...}` (405 para outro método). CORS só para
-`VAGAS_SITE_URL` e localhost.
+`VAGAS_SITE_URL`, o painel do DISC (`SITE_URL`; sem ele, `https://disc.gestaosemcaos.com.br` — 20261024, para o convite de
+operador pela aba "Vagas") e localhost. CORS não é a proteção: as ações com login continuam exigindo o token.
 
 | Ação (`VAGAS_API`) | Corpo | Resposta |
 |---|---|---|
@@ -986,8 +990,8 @@ VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
 | `testes.html`, `selo.html` | pessoa / todos | RPCs da 20261023 (`docs/VAGAS-TESTES.md`), `seloPublico` |
 | `referencia.html?t=` (empresa abre o pedido) e `referencias.html?t=` (página pública) | empresa / todos | `conviteReferencia`, `oferecerReferencia`, `referenciasPublicas` |
 | `empresa.html` (vagas, cartões, conversas, referências, dados) | empresa no computador | `minhasEmpresas`, `cadastrarEmpresa`, `salvarEmpresa`, `salvarAnuncio`, `publicarAnuncio`, `acaoAnuncio`, `anunciosDaEmpresa`, `anuncioNumeros`, `cartoes`, `decidir`, `contatoPessoa`, `marcarContratada`, `conversasDaEmpresa`, `oferecerReferencia`, `referenciasDaEmpresa`; aba Equipe (só dono(a)): `equipeDaEmpresa`, `convidarEquipe`, `cancelarConvite`, `removerMembro` (e "Sair da equipe" para recrutador(a)) |
-| `operador.html` (fila, denúncias, empresas, cadastro assistido, zonas) | operador no computador | `opResumo`, `opEmpresas`, `opEmpresaDecidir`, `opEmpresaCadastrar`, `opVincularMembro`, `opAnuncios`, `opAnuncioDecidir`, `opDenuncias`, `opDenunciaDecidir`, `opModeracao`, `opReferencias`, `opReferenciaDecidir`, `cadastroAssistido`, `admZonaSalvar`; painel da praça: `indicadores` |
-| `admin.html` (painel DISC) grupo "Vagas" | equipe | `admCidadeSalvar` (com `porte`), `admZonaSalvar`, `admOperadorSalvar`, `convidarOperador`, `indicadores` (qualquer cidade), `op*` |
+| `operador.html` (fila, denúncias, empresas, cadastro assistido, zonas) | operador no computador | `opResumo`, `opEmpresas`, `opEmpresaDecidir`, `opEmpresaCadastrar`, `opVincularMembro`, `opAnuncios`, `opAnuncioDecidir`, `opDenuncias`, `opDenunciaDecidir`, `opModeracao`, `opReferencias`, `opReferenciaDecidir`, `cadastroAssistido`, `opAssistidos`, `admZonaSalvar`; painel da praça: `indicadores` (= `opIndicadores`) |
+| `admin.html` (painel DISC) grupo "Vagas" | equipe | `admCidades`, `admCidadeSalvar` (com `porte`), `admZonaSalvar`, `admOperadores`, `admOperadorSalvar`, `convidarOperador`, `indicadores` (qualquer cidade), `op*` |
 
 ## 12. Ganchos e combinados com outras partes
 
@@ -1032,8 +1036,11 @@ VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
   - **Fuso:** testes de habilidade (20261023) passam a usar `vagas_interno.fuso_conta(user)` (cidade da pessoa → da empresa →
     da operação → da conta assistida → `America/Sao_Paulo`); `vagas/js/testes.js` (`hoje(agora, fuso?)`, `dataDoIso(iso, fuso?)`)
     faz a mesma conta na tela, com a mesma reserva.
-  - **Ordem:** rodar a 20261022 ou a 20261023 de novo depois da 20261024 volta as funções redefinidas à versão antiga; rode a
-    20261024 em seguida.
+  - **Ordem:** rodar a 20261022 ou a 20261023 de novo depois da 20261024 volta as funções redefinidas à versão antiga
+    (inclusive `vagas_op_resumo` sem `repassePercentual`); rode a 20261024 em seguida.
+  - **Pedidos da operação ainda abertos:** "reverter um ato" (`vagas_op_reverter`) precisa de regra por ação (o que volta, quem
+    pode, se avisa a empresa) decidida com a operação/psicologia antes de existir; textos locais da cidade (WhatsApp da praça,
+    endereço do balcão, horário do mutirão) ficam para a fase 2 (coluna/tabela nova).
 
 ## 13. Para colocar no ar (depende do dono)
 

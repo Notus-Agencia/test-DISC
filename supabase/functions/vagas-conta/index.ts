@@ -545,12 +545,14 @@ async function registrarEnvio(db, r) {
 // de equipe o link leva também &convite=<token> (ou só ?convite=<token> para quem já tem conta de empresa).
 // Limites (banco, public.vagas_conta_limite): por origem (cf-connecting-ip e x-forwarded-for), por e-mail, por quem age e total.
 // Segredos: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (do Supabase), RESEND_API_KEY, VAGAS_SITE_URL, VAGAS_EMAIL_REMETENTE?
-// (senão EMAIL_REMETENTE), TURNSTILE_SECRET? (liga o "não sou robô" no cadastrar/reenviar/esqueci).
+// (senão EMAIL_REMETENTE), TURNSTILE_SECRET? (liga o "não sou robô" no cadastrar/reenviar/esqueci), SITE_URL? (o do DISC: o
+// painel do DISC também chama esta função — convite de operador pela aba "Vagas"; sem ele, https://disc.gestaosemcaos.com.br).
 // Textos finais dos e-mails: conteudo/vagas-textos/ (aqui, versões curtas com a marca Vagas sem Caos · Gestão sem Caos).
 
 const NOMES_ENV_VAGAS_CONTA = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'VAGAS_SITE_URL', 'VAGAS_EMAIL_REMETENTE',
-  'EMAIL_REMETENTE', 'TURNSTILE_SECRET'];
+  'EMAIL_REMETENTE', 'TURNSTILE_SECRET', 'SITE_URL'];
 const VAGAS_SITE_PADRAO = 'https://vagas.gestaosemcaos.com.br';
+const VAGAS_PAINEL_DISC_PADRAO = 'https://disc.gestaosemcaos.com.br';
 const VAGAS_MSG_ENVIADO = 'Se este e-mail puder ser usado, você vai receber um link em instantes. Confira também a caixa de spam.';
 const VAGAS_MSG_EMAIL_NAO_CONFIGURADO = 'O envio de e-mail ainda não está configurado. Fale com a Gestão sem Caos.';
 const VAGAS_MSG_CAPTCHA = 'Confirme que você não é um robô e tente de novo.';
@@ -954,7 +956,13 @@ function criarBaseVagasConta(createClient, getEnv, extras) {
   }, extras || {});
 }
 
-/** CORS: só a origem de VAGAS_SITE_URL (e localhost/127.0.0.1 para testes). */
+/** Origem do painel do DISC (SITE_URL do DISC; sem ele, o endereço oficial). */
+function painelDiscVagas(env) {
+  try { return new URL(String((env && env.SITE_URL) || VAGAS_PAINEL_DISC_PADRAO).trim()).origin; } catch (err) { return VAGAS_PAINEL_DISC_PADRAO; }
+}
+
+/** CORS: só a origem de VAGAS_SITE_URL, a do painel do DISC (SITE_URL) e localhost/127.0.0.1 para testes. O token de quem
+ * chama continua obrigatório nas ações com login (CORS não é a proteção; só deixa o navegador do painel ler a resposta). */
 function vagasCors(req, env) {
   const origem = req.headers.get('origin') || '';
   const h = {
@@ -964,7 +972,10 @@ function vagasCors(req, env) {
     Vary: 'Origin'
   };
   const site = siteVagas(env);
-  if (origem && (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/.test(origem) || origem === site)) h['Access-Control-Allow-Origin'] = origem;
+  const painel = painelDiscVagas(env);
+  if (origem && (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/.test(origem) || origem === site || origem === painel)) {
+    h['Access-Control-Allow-Origin'] = origem;
+  }
   return h;
 }
 

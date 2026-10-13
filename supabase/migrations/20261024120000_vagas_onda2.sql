@@ -33,6 +33,10 @@
 --      usar o fuso da cidade da conta (vagas_interno.fuso_conta), com a mesma reserva. Nenhum texto com cidade/DDD de exemplo:
 --      vagas_pessoa_salvar e vagas_adm_cidade_salvar recriadas só com a mensagem nova.
 --   5. versao_banco(): a lista da 20261023 + 20261024120000_vagas_onda2 e 20261024120001_vagas_piloto_uruacu (dados).
+--   6. Pedidos da frente de operação (só leitura): vagas_op_resumo ganha "repassePercentual" (o da própria linha de quem
+--      chama; null para a equipe); vagas_adm_cidades() e vagas_adm_operadores(p_filtro) para o painel da equipe;
+--      vagas_op_assistidos(p_filtro) com os cadastros assistidos ainda pendentes (e-mail MASCARADO; operador(a) vê só os que
+--      criou). Nada disso devolve dado de pessoa além do que a própria operação digitou, e mascarado.
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -1171,6 +1175,124 @@ end;
 $$;
 
 -- -----------------------------------------------------------------------------
+-- 4. Pedidos da frente de operação (painel da equipe e operador.html) — só leitura
+-- -----------------------------------------------------------------------------
+
+-- "ana.souza@empresa.com.br" -> "a***@e***.com.br" (igual a mascararEmailVagas da Edge Function e ao mascarar da prévia).
+create or replace function vagas_interno.mascarar_email(p text)
+returns text language sql immutable set search_path = '' as $$
+  select case when lower(btrim(coalesce(p, ''))) !~ '^[^@[:space:]]+@[^@[:space:]]+$' then ''
+    else left(split_part(lower(btrim(p)), '@', 1), 1) || '***@' || left(split_part(lower(btrim(p)), '@', 2), 1) || '***'
+         || coalesce(substring(split_part(lower(btrim(p)), '@', 2) from '(\.[^@]*)$'), '') end;
+$$;
+
+-- Resumo das cidades operadas: IGUAL ao da 20261022 + "repassePercentual" em cada cidade — o da linha de quem chama em
+-- vagas_operadores (> 0: praça com parceiro, a tela mostra o repasse; 0: operação própria); null para a equipe sem linha.
+create or replace function public.vagas_op_resumo()
+returns json language plpgsql stable security definer set search_path = '' as $$
+declare
+  v_cids uuid[] := vagas_interno.cidades_operadas();
+begin
+  if auth.uid() is null then return vagas_interno.erro('Sessão expirada. Entre de novo.', '{"sessaoExpirada": true}'); end if;
+  if cardinality(v_cids) = 0 then return vagas_interno.erro('Sem permissão.'); end if;
+  return vagas_interno.ok(jsonb_build_object('cidades', coalesce((select jsonb_agg(jsonb_build_object('id', c.id, 'slug', c.slug, 'nome', c.nome,
+      'status', c.status, 'papel', vagas_interno.papel_cidade(c.id),
+      'repassePercentual', (select o.repasse_percentual from public.vagas_operadores o
+                             where o.user_id = auth.uid() and o.cidade_id = c.id and o.ativo limit 1),
+      'contagens', jsonb_build_object(
+        'empresasEmAnalise', (select count(*)::int from public.vagas_empresas e where e.cidade_id = c.id and e.status = 'em_analise'),
+        'empresasAtivas', (select count(*)::int from public.vagas_empresas e where e.cidade_id = c.id and e.status = 'ativa'),
+        'anunciosEmRevisao', (select count(*)::int from public.vagas_anuncios a where a.cidade_id = c.id and a.status = 'em_revisao'),
+        'anunciosSuspensos', (select count(*)::int from public.vagas_anuncios a where a.cidade_id = c.id and a.status = 'suspenso'),
+        'anunciosNoAr', (select count(*)::int from public.vagas_anuncios a where a.cidade_id = c.id and vagas_interno.no_ar(a)),
+        'denunciasAbertas', (select count(*)::int from public.vagas_denuncias d where d.cidade_id = c.id and d.status = 'aberta'),
+        'pessoas', (select count(*)::int from public.vagas_pessoas p where c.id in (p.cidade_id, p.cidade2_id)),
+        'listaEspera', (select count(*)::int from public.vagas_lista_espera l where l.cidade_id = c.id)))
+      order by c.ordem, c.nome)
+    from public.vagas_cidades c where c.id = any (v_cids)), '[]'::jsonb)));
+end;
+$$;
+
+-- Todas as cidades (inclusive rascunho e pausada) com o que o painel da equipe edita, e TODAS as zonas (inclusive as
+-- desligadas). Só a equipe.
+create or replace function public.vagas_adm_cidades()
+returns json language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.e_admin() then return vagas_interno.erro('Sem permissão.'); end if;
+  return vagas_interno.ok(jsonb_build_object('cidades', coalesce((select jsonb_agg(jsonb_build_object(
+      'id', c.id, 'slug', c.slug, 'nome', c.nome, 'uf', c.uf, 'ibge', c.ibge, 'fuso', c.fuso, 'status', c.status, 'porte', c.porte,
+      'praca', (select x.slug from public.vagas_cidades x where x.id = c.praca_id),
+      'metaListaEspera', c.meta_lista_espera, 'ordem', c.ordem,
+      'zonas', coalesce((select jsonb_agg(jsonb_build_object('id', z.id, 'slug', z.slug, 'nome', z.nome, 'bairros', to_jsonb(z.bairros),
+                                   'ordem', z.ordem, 'ativa', z.ativa) order by z.ordem, z.nome)
+                           from public.vagas_zonas z where z.cidade_id = c.id), '[]'::jsonb),
+      'operadoresAtivos', (select count(*)::int from public.vagas_operadores o where o.cidade_id = c.id and o.ativo))
+      order by c.ordem, c.nome)
+    from public.vagas_cidades c), '[]'::jsonb)));
+end;
+$$;
+
+-- Operadores e moderadores (só a equipe). Filtro {cidade?}. E-mail da conta de operação (a equipe convidou), cidade, papel,
+-- ativo, repasse, versão do contrato, situação da conta (pendente = ainda não confirmou o e-mail do convite; ativa; suspensa),
+-- quando ela aceitou o 1º acesso (contrato da operação) e o último ato registrado na moderação daquela cidade.
+create or replace function public.vagas_adm_operadores(p_filtro jsonb)
+returns json language plpgsql stable security definer set search_path = '' as $$
+declare
+  f jsonb := case when jsonb_typeof(p_filtro) = 'object' then p_filtro else '{}'::jsonb end;
+  v_slug text := lower(btrim(coalesce(disc_interno.texto(f -> 'cidade'), '')));
+begin
+  if not public.e_admin() then return vagas_interno.erro('Sem permissão.'); end if;
+  if v_slug <> '' and not exists (select 1 from public.vagas_cidades c where c.slug = v_slug) then
+    return vagas_interno.erro('Cidade não encontrada.');
+  end if;
+  return vagas_interno.ok(jsonb_build_object('operadores', coalesce((select jsonb_agg(jsonb_build_object(
+      'email', coalesce(lower(u.email), ''), 'cidade', jsonb_build_object('slug', c.slug, 'nome', c.nome),
+      'papel', o.papel, 'ativo', o.ativo, 'repassePercentual', o.repasse_percentual, 'contratoVersao', o.contrato_versao,
+      'contaStatus', case when k.status = 'suspensa' then 'suspensa' when u.email_confirmed_at is null then 'pendente' else 'ativa' end,
+      'contratoAceitoEm', disc_interno.iso(k.termos_aceitos_em),
+      'criadoEm', disc_interno.iso(o.criado_em),
+      'ultimoAto', (select jsonb_build_object('acao', m.acao, 'em', disc_interno.iso(m.em)) from public.vagas_moderacao m
+                     where m.ator = o.user_id and m.cidade_id = o.cidade_id order by m.em desc, m.id desc limit 1))
+      order by c.ordem, c.nome, o.ativo desc, o.papel, lower(u.email))
+    from public.vagas_operadores o
+    join public.vagas_cidades c on c.id = o.cidade_id
+    left join public.vagas_contas k on k.user_id = o.user_id
+    left join auth.users u on u.id = o.user_id
+   where v_slug = '' or c.slug = v_slug), '[]'::jsonb)));
+end;
+$$;
+
+-- Cadastros assistidos ainda PENDENTES (e-mail não confirmado) das cidades operadas — a lateral "Pendentes de confirmação" do
+-- cadastro assistido. Filtro {cidade?}. Operador(a) vê só os que ELE(A) criou; equipe vê todos. Moderador(a) não faz cadastro
+-- assistido. E-mail MASCARADO: a operação nunca lê contato de pessoa pela API; para mandar o link de novo, a tela pede o
+-- e-mail completo (ação "assistido" ou "reenviar" da vagas-conta). Só os últimos 30 dias, até 200, mais novos primeiro.
+create or replace function public.vagas_op_assistidos(p_filtro jsonb)
+returns json language plpgsql stable security definer set search_path = '' as $$
+declare
+  f jsonb := case when jsonb_typeof(p_filtro) = 'object' then p_filtro else '{}'::jsonb end;
+  v_cids uuid[];
+  v_admin boolean := public.e_admin();
+begin
+  if auth.uid() is null then return vagas_interno.erro('Sessão expirada. Entre de novo.', '{"sessaoExpirada": true}'); end if;
+  if cardinality(vagas_interno.cidades_operadas()) = 0 then return vagas_interno.erro('Sem permissão.'); end if;
+  select coalesce(array_agg(x), array[]::uuid[]) into v_cids from unnest(vagas_interno.cidades_do_filtro(f)) x
+   where vagas_interno.papel_cidade(x) in ('admin', 'operador');
+  if cardinality(v_cids) = 0 then return vagas_interno.erro('Sem permissão.'); end if;
+  return vagas_interno.ok(jsonb_build_object('contas', coalesce((select jsonb_agg(jsonb_build_object(
+      'email', vagas_interno.mascarar_email(u.email), 'tipo', y.tipo, 'cidade', y.slug, 'codigoEvento', y.codigo_evento,
+      'criadoEm', disc_interno.iso(y.criado_em)) order by y.criado_em desc)
+    from (select k.user_id, k.tipo, k.codigo_evento, k.criado_em, c.slug
+            from public.vagas_contas k join public.vagas_cidades c on c.id = k.assistida_cidade_id
+           where k.status = 'pendente' and k.assistida_por is not null and k.assistida_cidade_id = any (v_cids)
+             and k.tipo in ('pessoa', 'empresa') and k.criado_em > now() - interval '30 days'
+             and (v_admin or k.assistida_por = auth.uid())
+           order by k.criado_em desc limit 200) y
+    join auth.users u on u.id = y.user_id
+   where u.email_confirmed_at is null), '[]'::jsonb)));
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
 -- RLS e permissões do que é novo (o laço da 20261022 não pega o que nasceu depois dela)
 -- -----------------------------------------------------------------------------
 
@@ -1183,7 +1305,8 @@ declare
   f text;
   autenticadas text[] := array['public.vagas_op_indicadores(text)', 'public.vagas_equipe_empresa(uuid)', 'public.vagas_equipe_convite(text)',
     'public.vagas_equipe_convite_aceitar(text)', 'public.vagas_equipe_convite_cancelar(uuid)', 'public.vagas_equipe_remover(uuid, uuid)',
-    'public.vagas_adm_cidade_salvar(jsonb)', 'public.vagas_iniciar_tentativa(text)', 'public.vagas_pessoa_salvar(jsonb)'];
+    'public.vagas_adm_cidade_salvar(jsonb)', 'public.vagas_iniciar_tentativa(text)', 'public.vagas_pessoa_salvar(jsonb)',
+    'public.vagas_op_resumo()', 'public.vagas_adm_cidades()', 'public.vagas_adm_operadores(jsonb)', 'public.vagas_op_assistidos(jsonb)'];
   publicas text[] := array['public.vagas_lista_espera_entrar(jsonb)', 'public.vagas_lista_espera_sair(jsonb)'];
   servico text[] := array['public.vagas_conta_convite_equipe(uuid, uuid, text, text, text)'];
 begin
