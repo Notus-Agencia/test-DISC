@@ -1,0 +1,19 @@
+# GitHub Pages (Jekyll) do site do DISC: o que NÃO vira página pública em disc.gestaosemcaos.com.br.
+# O repositório é público, mas o site só precisa dos HTML da raiz, assets/ e js/. As pastas abaixo são
+# código, documentação e testes (e a pasta vagas/, que é outro site, publicado pelo Cloudflare Pages).
+exclude:
+  - vagas
+  - supabase
+  - tests
+  - test-results
+  - scripts
+  - docs
+  - conteudo
+  - apps-script
+  - dist
+  - node_modules
+  - package.json
+  - package-lock.json
+  - playwright.config.js
+  - README.md
+  - CLAUDE.md
