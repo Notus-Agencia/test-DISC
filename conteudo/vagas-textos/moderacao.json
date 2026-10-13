@@ -266,10 +266,10 @@
       "alvo": "referencia",
       "acao": "liberar",
       "titulo": "Referência revisada e enviada à pessoa",
-      "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi revisada e enviada para a pessoa aceitar. Avisamos quando ela decidir.",
+      "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi revisada e enviada para a pessoa. A decisão de mostrar ou não é só dela.",
       "correcao": "",
       "lei": "",
-      "frase_curta": "Revisada e enviada para a pessoa aceitar."
+      "frase_curta": "Revisada e enviada para a pessoa."
     },
     {
       "chave": "referencia_limite",

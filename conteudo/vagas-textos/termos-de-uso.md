@@ -21,7 +21,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 ## 1. O que é o Vagas sem Caos
 
-1.1. O Vagas sem Caos ("plataforma") é um mural de vagas de trabalho por cidade, no endereço `vagas.gestaosemcaos.com.br`. É mantido pela Gestão sem Caos ([razão social e CNPJ a preencher], "nós"), com sede em Boa Vista, Roraima.
+1.1. O Vagas sem Caos ("plataforma") é um mural de vagas de trabalho por cidade, no endereço `vagas.gestaosemcaos.com.br`. É mantido pela Gestão sem Caos ([razão social e CNPJ a preencher], "nós"), com sede em [REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos]. O mural funciona por cidade: cada cidade tem a sua página e só mostra vagas daquela cidade e do entorno.
 
 1.2. A plataforma **não é agência de emprego** nem intermediadora de mão de obra. Ela só mostra o anúncio da empresa para a pessoa e o interesse da pessoa para a empresa. Nós não selecionamos, não indicamos, não ordenamos pessoas do melhor para o pior e não participamos da decisão de contratar.
 
@@ -95,7 +95,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 6.3. **Referência profissional.** [REVISÃO JURÍDICA] Uma empresa com CNPJ conferido pode deixar, por um membro logado, uma referência profissional para uma pessoa que trabalhou nela: período, função, vínculo, até 3 pontos fortes de uma lista fechada, funções que recomenda e um texto curto opcional. Regras:
 - a referência é **sempre uma recomendação**. Não existe referência negativa, nota, estrela, média nem ordem do melhor para o pior. Quem não quer recomendar simplesmente não dá referência. O texto livre descreve uma situação de trabalho (o que a pessoa fez), não qualidades pessoais; texto com crítica, ressalva, ofensa, qualidade pessoal no lugar de fato, dado sensível, termo discriminatório ou contato é recusado na moderação;
 - a referência é **pública e leva o nome da empresa**. Referência confidencial não existe;
-- a referência **só aparece depois que a pessoa aceita**. Até lá, só ela vê. A pessoa pode ocultar ou excluir a qualquer momento, sem dar motivo; a empresa é avisada;
+- a referência **só aparece depois que a pessoa aceita**. Até lá, só ela vê. A pessoa pode ocultar ou excluir a qualquer momento, sem dar motivo, e a empresa que deixou a referência não é avisada nem consegue saber se ela foi aceita, recusada, ocultada ou excluída;
 - antes do Combinou, a empresa que vê o cartão cego enxerga só "Referência de empresa verificada: sim", sem o nome da empresa, sem os pontos fortes e sem o texto. A referência completa aparece depois do Combinou ou no perfil público, se a pessoa ligar essa opção;
 - a empresa **declara que a pessoa trabalhou nela no período informado** e responde pela veracidade. Referência falsa leva à remoção e à suspensão da empresa;
 - limites: uma referência por empresa por pessoa, com teto mensal por empresa, só para pessoa com conta. A pessoa pode pedir referência a uma empresa; a empresa decide se dá;
@@ -195,7 +195,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 16.1. Estes termos seguem a lei brasileira, em especial a LGPD (Lei 13.709/2018), o Marco Civil da Internet (Lei 12.965/2014), o Código de Defesa do Consumidor (Lei 8.078/1990), a Lei 9.029/1995 e a CLT.
 
-16.2. Fica escolhido o foro da comarca de **Boa Vista, Roraima**, para qualquer questão, salvo o direito da pessoa consumidora de usar o foro do seu domicílio.
+16.2. Fica escolhido o foro da comarca de **[REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos]** para qualquer questão, salvo o direito da pessoa consumidora de usar o foro do seu domicílio.
 
 ## 17. Contato
 
