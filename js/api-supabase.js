@@ -59,6 +59,15 @@
  *     status, modelo, url?}} · listarRelatoriosModelo(token, {empresaId?, pessoaId?}) -> {relatorios:[…]}
  *   excluirRelatorioModelo(token, id) -> {id}. relatorioPublico devolve também o "modelo".
  *   abrirRelatorioModelo(token, id) -> {relatorio: {id, token, modelo, status, empresaId, pessoaId, titulo, url?, dados}}.
+ * Versão técnica (equipe e "Como liderar"; migração 20261019120000_versao_tecnica.sql; regra em js/versao-tecnica.js):
+ *   relatorioPublico pelo link de sempre: versão do dono (o banco tira a distância natural × cargo e marca restrito: true);
+ *   pelo link técnico: {ok, modelo, versao:'tecnica', relatorio (completo), leituraTecnica:{nome, crp}, publicadoEm}.
+ *   relatorioTecnico(token, id) -> {tecnica:{status:'publicado'|'despublicado'|'', token, url?, nome, crp, publicadoEm},
+ *     historico:[{acao:'gerada'|'despublicada', nome, crp, por, em}]} (banco sem a migração: {semMigracao:true, tecnica: null,
+ *     historico: []}) · gerarRelatorioTecnico(token, id, {nome, crp}) -> {tecnica, historico} (função do banco
+ *     gerar_relatorio_tecnico: só admin; valida nome e CRP "RR/NNNNN"; novo token técnico, o anterior para de abrir;
+ *     registra no histórico) · despublicarRelatorioTecnico(token, id) -> {tecnica, historico} (só o link técnico para).
+ *   salvarRelatorioModelo nunca grava leituraTecnica/restrito no snapshot.
  *   relatorioEnviarEmail(token, relatorioToken, {para, nome?, mensagem?}) -> {para, enviadoEm, assunto, por} (Edge Function
  *     "admin", ação relatorio.enviarEmail; só relatório publicado; 30 envios/h por admin; sem RESEND_API_KEY ->
  *     {ok:false, erro:'O envio por e-mail ainda não está configurado (veja Conexões).', naoConfigurado:true}).
@@ -217,9 +226,10 @@
     { nome: '20261014120000_stripe', descricao: 'Stripe (pagamento dentro do site)' },
     { nome: '20261015120000_minimo_cobranca', descricao: 'preço mínimo de R$ 0,50 em cupons e pacotes conferido no banco' },
     { nome: '20261016120000_envios_email', descricao: 'histórico de envios por e-mail' },
-    { nome: '20261017120000_clima', descricao: 'Pesquisa de Clima da Equipe (rodadas, respostas anônimas e relatório)' }
+    { nome: '20261017120000_clima', descricao: 'Pesquisa de Clima da Equipe (rodadas, respostas anônimas e relatório)' },
+    { nome: '20261019120000_versao_tecnica', descricao: 'versão técnica dos relatórios de equipe e "Como liderar" (leitura por psicólogo(a), com CRP)' }
   ];
-  var VERSAO_ATUAL = 20261017120000;
+  var VERSAO_ATUAL = 20261019120000;
   var MSG_PRIMEIRO_ACESSO = 'Com o Supabase não há chave de primeiro acesso: crie o seu usuário no painel do Supabase ' +
     '(Authentication > Users > Add user) e entre com esse e-mail e senha. O primeiro login vira administrador.';
   var MSG_REDEFINIR = 'Com o Supabase cada pessoa cria a própria senha nova pelo "Esqueci minha senha", na tela de entrada.';
@@ -1310,6 +1320,8 @@
       if (json.length > MAX_DADOS_RELATORIO) throw recusa(MSG_REL_GRANDE);
       snap = JSON.parse(json);
       snap.modelo = modelo;
+      delete snap.leituraTecnica; // a leitura técnica vem só do link técnico (nunca do snapshot)
+      delete snap.restrito;
       var linha = { modelo: modelo, empresa_id: empresaId || null, pessoa_id: pessoaId || null, dados: snap };
       if (dados.publicar === true) linha.status = 'publicado';
       else if (dados.publicar === false || !id) linha.status = 'rascunho';
@@ -1324,6 +1336,36 @@
         if (r.url) saida.url = r.url;
         return { ok: true, relatorio: saida };
       });
+    }
+
+    // ---- versão técnica (equipe e "Como liderar"; migração 20261019120000_versao_tecnica.sql) ----
+    function versaoTecnicaMod() {
+      if (root && root.DISC_VERSAO_TECNICA) return root.DISC_VERSAO_TECNICA;
+      if (typeof require === 'function') { try { return require('./versao-tecnica.js'); } catch (e) { /* ausente */ } }
+      return null;
+    }
+    function tecnicaDaRpc(t) {
+      t = t && typeof t === 'object' ? t : {};
+      var x = { status: t.status === 'publicado' || t.status === 'despublicado' ? t.status : '', token: String(t.token || ''),
+        nome: String(t.nome || ''), crp: String(t.crp || ''), publicadoEm: iso(t.publicadoEm) };
+      if (x.status === 'publicado' && x.token) x.url = urlRelatorio(x.token);
+      return x;
+    }
+    function respostaTecnica(r) {
+      var h = (Array.isArray(r.historico) ? r.historico : []).filter(function (x) { return x && typeof x === 'object'; }).map(function (x) {
+        return { acao: x.acao === 'despublicada' ? 'despublicada' : 'gerada', nome: String(x.nome || ''), crp: String(x.crp || ''),
+          por: String(x.por || ''), em: iso(x.em) };
+      });
+      return { ok: true, tecnica: tecnicaDaRpc(r.tecnica), historico: h };
+    }
+    function relatorioTecnicoRpc(token, idBruto, funcao, extra) {
+      exigirToken(token);
+      exigir(idBruto, 'Relatório não informado.');
+      var id = idValido(idBruto);
+      return exigirSessao(token).then(function () {
+        if (!id) throw recusa('Relatório não encontrado.');
+        return rpcOk(funcao, Object.assign({ p_relatorio: id }, extra || {}));
+      }).then(respostaTecnica);
     }
 
     // ---- Pesquisa de clima ----
@@ -1383,7 +1425,13 @@
       relatorioPublico: seguro(function (relatorioToken) {
         exigir(relatorioToken, MSG_REL_NAO_ENCONTRADO);
         return rpcOk('relatorio_publico', { p_token: String(relatorioToken) }).then(function (r) {
-          return { ok: true, modelo: MODELOS_RELATORIO.indexOf(r.modelo) >= 0 ? r.modelo : 'processo', relatorio: r.relatorio, publicadoEm: r.publicadoEm || '' };
+          var x = { ok: true, modelo: MODELOS_RELATORIO.indexOf(r.modelo) >= 0 ? r.modelo : 'processo', relatorio: r.relatorio, publicadoEm: r.publicadoEm || '' };
+          // Link técnico: o banco manda versao 'tecnica' e quem vai ler (fora do snapshot).
+          if (r.versao === 'tecnica' && r.leituraTecnica && typeof r.leituraTecnica === 'object') {
+            x.versao = 'tecnica';
+            x.leituraTecnica = { nome: String(r.leituraTecnica.nome || ''), crp: String(r.leituraTecnica.crp || '') };
+          }
+          return x;
         });
       }),
       // --- venda direta (B2C): públicas ---
@@ -1964,6 +2012,27 @@
           return { ok: true, relatorio: r };
         });
       }),
+      // Versão técnica: tudo pelas funções do banco (só admin; elas registram o histórico).
+      relatorioTecnico: seguro(function (token, idBruto) {
+        return relatorioTecnicoRpc(token, idBruto, 'relatorio_tecnico').catch(function (e) {
+          if (e && e.bancoDesatualizado) return { ok: true, semMigracao: true, tecnica: null, historico: [] };
+          throw e;
+        });
+      }),
+      gerarRelatorioTecnico: seguro(function (token, idBruto, leitor) {
+        var l = leitor && typeof leitor === 'object' ? leitor : {};
+        var VT = versaoTecnicaMod();
+        var nome = String(l.nome == null ? '' : l.nome), crp = String(l.crp == null ? '' : l.crp);
+        if (VT) {
+          var v = VT.validarLeitor(l);
+          if (!v.ok) throw recusa(v.erro);
+          nome = v.nome; crp = v.crp;
+        }
+        return relatorioTecnicoRpc(token, idBruto, 'gerar_relatorio_tecnico', { p_nome: nome, p_crp: crp });
+      }),
+      despublicarRelatorioTecnico: seguro(function (token, idBruto) {
+        return relatorioTecnicoRpc(token, idBruto, 'despublicar_relatorio_tecnico');
+      }),
 
       // --- avaliações (nome antigo dos processos) ---
       listarAvaliacoes: seguro(function (token) {
@@ -2305,6 +2374,7 @@
     'relatorioMelhorarTextos', 'relatorioPublico', 'relatorioEnviarEmail', 'listarEnviosEmail',
     'listarEquipe', 'salvarColaborador', 'moverColaborador', 'desligarColaborador', 'salvarRelacoes',
     'salvarRelatorioModelo', 'listarRelatoriosModelo', 'excluirRelatorioModelo', 'abrirRelatorioModelo', 'salvarMinhaFoto', 'removerFoto',
+    'relatorioTecnico', 'gerarRelatorioTecnico', 'despublicarRelatorioTecnico',
     'moverResposta', 'contratarPessoa', 'versaoBanco',
     'pacotesPublicos', 'enviarPessoal', 'resumoPessoal', 'criarPedido', 'iniciarPagamento', 'statusPedido', 'relatorioPessoal',
     'salvarParte2Pessoal', 'recuperarAcesso', 'enviarLinkPorEmail', 'confirmarRetorno',

@@ -37,7 +37,8 @@
  *   Pública:   relatorioPublico(relatorioToken) -> {relatorio} (só relatório publicado)
  *   Só Supabase (aqui rejeitam com "Disponível só com o servidor Supabase."): listarEquipe, salvarColaborador,
  *              moverColaborador, desligarColaborador, salvarRelacoes, salvarRelatorioModelo, listarRelatoriosModelo,
- *              excluirRelatorioModelo, salvarMinhaFoto, removerFoto, moverResposta, contratarPessoa, versaoBanco
+ *              excluirRelatorioModelo, salvarMinhaFoto, removerFoto, moverResposta, contratarPessoa, versaoBanco,
+ *              relatorioTecnico, gerarRelatorioTecnico, despublicarRelatorioTecnico (versão técnica)
  *              (contrato em js/api-supabase.js e docs/SPEC.md).
  *   Venda direta (só Supabase; aqui também "Disponível só com o servidor Supabase."): pacotesPublicos, enviarPessoal,
  *              resumoPessoal, criarPedido, iniciarPagamento, statusPedido, relatorioPessoal, salvarParte2Pessoal,
@@ -310,6 +311,9 @@
     listarRelatoriosModelo: soSupabase,
     excluirRelatorioModelo: soSupabase,
     abrirRelatorioModelo: soSupabase,
+    relatorioTecnico: soSupabase,
+    gerarRelatorioTecnico: soSupabase,
+    despublicarRelatorioTecnico: soSupabase,
     salvarMinhaFoto: soSupabase,
     removerFoto: soSupabase,
     moverResposta: soSupabase,
@@ -370,6 +374,7 @@
     'relatorioMelhorarTextos', 'relatorioPublico', 'relatorioEnviarEmail', 'listarEnviosEmail',
     'listarEquipe', 'salvarColaborador', 'moverColaborador', 'desligarColaborador', 'salvarRelacoes',
     'salvarRelatorioModelo', 'listarRelatoriosModelo', 'excluirRelatorioModelo', 'abrirRelatorioModelo', 'salvarMinhaFoto', 'removerFoto',
+    'relatorioTecnico', 'gerarRelatorioTecnico', 'despublicarRelatorioTecnico',
     'moverResposta', 'contratarPessoa', 'versaoBanco',
     'pacotesPublicos', 'enviarPessoal', 'resumoPessoal', 'criarPedido', 'iniciarPagamento', 'statusPedido', 'relatorioPessoal',
     'salvarParte2Pessoal', 'recuperarAcesso', 'enviarLinkPorEmail', 'confirmarRetorno',

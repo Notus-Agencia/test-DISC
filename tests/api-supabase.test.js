@@ -1007,22 +1007,25 @@ test('topoIds: salvarRelacoes manda p_opcoes só quando vem topoIds; listarEquip
 });
 
 test('versaoBanco: com a função devolve versão e faltando; sem ela sonda tabelas/colunas (banco antigo)', async () => {
-  const atual = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261017120000, migracoes: [], faltando: [] }, error: null }) } });
-  assert.deepEqual(await atual.api.versaoBanco(), { ok: true, versao: 20261017120000, faltando: [] });
-  assert.equal(SB.VERSAO_ATUAL, 20261017120000);
-  assert.deepEqual(SB.MIGRACOES.map((m) => m.nome.slice(0, 8)), ['20261005', '20261006', '20261007', '20261008', '20261009', '20261010', '20261011', '20261012', '20261013', '20261014', '20261015', '20261016', '20261017']);
+  const atual = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261019120000, migracoes: [], faltando: [] }, error: null }) } });
+  assert.deepEqual(await atual.api.versaoBanco(), { ok: true, versao: 20261019120000, faltando: [] });
+  assert.equal(SB.VERSAO_ATUAL, 20261019120000);
+  assert.deepEqual(SB.MIGRACOES.map((m) => m.nome.slice(0, 8)), ['20261005', '20261006', '20261007', '20261008', '20261009', '20261010', '20261011', '20261012', '20261013', '20261014', '20261015', '20261016', '20261017', '20261019']);
+  // Com a 20261017 mas sem a 20261019 (versão técnica dos relatórios).
+  const semTecnica = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261017120000, migracoes: [], faltando: [] }, error: null }) } });
+  assert.deepEqual(await semTecnica.api.versaoBanco(), { ok: true, versao: 20261017120000, faltando: ['20261019120000_versao_tecnica'] });
   // Com a 20261016 mas sem a 20261017 (pesquisa de clima).
   const semClima = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261016120000, migracoes: [], faltando: [] }, error: null }) } });
-  assert.deepEqual(await semClima.api.versaoBanco(), { ok: true, versao: 20261016120000, faltando: ['20261017120000_clima'] });
+  assert.deepEqual(await semClima.api.versaoBanco(), { ok: true, versao: 20261016120000, faltando: ['20261017120000_clima', '20261019120000_versao_tecnica'] });
   // Com a 20261015 mas sem a 20261016 (histórico de envios por e-mail).
   const semEnvios = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261015120000, migracoes: [], faltando: [] }, error: null }) } });
-  assert.deepEqual(await semEnvios.api.versaoBanco(), { ok: true, versao: 20261015120000, faltando: ['20261016120000_envios_email', '20261017120000_clima'] });
+  assert.deepEqual(await semEnvios.api.versaoBanco(), { ok: true, versao: 20261015120000, faltando: ['20261016120000_envios_email', '20261017120000_clima', '20261019120000_versao_tecnica'] });
   // Com a 20261013 mas sem a 20261014 (Stripe): a função antiga responde a versão dela.
   const semStripe = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261013120000, migracoes: [], faltando: [] }, error: null }) } });
-  assert.deepEqual(await semStripe.api.versaoBanco(), { ok: true, versao: 20261013120000, faltando: ['20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email', '20261017120000_clima'] });
+  assert.deepEqual(await semStripe.api.versaoBanco(), { ok: true, versao: 20261013120000, faltando: ['20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email', '20261017120000_clima', '20261019120000_versao_tecnica'] });
   // Com a 20261014 mas sem a 20261015 (mínimo de cobrança no banco).
   const semMinimo = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261014120000, migracoes: [], faltando: [] }, error: null }) } });
-  assert.deepEqual(await semMinimo.api.versaoBanco(), { ok: true, versao: 20261014120000, faltando: ['20261015120000_minimo_cobranca', '20261016120000_envios_email', '20261017120000_clima'] });
+  assert.deepEqual(await semMinimo.api.versaoBanco(), { ok: true, versao: 20261014120000, faltando: ['20261015120000_minimo_cobranca', '20261016120000_envios_email', '20261017120000_clima', '20261019120000_versao_tecnica'] });
   assert.ok(fs.existsSync(path.join(__dirname, '..', 'supabase', 'migrations', SB.MIGRACOES[7].nome + '.sql')));
   SB.MIGRACOES.forEach((m) => assert.ok(fs.existsSync(path.join(__dirname, '..', 'supabase', 'migrations', m.nome + '.sql')), m.nome));
 
@@ -1032,7 +1035,7 @@ test('versaoBanco: com a função devolve versão e faltando; sem ela sonda tabe
   assert.deepEqual(v, { ok: true, versao: 20261007120000, semFuncao: true,
     faltando: ['20261008120000_parte2', '20261009120000_fotos', '20261010120000_mover_versao', '20261011120000_vendas',
       '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email',
-      '20261017120000_clima'] });
+      '20261017120000_clima', '20261019120000_versao_tecnica'] });
   const sondas = velho.e.chamadas.filter((c) => c.tabela && c.tabela !== 'admins' && c.op === 'select');
   assert.deepEqual(sondas.map((c) => c.tabela + '.' + c.colunas),
     ['pessoas.id', 'empresas.id', 'respostas.exigido', 'respostas.foto', 'respostas.historico_processos', 'pedidos.id',
@@ -1044,14 +1047,14 @@ test('versaoBanco: com a função devolve versão e faltando; sem ela sonda tabe
   // Com a 20261009 aplicada mas sem a 20261010: só ela falta.
   const quase = await logado({ faltando: ['respostas.historico_processos', 'pedidos'] });
   assert.deepEqual(await quase.api.versaoBanco(), { ok: true, versao: 20261009120000, semFuncao: true,
-    faltando: ['20261010120000_mover_versao', '20261011120000_vendas', '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email', '20261017120000_clima'] });
+    faltando: ['20261010120000_mover_versao', '20261011120000_vendas', '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email', '20261017120000_clima', '20261019120000_versao_tecnica'] });
   // Com a função versao_banco (20261010) mas sem a 20261011: a função antiga responde a versão dela.
   const semVendas = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261010120000, migracoes: [], faltando: [] }, error: null }) } });
   assert.deepEqual(await semVendas.api.versaoBanco(), { ok: true, versao: 20261010120000,
-    faltando: ['20261011120000_vendas', '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email', '20261017120000_clima'] });
+    faltando: ['20261011120000_vendas', '20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email', '20261017120000_clima', '20261019120000_versao_tecnica'] });
   // Com a 20261011 mas sem a 20261012 (InfinitePay).
   const semIP = await logado({ rpc: { versao_banco: () => ({ data: { ok: true, versao: 20261011120000, migracoes: [], faltando: [] }, error: null }) } });
-  assert.deepEqual(await semIP.api.versaoBanco(), { ok: true, versao: 20261011120000, faltando: ['20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email', '20261017120000_clima'] });
+  assert.deepEqual(await semIP.api.versaoBanco(), { ok: true, versao: 20261011120000, faltando: ['20261012120000_infinitepay', '20261013120000_conexoes', '20261014120000_stripe', '20261015120000_minimo_cobranca', '20261016120000_envios_email', '20261017120000_clima', '20261019120000_versao_tecnica'] });
   // Sem rede: mensagem de conexão.
   quase.e.falhaRede = true;
   await assert.rejects(quase.api.versaoBanco(), /Não foi possível conectar/);
