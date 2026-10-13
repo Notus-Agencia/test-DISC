@@ -107,8 +107,11 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
 - **Conta** `pendente` (criada, e-mail não confirmado) → `ativa` (no 1º uso depois de confirmar) | `suspensa`.
   Guarda `termos_versao` + `termos_aceitos_em` (histórico em `vagas_consentimentos`). **O consentimento só é gravado quando a
   conta passa de pendente a ativa (o clique no link)**: antes disso só a versão fica anotada, sem data e sem linha de
-  consentimento. Enquanto pendente e sem e-mail confirmado, um novo `cadastrar` do mesmo e-mail pode trocar o `tipo` (quem
-  tem o e-mail decide; ninguém "reserva" o e-mail de outra pessoa com o tipo errado); confirmada, o tipo não muda mais.
+  consentimento. Enquanto pendente, sem e-mail confirmado e "solta" (cadastro aberto: sem `assistida_por`, sem vínculo em
+  `vagas_empresa_membros` nem `vagas_operadores`), um novo `cadastrar` do mesmo e-mail pode trocar o `tipo` (quem tem o
+  e-mail decide; ninguém "reserva" o e-mail de outra pessoa com o tipo errado). Conta assistida, dona pendente de empresa ou
+  convite de operação pendente: o tipo NÃO muda (senão quem soubesse o e-mail derrubaria o vínculo e as vagas da empresa);
+  a Function mantém o tipo, reenvia o link e responde a mesma frase neutra. Confirmada, o tipo não muda mais.
   Conta assistida (criada pelo operador) nasce sem `termos_versao`: a pessoa aceita no 1º acesso (`vagas_aceitar_termos`).
 - **Empresa** `em_analise` (cadastrada pela própria empresa) → `ativa` (= CNPJ conferido pela operação; "verificada") |
   `suspensa`. Cadastrada pelo operador já nasce `ativa`. A operação pode **recusar** o cadastro: continua `em_analise`, com
@@ -365,7 +368,7 @@ ignorada (nada de nota, selo, referência, idade, sexo). "3 parecidas" (vaga for
 Vaga confidencial: `empresa = {"nome":"Empresa confidencial","iniciais":"","confidencial":true,"conferida":true}`.
 Diária: `"diaria":{"data":"2026-10-14","inicio":"07:00","fim":"16:00"}`, `"paraHoje":true|false`.
 Erros: `Cidade não encontrada.` (`naoEncontrada`) · `Ainda não chegamos a esta cidade. Entre na lista de espera.`
-(`listaEspera`, `interessados`) · `As vagas desta cidade estão pausadas no momento.` (`pausada`).
+(`listaEspera`, `interessados` aproximado como em `vagas_cidades_publicas`) · `As vagas desta cidade estão pausadas no momento.` (`pausada`).
 
 #### `vagas_anuncio_publico(p_codigo)` — `VAGAS_API.anuncio('K7M2QX')`
 Resumo acima + `descricao`, `requisitos` (lista: `cnh_a|cnh_b|cnh_d|curso_registro|disponibilidade|outro`), `requisitoOutro`,
@@ -784,7 +787,7 @@ função confere). Corpo `{acao, ...}`; resposta sempre HTTP 200 com `{ok, ...}`
 | `cadastrar` (`cadastrar({email, tipo, nome?, termosVersao?, captcha?})`) | `{acao:'cadastrar', email, tipo:'pessoa'|'empresa', nome?, termosVersao, captcha?}` — **sem senha** | sempre `{ok:true, enviado:true, mensagem:'Se este e-mail puder ser usado, você vai receber um link em instantes. Confira também a caixa de spam.', email:'a***@e***.com'}` |
 | `reenviar` (`reenviarConfirmacao(email, captcha?)`) | `{acao:'reenviar', email}` | a mesma resposta neutra |
 | `esqueci` (`esqueciSenha(email, captcha?)`) | `{acao:'esqueci', email}` | a mesma resposta neutra (nunca mexe em conta do painel DISC) |
-| `assistido` (`cadastroAssistido({...})`, JWT de operador da cidade ou equipe) | `{email, tipo, cidade, empresaId?, nome?, codigoEvento?}` | `{ok:true, enviado:true, email}` · `Este e-mail já tem conta. A pessoa pode entrar ou usar "Esqueci minha senha".` (`existe`) |
+| `assistido` (`cadastroAssistido({...})`, JWT de operador da cidade ou equipe) | `{email, tipo, cidade, empresaId?, nome?, codigoEvento?}` (`empresaId` só de empresa SEM membro ativo) | `{ok:true, enviado:true, email}` · `Este e-mail já tem conta. A pessoa pode entrar ou usar "Esqueci minha senha".` (`existe`) · `Esta empresa já tem acesso. Peça a quem é dono(a) para convidar pelo painel da empresa.` · `Empresa não encontrada.` |
 | `operador` (`convidarOperador({...})`, JWT da equipe) | `{email, cidade, papel, cidadeNome?}` | `{ok:true, enviado:true, email}` ou `{ok:true, existente:true}` · `Este e-mail já tem outra conta. Use um e-mail só para a operação.` |
 | `excluir` (`excluirConta()`, JWT) | `{confirmar:'EXCLUIR'}` | `{ok:true, excluida:true}` (apaga também a foto) · `Para excluir, digite EXCLUIR.` · `Esta conta também acessa o painel DISC. Fale com a Gestão sem Caos para excluir.` · `Conta não encontrada.` |
 | `foto` (`fotoUrl(candidaturaId?)`, JWT) | `{candidatura?}` | `{ok:true, url:'<URL assinada de 5 min>', expiraEm}` · erros de `vagas_conta_foto` (§8.9) |

@@ -364,3 +364,33 @@ test('correções da revisão na prévia: lista de espera (contador aproximado, 
   assert.ok(eu.conta.termosAceitosEm);
   assert.deepEqual(st.consentimentos.filter((x) => x.userId === u.id).map((x) => x.tipo), ['termos', 'privacidade']);
 });
+
+test('reverificação na prévia: assistido só em empresa sem membro; conta assistida não troca de tipo; lista pública com contador aproximado', async () => {
+  const b = novo();
+  const st = b.estado();
+  await entrar(b, 'operador@previa.com');
+  await erro(b.conta.cadastroAssistido({ email: 'intrusa@exemplo.com', tipo: 'empresa', cidade: 'boa-vista-rr', empresaId: st.empresas[0].id }),
+    'Esta empresa já tem acesso. Peça a quem é dono(a) para convidar pelo painel da empresa.');
+  assert.ok(!st.usuarios.some((u) => u.email === 'intrusa@exemplo.com'), 'nenhuma conta criada pela metade');
+  let cnpj = '';
+  for (let d = 0; d <= 99 && !cnpj; d++) { const t = 'PV0000000099' + ('0' + d).slice(-2); if (R.cnpjValido(t)) cnpj = t; }
+  const nova = (await ok(b.rpc('vagas_op_empresa_cadastrar', { p_dados: { cnpj, razaoSocial: 'Assistida Ltda (prévia)', cidade: 'boa-vista-rr' } }))).empresa;
+  await ok(b.conta.cadastroAssistido({ email: 'dona-assistida@exemplo.com', tipo: 'empresa', cidade: 'boa-vista-rr', empresaId: nova.id }));
+  const vaga = (await ok(b.rpc('vagas_op_anuncio_salvar', { p_dados: { empresaId: nova.id, area: 'atendimento', funcao: 'Balconista', modalidade: 'clt', turno: 'manha',
+    experiencia: 'nao_precisa', salarioDe: 162100, descricao: 'Atendimento no balcão e organização da loja, com escala combinada.', publicar: true } }))).anuncio;
+  assert.equal(vaga.status, 'publicado');
+  await ok(b.conta.sair());
+  // Quem souber o e-mail da dona pendente tenta "cadastrar" como pessoa: resposta neutra, tipo e vínculo ficam, vaga continua no ar.
+  const r = await ok(b.conta.cadastrar({ email: 'dona-assistida@exemplo.com', tipo: 'pessoa', termosVersao: R.VERSAO_TERMOS }));
+  assert.match(r.linkPrevia, /type=invite/);
+  const dona = st.usuarios.find((u) => u.email === 'dona-assistida@exemplo.com');
+  assert.equal(st.contas[dona.id].tipo, 'empresa');
+  assert.ok(st.membros.some((m) => m.userId === dona.id && m.empresaId === nova.id && m.ativo));
+  assert.equal(st.anuncios.find((a) => a.id === vaga.id).status, 'publicado');
+  // Lista pública de cidade em espera: o contador aproximado não muda ao entrar.
+  const antes = await erro(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'rorainopolis-rr' } }), R.MSG.CIDADE_FECHADA);
+  await ok(b.rpc('vagas_lista_espera_entrar', { p_dados: { cidade: 'rorainopolis-rr', email: 'sobra@exemplo.com' } }));
+  const depois = await erro(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'rorainopolis-rr' } }), R.MSG.CIDADE_FECHADA);
+  assert.equal(depois.interessados, antes.interessados);
+  assert.equal(depois.interessados % 10, 0);
+});

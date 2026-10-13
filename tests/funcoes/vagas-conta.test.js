@@ -40,9 +40,10 @@ function preparar(op) {
     async registrar(userId, dados) {
       if (op.registroFalha) return { ok: false, erro: 'Empresa não encontrada.' };
       if (contas[userId] && contas[userId].tipo !== dados.tipo) {
-        // Como o banco: conta pendente com e-mail não confirmado troca de tipo; confirmada, não.
+        // Como o banco: só conta pendente "solta" (não assistida, sem vínculo) com e-mail não confirmado troca de tipo.
         const u = usuarios.find((x) => x.id === userId);
-        if (!((contas[userId].status || 'pendente') === 'pendente' && !(u && u.confirmada))) return { ok: false, erro: 'Este e-mail já tem uma conta de outro tipo.' };
+        const solta = (contas[userId].status || 'pendente') === 'pendente' && !(u && u.confirmada) && !contas[userId].assistidaPor;
+        if (!solta) return { ok: false, erro: 'Este e-mail já tem uma conta de outro tipo.' };
       }
       contas[userId] = Object.assign({ status: 'pendente' }, contas[userId] || {}, dados);
       if (dados.operador) operadores[userId] = [{ cidade: dados.operador.cidade, papel: dados.operador.papel }];
@@ -174,6 +175,15 @@ test('cadastrar: conta pendente "pré-registrada" por outro com o tipo errado tr
   assert.deepEqual((await chamar(w.base, { acao: 'cadastrar', email: 'confirmada@x.com', tipo: 'pessoa', termosVersao: '2026-10-13' })).json, NEUTRA('confirmada@x.com'));
   assert.equal(w.contas.c1.tipo, 'empresa');
   assert.equal(w.apps.length, 1);
+  // Conta assistida pendente (dona de empresa, convite de operação): o banco recusa a troca; o tipo fica, o link vai de novo
+  // e a resposta é a MESMA neutra (nunca erro interno, nada revela o vínculo).
+  const a = preparar({ usuarios: [{ id: 'a', email: 'assistida@x.com', confirmada: false, app: { produto: 'vagas', tipo: 'empresa' },
+    conta: { tipo: 'empresa', status: 'pendente', assistidaPor: 'op' } }] });
+  assert.deepEqual((await chamar(a.base, { acao: 'cadastrar', email: 'assistida@x.com', tipo: 'pessoa', termosVersao: '2026-10-13' })).json, NEUTRA('assistida@x.com'));
+  assert.equal(a.contas.a.tipo, 'empresa', 'o vínculo da conta assistida fica');
+  assert.deepEqual(a.apps, [], 'app_metadata intacto');
+  assert.deepEqual(a.links, [{ tipo: 'invite', email: 'assistida@x.com' }], 'o link vai de novo');
+  assert.equal(a.enviados.length, 1);
 });
 
 test('cadastrar: validações, e-mail não configurado, captcha (Turnstile) e limite por origem', async () => {

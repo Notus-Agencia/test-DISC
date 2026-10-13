@@ -681,10 +681,13 @@ async function acaoVagasCadastrar(base, corpo, origem) {
   } else if (c.produto === 'vagas' || c.conta) {
     if (!c.confirmada) {
       // Conta pendente (ninguém confirmou o e-mail ainda): quem tem o e-mail decide o tipo. Se um terceiro "pré-registrou"
-      // o e-mail com outro tipo, o banco troca (vagas_conta_registrar) e o app_metadata acompanha.
+      // o e-mail com outro tipo, o banco troca (vagas_conta_registrar) e o app_metadata acompanha. O banco recusa a troca
+      // em conta assistida, com vínculo de empresa ou convite de operação: aí o tipo fica e o link vai de novo, com a
+      // MESMA resposta neutra (nada revela que o e-mail tem vínculo).
       const reg = await base.db.registrar(c.userId, { tipo, termosVersao: versao });
-      if (!reg || reg.ok !== true) throw new Error('registro da conta falhou');
-      if (c.conta && c.conta.tipo !== tipo && base.auth.atualizarApp) await base.auth.atualizarApp(c.userId, { produto: 'vagas', tipo });
+      if (reg && reg.ok === true && c.conta && c.conta.tipo !== tipo && base.auth.atualizarApp) {
+        await base.auth.atualizarApp(c.userId, { produto: 'vagas', tipo });
+      }
       const l = await linkConfirmacaoVagas(base, email);
       await enviarEmailVagas(base, email, 'confirmar', { nome, url: linkVagas(base.env, l.hash, l.tipo) });
     } else {
