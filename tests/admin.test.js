@@ -521,7 +521,7 @@ test('Parte 2: formulario.parte2 normalizado e validado; padrão ao criar segue 
   assert.equal(AD.validarConfig(Object.assign({}, base, { formulario: { campos: base.formulario.campos, perguntas: [], parte2: 'ligada' } })), '');
   assert.equal(AD.validarConfig(Object.assign({}, base, { formulario: { campos: base.formulario.campos, perguntas: [], parte2: 'sim' } })),
     'Escolha se a segunda parte do teste fica ligada ou desligada.');
-  assert.equal(AD.parte2Padrao('equipe'), 'ligada');
+  assert.equal(AD.parte2Padrao('equipe'), 'desligada'); // decisão do dono (13/10): ligar só com Relatório da pessoa ou leitura técnica
   assert.equal(AD.parte2Padrao('selecao'), 'desligada');
   assert.match(AD.textoParte2('ligada'), /10/);
 });
@@ -1464,20 +1464,21 @@ test('o que a pessoa vai responder: passos, tempos e total iguais ao teste (10 /
 test('parte 2: recomendação conforme o propósito e aviso só quando a escolha é outra', () => {
   assert.equal(AD.recomendacaoParte2(''), null);
   assert.equal(AD.recomendacaoParte2('selecao').parte2, 'desligada');
-  assert.equal(AD.recomendacaoParte2('equipe').parte2, 'ligada');
+  assert.equal(AD.recomendacaoParte2('equipe').parte2, 'desligada');
   assert.match(AD.recomendacaoParte2('selecao').titulo, /só a parte 1/);
-  assert.match(AD.recomendacaoParte2('equipe').titulo, /partes 1 e 2/);
+  assert.match(AD.recomendacaoParte2('equipe').titulo, /só a parte 1, a menos que você vá entregar mais/);
   assert.match(AD.recomendacaoParte2('selecao').porque, /recrutador/);
+  assert.match(AD.recomendacaoParte2('equipe').porque, /Relatório da pessoa/);
   assert.match(AD.recomendacaoParte2('equipe').porque, /psicólogo\(a\)/);
   assert.equal(AD.avisoParte2('selecao', 'desligada'), '');
-  assert.equal(AD.avisoParte2('equipe', 'ligada'), '');
+  assert.equal(AD.avisoParte2('equipe', 'desligada'), '');
   assert.equal(AD.avisoParte2('', 'ligada'), '');
   assert.match(AD.avisoParte2('selecao', 'ligada'), /^Diferente do recomendado: o teste passa a levar cerca de 15 minutos/);
-  assert.match(AD.avisoParte2('equipe', 'desligada'), /^Diferente do recomendado: sem a parte 2/);
+  assert.match(AD.avisoParte2('equipe', 'ligada'), /^Parte 2 ligada: faz sentido se você for entregar o Relatório da pessoa/);
   // Textos do propósito e da recomendação: marca certa, sem promessa (painel científico) e sem gênero na pessoa
   const textos = [AD.PROPOSITOS.selecao, AD.PROPOSITOS.equipe].map((p) => Object.values(p).join(' '))
     .concat(['selecao', 'equipe'].map((t) => AD.recomendacaoParte2(t).titulo + ' ' + AD.recomendacaoParte2(t).porque))
-    .concat([AD.avisoParte2('selecao', 'ligada'), AD.avisoParte2('equipe', 'desligada')]).join(' ');
+    .concat([AD.avisoParte2('selecao', 'ligada'), AD.avisoParte2('equipe', 'ligada')]).join(' ');
   assert.doesNotMatch(textos, /Notus|garant|comprovad|diagnóstic/i);
   assert.equal(AD.PROPOSITOS.selecao.titulo, 'Selecionar candidatos para uma vaga');
   assert.equal(AD.PROPOSITOS.equipe.titulo, 'Conhecer a equipe de uma empresa');

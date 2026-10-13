@@ -617,13 +617,13 @@ test.describe('Admin com API (servidor simulado por page.route)', () => {
     await escolher(page, '#proc-campo-email', 'obrigatorio');
     await escolher(page, '#proc-campo-cidade', 'opcional');
 
-    // Segunda parte do teste: pílula desligada para seleção; ao CRIAR segue o tipo (equipe liga) até alguém mexer nela
+    // Segunda parte do teste: pílula desligada ao CRIAR, em seleção e em equipe (decisão do dono, 13/10)
     const p2 = page.locator('#proc-parte2');
     await expect(p2).toHaveAttribute('role', 'switch');
     await expect(p2).toHaveAttribute('aria-checked', 'false');
     await escolher(page, '#proc-tipo', 'equipe');
-    await expect(p2).toHaveAttribute('aria-checked', 'true');
-    await expect(page.locator('#proc-parte2-nota')).toContainText('10');
+    await expect(p2).toHaveAttribute('aria-checked', 'false');
+    await expect(page.locator('#proc-parte2-nota')).toContainText('25');
     await escolher(page, '#proc-tipo', 'selecao');
     await expect(p2).toHaveAttribute('aria-checked', 'false');
     await p2.click();
@@ -2949,7 +2949,7 @@ test.describe('Processo: para que é o link e o que a pessoa vai responder (pré
     await expect(page.locator('#proc-parte2-recomendacao')).toHaveText('A recomendação depende do propósito: escolha acima para que é este link.');
     await expect(page.locator('#proc-so-selecao')).toBeVisible();
 
-    // Equipe: escolhe a empresa, a parte 2 liga (padrão ao criar), a pontuação da seleção recolhe e o quadro muda
+    // Equipe: escolhe a empresa, a parte 2 continua desligada (padrão ao criar), a pontuação da seleção recolhe e o quadro muda
     await page.locator('#proc-tipo-lista [data-valor="equipe"]').click();
     await expect(page.locator('#proc-tipo')).toHaveAttribute('value', 'equipe');
     await expect(page.locator('#proc-tipo-texto')).toHaveText('Escolhido: Avaliação de equipe');
@@ -2959,7 +2959,7 @@ test.describe('Processo: para que é o link e o que a pessoa vai responder (pré
     await expect(page.locator('#proc-equipe-texto')).toContainText('Escolha a empresa cadastrada');
     await escolherBusca(page, 'proc-empresa-id', 'Clínica Exemplo');
     await expect(page.locator('#proc-equipe-texto')).toContainText('cadastro da empresa Clínica Exemplo');
-    await expect(page.locator('#proc-parte2')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('#proc-parte2')).toHaveAttribute('aria-checked', 'false');
     await expect(page.locator('#proc-selecao-nota')).toBeVisible();
     await expect(page.locator('#proc-selecao-nota')).toContainText('não se aplica à avaliação de equipe');
     await expect(page.locator('#proc-so-selecao')).toBeHidden();
@@ -2967,11 +2967,13 @@ test.describe('Processo: para que é o link e o que a pessoa vai responder (pré
     await expect(page.locator('#proc-contratante')).toBeHidden();
     await expect(page.locator('#proc-campo-funcao-rotulo')).toHaveText('Cargo/função');
     await expect(page.locator('#proc-perguntas-texto')).toContainText('cadastro da empresa');
-    await expect(quadro(page)).toHaveAttribute('data-minutos', '15');
-    await expect(page.locator('#proc-resposta-total')).toHaveText('cerca de 15 min');
-    await expect(page.locator('#proc-resposta-parte2')).toHaveAttribute('data-parte2', 'ligada');
+    await expect(quadro(page)).toHaveAttribute('data-minutos', '10');
+    await expect(page.locator('#proc-resposta-total')).toHaveText('cerca de 10 min');
+    await expect(page.locator('#proc-resposta-parte2')).toHaveAttribute('data-parte2', 'desligada');
     await expect(page.locator('#proc-resposta [data-passo]')).toHaveCount(4);
-    await expect(page.locator('#proc-resposta [data-passo] .resposta-passo__num')).toHaveText(['1', '2', '3', '4']);
+    await expect(page.locator('#proc-resposta [data-passo] .resposta-passo__num')).toHaveText(['1', '2', '', '3']);
+    await expect(page.locator('#proc-parte2-recomendacao')).toContainText('Recomendado para equipe: só a parte 1, a menos que você vá entregar mais.');
+    await expect(page.locator('#proc-parte2-contra')).toBeHidden();
     await expect(page.locator('#proc-resposta [data-passo="dados"]')).toContainText('compartilhado com a empresa');
     await expect(page.locator('#proc-resposta [data-passo="dados"] li')).toHaveText(['Nome completo', 'WhatsApp', 'Idade', 'Cargo/função (opcional)', 'Empresa atual ou última (opcional)', 'Foto (opcional)']);
     await expect(page.locator('#proc-resposta [data-passo="dados"]')).toContainText('Não perguntamos: E-mail, Cidade onde mora.');
@@ -2993,7 +2995,7 @@ test.describe('Processo: para que é o link e o que a pessoa vai responder (pré
     await expect(page.locator('#proc-resposta [data-passo="fim"] .resposta-passo__resultado')).toHaveAttribute('data-mostra', 'sim');
     await expect(page.locator('#proc-resposta [data-passo="fim"]')).toContainText('Vê o próprio relatório DISC na tela');
 
-    // Seleção: volta tudo, o quadro pede a vaga pretendida (opcional) e a parte 2 (não tocada) desliga
+    // Seleção: volta tudo, o quadro pede a vaga pretendida (opcional) e a parte 2 (não tocada) continua desligada
     await page.locator('#proc-tipo-lista [data-valor="selecao"]').click();
     await expect(page.locator('#proc-tipo')).toHaveAttribute('value', 'selecao');
     await expect(page.locator('#proc-empresa-id-rotulo')).toHaveText('Empresa cadastrada (opcional)');
@@ -3053,17 +3055,19 @@ test.describe('Processo: para que é o link e o que a pessoa vai responder (pré
     await expect(quadro(page)).toHaveAttribute('data-minutos', '15');
     await expect(page.locator('#btn-salvar-processo')).toBeEnabled();
 
-    // Equipe: recomendado partes 1 e 2 (a escolha feita à mão fica); tocar no lado "parte 1" desliga
+    // Equipe: recomendado só a parte 1 (ligar só com Relatório da pessoa ou leitura técnica); a escolha feita à mão fica
     await page.locator('#proc-tipo-lista [data-valor="equipe"]').click();
     await expect(p2).toHaveAttribute('aria-checked', 'true');
-    await expect(page.locator('#proc-parte2-recomendacao')).toContainText('Recomendado para equipe: partes 1 e 2.');
+    await expect(page.locator('#proc-parte2-recomendacao')).toContainText('Recomendado para equipe: só a parte 1, a menos que você vá entregar mais.');
+    await expect(page.locator('#proc-parte2-recomendacao')).toContainText('Relatório da pessoa');
     await expect(page.locator('#proc-parte2-recomendacao')).toContainText('psicólogo(a)');
-    await expect(page.locator('.parte2-opcao[data-lado="ligada"] .parte2-opcao__selo')).toBeVisible();
-    await expect(page.locator('#proc-parte2-contra')).toBeHidden();
+    await expect(page.locator('.parte2-opcao[data-lado="desligada"] .parte2-opcao__selo')).toBeVisible();
+    await expect(page.locator('.parte2-opcao[data-lado="ligada"] .parte2-opcao__selo')).toBeHidden();
+    await expect(page.locator('#proc-parte2-contra')).toContainText('Parte 2 ligada: faz sentido se você for entregar o Relatório da pessoa');
     await page.locator('.parte2-opcao[data-lado="desligada"]').click();
     await expect(p2).toHaveAttribute('aria-checked', 'false');
     await expect(page.locator('#proc-parte2-nota')).toHaveText('Desligada: a pessoa responde só os 25 grupos, pensando em como ela é.');
-    await expect(page.locator('#proc-parte2-contra')).toContainText('sem a parte 2, o relatório da equipe e o "Como liderar" ficam sem a distância');
+    await expect(page.locator('#proc-parte2-contra')).toBeHidden();
     await expect(page.locator('#proc-resposta-parte2')).toHaveAttribute('data-parte2', 'desligada');
     await expect(page.locator('#proc-resposta-parte2')).toContainText('Não faz parte deste link.');
     expect(erros).toEqual([]);

@@ -524,8 +524,10 @@
   var FAIXAS_ESFORCO = { baixa: 'Esforço baixo', moderada: 'Esforço moderado', alta: 'Esforço alto', muito_alta: 'Esforço muito alto' };
   var CLASSE_ESFORCO = { baixa: 'selo--verde', moderada: '', alta: 'selo--laranja', muito_alta: 'selo--vermelho' };
 
-  // Ao CRIAR: ligada para avaliação de equipe, desligada para seleção. Ao editar, o valor salvo manda (não muda sozinho).
-  function parte2Padrao(tipo) { return tipo === 'equipe' ? 'ligada' : 'desligada'; }
+  // Ao CRIAR: desligada nos dois propósitos (decisão do dono, 13/10): a versão do dono dos relatórios não mostra nada da
+  // parte 2, então ela só vale quando houver Relatório da pessoa para cada colaborador ou leitura técnica. Ao editar, o
+  // valor salvo manda (não muda sozinho). Quem chama ainda passa o tipo; hoje ele não muda o padrão.
+  function parte2Padrao() { return 'desligada'; }
 
   function textoParte2(parte2) {
     return parte2 === 'ligada'
@@ -564,9 +566,10 @@
           'os 5 minutos a mais aumentam a desistência e a comparação entre o natural e o que o cargo pede é leitura técnica, que não entra no relatório do processo.' };
     }
     if (tipo === 'equipe') {
-      return { parte2: 'ligada', titulo: 'Recomendado para equipe: partes 1 e 2.',
-        porque: 'A pessoa conhece o próprio trabalho, e a distância entre o jeito natural e o que o cargo pede orienta conversas de desenvolvimento ' +
-          '(lida na versão técnica do relatório, por psicólogo(a)).' };
+      return { parte2: 'desligada', titulo: 'Recomendado para equipe: só a parte 1, a menos que você vá entregar mais.',
+        porque: 'O relatório da equipe e o "Como liderar" que o dono recebe não mostram nada da parte 2. Ligue só se for entregar o Relatório da pessoa ' +
+          'a cada colaborador (com o esforço de adaptação e um plano de 90 dias) ou se um(a) psicólogo(a) for ler a versão técnica. ' +
+          'Sem essas entregas, são 5 minutos a mais para algo que ninguém da empresa lê.' };
     }
     return null;
   }
@@ -578,7 +581,7 @@
     if (!r || r.parte2 === p2) return '';
     return tipo === 'selecao'
       ? 'Diferente do recomendado: o teste passa a levar cerca de ' + minutosTeste('ligada') + ' minutos, e a parte 2 aparece só no detalhe de cada pessoa aqui no painel.'
-      : 'Diferente do recomendado: sem a parte 2, o relatório da equipe e o "Como liderar" ficam sem a distância entre o jeito natural e o que o cargo pede.';
+      : 'Parte 2 ligada: faz sentido se você for entregar o Relatório da pessoa a cada colaborador ou tiver leitura técnica por psicólogo(a), que é onde ela aparece.';
   }
 
   // Campos da identificação como a pessoa vê, na ordem da tela do teste (js/app.js, telaIdentificacao):
