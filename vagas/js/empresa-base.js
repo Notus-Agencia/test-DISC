@@ -76,7 +76,8 @@
       usuario: e ? { nome: nome || e.nomeFantasia, papel: nome ? e.nomeFantasia : (e.papel === 'dono' ? 'Dono(a)' : 'Recrutador(a)') } : null });
     var antigo = root.document.getElementById('vg-menu');
     var principal = root.document.querySelector('main');
-    if (antigo) antigo.parentNode.replaceChild(aside, antigo);
+    // Redesenho: troca só o conteúdo do mesmo <aside> (a gaveta guarda os ouvintes nele).
+    if (antigo) { U.trocar(antigo, Array.prototype.slice.call(aside.childNodes)); aside = antigo; }
     else principal.parentNode.insertBefore(aside, principal);
     if (!gavetaLigada) { U.ligarGaveta({ botao: 'vg-menu-abrir', menu: 'vg-menu' }); gavetaLigada = true; }
     if (op.atual) U.marcarMenu(op.atual);
@@ -101,6 +102,8 @@
   // motivo para corrigir. Suspensa: faixa fixa e tudo só leitura (docs/VAGAS-TELAS.md §3.1).
   function faixas() {
     U.tirarFaixa('vg-faixa-empresa');
+    U.tirarFaixa('vg-faixa-suspensa');
+    root.document.body.classList.remove('vg-so-leitura');
     var e = ctx.empresa;
     if (!e) return;
     var m = motivo(e.statusMotivo, { empresa_nome: e.nomeFantasia, cnpj: e.cnpjFormatado });

@@ -33,7 +33,13 @@
   }
   function telaInicio(raiz) {
     U.carregando(raiz);
-    return E.vagas.anuncios().then(function (lista) {
+    // O início relê a empresa: a situação (em análise, liberada, suspensa) e os números do menu mudam pela operação.
+    return E.carregar().then(function () {
+      E.menu({ atual: 'inicio' });
+      E.faixas();
+      E.contarConversas();
+      return E.vagas.anuncios();
+    }).then(function (lista) {
       var soma = function (k) { return lista.reduce(function (s, a) { return s + ((a.candidaturas && a.candidaturas[k]) || 0); }, 0); };
       var noAr = lista.filter(function (a) { return a.noAr; }).length;
       var revisao = lista.filter(function (a) { return a.status === 'em_revisao'; }).length;
