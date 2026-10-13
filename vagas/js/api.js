@@ -169,8 +169,19 @@
     return { tokenHash: String(p.token_hash), tipo: tipo };
   }
 
+  // localStorage -> sessionStorage -> memória (a sessão abre mesmo em navegador que bloqueia o armazenamento; na memória ela dura
+  // só enquanto a página estiver aberta). Cada chamada tem a sua memória: dois clientes não se misturam.
   function armazenamentoPadrao() {
-    try { return root.localStorage || null; } catch (e) { return null; }
+    var nomes = ['localStorage', 'sessionStorage'];
+    for (var i = 0; i < nomes.length; i++) {
+      try {
+        var s = root[nomes[i]];
+        if (s) { s.setItem('vagas.__teste', '1'); s.removeItem('vagas.__teste'); return s; }
+      } catch (e) { /* bloqueado: tenta o próximo */ }
+    }
+    var m = {};
+    return { getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },
+      setItem: function (k, v) { m[k] = String(v); }, removeItem: function (k) { delete m[k]; } };
   }
   function lerJson(arm, chave) {
     try { var t = arm && arm.getItem(chave); return t ? JSON.parse(t) : null; } catch (e) { return null; }

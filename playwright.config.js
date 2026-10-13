@@ -42,7 +42,9 @@ module.exports = defineConfig({
   },
   projects: [
     { name: 'celular', use: { ...devices['Pixel 5'] }, testMatch: /candidato.*\.spec\.js$/ },
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /candidato.*\.spec\.js$/ }
+    // Vagas sem Caos: telas de quem procura vaga no celular (Pixel 5, 393 px); os demais vagas-*.spec.js rodam no desktop.
+    { name: 'vagas-celular', use: { ...devices['Pixel 5'] }, testMatch: /vagas-pessoa.*\.spec\.js$/ },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: [/candidato.*\.spec\.js$/, /vagas-pessoa.*\.spec\.js$/] }
   ],
   webServer: {
     command: 'node tests/e2e/server.js',
