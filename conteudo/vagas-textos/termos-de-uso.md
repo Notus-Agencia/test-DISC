@@ -63,6 +63,8 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 4.6. A pessoa se compromete a dar informações verdadeiras sobre a própria experiência, escolaridade e disponibilidade. Dados falsos podem levar à suspensão da conta.
 
+4.7. **Foto (opcional).** [REVISÃO JURÍDICA] A pessoa pode, se quiser, enviar uma foto do rosto, com um aceite separado. A foto **nunca aparece no cartão cego, na busca do banco de talentos nem no perfil público**: só a empresa com quem a pessoa combinou de conversar a vê, para aquela vaga, enquanto a conversa estiver aberta. Sem foto, nada muda na candidatura: nenhuma vaga pode exigir foto e a empresa não pode usá-la para decidir. A foto passa por conferência (só o rosto da própria pessoa; sem outras pessoas, documento, texto ou conteúdo impróprio) e pode ser removida a qualquer hora, o que apaga o arquivo. Essa regra existe porque uma foto permite inferir cor, religião ou saúde, e mostrá-la antes do Combinou abriria caminho para discriminação (Lei 9.029/1995).
+
 ## 5. Como funciona para a empresa
 
 5.1. A empresa cadastra o CNPJ e a pessoa responsável. O operador confere o CNPJ antes de a empresa publicar. As primeiras 3 vagas de cada empresa passam por revisão antes de ir ao ar.
@@ -83,7 +85,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 ## 6. Cartão cego e vaga confidencial
 
-6.1. **Cartão cego.** Até o Combinou, a empresa vê só: zona da cidade, experiência (função e tempo), escolaridade, turnos, CNH, pretensão salarial e selos (testes de conhecimento prático da função). **Não vê** nome, foto, idade, gênero, estado civil, nacionalidade, endereço nem contato. Esses campos nem existem na plataforma (seção 8).
+6.1. **Cartão cego.** Até o Combinou, a empresa vê só: zona da cidade, experiência (função e tempo), escolaridade, turnos, CNH, pretensão salarial e selos (testes de conhecimento prático da função). **Não vê** nome, foto, idade, gênero, estado civil, nacionalidade, endereço nem contato. A foto é opcional e só aparece depois do Combinou (seção 4.7); os outros campos nem existem na plataforma (seção 8).
 
 6.2. **Vaga confidencial.** A empresa pode publicar sem mostrar o nome. Regras:
 - só empresa com CNPJ conferido pelo operador;

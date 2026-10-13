@@ -131,7 +131,7 @@ test('moderacao.json: motivos por alvo, com texto para a empresa e orientação'
   assert.equal(new Set(chaves).size, chaves.length);
   for (const k of ['anuncio_discriminatorio', 'anuncio_sem_valor', 'anuncio_cobranca', 'anuncio_falso', 'anuncio_denuncias', 'empresa_cnpj_nao_confere', 'empresa_suspensa_golpe', 'mensagem_pedido_dinheiro', 'mensagem_pedido_documento']) assert.ok(chaves.includes(k), k);
   for (const x of m.motivos) {
-    assert.ok(['anuncio', 'empresa', 'mensagem', 'denuncia', 'referencia'].includes(x.alvo), x.chave);
+    assert.ok(['anuncio', 'empresa', 'mensagem', 'denuncia', 'referencia', 'foto'].includes(x.alvo), x.chave);
     assert.equal(typeof x.texto_empresa, 'string');
     if (!['publicar', 'reativar', 'arquivar', 'acatar', 'liberar'].includes(x.acao)) assert.ok(x.correcao.length > 20, x.chave + ' precisa de orientação de correção');
   }
@@ -200,9 +200,21 @@ test('termos e privacidade cobrem os pontos obrigatórios', () => {
   for (const re of [/não é agência de emprego/, /6\.019\/1974/, /grátis para a pessoa, para sempre/, /sem renovação automática|Nenhum extra renova sozinho/, /9\.029\/1995/, /373-A/, /LC 150\/2015/, /Boa Vista, Roraima/, /operador de dados/, /Resumo em 10 linhas/]) assert.match(termos, re);
   const priv = ler('aviso-de-privacidade.md');
   for (const re of [/art\. 7º, V/, /consentimento específico, com prazo/, /24 meses/, /Supabase/, /Resend/, /Cloudflare/, /Stripe/, /InfinitePay/, /"Meus dados"/, /Encarregad[oa]\(a\) de dados/, /18 anos/, /Resumo em 10 linhas/, /art\. 20/]) assert.match(priv, re);
-  const naoColeta = ['idade', 'gênero', 'estado civil', 'filhos', 'gravidez', 'cor', 'religião', 'foto', 'nacionalidade', 'saúde', 'antecedentes'];
+  const naoColeta = ['idade', 'gênero', 'estado civil', 'filhos', 'gravidez', 'cor', 'religião', 'nacionalidade', 'saúde', 'antecedentes'];
   const secao = priv.split('### 2.4.')[1].split('## 3.')[0];
   for (const d of naoColeta) assert.ok(secao.toLowerCase().includes(d), 'não coletamos: ' + d);
+  // Foto: opcional, aceite separado, só depois do Combinou, nunca no cartão cego.
+  assert.match(secao, /foto, que é opcional/);
+  assert.match(priv, /\*\*Foto \(opcional\):\*\* \[REVISÃO JURÍDICA\]/);
+  assert.match(termos, /4\.7\. \*\*Foto \(opcional\)\.\*\* \[REVISÃO JURÍDICA\]/);
+  const av = json('avisos.json');
+  assert.equal(av.foto.explicacao, 'A empresa só vê sua foto depois que vocês combinarem de conversar. Sem foto não muda nada na sua candidatura.');
+  for (const k of ['removida', 'recusada_moderacao', 'quem_ve']) assert.equal(typeof av.foto[k], 'string', 'foto.' + k);
+  assert.match(av.avisos.cartao_cego, /sem foto/);
+  const fotoAceite = json('consentimentos.json').aceites.find((a) => a.chave === 'foto_opcional');
+  assert.ok(fotoAceite && fotoAceite.obrigatorio === false && /remover/i.test(fotoAceite.texto) && fotoAceite.texto.length < 200, 'aceite foto_opcional curto e opcional');
+  const fotoMod = json('moderacao.json').motivos.find((x) => x.chave === 'foto_indevida');
+  assert.ok(fotoMod && fotoMod.alvo === 'foto' && fotoMod.correcao.length > 20);
   // O resumo de 10 linhas tem exatamente 10 itens numerados.
   for (const t of [termos, priv]) {
     const resumo = t.split('## Resumo em 10 linhas')[1].split('---')[0];

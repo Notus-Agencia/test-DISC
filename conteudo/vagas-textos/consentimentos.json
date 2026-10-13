@@ -181,6 +181,17 @@
       "explicacao": "[REVISÃO JURÍDICA] Quem descumprir responde pessoalmente (LGPD, art. 42 e 43; Código Civil, art. 186). Vale durante o mutirão e depois dele.",
       "obrigatorio": true,
       "base_legal": "LGPD art. 39 e 42; dever de sigilo contratual"
+    },
+    {
+      "chave": "foto_opcional",
+      "versao": "2026-10-13",
+      "quem": "pessoa",
+      "quando": "ao enviar uma foto no currículo (tela própria, separada dos outros aceites; nunca marcada por padrão)",
+      "titulo": "Mostrar minha foto depois do Combinou",
+      "texto": "Autorizo mostrar a minha foto só às empresas com quem eu combinar de conversar. Posso remover a foto a qualquer hora.",
+      "explicacao": "A foto é opcional. Ela nunca aparece no cartão cego, na busca do banco nem no perfil público: só depois do Combinou, para aquela empresa. Sem foto, nada muda na sua candidatura. Remover a foto apaga o arquivo na hora; apagar a conta também apaga. [REVISÃO JURÍDICA]",
+      "obrigatorio": false,
+      "base_legal": "LGPD art. 7º, I e art. 8º (consentimento específico, destacado e revogável); art. 11 por inferência (a foto pode revelar cor, religião ou saúde), por isso nunca antes do Combinou (Lei 9.029/1995)"
     }
   ]
 }

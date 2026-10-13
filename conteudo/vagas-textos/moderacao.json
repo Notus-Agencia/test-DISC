@@ -289,6 +289,16 @@
       "texto_empresa": "Obrigado por denunciar. Confirmamos o problema: a vaga saiu do ar e a empresa foi suspensa. Se você mandou dinheiro ou documento, registre um boletim de ocorrência (pode ser online) e, se quiser, fale com a gente para orientação. Quem foi denunciado não sabe quem denunciou.",
       "correcao": "",
       "lei": "termos de uso, seção 10.5; protocolo de golpe em docs/VAGAS-OPERACAO.md"
+    },
+    {
+      "chave": "foto_indevida",
+      "alvo": "foto",
+      "acao": "recusar",
+      "titulo": "Foto não aceita",
+      "texto_empresa": "Sua foto não foi aceita ({{detalhe}}). A foto precisa ser sua, do rosto, sem outras pessoas, sem documento, sem texto, sem símbolo e sem conteúdo impróprio.",
+      "correcao": "Envie outra foto ou siga sem foto: nada muda na sua candidatura. Foto é opcional e só aparece depois do Combinou.",
+      "lei": "LGPD art. 11 (inferência de dado sensível); Lei 9.029/1995; termos de uso, seção 4.7",
+      "frase_curta": "Foto não aceita: precisa ser sua, do rosto, sem outras pessoas, documento ou texto."
     }
   ]
 }
