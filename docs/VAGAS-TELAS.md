@@ -2,7 +2,7 @@
 
 Fonte da verdade para quem vai codificar as telas da onda 2. Base: `scratchpad/vagas/proposta.md` (aprovada), `produto.md`,
 `marca.md`, a mesa de equipe (`EQUIPE.md`: contrato de RPCs da fundação, padrão obrigatório da psicologia, acréscimo da
-referência profissional) e `docs/IDENTIDADE-VISUAL.md`. Mockups estáticos (HTML + PNG, dados fictícios de Boa Vista) em
+referência profissional) e `docs/IDENTIDADE-VISUAL.md`. Mockups estáticos (HTML + PNG, dados fictícios; a cidade é sempre dado, nunca texto fixo) em
 `scratchpad/vagas/telas/` (`pessoa-*.png` a 390 px; `empresa-*`, `operador-*`, `painel-*` a 1280 px); o gerador está em
 `scratchpad/vagas/telas-src/` e a proposta de `vagas/assets/vagas.css` na seção 9.
 
@@ -52,7 +52,7 @@ Regras que valem para TODAS as telas (não repetidas em cada uma):
 | Arquivo (em `vagas/`) | Rota pública | Quem | Dispositivo | Carrega |
 |---|---|---|---|---|
 | `index.html` | `/` | todos | celular | escolha/lembrança da cidade (`vg.cidade` no aparelho) → redireciona para `/<cidade>/` |
-| `cidade.html` | `/boa-vista-rr/` (rewrite em `_redirects`) | pessoa, anônimo | celular | lista pública + filtros; estados espera/pausada |
+| `cidade.html` | `/<slug-da-cidade>/`, ex.: `/uruacu-go/` (rewrite em `_redirects`) | pessoa, anônimo | celular | lista pública + filtros; estados espera/pausada |
 | `vaga.html` | `/v/K7M2QX` (Pages Function monta o HTML da prévia; abre sem JS) | pessoa, anônimo | celular | página da vaga + Quero/Pular |
 | `entrar.html` | `/entrar.html?token_hash=…&type=…` | pessoa e empresa | celular/computador | entrar, criar conta, esqueci, confirmação (verifyOtp por fetch) |
 | `eu.html` | `#curriculo/1…5`, `#candidaturas`, `#conversa/<id>`, `#quem-viu`, `#dados`, `#referencias`, `#referencia/pedir`, `#referencia/<id>` | pessoa logada | celular | área da pessoa |
@@ -78,14 +78,14 @@ Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `v
 - **Objetivo:** ver as vagas de hoje da cidade e filtrar em 1 toque; entender que é grátis e seguro.
 - **Quem/estado:** anônimo ou logado (logado ganha `.vg-nav`). Cidade lembrada em `localStorage` (`vg.cidade`), sem GPS.
 - **Elementos:** `topo` (logo, "Vagas sem Caos", `#vg-cidade` → janela `#vg-janela-cidade` com a lista de `vagas_cidades_publicas()`:
-  ativas clicáveis, lista de espera com "Avise-me", pausadas com etiqueta); `.sobretitulo` "Boa Vista e região"; `h1#vg-titulo`
+  ativas clicáveis, lista de espera com "Avise-me", pausadas com etiqueta); `.sobretitulo` com o nome da cidade vindo do banco (e "e região" só se houver entorno); `h1#vg-titulo`
   "Vagas de hoje"; subtítulo "Empresas daqui, conferidas uma a uma. Candidatar-se é grátis, sempre."; busca `#vg-busca`
   (`type="search"`, placeholder "Buscar por função (ex.: caixa, vendedor)", envia ao parar de digitar 400 ms; busca no título da
   função e no nome da área, nunca no texto livre); **barra de filtros resumida** `#vg-filtros-barra` (pedido do dono, "igual à
   Catho"): botão `#vg-abrir-filtros` "Filtrar" (azul-escuro, com a contagem de filtros ativos em `.vg-chip__n`; abre a folha
   2.1a) + `#vg-filtros-ativos` (chips roláveis do que está ativo, cada um com "✕" e `data-filtro`/`data-valor` para tirar em 1 toque:
   "Vendas em loja ✕", "Caixa ✕", "Comercial ✕", "a partir de R$ 1.600 ✕"); `#vg-contagem` ("12 vagas nas suas áreas" ou "37 vagas em
-  Boa Vista" + `#vg-limpar-filtros`); `ul#vg-lista` de `.vg-vaga` (com o nome da área na linha de meta); `#vg-mais` "Ver mais N vagas";
+  <cidade>" + `#vg-limpar-filtros`); `ul#vg-lista` de `.vg-vaga` (com o nome da área na linha de meta); `#vg-mais` "Ver mais N vagas";
   nota "Você recebe aviso por e-mail quando entra vaga nova em <áreas> · Mudar minhas áreas"; `#vg-aviso-golpe`; rodapé.
 - **Padrão ao abrir:** pessoa logada com áreas no currículo → a lista já abre filtrada nas suas áreas (até 3) e o aviso de vaga nova
   por e-mail segue as mesmas áreas; anônimo → sem filtro, cidade lembrada. Filtros ficam salvos no aparelho (`vg.filtros.<cidade>`) e na
@@ -102,7 +102,7 @@ Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `v
   - **Turno** `#vg-filtro-turno` (Manhã, Tarde, Noite, Comercial, Escala, A combinar; várias);
   - **Salário a partir de** `#vg-filtro-salario` (campo numérico em reais; ajuda "Vagas com faixa contam pelo valor mais alto. Diária:
     valor do dia × 22."; erro "Digite só o número, como 1600");
-  - **Zona** `#vg-filtro-zona` (Todas + zonas da `vagas_zonas`; uma) + `#vg-filtro-entorno` "Incluir Mucajaí e Cantá";
+  - **Zona** `#vg-filtro-zona` (Todas + zonas da `vagas_zonas`; uma) + `#vg-filtro-entorno` "Incluir <cidades do entorno>" (só aparece se a praça tiver entorno);
   - **Mais**: `#vg-filtro-sem-experiencia` "Aceita sem experiência" (= vaga com `experiencia = nao_precisa`), `#vg-filtro-hoje` "Para
     hoje (diárias e bicos de hoje e amanhã)".
 - Barra fixa `#vg-barra-filtros`: dica "Os filtros ficam salvos neste celular." + `#vg-filtros-fechar` + `#vg-filtros-aplicar` **"Ver N
@@ -127,23 +127,23 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
 - **Não aparece:** nome da empresa confidencial; foto; "Tinder"; contagem de candidatos (evita corrida); nota de selo exigida.
 
 ### 2.2 Cidade em lista de espera — `pessoa-espera.png`
-- `section#vg-espera.caixa--vidro`: "Ainda não chegamos aqui" + "Estamos reunindo empresas de Rorainópolis…" + total
+- `section#vg-espera.caixa--vidro`: "Ainda não chegamos aqui" + "Estamos reunindo empresas de <cidade>…" + total
   ("112 pessoas já pediram", só o número é público); `form#vg-form-espera`: `#vg-espera-email` (obrigatório; erro "Digite um e-mail
   válido, como nome@exemplo.com"), `#vg-espera-pessoa|empresa` (rádio em pílulas), `#vg-espera-enviar` "Me avise quando abrir"
-  (laranja). Sucesso: substitui o formulário por `.aviso--ok` "Pronto. A gente avisa por e-mail quando Rorainópolis abrir."
+  (laranja). Sucesso: substitui o formulário por `.aviso--ok` "Pronto. A gente avisa por e-mail quando <cidade> abrir."
   Limite por e-mail: 2ª tentativa mostra o mesmo sucesso (resposta neutra). RPC `vagas_lista_espera_entrar`.
-- Card "Enquanto isso": link para Boa Vista e para os testes (o selo vale em qualquer cidade).
+- Card "Enquanto isso": link para a cidade ativa mais próxima (se houver) e para os testes (o selo vale em qualquer cidade).
 
 ### 2.3 Cidade pausada — `pessoa-pausada.png`
 - `#vg-faixa-cidade` (azul-escuro, âmbar no destaque): "Caracaraí está em pausa. As vagas e os cadastros desta cidade ficam
-  guardados e voltam quando a praça reabrir." + `#vg-vazio-cidade` com "Ver vagas de Boa Vista" e "Fazer um teste".
+  guardados e voltam quando a praça reabrir." + `#vg-vazio-cidade` com "Ver vagas de <cidade ativa>" e "Fazer um teste".
   Pessoa logada da cidade pausada entra normalmente em `eu.html` (dados preservados); `vaga.html` de vaga pausada mostra
   "Esta vaga não está no ar" + 3 vagas parecidas.
 
 ### 2.4 Página da vaga (`vaga.html`) — `pessoa-vaga.png`, `pessoa-vaga-enviada.png`
 - **Objetivo:** decidir em uma tela: "Quero" ou "Pular". Abre sem JS (HTML montado pela Pages Function) com os botões que, sem JS,
   levam para `entrar.html?voltar=/v/K7M2QX`.
-- **Elementos:** `#vg-voltar` ("Vagas de Boa Vista"); `article#vg-vaga` (`data-anuncio`, `data-codigo`): etiquetas
+- **Elementos:** `#vg-voltar` ("Vagas de <cidade>"); `article#vg-vaga` (`data-anuncio`, `data-codigo`): etiquetas
   (modalidade, "Pede selo: <teste>", "Urgente hoje", "Destaque", "Para hoje"), `h1#vg-vaga-titulo`, bloco da empresa
   (`.vg-iniciais` ou `--confidencial` com "?"; `#vg-vaga-empresa` = nome ou "Empresa confidencial"; `.vg-verificada` "Empresa
   verificada · CNPJ conferido pela Gestão sem Caos. O nome aparece se ela chamar você para conversar."), `#vg-vaga-valor`
@@ -170,7 +170,7 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   "Sem internet. Vamos enviar assim que voltar.").
 
 ### 2.5 Entrar, criar conta, esqueci, confirmação (`entrar.html`) — `pessoa-entrar.png`, `pessoa-esqueci.png`
-- **Moldura:** card `moldura-laranja` com `gsc-logo-preto.svg`, "Vagas sem Caos" e "Vagas de Boa Vista com habilidade testada.
+- **Moldura:** card `moldura-laranja` com `gsc-logo-preto.svg`, "Vagas sem Caos" e "Vagas da sua cidade com habilidade testada.
   Grátis para quem procura emprego." (no computador, metade laranja / metade azul-escura como o login do painel).
 - **Segmento `#vg-aba-entrar` / `#vg-aba-criar`.** Criar (`form#vg-form-criar`): `#vg-criar-nome` ("Como quer ser chamada(o)",
   obrigatório, 2–60 caracteres; erro "Escreva o seu nome"), `#vg-criar-email` (obrigatório; erro "Esse e-mail parece incompleto.
@@ -287,8 +287,8 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   `conversar` "Responder" (laranja; abre o convite), `combinou` "Combinou", `contratada` "Contratada", `agora_nao` "Encerrada"
   (não exibe "a empresa disse não"), `retirada` "Retirada", `recusada` "Você recusou". Toque: enviada → página da vaga com
   "Retirar candidatura" (confirmação na página); conversar → 2.10; combinou/contratada → conversa.
-- Nota "Enviada há mais de 7 dias sem resposta? A vaga pode ter sido preenchida…". Vazio: "Você ainda não se candidatou. As vagas de
-  Boa Vista estão a um toque." + botão. `.vg-nav` mostra `vg-nav__n` com convites a responder.
+- Nota "Enviada há mais de 7 dias sem resposta? A vaga pode ter sido preenchida…". Vazio: "Você ainda não se candidatou. As vagas
+  da sua cidade estão a um toque." + botão. `.vg-nav` mostra `vg-nav__n` com convites a responder.
 
 ### 2.10 Conversa: o convite e o Combinou (`eu.html#conversa/<id>`) — `pessoa-conversa-convite.png`, `pessoa-conversa.png`
 - **Momento 1 — convite (`#vg-convite`, status `conversar`):** sobretítulo = cargo; "A empresa quer conversar com você";
@@ -358,7 +358,7 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
 ## 3. Telas da empresa (computador, 1280 px; funciona no celular)
 
 ### 3.1 Cadastro CNPJ/MEI e entrar (`entrar.html?tipo=empresa`) — `empresa-cadastro.png`
-- Metade laranja: logo preto, frase "Vagas de Boa Vista com quem fez o teste da função.", apoio, 3 passos (cadastre o CNPJ ou
+- Metade laranja: logo preto, frase "Vagas da sua cidade com quem fez o teste da função.", apoio, 3 passos (cadastre o CNPJ ou
   MEI; publique com salário; chame para conversar), "Já é cliente da consultoria? A gente cadastra para você."
 - Metade azul-escura (`form#vg-emp-form-cadastro`): `#vg-emp-cnpj` (máscara 00.000.000/0001-00; validação de dígitos de
   `regras.js`; erro "CNPJ inválido. Confira os 14 números."; MEI é CNPJ normal), `#vg-emp-nome` (nome como aparece; 2–60),
@@ -470,7 +470,7 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
 - "Cartão (como chegou)" para lembrar o contexto.
 
 ### 3.7 Busca no banco (`#banco`) — `empresa-banco.png` — **fase 2**
-- Faixa "Fase 2. Esta tela abre quando Boa Vista tiver gente com selo suficiente." No MVP o item do menu leva a esta tela com a faixa
+- Faixa "Fase 2. Esta tela abre quando a cidade tiver gente com selo suficiente." No MVP o item do menu leva a esta tela com a faixa
   e os filtros desabilitados. Desenho: selo do passe ("30 contatos · até 12/11"), filtros fechados (área, selo, zona, escolaridade,
   CNH, turno, pretensão), "23 cartões · ordem: mais recentes no banco primeiro (sem ranking por perfil)", cartões cegos com "No
   banco desde 02/10 · autorizou até …" e ação "Convidar para uma vaga" (escolhe a vaga; gasta 1 contato só se a pessoa aceitar).
@@ -560,7 +560,7 @@ O operador **nunca** vê currículo, selos, candidaturas, conversas nem contato 
 ### 4.6 Repasse do mês (`#repasse`) — `operador-repasse.png`
 - Seletor do mês; 4 cards (receita líquida da praça, seu repasse em destaque + status "aguardando nota / pago em", vendas pelo
   parceiro 50 %, vendas online 20 %; presencial 80 %); `table#vg-op-repasse-tabela` (data, empresa, produto, origem, pago, %, repasse;
-  estornos negativos); `#vg-op-repasse-baixar` CSV. Boa Vista (operação própria): tela mostra só a receita, sem repasse ("Em Boa Vista
+  estornos negativos); `#vg-op-repasse-baixar` CSV. Praça com operação própria da Gestão sem Caos (sem parceiro): tela mostra só a receita, sem repasse ("Nesta praça
   não há repasse"). Fase 1: cálculo por função do banco, Pix manual (status muda pela equipe no painel).
 
 ### 4.7 Zonas e textos (`#zonas`)
@@ -707,7 +707,7 @@ cards e 999 px nas pílulas; `font-variant-numeric: tabular-nums` em listas e ta
 ## 11. Dúvidas para o dono
 
 1. A pessoa escolhe até 2 cidades: a lista mostra as duas misturadas ou uma de cada vez com a pílula do topo? (desenhado: uma de cada
-   vez, com "Incluir Mucajaí e Cantá" como entorno).
+   vez, com "Incluir <entorno>" quando houver; piloto em Uruaçu-GO, sem entorno por enquanto).
 2. "Quero" sem currículo completo: enviar assim mesmo com o que houver ou exigir os 5 passos? (desenhado: exige terminar; a intenção é guardada).
 3. A empresa pode escrever a primeira mensagem ao chamar para conversar? (desenhado: sim, opcional).
 4. Lista de espera: pedir só e-mail ou também WhatsApp? (desenhado: só e-mail, resposta neutra).
