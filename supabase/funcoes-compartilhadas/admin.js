@@ -17,6 +17,7 @@ import { lerAvisos } from './avisos.js';
 import { acaoDiagnostico, acaoTestar } from './conexoes.js';
 import { criarResend } from './asaas.js';
 import { montarEmailRelatorio, registrarEnvio } from './email.js';
+import { criarWhatsApp } from './whatsapp.js';
 
 function agoraIso(ctx) { return new Date(ctx.agora()).toISOString(); }
 
@@ -335,6 +336,9 @@ export const ACOES_ADMIN = {
   'usuarios.listar': (ctx) => acaoUsuariosListar(ctx),
   'usuarios.convidar': (ctx, c) => acaoUsuariosConvidar(ctx, c),
   'usuarios.remover': (ctx, c) => acaoUsuariosRemover(ctx, c.id),
+  // Pesquisa de Clima: o que está ligado para mandar o código do link pessoal (nunca o valor dos segredos).
+  'clima.envios': (ctx) => ({ ok: true, email: !!(ctx.env && ctx.env.RESEND_API_KEY),
+    whatsapp: criarWhatsApp({ env: ctx.env || {}, fetch: ctx.fetch }).configurado }),
   // Aba Conexões (supabase/funcoes-compartilhadas/conexoes.js): nunca devolvem valores de segredos.
   'conexoes.diagnostico': (ctx) => acaoDiagnostico(ctx),
   'conexoes.testar': (ctx, c) => acaoTestar(ctx, c)
