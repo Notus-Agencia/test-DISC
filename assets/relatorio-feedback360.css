@@ -1,0 +1,116 @@
+/*
+ * Relatório do Feedback 360 da Liderança (dados.modelo = 'feedback360', js/relatorio-view.js feedback360Html): peças próprias
+ * sobre assets/relatorio.css. Variante editorial (docs/IDENTIDADE-VISUAL.md, "Documentos"): papel creme, cartões brancos.
+ * Régua por tema com os 5 rótulos da escala de frequência (sem 0 a 100, sem semáforo, sem média da empresa): uma linha por
+ * fonte (Outras pessoas, cada grupo, Chefia, Você). Celular primeiro e impressão A4 com a marca d'água confidencial.
+ */
+
+/* Marca "Confidencial · desenvolvimento de [Nome] · não usar em decisões de pessoal" inteira no cabeçalho de cada página,
+   também no celular (o relatorio.css corta o texto da direita e o esconde abaixo de 640 px). */
+.doc--f360 .pag-cab { flex-wrap: wrap; row-gap: 6px; }
+.doc--f360 .pag-cab__dir { white-space: normal; overflow: visible; max-width: 62%; text-align: right; letter-spacing: .08em; line-height: 1.5; }
+
+/* Faixa "Confidencial" logo abaixo da capa */
+.f360-confidencial { background: var(--tinta); color: var(--branco-doc); padding: 14px var(--margem, 24px); font-size: var(--f-rotulo); line-height: 1.5; }
+.f360-confidencial strong { color: var(--ambar); font-weight: 600; }
+
+/* Régua por tema */
+.f360-temas { display: grid; gap: 16px; margin-top: 24px; }
+.f360-tema__cab { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.f360-tema__cab .h3 { margin: 0; }
+.f360-tema__leit { font-size: var(--f-rotulo); color: var(--mudo); }
+.f360-tema__leit strong { color: var(--tinta); font-weight: 600; }
+.f360-regua { margin-top: 18px; }
+.f360-regua__escala { display: grid; grid-template-columns: 132px minmax(0, 1fr) 132px; gap: 12px; margin-bottom: 6px; }
+.f360-regua__escala-rot { position: relative; height: 32px; font-size: var(--f-nota); line-height: 1.2; color: var(--mudo); }
+/* Rótulo sob cada marca (quebra em 2 linhas, nunca encosta no vizinho); as pontas alinham pela borda. */
+.f360-regua__escala-rot span { position: absolute; top: 0; width: 96px; margin-left: -48px; text-align: center; }
+.f360-regua__escala-rot span:first-child { margin-left: 0; text-align: left; }
+.f360-regua__escala-rot span:last-child { margin-left: -96px; text-align: right; }
+.f360-linhas { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.f360-linha { display: grid; grid-template-columns: 132px minmax(0, 1fr) 132px; gap: 12px; align-items: center; }
+.f360-linha__rot { font-size: var(--f-rotulo); line-height: 1.3; color: var(--tinta); }
+.f360-linha__rot small { color: var(--mudo); font-size: var(--f-nota); }
+.f360-linha__trilho { position: relative; height: 18px; }
+.f360-linha__trilho::before { content: ''; position: absolute; left: 0; right: 0; top: 8px; height: 2px; background: var(--linha-doc); border-radius: 2px; }
+.f360-linha__tique { position: absolute; top: 5px; width: 2px; height: 8px; margin-left: -1px; background: var(--linha-doc); }
+.f360-linha__marca { position: absolute; top: 2px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: var(--tinta); box-shadow: 0 0 0 2px var(--branco-doc); }
+.f360-linha--grupo .f360-linha__marca { background: var(--ardosia-media); }
+.f360-linha--chefia .f360-linha__marca { background: var(--ardosia); border-radius: 2px; transform: rotate(45deg); width: 12px; height: 12px; margin-left: -6px; top: 3px; }
+.f360-linha--voce .f360-linha__marca { background: var(--branco-doc); box-shadow: inset 0 0 0 3px var(--notus), 0 0 0 2px var(--branco-doc); }
+.f360-linha__leit { font-size: var(--f-rotulo); color: var(--tinta); }
+.f360-linha--vazia .f360-linha__leit, .f360-linha--vazia .f360-linha__rot { color: var(--mudo); }
+.f360-linha--vazia .f360-linha__leit { font-style: italic; }
+.f360-tema__notas { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 6px 8px; }
+/* Selos neutros (sem semáforo): margem ampla, opiniões variadas, pergunta do comentário */
+.selo-doc--margem, .selo-doc--variadas, .selo-doc--pergunta { background: transparent; color: var(--mudo); box-shadow: inset 0 0 0 1px var(--linha-doc); }
+.f360-legenda { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 16px; font-size: var(--f-rotulo); color: var(--mudo); }
+.f360-legenda span { display: inline-flex; align-items: center; gap: 8px; }
+.f360-legenda .f360-linha__marca { position: static; display: inline-block; margin: 0; }
+
+/* Frases (capítulo 4) */
+.f360-frases { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 0; }
+.f360-frase { padding: 16px 0; border-top: 1px solid var(--linha-doc); }
+.f360-frase:first-child { border-top: 0; padding-top: 4px; }
+.f360-frase__texto { font-size: var(--f-corpo); line-height: 1.5; margin-bottom: 10px; }
+.f360-frase .f360-linhas { gap: 6px; }
+
+/* Resumo: para manter / para desenvolver */
+.f360-destaque-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.f360-destaque-lista li { font-size: var(--f-corpo); line-height: 1.5; padding-left: 16px; position: relative; }
+.f360-destaque-lista li::before { content: ''; position: absolute; left: 0; top: .62em; width: 6px; height: 6px; border-radius: 50%; background: var(--tinta); }
+.f360-destaque-lista--desenvolver li::before { background: var(--laranja); }
+.f360-destaque-lista small { display: block; color: var(--mudo); font-size: var(--f-nota); }
+.f360-foco { min-height: 72px; border: 1px dashed var(--linha-doc); border-radius: 2px; padding: 14px 16px; font-size: var(--f-corpo); line-height: 1.5; background: var(--branco-doc); }
+.f360-foco--vazio { color: var(--mudo); font-style: italic; }
+
+/* Comentários */
+.f360-comentarios { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
+.f360-comentario { background: var(--branco-doc); border: 1px solid var(--linha-doc); border-radius: 2px; padding: 14px 16px; font-size: var(--f-corpo); line-height: 1.55; }
+.f360-comentario .selo-doc { margin-bottom: 8px; }
+.f360-comentario--chefia { border-left: 3px solid var(--ardosia); }
+
+/* Hipóteses DISC */
+.f360-hipotese .itens-doc { margin-top: 8px; }
+.f360-hipotese p + p { margin-top: 8px; }
+
+/* Plano e acompanhamento */
+.f360-plano dt { font-family: var(--ff-mono); font-size: var(--f-eixo); letter-spacing: .14em; text-transform: uppercase; color: var(--mudo); margin-top: 16px; }
+.f360-plano dd { margin: 4px 0 0; font-size: var(--f-corpo); line-height: 1.5; }
+.f360-plano dt:first-child { margin-top: 0; }
+.f360-agenda td { font-size: var(--f-rotulo); line-height: 1.45; vertical-align: top; }
+.f360-tabela-rolagem { margin-top: 12px; overflow-x: auto; }
+.f360-refs li { font-size: var(--f-rotulo); }
+
+/* Marca d'água confidencial (só na impressão/PDF: repete em todas as páginas) */
+.f360-marca-dagua { display: none; }
+
+@media (max-width: 639px) {
+  .f360-regua__escala { grid-template-columns: minmax(0, 1fr); }
+  .f360-regua__escala > span:first-child, .f360-regua__escala > span:last-child { display: none; }
+  .f360-regua__escala-rot span:nth-child(2), .f360-regua__escala-rot span:nth-child(4) { display: none; }
+  .f360-regua__escala { margin-bottom: 10px; }
+  .f360-regua__escala-rot span { width: 64px; margin-left: -32px; }
+  .f360-regua__escala-rot span:first-child, .f360-regua__escala-rot span:last-child { width: 84px; }
+  .f360-regua__escala-rot span:last-child { margin-left: -84px; }
+  .doc--f360 .pag-cab__dir { display: block; flex-basis: 100%; max-width: none; text-align: left; }
+  .doc--f360 .pag-cab .pag-cab__regua { display: none; }
+  .f360-linha { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; }
+  .f360-linha__rot { grid-column: 1; }
+  .f360-linha__leit { grid-column: 2; grid-row: 1; text-align: right; }
+  .f360-linha__trilho { grid-column: 1 / -1; }
+  .f360-agenda thead { display: none; }
+  .f360-agenda tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--linha-doc); }
+  .f360-agenda td { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 3px 0; border: 0; }
+  .f360-agenda td::before { content: attr(data-rotulo); font-family: var(--ff-mono); font-size: var(--f-eixo); letter-spacing: .1em; text-transform: uppercase; color: var(--mudo); }
+}
+
+@media print {
+  .f360-tema, .f360-frase, .f360-comentario, .f360-hipotese, .f360-agenda tr { break-inside: avoid; }
+  .f360-linha__marca { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .f360-marca-dagua {
+    display: flex; position: fixed; inset: 0; align-items: center; justify-content: center; pointer-events: none; z-index: 50;
+    font-family: var(--ff-titulo); font-size: var(--f-h3); font-weight: 600; letter-spacing: .04em; color: rgba(19,40,63,.08);
+    transform: rotate(-30deg); text-align: center; padding: 0 10%;
+  }
+}

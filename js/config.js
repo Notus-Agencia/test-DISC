@@ -25,6 +25,8 @@
  *                                   (ex.: 'Gestão sem Caos Ltda — CNPJ 00.000.000/0001-00').
  *   CLIMA_BASE_LEGAL                Pesquisa de clima: base legal do tratamento, definida pelo(a) advogado(a) (ex.: 'legítimo
  *                                   interesse da empresa'). Vazio = o aviso ao respondente não cita a base legal (só a LGPD).
+ *   F360_BASE_LEGAL                 Feedback 360 da Liderança: base legal do tratamento, definida pelo(a) advogado(a). Vazio = os
+ *                                   avisos (líder, avaliadores e chefia) não citam a base legal (só a LGPD).
  *
  * As telas olham CONFIG.API_URL para saber se há servidor; por isso, no fim deste arquivo, BACKEND 'simulada'
  * vira API_URL 'simulada' e BACKEND 'supabase' vira API_URL = SUPABASE_URL (as chamadas vão pelo supabase-js).
@@ -41,7 +43,8 @@
     GRUPOS_DEMONSTRACAO: 0,  // NÃO use no site real: o resultado com poucos grupos não vale como avaliação.
     WHATSAPP_SUPORTE: '',
     EMPRESA_LEGAL: '',
-    CLIMA_BASE_LEGAL: ''     // definida pelo(a) advogado(a) antes de vender a pesquisa de clima
+    CLIMA_BASE_LEGAL: '',    // definida pelo(a) advogado(a) antes de vender a pesquisa de clima
+    F360_BASE_LEGAL: ''      // definida pelo(a) advogado(a) antes de vender o Feedback 360 da Liderança
   };
   // Modo demonstração (?demo=1 ou #demo): passa pelas telas com dados fictícios, 3 grupos e pagamento simulado.
   // Nada vai para o servidor (usa a API simulada, só neste navegador). Vale para a aba toda (sessionStorage).

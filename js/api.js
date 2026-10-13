@@ -50,6 +50,9 @@
  *              climaEncerrar, climaResultado, climaComentarios, climaGerarRelatorio, climaExcluirRodada, climaApagarBrutas,
  *              climaPedirCodigo, climaEnvios, climaIdentificacao, climaDesidentificar, climaRenovarConvite,
  *              climaColaboradoresDados, climaSalvarColaborador.
+ *   Feedback 360 da Liderança (só Supabase/prévia; aqui também recusam): f360Publica, f360Enviar, f360ApagarResposta, f360Listar,
+ *              f360CriarCiclo, f360Encerrar, f360Recalcular, f360Comentarios, f360Moderar, f360SalvarDevolutiva,
+ *              f360GerarRelatorio, f360GerarConsolidado, f360ExcluirCiclo, f360ApagarBrutas.
  *   Utilitários: protocoloValido, normalizarProtocolo, normalizarCodigoAvaliacao, codigoAvaliacaoDaUrl
  *              (código do link: 10 caracteres nos processos novos, 4 nos antigos; ALFABETO_CODIGO, TAMANHO_CODIGO).
  */
@@ -370,6 +373,21 @@
     climaRenovarConvite: soSupabase,
     climaColaboradoresDados: soSupabase,
     climaSalvarColaborador: soSupabase,
+    // Feedback 360 da Liderança (só no Supabase e na prévia; contrato em js/api-supabase.js).
+    f360Publica: soSupabase,
+    f360Enviar: soSupabase,
+    f360ApagarResposta: soSupabase,
+    f360Listar: soSupabase,
+    f360CriarCiclo: soSupabase,
+    f360Encerrar: soSupabase,
+    f360Recalcular: soSupabase,
+    f360Comentarios: soSupabase,
+    f360Moderar: soSupabase,
+    f360SalvarDevolutiva: soSupabase,
+    f360GerarRelatorio: soSupabase,
+    f360GerarConsolidado: soSupabase,
+    f360ExcluirCiclo: soSupabase,
+    f360ApagarBrutas: soSupabase,
 
     // --- pública: página do relatório para o contratante ---
     relatorioPublico: seguro(function (relatorioToken) {
@@ -396,7 +414,9 @@
     'diagnosticoConexoes', 'testarConexao',
     'climaPublica', 'climaEnviar', 'climaListar', 'climaCriarRodada', 'climaEncerrar', 'climaResultado', 'climaComentarios',
     'climaGerarRelatorio', 'climaExcluirRodada', 'climaApagarBrutas', 'climaPedirCodigo', 'climaEnvios', 'climaIdentificacao',
-    'climaDesidentificar', 'climaRenovarConvite', 'climaColaboradoresDados', 'climaSalvarColaborador'];
+    'climaDesidentificar', 'climaRenovarConvite', 'climaColaboradoresDados', 'climaSalvarColaborador',
+    'f360Publica', 'f360Enviar', 'f360ApagarResposta', 'f360Listar', 'f360CriarCiclo', 'f360Encerrar', 'f360Recalcular', 'f360Comentarios',
+    'f360Moderar', 'f360SalvarDevolutiva', 'f360GerarRelatorio', 'f360GerarConsolidado', 'f360ExcluirCiclo', 'f360ApagarBrutas'];
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DISC_API;
   else root.DISC_API = DISC_API;

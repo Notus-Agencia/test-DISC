@@ -90,13 +90,22 @@
  * publicadoEm}. Painel (só admin): relatorioTecnico(token, id) -> {tecnica, historico}; gerarRelatorioTecnico(token, id,
  * {nome, crp}) -> {tecnica, historico} (novo token técnico; o anterior para de abrir); despublicarRelatorioTecnico(token, id).
  *
+ * Feedback 360 da Liderança (como a migração 20261021120000_feedback360.sql; cálculo e supressão de js/feedback360.js, o MESMO do
+ * banco): f360Publica, f360Enviar, f360ApagarResposta (públicas, pelo link individual) e, no painel, f360Listar, f360CriarCiclo,
+ * f360Encerrar, f360Recalcular, f360Comentarios, f360Moderar, f360SalvarDevolutiva, f360GerarRelatorio, f360GerarConsolidado,
+ * f360ExcluirCiclo, f360ApagarBrutas. Mesmas regras e mensagens (desenho do organograma com teto de 4 formulários, mínimo de 3,
+ * 1 ciclo aberto por empresa, nada antes do encerramento, ligação link → resposta apagada no encerramento, relatório só depois da
+ * devolutiva, visão da chefia só com o plano). Semente: ciclo ENCERRADO "Feedback 360 · ago/2026" da Clínica Exemplo (Marta com
+ * "Equipe e outros" = 6 respostas; Diego com "Colegas e equipe" = 3; Paulo sem relatório) e os relatórios publicados
+ * relatorio.html#r-exemplo-360 (Marta), #r-exemplo-360-diego e #r-exemplo-360-chefia (visão da chefia de Diego).
+ *
  * No Node (testes): require('./js/api-simulada.js').criar({ armazenamento, scoring, latenciaMs: 0, semente: false }).
  * Opcional: { motor, fixture } para trocar o motor do relatório e os dados do processo de exemplo.
  */
 (function (root) {
   'use strict';
 
-  var VERSAO_BANCO = 20261020120000;                     // última migração (supabase/migrations)
+  var VERSAO_BANCO = 20261021120000;                     // última migração (supabase/migrations)
   var CHAVE_ARMAZENAMENTO = 'disc_planilha_simulada';     // respostas (mesma chave das versões anteriores)
   var CHAVES = {
     usuarios: 'disc_simulada_usuarios',
@@ -127,7 +136,14 @@
     climaAcessos: 'disc_simulada_clima_acessos',               // quem abriu a tela "uso interno" e quando
     climaLimites: 'disc_simulada_clima_limites',
     sementeClima: 'disc_simulada_semente_clima',
-    leiturasTecnicas: 'disc_simulada_leituras_tecnicas'  // histórico da versão técnica (como public.leituras_tecnicas)
+    leiturasTecnicas: 'disc_simulada_leituras_tecnicas', // histórico da versão técnica (como public.leituras_tecnicas)
+    f360Ciclos: 'disc_simulada_f360_ciclos',             // Feedback 360 (como public.f360_*): respostas e comentários SEM nada
+    f360Avaliados: 'disc_simulada_f360_avaliados',       // que identifique quem respondeu; a ligação link → resposta
+    f360Convites: 'disc_simulada_f360_convites',         // (f360Vinculos) some no encerramento
+    f360Respostas: 'disc_simulada_f360_respostas',
+    f360Comentarios: 'disc_simulada_f360_comentarios',
+    f360Vinculos: 'disc_simulada_f360_vinculos',
+    sementeF360: 'disc_simulada_semente_f360'
   };
   var CHAVE_ADMIN = 'previa';
   var LATENCIA_MS = 400;
@@ -139,7 +155,11 @@
     processo: { id: 'ava_previa_cartorio', codigo: 'CRT1', nome: 'Cartório Exemplo — Escrevente' },
     relatorioToken: 'exemplo-cartorio',
     climaRelatorioToken: 'exemplo-clima',   // relatório de clima JÁ PUBLICADO da Clínica Exemplo (relatorio.html#r-exemplo-clima)
-    climaRodadaId: 'clima_previa_set2026'
+    climaRodadaId: 'clima_previa_set2026',
+    f360RelatorioToken: 'exemplo-360',            // Feedback 360 de Marta (com hipóteses DISC aceitas): relatorio.html#r-exemplo-360
+    f360RelatorioDiego: 'exemplo-360-diego',      // de Diego (só temas, margem ampla)
+    f360ChefiaToken: 'exemplo-360-chefia',        // visão da chefia de Diego (só o plano)
+    f360CicloId: 'f360_previa_ago2026'
   };
 
   // Avatares FICTÍCIOS da prévia (iniciais sobre a cor do fator principal do DISC, JPEG 192 px gerado por código;
@@ -1775,7 +1795,7 @@
       var empresaId = limparTexto(filtro.empresaId, 40);
       var pessoaId = limparTexto(filtro.pessoaId, 40);
       var lista = relatoriosSalvos().filter(function (r) {
-        return r.modelo && r.modelo !== 'processo' && r.modelo !== 'clima' && (!empresaId || r.empresaId === empresaId) && (!pessoaId || r.pessoaId === pessoaId);
+        return r.modelo && r.modelo !== 'processo' && r.modelo !== 'clima' && r.modelo !== 'feedback360' && (!empresaId || r.empresaId === empresaId) && (!pessoaId || r.pessoaId === pessoaId);
       }).map(relModeloPublico).sort(function (a, b) { return String(b.criadoEm).localeCompare(String(a.criadoEm)); });
       return { ok: true, relatorios: lista };
     }
@@ -1784,7 +1804,7 @@
     function acaoRelatorioModeloAbrir(idBruto) {
       var id = limparTexto(idBruto, 40);
       var reg = id && buscarPor(relatoriosSalvos(), 'id', id);
-      if (!reg || !reg.modelo || reg.modelo === 'processo' || reg.modelo === 'clima') return erro('Relatório não encontrado.');
+      if (!reg || !reg.modelo || reg.modelo === 'processo' || reg.modelo === 'clima' || reg.modelo === 'feedback360') return erro('Relatório não encontrado.');
       var r = relModeloPublico(reg);
       r.dados = copiar(reg.relatorio || {});
       return { ok: true, relatorio: r };
@@ -1794,7 +1814,7 @@
       var id = limparTexto(idBruto, 40);
       var lista = relatoriosSalvos();
       var reg = id && buscarPor(lista, 'id', id);
-      if (!reg || !reg.modelo || reg.modelo === 'processo' || reg.modelo === 'clima') return erro('Relatório não encontrado.');
+      if (!reg || !reg.modelo || reg.modelo === 'processo' || reg.modelo === 'clima' || reg.modelo === 'feedback360') return erro('Relatório não encontrado.');
       gravarChave(CHAVES.relatorios, lista.filter(function (r) { return r !== reg; }));
       return { ok: true, id: id };
     }
@@ -2039,7 +2059,8 @@
     /* ----- relatórios (mesmas regras e mensagens do Relatorio.gs) ----- */
 
     function relTokenValido(t) {
-      return typeof t === 'string' && (/^[0-9a-f]{40,128}$/.test(t) || t === PREVIA.relatorioToken || t === PREVIA.climaRelatorioToken);
+      return typeof t === 'string' && (/^[0-9a-f]{40,128}$/.test(t) || t === PREVIA.relatorioToken || t === PREVIA.climaRelatorioToken ||
+        t === PREVIA.f360RelatorioToken || t === PREVIA.f360RelatorioDiego || t === PREVIA.f360ChefiaToken);
     }
 
     // "Maria da Silva" -> "Maria S." (igual ao relNomeCurto_ do servidor).
@@ -2270,7 +2291,7 @@
       if (!lido || lido.reg.status !== 'publicado') return erro(MSG_REL_NAO_ENCONTRADO);
       var relatorio = copiar(lido.reg.relatorio);
       if (relatorio && relatorio.processo) delete relatorio.processo.clickupListId;
-      var modelo = MODELOS_RELATORIO.indexOf(lido.reg.modelo) >= 0 || lido.reg.modelo === 'clima' ? lido.reg.modelo : 'processo';
+      var modelo = MODELOS_RELATORIO.indexOf(lido.reg.modelo) >= 0 || lido.reg.modelo === 'clima' || lido.reg.modelo === 'feedback360' ? lido.reg.modelo : 'processo';
       // Link do dono: equipe e "Como liderar" saem sem a distância natural × cargo (versão técnica só pelo outro link).
       var VT = versaoTecnicaMod();
       if (VT && MODELOS_TECNICA.indexOf(modelo) >= 0 && relatorio && typeof relatorio === 'object') relatorio = VT.versaoDono(relatorio);
@@ -2528,6 +2549,17 @@
       'clima.renovarConvite': { soAdmin: true, fn: function (u, c) { return acaoClimaRenovarConvite(c.conviteId); } },
       'clima.colaboradores': { soAdmin: true, fn: function (u, c) { return acaoClimaColaboradoresDados(c.empresaId); } },
       'clima.salvarColaborador': { soAdmin: true, fn: function (u, c) { return acaoClimaSalvarColaborador(c.dados); } },
+      'f360.listar': { soAdmin: true, fn: function (u, c) { return acaoF360Listar(c.empresaId); } },
+      'f360.criar': { soAdmin: true, fn: function (u, c) { return acaoF360Criar(c.dados); } },
+      'f360.encerrar': { soAdmin: true, fn: function (u, c) { return acaoF360Encerrar(c.cicloId); } },
+      'f360.recalcular': { soAdmin: true, fn: function (u, c) { return acaoF360Recalcular(c.avaliadoId, c.excluir); } },
+      'f360.comentarios': { soAdmin: true, fn: function (u, c) { return acaoF360Comentarios(c.avaliadoId); } },
+      'f360.moderar': { soAdmin: true, fn: function (u, c) { return acaoF360Moderar(c.comentarioId, c.dados); } },
+      'f360.devolutiva': { soAdmin: true, fn: function (u, c) { return acaoF360Devolutiva(c.avaliadoId, c.dados); } },
+      'f360.relatorio': { soAdmin: true, fn: function (u, c) { return acaoF360GerarRelatorio(c.avaliadoId, c.opcoes); } },
+      'f360.consolidado': { soAdmin: true, fn: function (u, c) { return acaoF360Consolidado(c.cicloId, c.opcoes); } },
+      'f360.excluir': { soAdmin: true, fn: function (u, c) { return acaoF360Excluir(c.cicloId); } },
+      'f360.apagarBrutas': { soAdmin: true, fn: function (u, c) { return acaoF360ApagarBrutas(c.opcoes); } },
       'usuarios.listar': {
         soAdmin: true,
         fn: function () {
@@ -2571,6 +2603,9 @@
       if (acao === 'clima.publica') return acaoClimaPublica(corpo.tokenClima);
       if (acao === 'clima.enviar') return acaoClimaEnviar(corpo.tokenClima, corpo.respostas);
       if (acao === 'clima.codigo') return acaoClimaCodigo(corpo.tokenClima, corpo.canal);
+      if (acao === 'f360.publica') return acaoF360Publica(corpo.tokenF360);
+      if (acao === 'f360.enviar') return acaoF360Enviar(corpo.tokenF360, corpo.respostas);
+      if (acao === 'f360.apagarResposta') return acaoF360ApagarResposta(corpo.tokenF360);
       if (typeof acao !== 'string' || !Object.prototype.hasOwnProperty.call(ACOES_COM_SESSAO, acao)) return erro('Ação desconhecida.');
       var sessao = validarSessao(corpo.token);
       if (!sessao.ok) return sessao;
@@ -3172,6 +3207,580 @@
       gravarChave(CHAVES.sementeClima, 1);
     }
 
+    /* ----- Feedback 360 da Liderança: como a migração 20261021120000_feedback360.sql (regras e mensagens) ----- */
+    // O cálculo e a supressão são os de js/feedback360.js (a mesma regra do banco, conferida em tests/supabase/feedback360.test.js).
+    var MSG_F360_LINK = 'Link inválido ou Feedback 360 encerrado. Fale com quem enviou o link.';
+    var MSG_F360_ENCERRADO = 'Este Feedback 360 já foi encerrado. Obrigado!';
+    var FONTES_F360 = ['auto', 'chefia', 'colegas', 'equipe', 'outros'];
+    function FX() { return opcoes.f360 || exigirModulo('DISC_F360', './feedback360.js'); }
+    function temF360() { try { FX(); return true; } catch (e) { return false; } }
+    function f360Ciclos() { return lerLista(CHAVES.f360Ciclos); }
+    function f360Avaliados() { return lerLista(CHAVES.f360Avaliados); }
+    function f360Convites() { return lerLista(CHAVES.f360Convites); }
+    function f360Respostas() { return lerLista(CHAVES.f360Respostas); }
+    function f360Comentarios() { return lerLista(CHAVES.f360Comentarios); }
+    function f360Vinculos() { return lerLista(CHAVES.f360Vinculos); }
+    function hojeBrasilIso() { return new Date(agora() - 3 * 3600000).toISOString().slice(0, 10); }
+    function somarDiasIso(iso, n) { var d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+    function textoF360(v, max) { return String(v == null ? '' : v).replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max || 300); }
+    function f360Convite(t) {
+      var tk = tokenClima(t);
+      if (!tk) return null;
+      var cv = buscarPor(f360Convites(), 'token', tk);
+      var c = cv ? buscarPor(f360Ciclos(), 'id', cv.cicloId) : null;
+      return c ? { convite: cv, ciclo: c } : null;
+    }
+    function f360RelJson(avaliadoId, cicloId, visao) {
+      var rel = relatoriosSalvos().filter(function (r) {
+        return r.modelo === 'feedback360' && r.f360Visao === visao && (visao === 'empresa' ? r.f360CicloId === cicloId : r.f360AvaliadoId === avaliadoId);
+      })[0];
+      if (!rel) return null;
+      var x = { id: rel.id, token: rel.token, status: rel.status === 'publicado' ? 'publicado' : 'rascunho', publicadoEm: rel.publicadoEm || '', atualizadoEm: rel.atualizadoEm || '' };
+      if (x.status === 'publicado') x.url = urlRelatorio(rel.token);
+      return x;
+    }
+    // Mesmo formato de disc_interno.f360_ciclo_json.
+    function f360CicloJson(c) {
+      var avs = f360Avaliados().filter(function (a) { return a.cicloId === c.id; }).sort(function (a, b) { return a.ordem - b.ordem; });
+      var resps = f360Respostas().filter(function (r) { return r.cicloId === c.id; });
+      var coms = c.status === 'encerrado' ? f360Comentarios().filter(function (x) { return x.cicloId === c.id; }) : [];
+      var fichas = mapaPessoas();
+      var saida = { id: c.id, empresaId: c.empresaId, nome: c.nome, status: c.status, versaoItens: c.versaoItens || 'v0',
+        encerramentoPrevisto: c.encerramentoPrevisto, canalTexto: c.canalTexto || '', canalUrl: c.canalUrl || '', contatoDados: c.contatoDados || '',
+        contatoRelatos: c.contatoRelatos || '', retencaoDias: c.retencaoDias || 90, manterLista: !!c.manterLista, relatosRegistrados: c.relatosRegistrados || 0,
+        abertoEm: c.abertoEm || '', encerradoEm: c.encerradoEm || '', listaApagadaEm: c.listaApagadaEm || '',
+        avaliados: avs.map(function (a) {
+          var resp = {};
+          if (c.status === 'aberto') FONTES_F360.forEach(function (f) { resp[f] = resps.filter(function (r) { return r.avaliadoId === a.id && r.fonte === f; }).length; });
+          else resp = copiar((a.resultado && a.resultado.respondentes) || {});
+          var cm = coms.filter(function (x) { return x.avaliadoId === a.id; });
+          return { id: a.id, pessoaId: a.pessoaId || null, nome: a.nome, ordem: a.ordem, topo: !!a.topo, chefias: a.chefias || 0, convidados: copiar(a.convidados || {}),
+            respondentes: resp, resultado: a.resultado ? copiar(a.resultado) : null, excluir: (a.excluir || []).slice(), temas: (a.temas || []).slice(),
+            foco: a.foco || '', observacao: a.observacao || '', plano: a.plano ? copiar(a.plano) : null, discAceito: !!a.discAceito,
+            devolutivaEm: a.devolutivaEm || '', brutasApagadasEm: a.brutasApagadasEm || '',
+            comentarios: { total: cm.length, elegiveis: cm.filter(function (x) { return x.elegivel; }).length,
+              pendentes: cm.filter(function (x) { return x.elegivel && x.status === 'pendente'; }).length,
+              liberados: cm.filter(function (x) { return x.elegivel && (x.status === 'mantido' || x.status === 'editado'); }).length,
+              descartados: cm.filter(function (x) { return x.status === 'descartado'; }).length },
+            relatorios: { lider: f360RelJson(a.id, c.id, 'lider'), chefia: f360RelJson(a.id, c.id, 'chefia') } };
+        }),
+        convites: c.status !== 'aberto' ? [] : f360Convites().filter(function (x) { return x.cicloId === c.id; }).map(function (x) {
+          var a = buscarPor(avs, 'id', x.avaliadoId) || { ordem: 0 };
+          return { pessoaId: x.pessoaId, nome: (fichas[x.pessoaId] && fichas[x.pessoaId].nome) || '', avaliadoId: x.avaliadoId, fonte: x.fonte, token: x.token, _o: a.ordem };
+        }).sort(function (a, b) { return a._o - b._o || (a.fonte < b.fonte ? -1 : (a.fonte > b.fonte ? 1 : 0)) || String(a.nome).localeCompare(String(b.nome)); })
+          .map(function (x) { delete x._o; return x; }),
+        consolidado: null };
+      var cons = f360RelJson('', c.id, 'empresa');
+      if (cons) { delete cons.atualizadoEm; saida.consolidado = cons; }
+      return saida;
+    }
+
+    function acaoF360Publica(t) {
+      var x = f360Convite(t);
+      if (!x) return erro(MSG_F360_LINK);
+      if (x.ciclo.status !== 'aberto') return erro(MSG_F360_ENCERRADO, { encerrado: true });
+      var a = buscarPor(f360Avaliados(), 'id', x.convite.avaliadoId) || {};
+      var emp = buscarPor(empresas(), 'id', x.ciclo.empresaId);
+      var c = x.ciclo;
+      return { ok: true, fonte: x.convite.fonte, empresaNome: emp ? emp.nome : '', avaliadoNome: a.nome || '', duasChefias: a.chefias === 2,
+        encerramentoPrevisto: c.encerramentoPrevisto, retencaoDias: c.retencaoDias || 90, contatoDados: c.contatoDados || '', canalTexto: c.canalTexto || '',
+        canalUrl: c.canalUrl || '', versaoItens: c.versaoItens || 'v0', respondido: f360Vinculos().some(function (v) { return v.conviteId === x.convite.id; }) };
+    }
+
+    // Tira a resposta (e os comentários) ligada a um convite; devolve true se havia.
+    function f360TirarResposta(conviteId) {
+      var vs = f360Vinculos();
+      var v = buscarPor(vs, 'conviteId', conviteId);
+      if (!v) return false;
+      gravarChave(CHAVES.f360Comentarios, f360Comentarios().filter(function (x) { return (v.comentarios || []).indexOf(x.id) === -1; }));
+      gravarChave(CHAVES.f360Respostas, f360Respostas().filter(function (x) { return x.id !== v.respostaId; }));
+      gravarChave(CHAVES.f360Vinculos, vs.filter(function (x) { return x !== v; }));
+      return true;
+    }
+
+    function acaoF360Enviar(t, corpo) {
+      var x = f360Convite(t);
+      if (!x) return erro(MSG_F360_LINK);
+      if (x.ciclo.status !== 'aberto') return erro(MSG_F360_ENCERRADO, { encerrado: true });
+      var v = FX().validarEnvio(corpo, x.convite.fonte);
+      if (!v.ok) return erro(v.erro);
+      var subst = f360TirarResposta(x.convite.id);
+      // Sem horário e sem nada da pessoa (como public.f360_respostas). Posição sorteada na lista.
+      var nova = { id: novoId('f3r'), cicloId: x.ciclo.id, avaliadoId: x.convite.avaliadoId, fonte: x.convite.fonte, versaoItens: x.ciclo.versaoItens || 'v0',
+        itens: v.itens, segundos: v.segundos };
+      var rs = f360Respostas();
+      rs.splice(Math.floor(Math.random() * (rs.length + 1)), 0, nova);
+      gravarChave(CHAVES.f360Respostas, rs);
+      var ids = [];
+      var cs = f360Comentarios();
+      ['AB1', 'AB2'].forEach(function (p) {
+        if (!v.comentarios[p]) return;
+        var cm = { id: novoId('f3c'), cicloId: x.ciclo.id, avaliadoId: x.convite.avaliadoId, fonte: x.convite.fonte, pergunta: p, texto: v.comentarios[p],
+          textoModerado: '', status: 'pendente', motivo: '', elegivel: false, sorteio: Math.random() };
+        cs.splice(Math.floor(Math.random() * (cs.length + 1)), 0, cm);
+        ids.push(cm.id);
+      });
+      gravarChave(CHAVES.f360Comentarios, cs);
+      var vs = f360Vinculos();
+      vs.push({ conviteId: x.convite.id, respostaId: nova.id, comentarios: ids });
+      gravarChave(CHAVES.f360Vinculos, vs);
+      return subst ? { ok: true, substituida: true } : { ok: true };
+    }
+
+    function acaoF360ApagarResposta(t) {
+      var x = f360Convite(t);
+      if (!x) return erro(MSG_F360_LINK);
+      if (x.ciclo.status !== 'aberto') return erro('Este Feedback 360 já foi encerrado: a resposta não está mais ligada ao link.', { encerrado: true });
+      return { ok: true, apagada: f360TirarResposta(x.convite.id) };
+    }
+
+    function acaoF360Listar(empresaIdBruto) {
+      var id = limparTexto(empresaIdBruto, 60);
+      var lista = f360Ciclos().filter(function (c) { return c.empresaId === id; })
+        .sort(function (a, b) { return String(b.abertoEm).localeCompare(String(a.abertoEm)); });
+      return { ok: true, ciclos: lista.map(f360CicloJson) };
+    }
+
+    // Colaboradores ativos e relações da empresa no formato de DISC_F360.validarDesenho.
+    function f360Organograma(empId) {
+      var fichas = mapaPessoas();
+      var colabs = vinculos().filter(function (v) { return v.empresaId === empId && v.status === 'ativo'; })
+        .map(function (v) { return { pessoaId: v.pessoaId, nome: (fichas[v.pessoaId] && fichas[v.pessoaId].nome) || '', status: 'ativo' }; });
+      var rels = relacoesTodas().filter(function (r) { return r.empresaId === empId; }).map(function (r) { return { de: r.de, para: r.para, tipo: r.tipo }; });
+      return { colaboradores: colabs, relacoes: rels };
+    }
+
+    function acaoF360Criar(d) {
+      if (!d || typeof d !== 'object' || Array.isArray(d)) return erro('Dados do ciclo ausentes.');
+      var empId = limparTexto(d.empresaId, 60);
+      var emp = empId && buscarPor(empresas(), 'id', empId);
+      if (!emp) return erro('Empresa não encontrada.');
+      if (f360Ciclos().some(function (c) { return c.empresaId === empId && c.status === 'aberto'; })) {
+        return erro('Já existe um Feedback 360 aberto nesta empresa. Encerre-o antes de criar outro.');
+      }
+      if (lerLista(CHAVES.climaRodadas).some(function (r) { return r.empresaId === empId && r.status === 'aberta'; })) {
+        return erro('Há uma pesquisa de clima aberta nesta empresa. Encerre-a e espere pelo menos 4 semanas antes do Feedback 360 (nunca os dois no mesmo mês para as mesmas pessoas).');
+      }
+      var hoje = hojeBrasilIso();
+      var fim = somarDiasIso(hoje, 14);
+      if (d.encerramentoPrevisto !== undefined && d.encerramentoPrevisto !== null) {
+        var m = typeof d.encerramentoPrevisto === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(d.encerramentoPrevisto) : null;
+        var valida = m && new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).toISOString().slice(0, 10) === d.encerramentoPrevisto;
+        if (!valida || d.encerramentoPrevisto < hoje || d.encerramentoPrevisto > somarDiasIso(hoje, 60)) return erro('Data prevista de encerramento inválida: de hoje até 60 dias.');
+        fim = d.encerramentoPrevisto;
+      }
+      var canal = limparTexto(d.canalTexto, 200);
+      var url = String(d.canalUrl == null ? '' : d.canalUrl).trim();
+      if (url && (url.length > 300 || !/^(https:\/\/|mailto:|tel:)[^\s<>"]+$/.test(url))) return erro('Link do canal de denúncia inválido: use um endereço https://, mailto: ou tel:.');
+      if (url && !canal) return erro('Diga também o nome do canal de denúncia.');
+      var relatos = limparTexto(d.contatoRelatos, 200);
+      if (!relatos) return erro('Informe quem recebe os avisos do protocolo de relatos (contato definido no contrato; não pode ser líder avaliado).');
+      var ret = 90;
+      if (d.retencaoDias !== undefined && d.retencaoDias !== null) {
+        if (typeof d.retencaoDias !== 'number' || Math.floor(d.retencaoDias) !== d.retencaoDias || d.retencaoDias < 30 || d.retencaoDias > 90) {
+          return erro('Prazo de retenção inválido: de 30 a 90 dias depois da devolutiva.');
+        }
+        ret = d.retencaoDias;
+      }
+      var org = f360Organograma(empId);
+      var v = FX().validarDesenho(d.avaliados, org.colaboradores, org.relacoes);
+      if (!v.ok) return erro(v.erro);
+      var t = agoraIso();
+      var nome = limparTexto(d.nome, 120);
+      if (!nome) { var dt = new Date(agora() - 3 * 3600000); nome = 'Feedback 360 · ' + ('0' + (dt.getUTCMonth() + 1)).slice(-2) + '/' + dt.getUTCFullYear(); }
+      var c = { id: novoId('f360'), empresaId: empId, nome: nome, status: 'aberto', versaoItens: 'v0', encerramentoPrevisto: fim, canalTexto: canal, canalUrl: url,
+        contatoDados: limparTexto(d.contatoDados, 200), contatoRelatos: relatos, retencaoDias: ret, manterLista: d.manterLista === true, relatosRegistrados: 0,
+        abertoEm: t, encerradoEm: '', listaApagadaEm: '' };
+      var lc = f360Ciclos(); lc.push(c); gravarChave(CHAVES.f360Ciclos, lc);
+      var fichas = mapaPessoas();
+      var chefes = {};
+      org.relacoes.forEach(function (r) { if (r.tipo === 'lidera') (chefes[r.para] = chefes[r.para] || []).push(r.de); });
+      var la = f360Avaliados(), lv = f360Convites();
+      v.avaliados.forEach(function (a, i) {
+        var av = { id: novoId('f3a'), cicloId: c.id, pessoaId: a.pessoaId, nome: FX().nomeCurto((fichas[a.pessoaId] && fichas[a.pessoaId].nome) || ''), ordem: i,
+          topo: !(chefes[a.pessoaId] || []).length, chefias: a.chefia.length,
+          convidados: { auto: 1, chefia: a.chefia.length, colegas: a.colegas.length, equipe: a.equipe.length, outros: a.outros.length },
+          resultado: null, excluir: [], temas: [], foco: '', observacao: '', plano: null, discAceito: false, devolutivaEm: '', brutasApagadasEm: '' };
+        la.push(av);
+        lv.push({ id: novoId('f3v'), cicloId: c.id, avaliadoId: av.id, fonte: 'auto', pessoaId: a.pessoaId, token: hexAleatorio(32) });
+        [['chefia', a.chefia], ['equipe', a.equipe], ['colegas', a.colegas], ['outros', a.outros]].forEach(function (par) {
+          par[1].forEach(function (p) { lv.push({ id: novoId('f3v'), cicloId: c.id, avaliadoId: av.id, fonte: par[0], pessoaId: p, token: hexAleatorio(32) }); });
+        });
+      });
+      gravarChave(CHAVES.f360Avaliados, la);
+      gravarChave(CHAVES.f360Convites, lv);
+      return { ok: true, ciclo: f360CicloJson(c) };
+    }
+
+    // Recalcula o resultado de uma pessoa avaliada e marca os comentários elegíveis (como disc_interno.f360_congelar).
+    function f360Congelar(avaliadoId) {
+      var la = f360Avaliados();
+      var a = buscarPor(la, 'id', avaliadoId);
+      if (!a) return null;
+      a.resultado = FX().calcular({ respostas: f360Respostas().filter(function (r) { return r.avaliadoId === a.id; })
+        .map(function (r) { return { fonte: r.fonte, itens: r.itens, segundos: r.segundos }; }), convidados: a.convidados, excluir: a.excluir || [] });
+      gravarChave(CHAVES.f360Avaliados, la);
+      var exib = a.resultado.fontesExibidas || [];
+      var cs = f360Comentarios();
+      cs.forEach(function (x) { if (x.avaliadoId === a.id) x.elegivel = !!a.resultado.liberado && (x.fonte === 'chefia' || exib.indexOf(x.fonte) >= 0); });
+      gravarChave(CHAVES.f360Comentarios, cs);
+      return a.resultado;
+    }
+
+    function acaoF360Encerrar(idBruto) {
+      var lc = f360Ciclos();
+      var c = buscarPor(lc, 'id', limparTexto(idBruto, 60));
+      if (!c) return erro('Ciclo não encontrado.');
+      if (c.status === 'encerrado') return erro('Este Feedback 360 já foi encerrado.');
+      f360Avaliados().filter(function (a) { return a.cicloId === c.id; }).forEach(function (a) { f360Congelar(a.id); });
+      var ids = f360Convites().filter(function (x) { return x.cicloId === c.id; }).map(function (x) { return x.id; });
+      gravarChave(CHAVES.f360Vinculos, f360Vinculos().filter(function (v) { return ids.indexOf(v.conviteId) === -1; }));
+      if (!c.manterLista) gravarChave(CHAVES.f360Convites, f360Convites().filter(function (x) { return x.cicloId !== c.id; }));
+      lc = f360Ciclos();
+      c = buscarPor(lc, 'id', c.id);
+      c.status = 'encerrado';
+      c.encerradoEm = agoraIso();
+      c.listaApagadaEm = c.manterLista ? '' : c.encerradoEm;
+      gravarChave(CHAVES.f360Ciclos, lc);
+      return { ok: true, ciclo: f360CicloJson(c) };
+    }
+
+    function f360AvaliadoDoPainel(idBruto) {
+      var a = buscarPor(f360Avaliados(), 'id', limparTexto(idBruto, 60));
+      if (!a) return { erro: erro('Pessoa avaliada não encontrada.') };
+      return { a: a, c: buscarPor(f360Ciclos(), 'id', a.cicloId) };
+    }
+
+    function acaoF360Recalcular(idBruto, excluir) {
+      var x = f360AvaliadoDoPainel(idBruto);
+      if (x.erro) return x.erro;
+      if (x.c.status !== 'encerrado') return erro('Os resultados só aparecem depois que o ciclo é encerrado.');
+      if (x.a.brutasApagadasEm) return erro('As respostas já foram apagadas (retenção): o resultado não muda mais.');
+      var la = f360Avaliados();
+      var a = buscarPor(la, 'id', x.a.id);
+      a.excluir = ['colegas', 'equipe', 'outros'].filter(function (f) { return Array.isArray(excluir) && excluir.indexOf(f) >= 0; });
+      gravarChave(CHAVES.f360Avaliados, la);
+      f360Congelar(a.id);
+      return { ok: true, ciclo: f360CicloJson(x.c) };
+    }
+
+    function acaoF360Comentarios(idBruto) {
+      var x = f360AvaliadoDoPainel(idBruto);
+      if (x.erro) return x.erro;
+      if (x.c.status !== 'encerrado') return erro('Os comentários só aparecem depois que o ciclo é encerrado.');
+      if (x.a.brutasApagadasEm) return { ok: true, apagados: true, comentarios: [] };
+      var cs = f360Comentarios().filter(function (c) { return c.avaliadoId === x.a.id; }).sort(function (a, b) {
+        return (b.fonte === 'chefia' ? 1 : 0) - (a.fonte === 'chefia' ? 1 : 0) || a.sorteio - b.sorteio;
+      });
+      return { ok: true, apagados: false, comentarios: cs.map(function (c) {
+        return { id: c.id, pergunta: c.pergunta, chefia: c.fonte === 'chefia', elegivel: !!c.elegivel, texto: c.texto, textoModerado: c.textoModerado || '',
+          status: c.status, motivo: c.motivo || '' };
+      }) };
+    }
+
+    function acaoF360Moderar(idBruto, d) {
+      var cs = f360Comentarios();
+      var cm = buscarPor(cs, 'id', limparTexto(idBruto, 60));
+      if (!cm) return erro('Comentário não encontrado.');
+      var lc = f360Ciclos();
+      var c = buscarPor(lc, 'id', cm.cicloId);
+      if (!c || c.status !== 'encerrado') return erro('Os comentários só aparecem depois que o ciclo é encerrado.');
+      if (!d || typeof d !== 'object' || Array.isArray(d)) return erro('Moderação inválida.');
+      var status = String(d.status == null ? '' : d.status);
+      if (['pendente', 'mantido', 'editado', 'descartado'].indexOf(status) === -1) return erro('Moderação inválida.');
+      if ((status === 'mantido' || status === 'editado') && !cm.elegivel) return erro('Este comentário é de um grupo que não aparece no relatório: ele não pode ir para o líder.');
+      var texto = '', motivo = '';
+      if (status === 'mantido') texto = cm.texto;
+      if (status === 'editado') {
+        texto = String(d.texto == null ? '' : d.texto).replace(/\r\n?/g, '\n').replace(/[\u0001-\u0009\u000B-\u001F\u007F]/g, ' ').trim();
+        if (!texto) return erro('Escreva o texto editado (ou descarte o comentário).');
+        if (texto.length > 1000) texto = texto.slice(0, 1000).trim();
+      }
+      if (status === 'descartado') {
+        motivo = String(d.motivo == null ? '' : d.motivo);
+        if (['identifica', 'ofensa', 'sensivel', 'relato', 'fora'].indexOf(motivo) === -1) return erro('Escolha o motivo do descarte.');
+      }
+      c.relatosRegistrados = Math.max(0, (c.relatosRegistrados || 0) + (motivo === 'relato' ? 1 : 0) - (cm.motivo === 'relato' ? 1 : 0));
+      gravarChave(CHAVES.f360Ciclos, lc);
+      cm.status = status; cm.textoModerado = texto; cm.motivo = motivo;
+      gravarChave(CHAVES.f360Comentarios, cs);
+      return { ok: true, id: cm.id, status: status, relatosRegistrados: c.relatosRegistrados };
+    }
+
+    function acaoF360Devolutiva(idBruto, d) {
+      var x = f360AvaliadoDoPainel(idBruto);
+      if (x.erro) return x.erro;
+      if (x.c.status !== 'encerrado') return erro('A devolutiva só acontece depois que o ciclo é encerrado.');
+      if (!d || typeof d !== 'object' || Array.isArray(d)) return erro('Dados da devolutiva ausentes.');
+      var la = f360Avaliados();
+      var a = buscarPor(la, 'id', x.a.id);
+      if (Object.prototype.hasOwnProperty.call(d, 'plano')) {
+        var p = FX().validarPlano(d.plano);
+        if (!p.ok) return erro(p.erro);
+        a.plano = p.plano;
+      }
+      if (Array.isArray(d.temas)) {
+        a.temas = d.temas.filter(function (t) { return typeof t === 'string' && t.trim(); }).slice(0, 6).map(function (t) { return t.replace(/\s+/g, ' ').trim().slice(0, 300); });
+      }
+      if (Object.prototype.hasOwnProperty.call(d, 'foco')) a.foco = textoF360(d.foco, 300);
+      if (Object.prototype.hasOwnProperty.call(d, 'observacao')) a.observacao = String(d.observacao == null ? '' : d.observacao).replace(/\s+/g, ' ').trim().slice(0, 600);
+      if (Object.prototype.hasOwnProperty.call(d, 'discAceito')) a.discAceito = d.discAceito === true;
+      if (d.devolutivaFeita === true && !a.devolutivaEm) a.devolutivaEm = agoraIso();
+      gravarChave(CHAVES.f360Avaliados, la);
+      return { ok: true, ciclo: f360CicloJson(x.c) };
+    }
+
+    // Perfil DISC mais recente da pessoa (como respostas.perfil no banco). Na prévia sem o scoring, o avaliado da semente
+    // traz o perfil fotografado (perfilPrevia).
+    function f360PerfilDisc(a) {
+      var linhas = ler().filter(function (l) { return a.pessoaId && l.pessoaId === a.pessoaId && /^[1-4]{100}$/.test(String(l.respostas || '')); })
+        .sort(function (x, y) { return String(y.recebidoEm).localeCompare(String(x.recebidoEm)); });
+      if (linhas.length && temScoring()) {
+        try { var r = SCx().calcular(SCx().descompactar(linhas[0].respostas)); if (r && /^[DISC]{1,2}$/.test(r.codigo)) return r.codigo; } catch (e) { /* segue */ }
+      }
+      return /^[DISC]{1,2}$/.test(String(a.perfilPrevia || '')) ? a.perfilPrevia : null;
+    }
+
+    function f360GravarRelatorio(c, a, visao, dados, o, tokenFixo) {
+      var rels = relatoriosSalvos();
+      var reg = rels.filter(function (r) {
+        return r.modelo === 'feedback360' && r.f360Visao === visao && (visao === 'empresa' ? r.f360CicloId === c.id : r.f360AvaliadoId === a.id);
+      })[0];
+      var t = agoraIso();
+      if (!reg) {
+        reg = { id: novoId('rel'), token: tokenFixo || hexAleatorio(32), modelo: 'feedback360', empresaId: c.empresaId, pessoaId: '', f360CicloId: c.id,
+          f360AvaliadoId: a ? a.id : '', f360Visao: visao, criadoEm: t, status: 'rascunho', publicadoEm: '' };
+        rels.push(reg);
+      }
+      reg.relatorio = dados;
+      reg.atualizadoEm = t;
+      if (o.publicar === true) { if (reg.status !== 'publicado') reg.publicadoEm = t; reg.status = 'publicado'; }
+      else if (o.publicar === false) reg.status = 'rascunho';
+      gravarChave(CHAVES.relatorios, rels);
+      var saida = { id: reg.id, token: reg.token, status: reg.status, modelo: 'feedback360', visao: visao, publicadoEm: reg.publicadoEm || '' };
+      if (reg.status === 'publicado') saida.url = urlRelatorio(reg.token);
+      return { ok: true, relatorio: saida };
+    }
+
+    // Mesmo snapshot de public.f360_gerar_relatorio.
+    function acaoF360GerarRelatorio(idBruto, o, tokenFixo) {
+      var x = f360AvaliadoDoPainel(idBruto);
+      if (x.erro) return x.erro;
+      var a = x.a, c = x.c;
+      if (c.status !== 'encerrado' || !a.resultado) return erro('Encerre o ciclo antes de gerar o relatório.');
+      if (!o || typeof o !== 'object' || Array.isArray(o)) return erro('Opções do relatório inválidas.');
+      var visao = String(o.visao == null ? '' : o.visao);
+      if (visao !== 'lider' && visao !== 'chefia') return erro('Escolha a visão do relatório: líder ou chefia.');
+      if (!a.devolutivaEm) return erro('Marque a devolutiva como feita antes: ninguém recebe o relatório sem a conversa com o consultor.');
+      var emp = buscarPor(empresas(), 'id', c.empresaId) || { nome: c.empresaNome || '' };
+      var consultor = limparTexto(o.consultor, 80);
+      var dados;
+      if (visao === 'chefia') {
+        if (!a.plano) return erro('Registre o plano de desenvolvimento antes: a chefia vê só o plano.');
+        dados = { modelo: 'feedback360', visao: 'chefia', versao: 1, titulo: 'Plano de desenvolvimento · ' + a.nome, geradoEm: agoraIso(),
+          empresa: { nome: emp.nome || '' }, consultor: consultor, ciclo: { nome: c.nome, encerradoEm: c.encerradoEm }, avaliado: { nome: a.nome },
+          devolutivaEm: a.devolutivaEm, plano: copiar(a.plano) };
+      } else {
+        if (!a.resultado.liberado) return erro('Sem relatório: menos de 3 respostas de colegas, equipe e outros convidados, mesmo juntando grupos.');
+        if (a.brutasApagadasEm) return erro('As respostas e os comentários já foram apagados (retenção): o relatório publicado continua valendo e não pode ser refeito.');
+        var cs = f360Comentarios().filter(function (cm) { return cm.avaliadoId === a.id && cm.elegivel; });
+        if (cs.some(function (cm) { return cm.status === 'pendente'; })) return erro('Modere todos os comentários antes de gerar o relatório do líder.');
+        var liberados = cs.filter(function (cm) { return cm.status === 'mantido' || cm.status === 'editado'; });
+        var disc = a.discAceito ? f360PerfilDisc(a) : null;
+        var lideradosAtivos = {};
+        if (a.pessoaId) {
+          var ativos = {};
+          vinculos().forEach(function (v) { if (v.empresaId === c.empresaId && v.status === 'ativo') ativos[v.pessoaId] = true; });
+          relacoesTodas().forEach(function (r) { if (r.empresaId === c.empresaId && r.tipo === 'lidera' && r.de === a.pessoaId && ativos[r.para]) lideradosAtivos[r.para] = true; });
+        }
+        var fichas = mapaPessoas();
+        var guias = relatoriosSalvos().filter(function (r) { return r.modelo === 'lideranca' && r.status === 'publicado' && lideradosAtivos[r.pessoaId]; })
+          .map(function (r) { return { nome: FX().nomeCurto((fichas[r.pessoaId] && fichas[r.pessoaId].nome) || ''), token: r.token, ordem: (fichas[r.pessoaId] && fichas[r.pessoaId].nome) || '' }; })
+          .sort(function (p, q) { return String(p.ordem).localeCompare(String(q.ordem)); }).map(function (g) { return { nome: g.nome, token: g.token }; });
+        dados = { modelo: 'feedback360', visao: 'lider', versao: 1, titulo: 'Feedback 360 da Liderança · ' + a.nome, geradoEm: agoraIso(),
+          empresa: { nome: emp.nome || '' }, consultor: consultor,
+          ciclo: { nome: c.nome, abertoEm: c.abertoEm, encerradoEm: c.encerradoEm, versaoItens: c.versaoItens || 'v0' },
+          avaliado: { nome: a.nome, topo: !!a.topo }, devolutivaEm: a.devolutivaEm, resultado: FX().visaoLider(a.resultado), temas: (a.temas || []).slice(),
+          comentarios: FX().embaralhar(liberados.filter(function (cm) { return cm.fonte !== 'chefia'; }).map(function (cm) { return { pergunta: cm.pergunta, texto: cm.textoModerado }; })),
+          comentariosChefia: liberados.filter(function (cm) { return cm.fonte === 'chefia'; }).map(function (cm) { return { pergunta: cm.pergunta, texto: cm.textoModerado }; })
+            .sort(function (p, q) { return p.pergunta < q.pergunta ? -1 : (p.pergunta > q.pergunta ? 1 : 0); }),
+          foco: a.foco || '', observacao: a.observacao || '', plano: a.plano ? copiar(a.plano) : null, disc: disc ? { codigo: disc } : null, guias: guias };
+      }
+      return f360GravarRelatorio(c, a, visao, dados, o, tokenFixo);
+    }
+
+    function acaoF360Consolidado(idBruto, o) {
+      var c = buscarPor(f360Ciclos(), 'id', limparTexto(idBruto, 60));
+      if (!c) return erro('Ciclo não encontrado.');
+      if (c.status !== 'encerrado') return erro('Encerre o ciclo antes de gerar o consolidado.');
+      if (!o || typeof o !== 'object' || Array.isArray(o)) return erro('Opções do relatório inválidas.');
+      var avs = f360Avaliados().filter(function (a) { return a.cicloId === c.id && a.devolutivaEm && a.resultado; }).sort(function (a, b) { return a.ordem - b.ordem; });
+      var cons = FX().consolidar(avs.map(function (a) { return FX().visaoLider(a.resultado); }),
+        avs.filter(function (a) { return a.plano; }).map(function (a) { return a.plano.comportamentos.map(function (x) { return x.item; }); }));
+      if (!cons.disponivel) return erro('O consolidado da liderança só aparece com 5 ou mais líderes com relatório liberado e devolutiva feita.');
+      var emp = buscarPor(empresas(), 'id', c.empresaId) || { nome: c.empresaNome || '' };
+      var dados = { modelo: 'feedback360', visao: 'empresa', versao: 1, titulo: 'Feedback 360 da Liderança · consolidado · ' + (emp.nome || ''), geradoEm: agoraIso(),
+        empresa: { nome: emp.nome || '' }, consultor: limparTexto(o.consultor, 80), ciclo: { nome: c.nome, encerradoEm: c.encerradoEm, versaoItens: c.versaoItens || 'v0' },
+        consolidado: cons };
+      return f360GravarRelatorio(c, null, 'empresa', dados, o);
+    }
+
+    function acaoF360Excluir(idBruto) {
+      var c = buscarPor(f360Ciclos(), 'id', limparTexto(idBruto, 60));
+      if (!c) return erro('Ciclo não encontrado.');
+      var convites = f360Convites().filter(function (x) { return x.cicloId === c.id; }).map(function (x) { return x.id; });
+      gravarChave(CHAVES.f360Vinculos, f360Vinculos().filter(function (v) { return convites.indexOf(v.conviteId) === -1; }));
+      [CHAVES.f360Convites, CHAVES.f360Respostas, CHAVES.f360Comentarios, CHAVES.f360Avaliados].forEach(function (k) {
+        gravarChave(k, lerLista(k).filter(function (x) { return x.cicloId !== c.id; }));
+      });
+      gravarChave(CHAVES.f360Ciclos, f360Ciclos().filter(function (x) { return x.id !== c.id; }));
+      gravarChave(CHAVES.relatorios, relatoriosSalvos().filter(function (r) { return r.f360CicloId !== c.id; }));
+      return { ok: true, id: c.id };
+    }
+
+    function acaoF360ApagarBrutas(o) {
+      o = o && typeof o === 'object' ? o : {};
+      var alvo = o.cicloId ? limparTexto(o.cicloId, 60) : '';
+      var dia = 24 * 3600 * 1000;
+      var ciclos = {};
+      f360Ciclos().forEach(function (c) { ciclos[c.id] = c; });
+      var la = f360Avaliados();
+      var ids = la.filter(function (a) {
+        var c = ciclos[a.cicloId];
+        if (!c || c.status !== 'encerrado' || a.brutasApagadasEm || (alvo && c.id !== alvo)) return false;
+        if (o.agora === true && alvo) return true;
+        var desde = Date.parse(a.devolutivaEm || c.encerradoEm);
+        return isFinite(desde) && agora() >= desde + (c.retencaoDias || 90) * dia;
+      }).map(function (a) { return a.id; });
+      var antes = f360Respostas();
+      var ficam = antes.filter(function (x) { return ids.indexOf(x.avaliadoId) === -1; });
+      gravarChave(CHAVES.f360Respostas, ficam);
+      gravarChave(CHAVES.f360Comentarios, f360Comentarios().filter(function (x) { return ids.indexOf(x.avaliadoId) === -1; }));
+      gravarChave(CHAVES.f360Convites, f360Convites().filter(function (x) { return ids.indexOf(x.avaliadoId) === -1; }));
+      var t = agoraIso();
+      la.forEach(function (a) { if (ids.indexOf(a.id) >= 0) a.brutasApagadasEm = t; });
+      gravarChave(CHAVES.f360Avaliados, la);
+      var restantes = f360Convites();
+      var lc = f360Ciclos();
+      lc.forEach(function (c) { if (c.status === 'encerrado' && !c.listaApagadaEm && !restantes.some(function (x) { return x.cicloId === c.id; })) c.listaApagadaEm = t; });
+      gravarChave(CHAVES.f360Ciclos, lc);
+      var limite = new Date(agora()); limite.setUTCMonth(limite.getUTCMonth() - 24);
+      var rels = relatoriosSalvos();
+      var ficamRel = rels.filter(function (r) { return !(r.modelo === 'feedback360' && Date.parse(r.criadoEm) < limite.getTime()); });
+      gravarChave(CHAVES.relatorios, ficamRel);
+      return { ok: true, avaliados: ids.length, respostas: antes.length - ficam.length, relatorios: rels.length - ficamRel.length };
+    }
+
+    // Semente: ciclo ENCERRADO da Clínica Exemplo (ago/2026), coerente com o organograma da prévia (Marta lidera Diego e Paulo;
+    // cada um lidera 2): Marta (dono) com "Equipe e outros" (6 respostas: frase por frase e uma frase "pouco observada"),
+    // Diego com "Colegas e equipe" (3: só temas, margem ampla) e Paulo SEM relatório (2 respostas anônimas). Relatórios
+    // publicados: relatorio.html#r-exemplo-360 (Marta, com as hipóteses DISC aceitas), #r-exemplo-360-diego e
+    // #r-exemplo-360-chefia (visão da chefia de Diego: só o plano). Só precisa do js/feedback360.js.
+    function semearF360() {
+      if (!temF360()) return;
+      if (buscarPor(f360Ciclos(), 'id', PREVIA.f360CicloId)) { gravarChave(CHAVES.sementeF360, 1); return; }
+      var t = agora();
+      var dia = 24 * 3600 * 1000;
+      var EMP = 'emp_previa_clinica';
+      var porTel = {};
+      pessoas().forEach(function (p) { porTel[p.telefone] = p.id; });
+      function pid(tel) { return porTel['55119000000' + tel] || ''; }
+      function iso(dias) { return new Date(t - dias * dia).toISOString(); }
+      var ids = FX().IDS_ITENS;
+      function itens(v, glb) { var o = {}; ids.forEach(function (id, i) { o[id] = v[i]; }); o.GLB1 = glb; return o; }
+      var c = { id: PREVIA.f360CicloId, empresaId: EMP, empresaNome: 'Clínica Exemplo', nome: 'Feedback 360 · ago/2026', status: 'aberto', versaoItens: 'v0',
+        encerramentoPrevisto: iso(61).slice(0, 10), canalTexto: 'o canal de ética da Clínica Exemplo', canalUrl: '', contatoDados: '',
+        contatoRelatos: 'Diretoria administrativa (definida no contrato)', retencaoDias: 90, manterLista: false, relatosRegistrados: 0,
+        abertoEm: iso(75), encerradoEm: '', listaApagadaEm: '' };
+      var avs = [
+        { id: 'f3a_previa_marta', pessoaId: pid('06'), nome: 'Marta E.', ordem: 0, topo: true, chefias: 0, perfilPrevia: 'DC',
+          convidados: { auto: 1, chefia: 0, colegas: 0, equipe: 2, outros: 4 } },
+        { id: 'f3a_previa_diego', pessoaId: pid('04'), nome: 'Diego E.', ordem: 1, topo: false, chefias: 1,
+          convidados: { auto: 1, chefia: 1, colegas: 1, equipe: 2, outros: 0 } },
+        { id: 'f3a_previa_paulo', pessoaId: pid('07'), nome: 'Paulo M.', ordem: 2, topo: false, chefias: 1,
+          convidados: { auto: 1, chefia: 1, colegas: 1, equipe: 2, outros: 0 } }
+      ].map(function (a) {
+        return Object.assign({ cicloId: c.id, resultado: null, excluir: [], temas: [], foco: '', observacao: '', plano: null, discAceito: false,
+          devolutivaEm: '', brutasApagadasEm: '' }, a);
+      });
+      // Frases na ordem DIR1..COE3; 0 = "não tive como observar".
+      var R = [
+        ['f3a_previa_marta', 'auto', [5, 4, 5, 4, 4, 5, 5, 4, 5, 4, 4, 5, 4, 4, 5, 5, 5, 4], 5],
+        ['f3a_previa_marta', 'equipe', [5, 4, 5, 4, 3, 4, 2, 4, 4, 3, 4, 4, 3, 3, 4, 4, 4, 3], 4],
+        ['f3a_previa_marta', 'equipe', [4, 4, 5, 4, 4, 5, 3, 4, 3, 3, 3, 4, 4, 3, 5, 4, 4, 2], 4],
+        ['f3a_previa_marta', 'outros', [5, 4, 4, 4, 0, 4, 0, 4, 4, 3, 4, 0, 4, 3, 4, 4, 0, 3], 4],
+        ['f3a_previa_marta', 'outros', [5, 5, 5, 5, 4, 5, 0, 3, 4, 4, 4, 4, 3, 3, 5, 5, 4, 3], 5],
+        ['f3a_previa_marta', 'outros', [4, 4, 4, 4, 0, 4, 0, 4, 3, 3, 3, 0, 4, 4, 5, 4, 0, 3], 4],
+        ['f3a_previa_marta', 'outros', [4, 4, 5, 3, 3, 4, 0, 4, 4, 3, 4, 3, 3, 3, 4, 4, 4, 2], 3],
+        ['f3a_previa_diego', 'auto', [4, 4, 5, 4, 4, 4, 4, 3, 4, 4, 4, 4, 4, 4, 5, 4, 4, 4], 4],
+        ['f3a_previa_diego', 'chefia', [4, 3, 4, 3, 3, 4, 3, 4, 4, 4, 3, 4, 4, 3, 4, 4, 4, 4], 4],
+        ['f3a_previa_diego', 'equipe', [4, 3, 4, 3, 2, 3, 3, 4, 4, 4, 4, 4, 4, 3, 4, 4, 4, 4], 4],
+        ['f3a_previa_diego', 'equipe', [4, 2, 4, 2, 3, 3, 3, 4, 4, 4, 4, 5, 4, 3, 5, 4, 4, 4], 3],
+        ['f3a_previa_diego', 'colegas', [4, 3, 4, 3, 3, 4, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4], 4],
+        ['f3a_previa_paulo', 'auto', [4, 4, 4, 4, 4, 4, 5, 4, 4, 4, 4, 4, 4, 4, 5, 4, 4, 4], 4],
+        ['f3a_previa_paulo', 'chefia', [4, 4, 3, 4, 3, 4, 4, 4, 4, 3, 4, 4, 4, 4, 4, 4, 4, 3], 4],
+        ['f3a_previa_paulo', 'equipe', [4, 4, 4, 3, 4, 4, 4, 5, 4, 4, 4, 4, 4, 4, 5, 4, 4, 4], 4]
+      ];
+      var respostas = R.map(function (r, i) {
+        return { id: 'f3r_previa_' + i, cicloId: c.id, avaliadoId: r[0], fonte: r[1], versaoItens: 'v0', itens: itens(r[2], r[3]), segundos: 260 + (i * 37) % 300 };
+      });
+      var com = function (av, fonte, pergunta, texto, status, moderado, motivo, sorteio) {
+        return { id: 'f3c_previa_' + av.slice(-5) + '_' + sorteio, cicloId: c.id, avaliadoId: 'f3a_previa_' + av, fonte: fonte, pergunta: pergunta, texto: texto,
+          textoModerado: moderado === undefined ? (status === 'mantido' ? texto : '') : moderado, status: status, motivo: motivo || '', elegivel: false, sorteio: sorteio / 10 };
+      };
+      var comentarios = [
+        com('marta', 'equipe', 'AB1', 'Decide rápido quando o problema chega até ela e deixa claro o que vem primeiro.', 'mantido', undefined, '', 3),
+        com('marta', 'outros', 'AB1', 'Trata todo mundo com educação, mesmo em dia de muito movimento.', 'mantido', undefined, '', 7),
+        com('marta', 'equipe', 'AB1', 'Cumpre o que combina com a gente.', 'mantido', undefined, '', 1),
+        com('marta', 'equipe', 'AB2', 'Poderia reservar um tempo fixo para conversar com cada coordenador.', 'mantido', undefined, '', 5),
+        com('marta', 'outros', 'AB2', 'Explicar o motivo quando muda a escala da recepção na sexta à tarde, antes do plantão.', 'editado',
+          'Explicar o motivo quando muda a escala [trecho removido].', '', 2),
+        com('marta', 'outros', 'AB2', 'Na reunião de terça com o fornecedor ela me cortou na frente de todos.', 'descartado', '', 'identifica', 9),
+        com('diego', 'equipe', 'AB1', 'Está sempre disponível quando alguém trava numa venda.', 'mantido', undefined, '', 4),
+        com('diego', 'equipe', 'AB2', 'Dar retorno mais claro sobre o que precisa melhorar, com exemplos.', 'mantido', undefined, '', 6),
+        com('diego', 'chefia', 'AB1', 'Bate as metas do mês e organiza bem a semana da equipe.', 'mantido', undefined, '', 8),
+        com('paulo', 'equipe', 'AB2', 'Mais conversa individual.', 'pendente', '', '', 2)
+      ];
+      var lc = f360Ciclos(); lc.push(c); gravarChave(CHAVES.f360Ciclos, lc);
+      gravarChave(CHAVES.f360Avaliados, f360Avaliados().concat(avs));
+      gravarChave(CHAVES.f360Respostas, f360Respostas().concat(respostas));
+      gravarChave(CHAVES.f360Comentarios, f360Comentarios().concat(comentarios));
+      avs.forEach(function (a) { f360Congelar(a.id); });
+      var la = f360Avaliados();
+      var lc2 = f360Ciclos();
+      var c2 = buscarPor(lc2, 'id', c.id);
+      c2.status = 'encerrado'; c2.encerradoEm = iso(61); c2.listaApagadaEm = iso(61);
+      gravarChave(CHAVES.f360Ciclos, lc2);
+      var marta = buscarPor(la, 'id', 'f3a_previa_marta'), diego = buscarPor(la, 'id', 'f3a_previa_diego');
+      Object.assign(marta, { devolutivaEm: iso(55), discAceito: true, foco: 'Ter conversas individuais com os coordenadores sem depender de urgência.',
+        observacao: 'Concordo que falta tempo de conversa individual; vou começar pela agenda fixa.',
+        temas: ['Decisões rápidas e prioridades claras quando o problema chega até ela.', 'Pouco tempo reservado para conversas individuais com os coordenadores.',
+          'Pedido de explicar o motivo de mudanças na escala antes de elas valerem.'],
+        plano: FX().validarPlano({ comportamentos: [{ item: 'APO1', acao: 'Reservar 30 minutos a cada 15 dias com cada coordenador, com a pauta deles primeiro.' },
+          { item: 'COE3', acao: 'Explicar o motivo das mudanças de escala no aviso, com a data em que serão revistas.' }],
+          acoes: [{ texto: 'Agenda fixa de conversas individuais quinzenais.', prazo: iso(40).slice(0, 10) },
+            { texto: 'Aviso de mudança de escala com "decidi X por causa de Y; revemos em Z".', prazo: iso(30).slice(0, 10) }],
+          contar: 'Agradecer a participação e contar o foco em conversas individuais e na explicação das mudanças, sem discutir notas.',
+          apoio: 'Consultor da Gestão sem Caos nos check-ins.', indicador: 'Os coordenadores dizem que as conversas aconteceram e que entendem as mudanças de escala.',
+          datas: { conversaEquipe: iso(45).slice(0, 10), checkin: iso(20).slice(0, 10), retornos: new Date(t + 5 * dia).toISOString().slice(0, 10),
+            pulso: new Date(t + 40 * dia).toISOString().slice(0, 10), reaplicacao: new Date(t + 300 * dia).toISOString().slice(0, 10) },
+          andamento: 'Conversa com a equipe feita; agenda quinzenal em andamento.' }).plano });
+      Object.assign(diego, { devolutivaEm: iso(54), foco: 'Retornos mais claros e combinar prazos ao delegar.',
+        temas: ['Disponível quando alguém trava numa venda.', 'Pedido de retorno mais claro sobre o que melhorar.'],
+        plano: FX().validarPlano({ comportamentos: [{ item: 'FBK1', acao: 'Dar retorno em até 2 dias, com o fato, o efeito e o próximo passo.' },
+          { item: 'DIR2', acao: 'Ao passar uma tarefa, combinar o que é "pronto" e o prazo.' }],
+          acoes: [{ texto: 'Regra das 48 horas para retornos.', prazo: iso(35).slice(0, 10) }],
+          contar: 'Contar à equipe que vai dar retornos mais rápidos e com exemplos.', apoio: 'Marta E. (chefia) na conversa sobre o plano.',
+          indicador: 'Pedir retorno curto a 2 pessoas da equipe em 60 dias.',
+          datas: { conversaEquipe: iso(44).slice(0, 10), conversaChefia: iso(40).slice(0, 10), pulso: new Date(t + 41 * dia).toISOString().slice(0, 10) },
+          andamento: 'Combinado com a chefia; primeiros retornos dados dentro do prazo.' }).plano });
+      gravarChave(CHAVES.f360Avaliados, la);
+      acaoF360GerarRelatorio('f3a_previa_marta', { visao: 'lider', publicar: true, consultor: 'Consultor Exemplo' }, PREVIA.f360RelatorioToken);
+      acaoF360GerarRelatorio('f3a_previa_diego', { visao: 'lider', publicar: true, consultor: 'Consultor Exemplo' }, PREVIA.f360RelatorioDiego);
+      acaoF360GerarRelatorio('f3a_previa_diego', { visao: 'chefia', publicar: true, consultor: 'Consultor Exemplo' }, PREVIA.f360ChefiaToken);
+      gravarChave(CHAVES.sementeF360, 1);
+    }
+
     /* ----- venda direta (B2C): como a migração 20261011120000_vendas.sql + Edge Function "pagamento" ----- */
     // Diferenças da prévia: o Pix é FICTÍCIO (QR de enfeite, "não pague"), o pedido só vira pago por
     // simularPagamento(pedidoId) (botão "Simular pagamento aprovado"), recuperarAcesso responde {ok:true} sem mandar
@@ -3669,7 +4278,8 @@
       var parte2 = !!lerChave(CHAVES.sementeParte2, null);
       var fotos = !!lerChave(CHAVES.sementeFotos, null);
       var clima = !!lerChave(CHAVES.sementeClima, null);
-      if (base && rel && equipe && parte2 && fotos && clima) return;
+      var f360 = !!lerChave(CHAVES.sementeF360, null);
+      if (base && rel && equipe && parte2 && fotos && clima && f360) return;
       semeando = true;
       try {
         if (!base && temScoring()) { semear(); base = true; } // sem scoring.js (página do relatório) fica para a próxima página
@@ -3678,6 +4288,7 @@
         if (base && equipe && !parte2) semearParte2(); // e a Parte 2 (perfil exigido) no EQP1
         if (base && equipe && !fotos) semearFotos(); // e os avatares fictícios
         if (!clima) semearClima(); // e a pesquisa de clima encerrada da Clínica Exemplo (precisa só do js/clima.js)
+        if (!f360) semearF360(); // e o Feedback 360 encerrado da Clínica Exemplo (precisa só do js/feedback360.js)
       } finally { semeando = false; }
     }
 
@@ -3990,7 +4601,9 @@
     function prepararDependencias(acao) {
       var clima = (String(acao || '').indexOf('clima.') === 0 || (comSemente && !lerChave(CHAVES.sementeClima, null))) && !opcoes.clima
         ? carregarScript('clima.js', 'DISC_CLIMA') : null;
-      return Promise.all([clima, prepararMotor(acao)]);
+      var f360 = (String(acao || '').indexOf('f360.') === 0 || (comSemente && !lerChave(CHAVES.sementeF360, null))) && !opcoes.f360
+        ? carregarScript('feedback360.js', 'DISC_F360') : null;
+      return Promise.all([clima, f360, prepararMotor(acao)]);
     }
     function prepararMotor(acao) {
       var semearExemplo = comSemente && !lerChave(CHAVES.sementeRelatorio, null); // a semente usa a fixture
@@ -4052,17 +4665,20 @@
       limpar: function () {
         gravar([]); gravarPessoas([]); gravarChave(CHAVES.vinculos, []); gravarChave(CHAVES.relacoes, []); gravarChave(CHAVES.pedidos, []);
         [CHAVES.climaRodadas, CHAVES.climaEquipes, CHAVES.climaRespostas, CHAVES.climaRecebidos, CHAVES.climaConvites, CHAVES.climaCodigos,
-          CHAVES.climaConferencias, CHAVES.climaIdentificacoes, CHAVES.climaAcessos, CHAVES.climaLimites, CHAVES.leiturasTecnicas].forEach(function (k) { gravarChave(k, []); });
+          CHAVES.climaConferencias, CHAVES.climaIdentificacoes, CHAVES.climaAcessos, CHAVES.climaLimites, CHAVES.leiturasTecnicas,
+          CHAVES.f360Ciclos, CHAVES.f360Avaliados, CHAVES.f360Convites, CHAVES.f360Respostas, CHAVES.f360Comentarios, CHAVES.f360Vinculos].forEach(function (k) { gravarChave(k, []); });
       },
       // Volta a prévia ao estado inicial (apaga tudo e recria a semente).
       reiniciar: function () {
         [CHAVE_ARMAZENAMENTO, CHAVES.usuarios, CHAVES.empresas, CHAVES.avaliacoes, CHAVES.sessoes, CHAVES.relatorios, CHAVES.pessoas,
           CHAVES.vinculos, CHAVES.relacoes, CHAVES.pedidos, CHAVES.climaRodadas, CHAVES.climaEquipes, CHAVES.climaRespostas,
           CHAVES.climaRecebidos, CHAVES.climaConvites, CHAVES.climaCodigos, CHAVES.climaConferencias, CHAVES.climaIdentificacoes,
-          CHAVES.climaAcessos, CHAVES.climaLimites, CHAVES.leiturasTecnicas].forEach(function (k) {
+          CHAVES.climaAcessos, CHAVES.climaLimites, CHAVES.leiturasTecnicas, CHAVES.f360Ciclos, CHAVES.f360Avaliados,
+          CHAVES.f360Convites, CHAVES.f360Respostas, CHAVES.f360Comentarios, CHAVES.f360Vinculos].forEach(function (k) {
           gravarChave(k, k === CHAVES.sessoes ? {} : []);
         });
         gravarChave(CHAVES.sementeClima, 0);
+        gravarChave(CHAVES.sementeF360, 0);
         gravarChave(CHAVES.pacotes, null);
         gravarChave(CHAVES.cupons, null);
         gravarChave(CHAVES.semente, 0);
@@ -4343,7 +4959,37 @@
       }),
       climaRenovarConvite: seguro(function (token, conviteId) { exigirToken(token); return comSessao('clima.renovarConvite', token, { conviteId: conviteId }); }),
       climaColaboradoresDados: seguro(function (token, empresaId) { exigirToken(token); return comSessao('clima.colaboradores', token, { empresaId: empresaId }); }),
-      climaSalvarColaborador: seguro(function (token, dados) { exigirToken(token); return comSessao('clima.salvarColaborador', token, { dados: dados || {} }); })
+      climaSalvarColaborador: seguro(function (token, dados) { exigirToken(token); return comSessao('clima.salvarColaborador', token, { dados: dados || {} }); }),
+      // --- Feedback 360 da Liderança: mesmo contrato do js/api-supabase.js ---
+      f360Publica: seguro(function (t) { return chamar({ acao: 'f360.publica', tokenF360: String(t == null ? '' : t) }); }),
+      f360Enviar: seguro(function (t, respostas) { return chamar({ acao: 'f360.enviar', tokenF360: String(t == null ? '' : t), respostas: respostas }); }),
+      f360ApagarResposta: seguro(function (t) { return chamar({ acao: 'f360.apagarResposta', tokenF360: String(t == null ? '' : t) }); }),
+      f360Listar: seguro(function (token, empresaId) { return comSessao('f360.listar', token, { empresaId: empresaId }); }),
+      f360CriarCiclo: seguro(function (token, dados) { return comSessao('f360.criar', token, { dados: dados || {} }); }),
+      f360Encerrar: seguro(function (token, id) { exigirToken(token); exigir(id, 'Ciclo não informado.'); return comSessao('f360.encerrar', token, { cicloId: id }); }),
+      f360Recalcular: seguro(function (token, id, excluir) {
+        exigirToken(token); exigir(id, 'Pessoa avaliada não informada.');
+        return comSessao('f360.recalcular', token, { avaliadoId: id, excluir: Array.isArray(excluir) ? excluir : [] });
+      }),
+      f360Comentarios: seguro(function (token, id) { exigirToken(token); exigir(id, 'Pessoa avaliada não informada.'); return comSessao('f360.comentarios', token, { avaliadoId: id }); }),
+      f360Moderar: seguro(function (token, id, dados) {
+        exigirToken(token); exigir(id, 'Comentário não informado.');
+        return comSessao('f360.moderar', token, { comentarioId: id, dados: dados || {} });
+      }),
+      f360SalvarDevolutiva: seguro(function (token, id, dados) {
+        exigirToken(token); exigir(id, 'Pessoa avaliada não informada.');
+        return comSessao('f360.devolutiva', token, { avaliadoId: id, dados: dados || {} });
+      }),
+      f360GerarRelatorio: seguro(function (token, id, opcoes) {
+        exigirToken(token); exigir(id, 'Pessoa avaliada não informada.');
+        return comSessao('f360.relatorio', token, { avaliadoId: id, opcoes: opcoes || {} });
+      }),
+      f360GerarConsolidado: seguro(function (token, id, opcoes) {
+        exigirToken(token); exigir(id, 'Ciclo não informado.');
+        return comSessao('f360.consolidado', token, { cicloId: id, opcoes: opcoes || {} });
+      }),
+      f360ExcluirCiclo: seguro(function (token, id) { exigirToken(token); exigir(id, 'Ciclo não informado.'); return comSessao('f360.excluir', token, { cicloId: id }); }),
+      f360ApagarBrutas: seguro(function (token, opcoes) { return comSessao('f360.apagarBrutas', token, { opcoes: opcoes || {} }); })
     };
   }
 
@@ -4364,7 +5010,9 @@
     'diagnosticoConexoes', 'testarConexao',
     'climaPublica', 'climaEnviar', 'climaListar', 'climaCriarRodada', 'climaEncerrar', 'climaResultado', 'climaComentarios',
     'climaGerarRelatorio', 'climaExcluirRodada', 'climaApagarBrutas', 'climaPedirCodigo', 'climaEnvios', 'climaIdentificacao',
-    'climaDesidentificar', 'climaRenovarConvite', 'climaColaboradoresDados', 'climaSalvarColaborador'];
+    'climaDesidentificar', 'climaRenovarConvite', 'climaColaboradoresDados', 'climaSalvarColaborador',
+    'f360Publica', 'f360Enviar', 'f360ApagarResposta', 'f360Listar', 'f360CriarCiclo', 'f360Encerrar', 'f360Recalcular', 'f360Comentarios',
+    'f360Moderar', 'f360SalvarDevolutiva', 'f360GerarRelatorio', 'f360GerarConsolidado', 'f360ExcluirCiclo', 'f360ApagarBrutas'];
 
   // Liga no lugar do DISC_API real quando CONFIG.API_URL === 'simulada' (o objeto continua o mesmo).
   function instalar(alvo, cfg, opcoes) {

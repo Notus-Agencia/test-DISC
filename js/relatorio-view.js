@@ -12,6 +12,8 @@
  * (dados.leituraTecnica = {nome, crp} válido, vinda só do link técnico): completa, com "Leitura técnica: <nome> · CRP <n>"
  * na capa, no índice, no topo de cada página, no rodapé e no pé de todas as folhas impressas. Sem js/versao-tecnica.js
  * carregado, esses dois modelos não são desenhados (nunca mostram o conteúdo restrito por engano).
+ * 'feedback360' (Feedback 360 da Liderança; snapshot montado pelo banco, textos e regras de js/feedback360.js) desenha a visão
+ * do líder (11 capítulos), a da chefia (só o plano) ou o consolidado da empresa (dados.visao).
  * organogramaHtml(organograma, {focoId?, rotulo?}) é exportado para o painel reutilizar (estilos: bloco ".org" de relatorio.css).
  *
  * Segurança:
@@ -2132,7 +2134,400 @@
       rodapeModelo(['Pesquisa de Clima da Equipe', emp.nome], C.TEXTOS.usoProibido) + '</article>';
   }
 
-  var MODELOS = { equipe: equipeHtml, lideranca: liderancaHtml, pessoa: pessoaHtml, clima: climaHtml };
+
+  /* ------------------------------------------------------------------ FEEDBACK 360 DA LIDERANÇA (modelo 'feedback360')
+   * Snapshot montado pelo banco (public.f360_gerar_relatorio / f360_gerar_consolidado): só agregados já suprimidos (tema com
+   * 3 ou mais por grupo, frase com 5 ou mais, chefia à parte, comentários moderados). Os textos e o que é derivado (leitura
+   * pela âncora, destaques, diferenças, hipóteses DISC) vêm de js/feedback360.js (DISC_F360). dados.visao: 'lider' (os 11
+   * capítulos de decisao.md 4.2), 'chefia' (só o plano) ou 'empresa' (consolidado, 5 ou mais líderes, sem nomes).
+   * Régua com os 5 rótulos da escala; sem 0 a 100, sem semáforo, sem média da empresa, sem ranking. Marca "Confidencial ·
+   * desenvolvimento de [Nome] · não usar em decisões de pessoal" no cabeçalho de cada página e como marca d'água no PDF. */
+
+  function F360() {
+    if (root.DISC_F360) return root.DISC_F360;
+    if (typeof require === 'function') { try { return require('./feedback360.js'); } catch (e) { return null; } }
+    return null;
+  }
+  function f360Marca(F, nome) {
+    return '<div class="f360-marca-dagua" aria-hidden="true">' + esc(F.TEXTOS.marca(nome)) + '</div>';
+  }
+  function f360Escala(F) {
+    var pos = [0, 25, 50, 75, 100];
+    return '<div class="f360-regua__escala" aria-hidden="true"><span></span><div class="f360-regua__escala-rot">' +
+      F.ESCALA.map(function (x, i) { return '<span style="left:' + pos[i] + '%">' + esc(x.rotulo) + '</span>'; }).join('') + '</div><span></span></div>';
+  }
+  // Uma linha da régua: rótulo da fonte, trilho com a marca na posição exata e a palavra da âncora (sem número).
+  function f360Linha(F, classe, rotulo, n, media, vazio) {
+    var tem = ehNumero(media);
+    var leit = tem ? F.leitura(media).rotulo : (vazio || 'sem leitura');
+    var tiques = [0, 25, 50, 75, 100].map(function (p) { return '<span class="f360-linha__tique" style="left:' + p + '%"></span>'; }).join('');
+    return '<li class="f360-linha f360-linha--' + classeSegura(classe) + (tem ? '' : ' f360-linha--vazia') + '">' +
+      '<span class="f360-linha__rot">' + esc(rotulo) + (ehNumero(n) ? ' <small>(' + esc(numeroCurto(n)) + ')</small>' : '') + '</span>' +
+      '<span class="f360-linha__trilho" role="img" aria-label="' + esc(rotulo + ': ' + leit) + '">' + tiques +
+      (tem ? '<span class="f360-linha__marca" style="left:' + F.posicao(media).toFixed(1) + '%"></span>' : '') + '</span>' +
+      '<span class="f360-linha__leit">' + esc(leit) + '</span></li>';
+  }
+  function f360Legenda() {
+    return '<p class="f360-legenda" aria-hidden="true"><span><span class="f360-linha--outras"><span class="f360-linha__marca"></span></span>Outras pessoas (sem a chefia)</span>' +
+      '<span><span class="f360-linha--grupo"><span class="f360-linha__marca"></span></span>Grupo</span>' +
+      '<span><span class="f360-linha--chefia"><span class="f360-linha__marca"></span></span>Chefia</span>' +
+      '<span><span class="f360-linha--voce"><span class="f360-linha__marca"></span></span>Você</span></p>';
+  }
+  function f360NomeChefia(res) {
+    var n = res.chefia ? res.chefia.n : 0;
+    return n === 2 ? 'Chefias (2 pessoas)' : (res.chefiasConvidadas === 2 ? 'Chefias (1 de 2)' : 'Sua chefia (1 pessoa)');
+  }
+  function f360Composicao(F, comp) {
+    var partes = [];
+    F.ANONIMAS.forEach(function (f) {
+      var n = comp && comp[f];
+      if (!ehNumero(n) || !n) return;
+      partes.push(numeroCurto(n) + ' ' + (f === 'colegas' ? (n === 1 ? 'colega' : 'colegas') : (f === 'equipe' ? 'da equipe' : (n === 1 ? 'outro convidado' : 'outros convidados'))));
+    });
+    return partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes[partes.length - 1] : partes.join('');
+  }
+
+  function secoesF360(d) {
+    var s = [
+      { id: 'como-ler', titulo: 'Como ler este relatório', curto: 'Como ler', meta: 'O que é e o que não é · Quem respondeu · Limites' },
+      { id: 'resumo', titulo: 'Resumo', curto: 'Resumo', meta: 'Para manter · Para desenvolver · Diferenças · Foco' },
+      { id: 'temas', titulo: 'Os 6 temas', curto: 'Os 6 temas', meta: 'Régua por tema · Você, chefia e grupos' },
+      { id: 'comportamentos', titulo: 'Comportamentos', curto: 'Comportamentos', meta: 'As 18 frases' },
+      { id: 'diferencas', titulo: 'Diferenças de percepção', curto: 'Diferenças', meta: 'Você × outras pessoas · Como pergunta' },
+      { id: 'comentarios', titulo: 'O que disseram', curto: 'O que disseram', meta: 'Temas · Comentários revisados' }
+    ];
+    if (d.disc && d.disc.codigo) s.push({ id: 'estilo', titulo: 'Seu estilo e estes resultados', curto: 'Seu estilo', meta: 'Hipóteses para conversa · DISC' });
+    s.push({ id: 'equipe', titulo: 'Sua equipe', curto: 'Sua equipe', meta: 'Clima · Como liderar' });
+    s.push({ id: 'plano', titulo: 'Plano de desenvolvimento', curto: 'Plano', meta: '1 ou 2 comportamentos · A parte que a chefia vê' });
+    s.push({ id: 'acompanhamento', titulo: 'Acompanhamento', curto: 'Acompanhamento', meta: 'Datas · Pulso · Critério de mudança' });
+    s.push({ id: 'metodo', titulo: 'Método', curto: 'Método', meta: 'Perguntas · Cálculo · Regras de exibição · Referências' });
+    s.forEach(function (x, i) { x.n = n2(i); });
+    return s;
+  }
+
+  function f360PlanoHtml(F, plano, nome, comObservacao, observacao) {
+    if (!plano || typeof plano !== 'object') {
+      return '<div class="obs obs--info"><div class="obs__tit">Plano ainda não registrado</div><p>' + esc('O plano é escrito na conversa de devolutiva com o consultor: 1 ou 2 comportamentos, ações, datas e quem apoia.') + '</p></div>';
+    }
+    var comp = lista(plano.comportamentos).filter(function (x) { return x && F.item(x.item); });
+    var h = '<div class="cartao-doc f360-plano"><dl>';
+    h += '<dt>Comportamentos escolhidos</dt>' + comp.map(function (x) {
+      var it = F.item(x.item);
+      return '<dd><strong>' + esc(F.tema(it.tema).nome + ': ') + '</strong>' + esc(F.textoItem(x.item, 'equipe', nome)) +
+        (x.acao ? '<br><span class="nota-curta">' + esc('Como ação: ' + x.acao) + '</span>' : '') + '</dd>';
+    }).join('');
+    var acoes = lista(plano.acoes).filter(function (a) { return a && a.texto; });
+    if (acoes.length) h += '<dt>Ações</dt>' + acoes.map(function (a) { return '<dd>' + esc(a.texto + (a.prazo ? ' · até ' + F.dataBr(a.prazo) : '')) + '</dd>'; }).join('');
+    if (plano.contar) h += '<dt>O que vai contar à equipe e aos colegas</dt><dd>' + esc(plano.contar) + '</dd>';
+    if (plano.apoio) h += '<dt>Quem apoia</dt><dd>' + esc(plano.apoio) + '</dd>';
+    if (plano.indicador) h += '<dt>Como vai saber que melhorou</dt><dd>' + esc(plano.indicador) + '</dd>';
+    if (plano.andamento) h += '<dt>Andamento</dt><dd>' + esc(plano.andamento) + '</dd>';
+    h += '</dl></div>';
+    var temas = {};
+    comp.forEach(function (x) { temas[F.item(x.item).tema] = true; });
+    var menu = Object.keys(temas).map(function (t) {
+      var m = F.MENU_ACOES[t];
+      return '<div class="obs obs--info"><div class="obs__tit">' + esc('Ideias de ação: ' + F.tema(t).nome) + '</div>' +
+        '<ul class="itens-doc">' + m.acoes.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join('') + '</ul>' +
+        '<p class="nota-curta">' + esc('Base: ' + m.base + '. No "Como liderar" de cada pessoa da equipe: ' + m.capitulos.join(', ') + '.') + '</p></div>';
+    }).join('');
+    if (menu) h += '<div class="obs-grade">' + menu + '</div>';
+    if (comObservacao && observacao) h += '<div class="obs obs--destaque mt24"><div class="obs__tit">' + esc('Observação de ' + nome) + '</div><p>' + esc(observacao) + '</p></div>';
+    return h;
+  }
+
+  function f360AgendaHtml(F, plano) {
+    var datas = plano && plano.datas && typeof plano.datas === 'object' ? plano.datas : {};
+    return '<div class="f360-tabela-rolagem"><table class="tabela-doc f360-agenda"><thead><tr><th scope="col">Momento</th><th scope="col">Quem</th><th scope="col">Data</th></tr></thead><tbody>' +
+      F.MOMENTOS_PLANO.map(function (m) {
+        return '<tr data-momento="' + esc(m.id) + '"><td data-rotulo="Momento"><strong>' + esc(m.rotulo) + '</strong></td><td data-rotulo="Quem">' + esc(m.quem) +
+          '</td><td data-rotulo="Data">' + esc(datas[m.id] ? F.dataBr(datas[m.id]) : 'a combinar') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  function f360LiderHtml(F, d) {
+    var res = d.resultado && typeof d.resultado === 'object' ? d.resultado : {};
+    var nome = (d.avaliado && d.avaliado.nome) || 'Líder';
+    var emp = d.empresa || {};
+    var ciclo = d.ciclo || {};
+    var grupos = lista(res.grupos);
+    var outras = res.outras || null;
+    var S = secoesF360(d);
+    function sec(id) { return S.filter(function (x) { return x.id === id; })[0]; }
+    function alt(id) { return S.indexOf(sec(id)) % 2 === 1; }
+    function pagina(id, conteudo) { return secao(sec(id), alt(id), cabecalhoPagina(sec(id), F.TEXTOS.marca(nome)) + conteudo); }
+    var periodo = [data(ciclo.abertoEm), data(ciclo.encerradoEm)].filter(Boolean).join(' a ');
+    var nFrases = outras ? F.IDS_ITENS.filter(function (id) { return outras.itens[id] && ehNumero(outras.itens[id].media); }).length : 0;
+    var dest = F.destaques(res);
+    var difs = F.diferencas(res);
+    var difsOutras = difs.filter(function (x) { return x.grupo === 'outras'; });
+    var variosGrupos = grupos.length > 1;
+
+    var h = capaModelo({
+      meta: 'Feedback 360 da Liderança', sobre: 'Confidencial · desenvolvimento de ' + nome,
+      tituloHtml: 'Feedback 360<br>da <em>liderança</em><br>' + esc(nome),
+      subtitulo: F.SUBTITULO + '.',
+      numeros: [
+        { valor: numeroCurto(outras ? outras.n : 0), rotulo: 'respostas de colegas, equipe e outros' },
+        // Quem está no topo não tem chefia: o número não aparece (não é "0 respostas").
+        res.chefia || res.chefiasConvidadas ? { valor: numeroCurto(res.chefia ? res.chefia.n : 0), rotulo: res.chefia && res.chefia.n === 1 ? 'resposta da chefia' : 'respostas da chefia' } : null,
+        { valor: '6', rotulo: 'temas' },
+        { valor: numeroCurto(nFrases), rotulo: 'frases com leitura', destaque: true }
+      ].filter(Boolean),
+      rodape: [
+        { rotulo: 'Pessoa avaliada', linhas: [nome] },
+        { rotulo: 'Empresa', linhas: [emp.nome || '—'] },
+        { rotulo: 'Consultoria', linhas: ['Gestão sem Caos', d.consultor] },
+        { rotulo: 'Coleta', linhas: [periodo || '—'] }
+      ]
+    });
+    h += '<div class="f360-confidencial" role="note"><strong>' + esc(F.TEXTOS.marca(nome)) + '.</strong> ' + esc(F.TEXTOS.capa(nome)) + '</div>';
+    h += indiceModelo(S, 'Como quem trabalha com você percebe a sua liderança.', F.TEXTOS.capa(nome));
+
+    // 01 Como ler
+    var c = '<p class="lede">' + esc(F.TEXTOS.capa(nome)) + '</p>';
+    var quem = [];
+    if (outras) quem.push('<li>' + esc('Outras pessoas (sem a chefia): ' + numeroCurto(outras.n) + ' respostas — ' + f360Composicao(F, outras.composicao) + '.') + '</li>');
+    grupos.forEach(function (g) {
+      var conv = 0; lista(g.fontes).forEach(function (f) { conv += (res.convidados && res.convidados[f]) || 0; });
+      quem.push('<li>' + esc(g.nome + ': ' + numeroCurto(g.n) + (conv ? ' de ' + numeroCurto(conv) + ' convidados' : '') + ' responderam' + (lista(g.fontes).length > 1 ? ' (grupos pequenos juntados para proteger quem respondeu)' : '') + '.') + '</li>');
+    });
+    if (res.chefia) quem.push('<li>' + esc(f360NomeChefia(res) + ': resposta identificada, à parte.') + '</li>');
+    if (res.auto) quem.push('<li>' + esc('Você: a sua autoavaliação aparece ao lado e nunca entra em média nenhuma.') + '</li>');
+    c += '<div class="duas mt32"><div class="cartao-doc"><div class="rotulo-doc">Quem respondeu</div><ul class="itens-doc">' + quem.join('') + '</ul>' +
+      '<p class="nota-curta">' + esc('Coleta: ' + (periodo || '—') + '. Nada foi mostrado enquanto ela estava aberta; você recebe este relatório na conversa de devolutiva.') + '</p></div>' +
+      '<div class="cartao-doc"><div class="rotulo-doc">O que não é</div><ul class="itens-doc">' +
+      '<li>' + esc('Não é nota, não é avaliação psicológica e não mede personalidade nem competência técnica.') + '</li>' +
+      '<li>' + esc('Não compara você com outros líderes nem com a média da empresa.') + '</li>' +
+      '<li>' + esc('Não pode ser usado para decidir promoção, salário, bônus, desligamento ou remanejamento.') + '</li></ul></div></div>';
+    c += '<h3 class="h3 mt48">Como ler a régua</h3><p class="nota-curta">' + esc(F.TEXTOS.leitura) + '</p>' + f360Legenda();
+    c += '<div class="obs-grade">' + nota('info', 'Grupos', F.TEXTOS.grupos) + (res.chefia ? nota('info', 'Chefia', F.TEXTOS.chefia) : '') +
+      nota('alerta', 'Limites', 'Poucas respostas são sinais para conversa, não conclusões. A autoavaliação costuma ser mais alta que a visão dos outros. Cada grupo vê uma parte diferente do seu trabalho (Hoffman et al., 2010).') +
+      nota('info', 'Origem das perguntas', F.TEXTOS.origem) + '</div>';
+    h += pagina('como-ler', c);
+
+    // 02 Resumo
+    c = '<p class="lede lede--curta">' + esc('As frases mais e menos observadas pelas outras pessoas, numa ordem só sua: não compara você com ninguém.') + '</p>';
+    function listaDest(itens, classe) {
+      return itens.length ? '<ul class="f360-destaque-lista' + (classe ? ' ' + classe : '') + '">' + itens.map(function (x) {
+        return '<li>' + esc(F.textoItem(x.item, 'equipe', nome)) + '<small>' + esc(F.tema(F.item(x.item).tema).nome + ' · ' + F.leitura(x.media).rotulo) + '</small></li>';
+      }).join('') + '</ul>' : '';
+    }
+    var semDest = dest.parecidas ? 'As frases tiveram leituras muito parecidas entre si: não há um destaque claro.'
+      : (dest.disponiveis < 2 ? 'Frase por frase só aparece com 5 respostas ou mais: com o número de respostas deste ciclo, a leitura fica nos temas.' : 'Nenhuma frase se destacou das outras.');
+    c += '<div class="duas mt32"><div class="cartao-doc" data-destaques="manter"><div class="rotulo-doc">Comportamentos para manter</div>' + (listaDest(dest.manter) || '<p class="nota-curta">' + esc(semDest) + '</p>') + '</div>' +
+      '<div class="cartao-doc" data-destaques="desenvolver"><div class="rotulo-doc">Comportamentos para desenvolver</div>' + (listaDest(dest.desenvolver, 'f360-destaque-lista--desenvolver') || '<p class="nota-curta">' + esc(semDest) + '</p>') + '</div></div>';
+    c += '<h3 class="h3 mt48">Diferenças de percepção</h3>';
+    c += difsOutras.length ? '<div class="obs-pilha">' + difsOutras.slice(0, 2).map(function (x) { return '<div class="obs obs--alerta"><p>' + esc(F.textoDiferenca(x)) + '</p></div>'; }).join('') + '</div>'
+      : '<p class="nota-curta">' + esc(res.auto ? 'Percepções parecidas: em nenhum tema a sua visão e a das outras pessoas ficaram a 1 ponto ou mais de distância.' : 'Sem autoavaliação, não há comparação.') + '</p>';
+    c += '<h3 class="h3 mt48">Foco que quero conversar</h3><div class="f360-foco' + (d.foco ? '' : ' f360-foco--vazio') + '">' + esc(d.foco || 'Preenchido na conversa de devolutiva.') + '</div>';
+    h += pagina('resumo', c);
+
+    // 03 Os 6 temas
+    c = '<p class="lede lede--curta">' + esc('Cada tema numa régua de "nunca ou quase nunca" a "sempre ou quase sempre". A marca mostra a posição; a palavra é a âncora mais próxima.') + '</p>' + f360Legenda();
+    c += '<div class="f360-temas">' + F.TEMAS.map(function (t) {
+      var o = outras && outras.temas[t.id];
+      var linhas = '';
+      if (outras) linhas += f360Linha(F, 'outras', 'Outras pessoas', o ? o.n : null, o ? o.media : null, 'menos de 3 respostas');
+      if (variosGrupos) grupos.forEach(function (g) { var x = g.temas[t.id]; linhas += f360Linha(F, 'grupo', g.nome, x ? x.n : null, x ? x.media : null, 'menos de 3 respostas'); });
+      if (res.chefia) linhas += f360Linha(F, 'chefia', f360NomeChefia(res).replace(' (1 pessoa)', ''), null, res.chefia.temas[t.id], 'sem resposta');
+      if (res.auto) linhas += f360Linha(F, 'voce', 'Você', null, res.auto.temas[t.id], 'sem resposta');
+      var notas = [];
+      if (o && F.margemAmpla(o.n)) notas.push(selo('margem', 'Margem ampla'));
+      if (o && o.variadas) notas.push(selo('variadas', 'Opiniões variadas'));
+      grupos.forEach(function (g) { var x = g.temas[t.id]; if (variosGrupos && x && x.variadas) notas.push(selo('variadas', 'Opiniões variadas · ' + g.nome)); });
+      return '<article class="cartao-doc f360-tema" data-tema="' + esc(t.id) + '"><div class="f360-tema__cab"><h3 class="h3">' + esc(t.nome) + '</h3>' +
+        (o ? '<span class="f360-tema__leit">Outras pessoas: <strong>' + esc(F.leitura(o.media).rotulo) + '</strong></span>' : '') + '</div>' +
+        '<div class="f360-regua">' + f360Escala(F) + '<ul class="f360-linhas">' + linhas + '</ul></div>' +
+        (notas.length ? '<p class="f360-tema__notas">' + notas.join('') + '</p>' : '') + '</article>';
+    }).join('') + '</div>';
+    if (outras && F.IDS_TEMAS.some(function (t) { return outras.temas[t] && F.margemAmpla(outras.temas[t].n); })) c += '<p class="nota-curta mt16">' + esc(F.TEXTOS.margem) + '</p>';
+    if (outras && F.IDS_TEMAS.some(function (t) { return outras.temas[t] && outras.temas[t].variadas; })) c += '<p class="nota-curta">' + esc(F.TEXTOS.variadas) + '</p>';
+    h += pagina('temas', c);
+
+    // 04 Comportamentos
+    c = '<p class="lede lede--curta">' + esc('As 18 frases. Frase por frase, só com 5 respostas ou mais; a chefia e a sua autoavaliação aparecem ao lado.') + '</p>';
+    c += F.TEMAS.map(function (t) {
+      return '<div class="cartao-doc mt24" data-tema="' + esc(t.id) + '"><div class="rotulo-doc">' + esc(t.nome) + '</div><ul class="f360-frases">' + t.itens.map(function (it) {
+        var o = outras && outras.itens[it.id];
+        var linhas = '';
+        if (outras) linhas += f360Linha(F, 'outras', 'Outras pessoas', o && o.n ? o.n : null, o && ehNumero(o.media) ? o.media : null, o && o.pouco ? 'pouco observada' : 'menos de 5 respostas');
+        if (variosGrupos) grupos.forEach(function (g) { var x = g.itens[it.id]; if (x && (x.pouco || ehNumero(x.media))) linhas += f360Linha(F, 'grupo', g.nome, x.n || null, ehNumero(x.media) ? x.media : null, 'pouco observada'); });
+        if (res.chefia) { var ch = res.chefia.itens[it.id]; linhas += f360Linha(F, 'chefia', 'Chefia', null, ehNumero(ch) ? ch : null, ch === 'nao' ? 'não teve como observar' : 'sem resposta'); }
+        if (res.auto) { var au = res.auto.itens[it.id]; linhas += f360Linha(F, 'voce', 'Você', null, ehNumero(au) ? au : null, au === 'nao' ? 'não se aplica' : 'sem resposta'); }
+        return '<li class="f360-frase" data-item="' + esc(it.id) + '"><p class="f360-frase__texto">' + esc(F.textoItem(it.id, 'equipe', nome)) + '</p><ul class="f360-linhas">' + linhas + '</ul>' +
+          (o && o.pouco ? '<p class="nota-curta">' + esc(F.TEXTOS.pouco) + '</p>' : '') + '</li>';
+      }).join('') + '</ul></div>';
+    }).join('');
+    if (outras && outras.itens.RES3 && ehNumero(outras.itens.RES3.media) && outras.itens.RES3.media < 3.5) c += '<p class="nota-curta mt16">' + esc(F.AVISO_RES3) + '</p>';
+    h += pagina('comportamentos', c);
+
+    // 05 Diferenças de percepção
+    c = '<p class="lede lede--curta">' + esc(F.TEXTOS.diferencas) + '</p>';
+    if (!res.auto) c += '<div class="obs obs--info"><div class="obs__tit">Sem autoavaliação</div><p>' + esc('Sem a sua autoavaliação, não há comparação.') + '</p></div>';
+    else if (!difs.length) c += '<div class="obs obs--info"><div class="obs__tit">Percepções parecidas</div><p>' + esc('Em nenhum tema a sua visão e a de um grupo ficaram a 1 ponto ou mais de distância. A comparação com a chefia não entra aqui: é a visão de uma pessoa.') + '</p></div>';
+    else {
+      c += '<div class="obs-pilha">' + difs.map(function (x) {
+        return '<div class="obs obs--alerta" data-diferenca="' + esc(x.tema + ':' + x.grupo) + '"><div class="obs__tit">' + esc(F.tema(x.tema).nome) + '</div><p>' + esc(F.textoDiferenca(x)) + '</p>' +
+          (x.margemAmpla ? '<p class="nota-curta">' + esc('Margem ampla: o grupo comparado teve 3 ou 4 respostas.') + '</p>' : '') + '</div>';
+      }).join('') + '</div>';
+      c += '<p class="nota-curta mt16">' + esc('A comparação com a chefia não recebe o rótulo de diferença: é a visão de uma pessoa.') + '</p>';
+    }
+    h += pagina('diferencas', c);
+
+    // 06 O que disseram
+    c = '<p class="lede lede--curta">' + esc(F.TEXTOS.comentarios) + '</p>';
+    var temas = lista(d.temas).filter(function (t) { return typeof t === 'string' && t; });
+    c += '<h3 class="h3 mt32">Temas dos comentários</h3>' + (temas.length ? '<ol class="plano-doc">' + temas.map(function (t, i) {
+      return '<li><span class="plano-doc__prazo">' + n2(i) + '</span><div><p>' + esc(t) + '</p></div></li>';
+    }).join('') + '</ol>' : '<p class="nota-curta">Sem temas registrados pela consultoria.</p>');
+    var coms = lista(d.comentarios).filter(function (x) { return x && typeof x.texto === 'string' && x.texto; });
+    c += '<h3 class="h3 mt48">Comentários</h3>' + (coms.length ? '<ul class="f360-comentarios">' + coms.map(function (x) {
+      return '<li class="f360-comentario">' + selo('pergunta', x.pergunta === 'AB1' ? 'Continuar' : 'Fazer diferente') + paragrafos(x.texto) + '</li>';
+    }).join('') + '</ul>' : '<p class="nota-curta">Nenhum comentário para mostrar.</p>');
+    var comsCh = lista(d.comentariosChefia).filter(function (x) { return x && typeof x.texto === 'string' && x.texto; });
+    if (comsCh.length) {
+      c += '<h3 class="h3 mt48">Da sua chefia (identificada)</h3><ul class="f360-comentarios">' + comsCh.map(function (x) {
+        return '<li class="f360-comentario f360-comentario--chefia">' + selo('pergunta', x.pergunta === 'AB1' ? 'Continuar' : 'Fazer diferente') + paragrafos(x.texto) + '</li>';
+      }).join('') + '</ul>';
+    }
+    c += '<p class="nota-curta mt16">' + esc(F.TEXTOS.naoPergunte) + '</p>';
+    h += pagina('comentarios', c);
+
+    // 07 Seu estilo (só com o aceite do líder)
+    if (sec('estilo')) {
+      var hip = F.hipotesesDisc(res, d.disc.codigo);
+      c = '<p class="lede lede--curta">' + esc(F.TEXTOS.hipotese) + '</p>';
+      c += hip.length ? hip.map(function (x) {
+        return '<div class="cartao-doc mt24 f360-hipotese" data-hipotese="' + esc(x.tema) + '"><div class="rotulo-doc">' + esc(F.tema(x.tema).nome) + '</div>' +
+          '<p><strong>' + esc('O dado: ') + '</strong>' + esc(x.dado) + '</p><p>' + esc(x.estilo) + '</p>' +
+          '<p><strong>Outras explicações possíveis:</strong></p><ul class="itens-doc">' + x.outras.map(function (o) { return '<li>' + esc(o) + '</li>'; }).join('') + '</ul>' +
+          '<p><strong>' + esc('Pergunta para a conversa: ') + '</strong>' + esc(x.pergunta) + '</p><p><strong>' + esc('Primeiro passo: ') + '</strong>' + esc(x.passo) + '</p></div>';
+      }).join('') : '<p class="nota-curta">Nenhum tema pediu uma hipótese de estilo neste ciclo.</p>';
+      c += '<p class="nota-curta mt16">' + esc('Não encontramos estudo publicado mostrando que o perfil DISC prevê resultados de feedback 360. O plano sai do menu de ações por tema, nunca do DISC.') + '</p>';
+      h += pagina('estilo', c);
+    }
+
+    // 08 Sua equipe
+    var guias = lista(d.guias).filter(function (g) { return g && g.nome && /^[A-Za-z0-9_-]{8,200}$/.test(String(g.token || '')); });
+    c = '<p class="lede lede--curta">' + esc('Três leituras diferentes, que não se misturam: o DISC mostra como a pessoa tende a agir; o Feedback 360 mostra o que o líder faz, segundo quem convive com ele; a Pesquisa de Clima mostra como a equipe percebe o ambiente, sempre no coletivo.') + '</p>';
+    c += '<div class="duas mt32"><div class="cartao-doc"><div class="rotulo-doc">Pesquisa de Clima</div><p>' + esc('Se a sua equipe participou da Pesquisa de Clima, o consultor traz a leitura da sua equipe para a conversa, sem juntar números com este relatório.') + '</p></div>' +
+      '<div class="cartao-doc"><div class="rotulo-doc">Como liderar cada pessoa</div>' + (guias.length ? '<ul class="itens-doc">' + guias.map(function (g) {
+        return '<li><a href="relatorio.html?r=' + encodeURIComponent(g.token) + '" target="_blank" rel="noopener">' + esc('Como liderar ' + g.nome) + '</a></li>';
+      }).join('') + '</ul>' : '<p class="nota-curta">' + esc('Nenhum guia "Como liderar" publicado para a sua equipe ainda.') + '</p>') + '</div></div>';
+    h += pagina('equipe', c);
+
+    // 09 Plano
+    c = '<p class="lede lede--curta">' + esc('Esta é a parte que a sua chefia vê: os comportamentos escolhidos, as ações, as datas e o andamento. Nunca as respostas nem os comentários.') + '</p>';
+    c += f360PlanoHtml(F, d.plano, nome, true, d.observacao);
+    c += '<p class="nota-curta mt16">' + esc(F.NAO_RECOMENDAR) + '</p>';
+    h += pagina('plano', c);
+
+    // 10 Acompanhamento
+    c = '<p class="lede lede--curta">' + esc('Mudar comportamento leva tempo. O acompanhamento é o que faz o plano sair do papel.') + '</p>' + f360AgendaHtml(F, d.plano);
+    c += '<div class="obs-grade">' + nota('info', 'Pulso (90 a 120 dias)', 'Quem respondeu como colega, equipe ou outro convidado recebe até 4 perguntas sobre os comportamentos que você escolheu. Só aparece com 5 respostas ou mais e é um sinal para conversa, não uma medida de mudança.') +
+      nota('info', 'Critério de mudança no próximo ciclo', '"Mudança provável" só com diferença de 1 ponto ou mais no tema, no mesmo grupo e com 5 respostas ou mais nas duas rodadas. Abaixo disso, "dentro da margem". ' + F.TEXTOS.mudanca) +
+      nota('alerta', 'Expectativa', F.TEXTOS.expectativa) + '</div>';
+    h += pagina('acompanhamento', c);
+
+    // 11 Método
+    c = '<p class="lede lede--curta">' + esc(F.TEXTOS.origem + ' Versão das perguntas: ' + (ciclo.versaoItens || res.versaoItens || 'v0') + '.') + '</p>';
+    c += '<div class="duas">' + F.TEMAS.map(function (t) {
+      return '<div class="cartao-doc"><div class="rotulo-doc">' + esc(t.nome) + '</div><ul class="itens-doc">' + t.itens.map(function (it) { return '<li>' + esc(F.textoItem(it.id, 'equipe', '[Nome]')) + '</li>'; }).join('') + '</ul></div>';
+    }).join('') + '</div>';
+    c += '<h3 class="h3 mt48">Como a leitura é calculada</h3><ul class="itens-doc">' + [
+      'Escala de frequência com 5 pontos, todos com rótulo, e "Não tive como observar" (ou "Não se aplica ao meu trabalho" na autoavaliação), que não entra na média. Nenhuma pergunta é obrigatória e nenhuma frase é invertida.',
+      'O tema de cada pessoa é a média das frases respondidas, com no mínimo 2 das 3. O tema do grupo é a média das pessoas, cada uma com peso 1.',
+      '"Outras pessoas (sem a chefia)" junta todos os grupos que aparecem; a chefia fica à parte, identificada; a autoavaliação nunca entra em média.',
+      'Grupo com menos de 3 respostas não aparece sozinho: "Outros" com 1 ou 2 se junta a Colegas; se Colegas ou Equipe ficarem com 1 ou 2, os grupos se juntam. Frase por frase, só com 5 ou mais. Quando uma célula some, as respostas dela também saem de "Outras pessoas" naquele tema ou frase, para nenhuma conta revelar o que ficou escondido.',
+      'A palavra é a âncora mais próxima da média; não há número, nota geral nem comparação com outras pessoas. "Opiniões variadas" usa a concordância dentro do grupo (rwg, LeBreton & Senter, 2008), só com 5 ou mais.',
+      'Diferença de percepção só por tema, com 1 ponto ou mais e pelo menos 3 respostas no grupo comparado.',
+      'Uma pergunta geral foi coletada só para estudar a qualidade do questionário e não aparece em relatório nenhum.',
+      'A ligação entre o link e a resposta foi apagada no encerramento da coleta. As respostas individuais são apagadas no prazo combinado depois da devolutiva; este relatório fica disponível por até 24 meses.'
+    ].map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+    if (res.qualidade && (res.qualidade.sinalizadas || res.qualidade.excluidas)) {
+      c += '<p class="nota-curta mt16">' + esc('Respostas sinalizadas (rápidas demais ou com a mesma resposta em todas as frases): ' + numeroCurto(res.qualidade.sinalizadas) +
+        (res.qualidade.excluidas ? '; tiradas por decisão do consultor: ' + numeroCurto(res.qualidade.excluidas) : '; nenhuma foi tirada') + '.') + '</p>';
+    }
+    c += '<h3 class="h3 mt48">Referências dos temas</h3><ul class="itens-doc f360-refs">' + F.REFERENCIAS.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+    h += pagina('metodo', c);
+
+    return '<article class="doc doc--f360" data-modelo="feedback360" data-visao="lider">' + f360Marca(F, nome) + h +
+      rodapeModelo([F.TEXTOS.marca(nome), emp.nome], F.TEXTOS.capa(nome)) + '</article>';
+  }
+
+  function f360ChefiaHtml(F, d) {
+    var nome = (d.avaliado && d.avaliado.nome) || 'Líder';
+    var emp = d.empresa || {};
+    var S = [{ id: 'plano', titulo: 'Plano de desenvolvimento', curto: 'Plano', meta: 'Comportamentos · Ações · Datas · Andamento' },
+      { id: 'acompanhamento', titulo: 'Acompanhamento', curto: 'Acompanhamento', meta: 'Conversa sobre o plano · Datas' }];
+    S.forEach(function (x, i) { x.n = n2(i); });
+    var h = capaModelo({
+      meta: 'Feedback 360 da Liderança · visão da chefia', sobre: 'Confidencial · desenvolvimento de ' + nome,
+      tituloHtml: 'Plano de<br><em>desenvolvimento</em><br>' + esc(nome),
+      subtitulo: 'Só o plano que ' + nome + ' escolheu na conversa de devolutiva. As respostas, as notas e os comentários não fazem parte desta visão.',
+      numeros: [],
+      rodape: [{ rotulo: 'Pessoa avaliada', linhas: [nome] }, { rotulo: 'Empresa', linhas: [emp.nome || '—'] }, { rotulo: 'Consultoria', linhas: ['Gestão sem Caos', d.consultor] },
+        { rotulo: 'Devolutiva', linhas: [data(d.devolutivaEm) || '—'] }]
+    });
+    h += '<div class="f360-confidencial" role="note"><strong>' + esc(F.TEXTOS.marca(nome)) + '.</strong> ' + esc(F.TEXTOS.chefiaPlano) + '</div>';
+    var c = '<p class="lede lede--curta">' + esc(F.TEXTOS.chefiaPlano) + '</p>' + f360PlanoHtml(F, d.plano, nome, false, '');
+    h += secao(S[0], false, cabecalhoPagina(S[0], F.TEXTOS.marca(nome)) + c);
+    c = '<p class="lede lede--curta">' + esc('Entre 15 e 30 dias depois da devolutiva, uma conversa de 30 minutos sobre o plano: o que ' + nome + ' vai fazer, como você pode apoiar e quando conversar de novo. Sem discutir notas e sem perguntar quem disse o quê.') + '</p>' + f360AgendaHtml(F, d.plano);
+    h += secao(S[1], true, cabecalhoPagina(S[1], F.TEXTOS.marca(nome)) + c);
+    return '<article class="doc doc--f360" data-modelo="feedback360" data-visao="chefia">' + f360Marca(F, nome) + h +
+      rodapeModelo([F.TEXTOS.marca(nome), emp.nome], F.TEXTOS.chefiaPlano) + '</article>';
+  }
+
+  function f360EmpresaHtml(F, d) {
+    var emp = d.empresa || {};
+    var cons = d.consolidado || {};
+    var S = [{ id: 'como-ler', titulo: 'Como ler', curto: 'Como ler', meta: 'Só o total · Sem nomes' },
+      { id: 'temas', titulo: 'Temas da liderança', curto: 'Temas', meta: 'Média dos líderes por tema' },
+      { id: 'metodo', titulo: 'Método', curto: 'Método', meta: 'Regras · Referências' }];
+    if (cons.focos) S.splice(2, 0, { id: 'focos', titulo: 'Temas de foco escolhidos', curto: 'Focos', meta: 'Planos de desenvolvimento' });
+    S.forEach(function (x, i) { x.n = n2(i); });
+    function sec(id) { return S.filter(function (x) { return x.id === id; })[0]; }
+    var marca = 'Confidencial · consolidado da liderança · não usar em decisões de pessoal';
+    var h = capaModelo({
+      meta: 'Feedback 360 da Liderança · consolidado', sobre: emp.nome || 'Empresa',
+      tituloHtml: 'Liderança<br>da <em>empresa</em>',
+      subtitulo: 'O total da liderança, sem nomes e sem comparação entre líderes.',
+      numeros: [{ valor: numeroCurto(cons.lideres || 0), rotulo: 'líderes no total', destaque: true }, { valor: '6', rotulo: 'temas' }],
+      rodape: [{ rotulo: 'Empresa', linhas: [emp.nome || '—'] }, { rotulo: 'Consultoria', linhas: ['Gestão sem Caos', d.consultor] }, { rotulo: 'Ciclo', linhas: [(d.ciclo && d.ciclo.nome) || '—'] }]
+    });
+    var c = '<p class="lede">' + esc(F.TEXTOS.consolidado) + '</p><div class="obs-grade">' + nota('info', 'Leitura', F.TEXTOS.leitura) +
+      nota('alerta', 'Uso', 'Só para planejar o desenvolvimento da liderança (por exemplo, uma oficina no tema mais escolhido). Não pode ser usado para decidir promoção, salário, bônus ou desligamento.') + '</div>';
+    h += secao(sec('como-ler'), false, cabecalhoPagina(sec('como-ler'), marca) + c);
+    c = '<div class="f360-temas">' + F.TEMAS.map(function (t) {
+      var x = cons.temas && cons.temas[t.id];
+      return '<article class="cartao-doc f360-tema" data-tema="' + esc(t.id) + '"><div class="f360-tema__cab"><h3 class="h3">' + esc(t.nome) + '</h3></div><div class="f360-regua">' + f360Escala(F) +
+        '<ul class="f360-linhas">' + f360Linha(F, 'outras', 'Média dos líderes', x ? x.lideres : null, x ? x.media : null, 'menos de 5 líderes') + '</ul></div></article>';
+    }).join('') + '</div>';
+    h += secao(sec('temas'), true, cabecalhoPagina(sec('temas'), marca) + c);
+    if (sec('focos')) {
+      c = '<p class="lede lede--curta">' + esc('Quantos líderes escolheram cada tema no plano de desenvolvimento. ' + F.ACAO_VARIOS_LIDERES) + '</p><ul class="itens-doc">' +
+        F.TEMAS.map(function (t) { return '<li>' + esc(t.nome + ': ' + numeroCurto(cons.focos[t.id] || 0) + (cons.focos[t.id] === 1 ? ' líder' : ' líderes')) + '</li>'; }).join('') + '</ul>';
+      h += secao(sec('focos'), false, cabecalhoPagina(sec('focos'), marca) + c);
+    }
+    c = '<p class="lede lede--curta">' + esc(F.TEXTOS.origem) + '</p><ul class="itens-doc">' +
+      ['Cada líder entra com a leitura de "Outras pessoas (sem a chefia)" do próprio relatório, com peso 1.', 'Só entram líderes com relatório liberado e devolutiva feita; um tema só aparece com 5 líderes ou mais.',
+        'Não há recorte por área, por líder nem comparação entre ciclos nesta versão.'].map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+    h += secao(sec('metodo'), S.indexOf(sec('metodo')) % 2 === 1, cabecalhoPagina(sec('metodo'), marca) + c);
+    return '<article class="doc doc--f360" data-modelo="feedback360" data-visao="empresa"><div class="f360-marca-dagua" aria-hidden="true">' + esc(marca) + '</div>' + h +
+      rodapeModelo([marca, emp.nome], 'Total da liderança, sem nomes. Não usar em decisões de pessoal.') + '</article>';
+  }
+
+  function feedback360Html(d) {
+    var F = F360();
+    if (!F) return erroHtml('Não foi possível carregar o relatório do Feedback 360.');
+    if (d.visao === 'chefia') return f360ChefiaHtml(F, d);
+    if (d.visao === 'empresa') return f360EmpresaHtml(F, d);
+    if (d.visao === 'lider') return f360LiderHtml(F, d);
+    return erroHtml(MENSAGEM_NAO_ENCONTRADO);
+  }
+
+  var MODELOS = { equipe: equipeHtml, lideranca: liderancaHtml, pessoa: pessoaHtml, clima: climaHtml, feedback360: feedback360Html };
 
   /* ------------------------------------------------------------------ montagem */
 
@@ -2226,7 +2621,7 @@
       ligarBotaoPdf(el);
       el.setAttribute('data-estado', 'pronto');
       if (rel.modelo && rel.modelo !== 'processo') {
-        el.setAttribute('data-modelo', String(rel.modelo).replace(/[^a-z]/g, ''));
+        el.setAttribute('data-modelo', String(rel.modelo).replace(/[^a-z0-9]/g, ''));
         doc.title = tituloDaAba(rel.titulo) + (linhaTecnica(rel) ? ' · versão técnica' : '');
         return;
       }
