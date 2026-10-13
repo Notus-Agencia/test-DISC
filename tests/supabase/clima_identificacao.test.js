@@ -270,7 +270,8 @@ test('CPF/data no cadastro: só hash com sal (nunca o dado em claro); validaçã
   const st = await rpcAdmin('clima_colaboradores_dados', o.emp);
   const st1 = st.pessoas.find((x) => x.pessoaId === alvo);
   assert.deepEqual(st1, { pessoaId: alvo, email: 'ana@empresa.com', conferencia: true });
-  assert.ok(!JSON.stringify(st).includes('987'));
+  // Sem os ids (um uuid aleatório pode conter "987"): só os campos de dado é que não podem trazer o CPF.
+  assert.ok(!JSON.stringify(st.pessoas.map(({ pessoaId, ...resto }) => resto)).includes('987'));
   // Apagar pelo painel; e desligar o colaborador apaga.
   assert.equal((await rpcAdmin('clima_colaborador_salvar', { empresaId: o.emp, pessoaId: alvo, apagarConferencia: true })).conferencia, false);
   await db.query(`update public.vinculos set status = 'desligado', fim = current_date where pessoa_id = $1`, [o.liderados2[1]]);
