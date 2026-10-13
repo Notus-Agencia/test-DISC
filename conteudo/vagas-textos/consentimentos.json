@@ -1,0 +1,196 @@
+{
+  "_sobre": "Textos exatos dos aceites do Vagas sem Caos. `chave` é estável (o banco guarda chave + versao + data em vagas_consentimentos). `texto` é o que aparece ao lado da caixa de marcar; `explicacao` aparece logo abaixo, em letra menor. `obrigatorio` = sem marcar não dá para seguir. MINUTA: para revisão do(a) advogado(a) antes de publicar. Nunca mude o texto de uma versão publicada: crie outra versão.",
+  "termos_versao": "2026-10-13",
+  "aceites": [
+    {
+      "chave": "pessoa_cadastro",
+      "versao": "2026-10-13",
+      "quem": "pessoa",
+      "quando": "ao criar a conta",
+      "titulo": "Criar minha conta",
+      "texto": "Li e aceito os Termos de uso e o Aviso de privacidade do Vagas sem Caos. Tenho 18 anos ou mais.",
+      "explicacao": "Seus dados servem só para você concorrer a vagas. Até o Combinou, a empresa vê um cartão sem nome, sem foto e sem contato. Concorrer é grátis, sempre: nunca pague para se candidatar. Você pode ver, exportar e apagar tudo na tela \"Meus dados\".",
+      "obrigatorio": true,
+      "base_legal": "LGPD art. 7º, V (execução de contrato); declaração de maioridade"
+    },
+    {
+      "chave": "pessoa_novidades",
+      "versao": "2026-10-13",
+      "quem": "pessoa",
+      "quando": "ao criar a conta",
+      "titulo": "Novidades por e-mail",
+      "texto": "Quero receber por e-mail as novidades do Vagas sem Caos (vagas novas na minha cidade e mutirões).",
+      "explicacao": "Opcional. Você sai quando quiser, pelo link no fim de cada e-mail ou em \"Meus dados\". Os e-mails de serviço (confirmar conta, Combinou, selo) chegam de qualquer jeito.",
+      "obrigatorio": false,
+      "base_legal": "LGPD art. 7º, I (consentimento)"
+    },
+    {
+      "chave": "pessoa_candidatura",
+      "versao": "2026-10-13",
+      "quem": "pessoa",
+      "quando": "no primeiro \"Quero\" (uma vez; depois, só o lembrete curto)",
+      "titulo": "Enviar minha candidatura",
+      "texto": "Entendi: ao tocar em \"Quero\", a empresa recebe o meu cartão sem nome e sem contato. Meu nome e meu WhatsApp só aparecem se eu aceitar conversar.",
+      "explicacao": "A candidatura usa a base legal de procedimento preliminar de contrato (LGPD, art. 7º, V): você não precisa autorizar de novo a cada vaga. Você pode retirar a candidatura a qualquer momento, antes do Combinou. A empresa se comprometeu a usar o seu cartão só para esta vaga.",
+      "obrigatorio": true,
+      "base_legal": "LGPD art. 7º, V (procedimento preliminar de contrato a pedido do titular)",
+      "lembrete_curto": "Ao tocar em \"Quero\", a empresa recebe o seu cartão sem nome. Seu contato só aparece se você aceitar conversar."
+    },
+    {
+      "chave": "pessoa_banco_talentos",
+      "versao": "2026-10-13",
+      "quem": "pessoa",
+      "quando": "na tela \"Banco de talentos\" (separada da candidatura, nunca marcada por padrão)",
+      "titulo": "Entrar no banco de talentos",
+      "texto": "Autorizo que empresas da(s) minha(s) cidade(s) vejam o meu cartão sem nome e sem contato na busca do banco de talentos, por 6 meses.",
+      "explicacao": "É opcional e separado da candidatura. A empresa que se interessar manda um convite; o seu nome e o seu contato só aparecem se você aceitar conversar. Avisamos antes de os 6 meses acabarem. Você sai quando quiser em \"Meus dados\", e o cartão some da busca na hora.",
+      "obrigatorio": false,
+      "prazo_dias": 180,
+      "base_legal": "LGPD art. 7º, I e art. 8º (consentimento específico, com prazo, revogável)"
+    },
+    {
+      "chave": "pessoa_combinou_contato",
+      "versao": "2026-10-13",
+      "quem": "pessoa",
+      "quando": "ao confirmar o Combinou (a empresa já disse \"Quero conversar\")",
+      "titulo": "Liberar meu contato para esta empresa",
+      "texto": "Quero conversar com {{empresa_nome}}. Libero meu nome, meu currículo completo e meu WhatsApp só para esta empresa, só para esta vaga.",
+      "explicacao": "A empresa aparece agora com o nome dela: se for uma vaga confidencial, é a primeira vez que você vê quem é. Se não quiser, toque em \"Agora não\" e nada é liberado. Depois do Combinou você pode encerrar a conversa e pedir que a empresa não entre mais em contato. Você vê em \"Quem viu meu contato\" quando ela abriu os seus dados. Nunca pague nada: se a empresa pedir dinheiro, Pix ou documento, denuncie.",
+      "obrigatorio": true,
+      "base_legal": "LGPD art. 7º, V (procedimento preliminar de contrato), com confirmação expressa na tela",
+      "variaveis": [
+        "empresa_nome"
+      ]
+    },
+    {
+      "chave": "pessoa_cadastro_assistido",
+      "versao": "2026-10-13",
+      "quem": "pessoa",
+      "quando": "no e-mail de confirmação de conta iniciada pelo operador (mutirão)",
+      "titulo": "Confirmar a conta que abriram para mim",
+      "texto": "Fui eu que pedi esta conta no mutirão do Vagas sem Caos. Li e aceito os Termos de uso e o Aviso de privacidade. Tenho 18 anos ou mais.",
+      "explicacao": "A conta só passa a valer agora, com a sua confirmação. Até aqui, nada foi mostrado a empresa alguma. Quem fez o cadastro com você não vê o seu currículo nem o seu contato. Se não foi você, ignore o e-mail: a conta é apagada em 7 dias.",
+      "obrigatorio": true,
+      "base_legal": "LGPD art. 7º, V; o aceite é da própria pessoa, nunca do operador"
+    },
+    {
+      "chave": "empresa_cadastro",
+      "versao": "2026-10-13",
+      "quem": "empresa",
+      "quando": "ao cadastrar a empresa (pela pessoa responsável)",
+      "titulo": "Cadastrar minha empresa",
+      "texto": "Declaro que represento a empresa deste CNPJ e que ela está ativa. Li e aceito os Termos de uso e o Aviso de privacidade. A empresa vai usar os dados das pessoas só para preencher as vagas anunciadas e vai apagá-los quando o processo terminar.",
+      "explicacao": "A empresa se compromete a: não cobrar nada de quem se candidata; não anunciar com exigência de aparência, idade, sexo, estado civil ou qualquer outra discriminação (Lei 9.029/1995; CLT, art. 373-A); não retaliar quem denunciar, recusar conversa ou disser \"agora não\"; não repassar nem guardar dados fora do processo. O operador confere o CNPJ antes de a primeira vaga ir ao ar.",
+      "obrigatorio": true,
+      "base_legal": "LGPD art. 7º, V; declaração de representação; compromissos de uso (art. 6º, I a III)"
+    },
+    {
+      "chave": "empresa_vaga_confidencial",
+      "versao": "2026-10-13",
+      "quem": "empresa",
+      "quando": "ao marcar a vaga como confidencial",
+      "titulo": "Publicar sem mostrar o nome da empresa",
+      "texto": "Entendi: o nome da empresa fica escondido no anúncio e aparece para a pessoa no momento em que ela aceita conversar, antes de o contato dela ser liberado. Ela pode recusar sem que eu veja nada.",
+      "explicacao": "Só empresa com CNPJ conferido pode publicar vaga confidencial. O anúncio mostra setor, porte e zona, para a pessoa saber do que se trata.",
+      "obrigatorio": true,
+      "base_legal": "regra da plataforma (termos de uso, seção 6)"
+    },
+    {
+      "chave": "empresa_diaria_domestica",
+      "versao": "2026-10-13",
+      "quem": "empresa",
+      "quando": "ao anunciar diária para trabalho em residência",
+      "titulo": "Diária em casa",
+      "texto": "Entendi: quem trabalha em residência mais de 2 dias por semana para a mesma pessoa ou família é empregado(a) doméstico(a), com carteira assinada (LC 150/2015). A plataforma é só um mural: preço, dia e pagamento são combinados direto entre nós.",
+      "explicacao": "A plataforma não fixa valor, escala nem punição, não recebe pagamento e não fornece mão de obra temporária (Lei 6.019/1974).",
+      "obrigatorio": true,
+      "base_legal": "LC 150/2015, art. 1º; Lei 6.019/1974"
+    },
+    {
+      "chave": "operador_contrato",
+      "versao": "2026-10-13",
+      "quem": "operador",
+      "quando": "no primeiro acesso ao painel da cidade",
+      "titulo": "Contrato de operador",
+      "texto": "Li e aceito o Contrato de operador local e o Aviso de privacidade. Vou tratar dados só por instrução da Gestão sem Caos, para operar a cidade. Não vou ver, copiar nem usar currículo ou contato de pessoa, nem usar a base para fim próprio. Sei que cada ação minha fica registrada.",
+      "explicacao": "Para a LGPD, a Gestão sem Caos é a controladora e você é operador(a) de dados (art. 39 e 42, §1º). Usar dados para fim próprio torna você controlador(a) e responsável. O cadastro assistido que você começa só vale quando a própria pessoa confirma.",
+      "obrigatorio": true,
+      "base_legal": "LGPD art. 39 (operador age por instrução do controlador); art. 42, §1º, I"
+    },
+    {
+      "chave": "pessoa_referencia_aceitar",
+      "versao": "2026-10-13",
+      "quem": "pessoa",
+      "quando": "ao aceitar uma referência profissional que uma empresa deixou (antes disso, só a pessoa vê)",
+      "titulo": "Aceitar e publicar esta referência",
+      "texto": "Aceito que a referência profissional de {{empresa_nome}} apareça no meu cartão e no meu perfil, com o nome da empresa. Sei que ela é pública e que posso ocultar ou excluir quando quiser.",
+      "explicacao": "Antes do Combinou, a empresa que vê o seu cartão enxerga só \"Referência de empresa verificada: sim\", sem o nome da empresa, sem os pontos fortes e sem o texto. Depois do Combinou (ou no perfil que você escolher tornar público), aparece a referência completa, com o nome da empresa. Se você ocultar, a empresa é avisada. A referência é informação de terceiro sobre você: sai junto com a conta e vai no arquivo de \"Baixar meus dados\". [REVISÃO JURÍDICA]",
+      "obrigatorio": true,
+      "base_legal": "LGPD art. 7º, I e art. 8º (consentimento específico e revogável para publicar dado de terceiro sobre a pessoa)",
+      "variaveis": [
+        "empresa_nome"
+      ]
+    },
+    {
+      "chave": "pessoa_referencia_pedir",
+      "versao": "2026-10-13",
+      "quem": "pessoa",
+      "quando": "ao pedir referência a uma empresa (gera o convite por link/WhatsApp)",
+      "titulo": "Pedir referência a uma empresa",
+      "texto": "Quero pedir uma referência profissional a {{empresa_nome}}. Sei que a empresa decide se dá, que a referência só aparece se eu aceitar depois e que ela será pública, com o nome da empresa.",
+      "explicacao": "A empresa recebe o seu nome e a função/período que você informou, só para preencher. Ela pode simplesmente não responder: aqui não existe referência negativa, só recomendação.",
+      "obrigatorio": true,
+      "base_legal": "LGPD art. 7º, V (a pedido do titular)",
+      "variaveis": [
+        "empresa_nome"
+      ]
+    },
+    {
+      "chave": "pessoa_perfil_publico",
+      "versao": "2026-10-13",
+      "quem": "pessoa",
+      "quando": "ao ligar a página pública do perfil (opcional, desligada por padrão)",
+      "titulo": "Tornar meu perfil público",
+      "texto": "Quero uma página pública com o meu primeiro nome, as minhas funções, os meus selos e as referências que eu aceitei. Sei que qualquer pessoa com o link pode ver e que posso desligar quando quiser.",
+      "explicacao": "A página não mostra contato, e-mail, zona, pretensão nem nada que não exista na plataforma (idade, foto, documento). Desligar tira a página do ar na hora.",
+      "obrigatorio": false,
+      "base_legal": "LGPD art. 7º, I (consentimento), revogável"
+    },
+    {
+      "chave": "empresa_referencia_declaracao",
+      "versao": "2026-10-13",
+      "quem": "empresa",
+      "quando": "ao enviar uma referência profissional (membro logado de empresa com CNPJ conferido)",
+      "titulo": "Declaração da empresa",
+      "texto": "Declaro que a pessoa trabalhou nesta empresa no período informado. A referência é pública e aparece com o nome da empresa. Ela é uma recomendação: não contém crítica, dado sensível, termo discriminatório nem contato.",
+      "explicacao": "A empresa responde pela veracidade do que declara. Só aparece depois que a pessoa aceitar; ela pode ocultar ou excluir, e você é avisado(a). A referência passa por moderação. Limite: 1 referência por pessoa; até {{limite_mes}} por mês. [REVISÃO JURÍDICA]",
+      "obrigatorio": true,
+      "base_legal": "LGPD art. 7º, I (publicação depende do aceite da pessoa); responsabilidade civil pela veracidade (Código Civil, arts. 186 e 927)",
+      "variaveis": [
+        "limite_mes"
+      ]
+    },
+    {
+      "chave": "voluntario_mutirao_sigilo",
+      "versao": "2026-10-13",
+      "quem": "voluntário(a) de mutirão",
+      "quando": "antes de ajudar no mutirão (papel ou tela do operador); MINUTA, precisa do(a) advogado(a)",
+      "titulo": "Termo de sigilo do(a) voluntário(a)",
+      "texto": "Como voluntário(a) do mutirão do Vagas sem Caos, vou só ajudar a pessoa a usar o próprio celular. Não vou copiar, fotografar, anotar, guardar nem repassar nome, contato, documento ou qualquer dado de ninguém, nem usar o que vir para fim próprio. Sei que cada pessoa confirma a própria conta e que a Gestão sem Caos responde pelos dados.",
+      "explicacao": "[REVISÃO JURÍDICA] Quem descumprir responde pessoalmente (LGPD, art. 42 e 43; Código Civil, art. 186). Vale durante o mutirão e depois dele.",
+      "obrigatorio": true,
+      "base_legal": "LGPD art. 39 e 42; dever de sigilo contratual"
+    },
+    {
+      "chave": "foto_opcional",
+      "versao": "2026-10-13",
+      "quem": "pessoa",
+      "quando": "ao enviar uma foto no currículo (tela própria, separada dos outros aceites; nunca marcada por padrão)",
+      "titulo": "Mostrar minha foto depois do Combinou",
+      "texto": "Autorizo mostrar a minha foto só às empresas com quem eu combinar de conversar. Posso remover a foto a qualquer hora.",
+      "explicacao": "A foto é opcional. Ela nunca aparece no cartão cego, na busca do banco nem no perfil público: só depois do Combinou, para aquela empresa. Sem foto, nada muda na sua candidatura. Remover a foto apaga o arquivo na hora; apagar a conta também apaga. [REVISÃO JURÍDICA]",
+      "obrigatorio": false,
+      "base_legal": "LGPD art. 7º, I e art. 8º (consentimento específico, destacado e revogável); art. 11 por inferência (a foto pode revelar cor, religião ou saúde), por isso nunca antes do Combinou (Lei 9.029/1995)"
+    }
+  ]
+}

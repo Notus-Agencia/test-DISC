@@ -1,0 +1,285 @@
+{
+  "_sobre": "Índice dos e-mails do Vagas sem Caos: assunto, quando é enviado e as variáveis {{ }} de cada arquivo. O envio é pela Edge Function (Resend), substituindo cada {{variavel}} pelo valor já escapado para HTML. O logo é o mesmo PNG dos e-mails do Mapa DISC (o Gmail não mostra SVG). MINUTA: para revisão do(a) advogado(a) antes de publicar.",
+  "versao": "2026-10-13",
+  "logo": "https://disc.gestaosemcaos.com.br/assets/marca/gsc-logo-email.png",
+  "emails": [
+    {
+      "arquivo": "confirmar-cadastro.html",
+      "para": "pessoa ou empresa",
+      "assunto": "Confirme seu e-mail · Vagas sem Caos",
+      "quando": "cadastro pela Edge Function vagas-conta (acao cadastrar) e reenvio",
+      "variaveis": {
+        "nome": "primeiro nome (ou vazio)",
+        "link": "https://vagas.gestaosemcaos.com.br/entrar.html?token_hash=…&type=signup",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "cadastro-assistido.html",
+      "para": "pessoa (conta iniciada pelo operador no mutirão)",
+      "assunto": "Confirme a conta que abrimos para você · Vagas sem Caos",
+      "quando": "Edge Function vagas-conta (acao assistido); a conta só vale depois deste aceite",
+      "variaveis": {
+        "nome": "primeiro nome",
+        "cidade": "nome da cidade",
+        "link": "…/entrar.html?token_hash=…&type=invite",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "redefinir-senha.html",
+      "para": "pessoa, empresa ou operador",
+      "assunto": "Crie uma nova senha · Vagas sem Caos",
+      "quando": "Edge Function vagas-conta (acao esqueci)",
+      "variaveis": {
+        "link": "…/entrar.html?token_hash=…&type=recovery",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "empresa-quer-conversar.html",
+      "para": "pessoa",
+      "assunto": "Uma empresa quer conversar com você · Vagas sem Caos",
+      "quando": "empresa marcou \"Quero conversar\" (vagas_empresa_decidir); junta várias no mesmo dia se houver",
+      "variaveis": {
+        "nome": "primeiro nome",
+        "empresa_nome": "nome da empresa ou, se confidencial, \"Uma empresa com CNPJ conferido\"",
+        "vaga_titulo": "título da vaga",
+        "link": "…/minhas-candidaturas (tela da pessoa)",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "combinou.html",
+      "para": "pessoa",
+      "assunto": "Combinou! {{empresa_nome}} · Vagas sem Caos",
+      "quando": "a pessoa confirmou o Combinou (vagas_combinar); confirmação para ela",
+      "variaveis": {
+        "nome": "primeiro nome",
+        "empresa_nome": "nome da empresa (já revelado)",
+        "vaga_titulo": "título da vaga",
+        "link": "…/conversa (tela da pessoa)",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "combinou-empresa.html",
+      "para": "empresa",
+      "assunto": "Combinou! Candidatura à vaga de {{vaga_titulo}} · Vagas sem Caos",
+      "quando": "a pessoa confirmou o Combinou; aviso para a empresa",
+      "variaveis": {
+        "responsavel_nome": "primeiro nome da pessoa responsável",
+        "pessoa_nome": "nome da pessoa (primeiro nome + inicial)",
+        "vaga_titulo": "título da vaga",
+        "link": "…/empresa/candidaturas",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": false,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "contratada.html",
+      "para": "pessoa",
+      "assunto": "Parabéns! {{empresa_nome}} marcou você como contratada(o) · Vagas sem Caos",
+      "quando": "empresa marcou a candidatura como contratada (vagas_marcar_contratada)",
+      "variaveis": {
+        "nome": "primeiro nome",
+        "empresa_nome": "nome da empresa",
+        "vaga_titulo": "título da vaga",
+        "link": "…/minhas-candidaturas",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "vaga-aprovada.html",
+      "para": "empresa",
+      "assunto": "Sua vaga está no ar · Vagas sem Caos",
+      "quando": "operador publicou a vaga depois da revisão (vagas_op_anuncio_decidir publicar)",
+      "variaveis": {
+        "responsavel_nome": "primeiro nome",
+        "vaga_titulo": "título da vaga",
+        "link_curto": "https://vagas.gestaosemcaos.com.br/v/K7M2QX",
+        "link": "…/empresa/vagas",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": false,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "vaga-recusada.html",
+      "para": "empresa",
+      "assunto": "Sua vaga precisa de um ajuste · Vagas sem Caos",
+      "quando": "operador recusou/removeu a vaga (vagas_op_anuncio_decidir remover) com um motivo de moderacao.json",
+      "variaveis": {
+        "responsavel_nome": "primeiro nome",
+        "vaga_titulo": "título da vaga",
+        "motivo_titulo": "moderacao.json → titulo",
+        "motivo_texto": "moderacao.json → texto_empresa já preenchido",
+        "correcao": "moderacao.json → correcao",
+        "link": "…/empresa/vagas/<id>/editar",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": false,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "nova-candidatura.html",
+      "para": "empresa",
+      "assunto": "{{total}} candidaturas novas hoje · Vagas sem Caos",
+      "quando": "resumo diário (uma vez por dia, só se houver candidatura nova); nunca um e-mail por candidatura",
+      "variaveis": {
+        "responsavel_nome": "primeiro nome",
+        "empresa_nome": "nome da empresa",
+        "total": "número de candidaturas novas no dia",
+        "resumo": "linhas \"Título da vaga: N novas\" separadas por <br>",
+        "link": "…/empresa/candidaturas",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": false,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "seu-selo.html",
+      "para": "pessoa",
+      "assunto": "Seu selo de {{teste_nome}} · Vagas sem Caos",
+      "quando": "selo emitido ao finalizar o teste (vagas_finalizar)",
+      "variaveis": {
+        "nome": "primeiro nome",
+        "teste_nome": "nome do teste",
+        "nota": "nota (0 a 100)",
+        "margem": "margem em pontos (padrão 10; texto fixo da psicologia: \"Nota N de 100 (15 questões; margem de cerca de ±10 pontos)\")",
+        "data": "dd/mm/aaaa",
+        "codigo": "código do selo",
+        "valido_ate": "dd/mm/aaaa",
+        "link": "…/meu-perfil",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": true
+    },
+    {
+      "arquivo": "referencia-recebida.html",
+      "para": "pessoa",
+      "assunto": "{{empresa_nome}} deixou uma referência para você · Vagas sem Caos",
+      "quando": "empresa deixou referência e a moderação liberou (vagas_referencia_oferecer); só a pessoa vê até aceitar",
+      "variaveis": {
+        "nome": "primeiro nome",
+        "empresa_nome": "nome da empresa (sempre com nome: referência não é confidencial)",
+        "funcao": "função informada",
+        "periodo": "período informado, ex. \"mar/2024 a jan/2026\"",
+        "link": "…/referencias (tela da pessoa)",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "referencia-pedido.html",
+      "para": "empresa",
+      "assunto": "{{pessoa_nome}} pediu uma referência à sua empresa · Vagas sem Caos",
+      "quando": "pessoa pediu referência (vagas_referencia_pedir) a uma empresa com conta; sem conta, a pessoa manda o convite pelo WhatsApp",
+      "variaveis": {
+        "responsavel_nome": "primeiro nome da pessoa responsável",
+        "pessoa_nome": "nome da pessoa (primeiro nome + inicial)",
+        "empresa_nome": "nome da empresa",
+        "funcao": "função informada pela pessoa",
+        "periodo": "período informado pela pessoa",
+        "link": "…/empresa/referencias/<convite>",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": false,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "referencia-decidida.html",
+      "para": "empresa",
+      "assunto": "Sua referência para {{pessoa_nome}}: {{decisao}} · Vagas sem Caos",
+      "quando": "pessoa aceitou, recusou, ocultou ou excluiu a referência (vagas_referencia_responder); a empresa é avisada sem motivo",
+      "variaveis": {
+        "responsavel_nome": "primeiro nome da pessoa responsável",
+        "pessoa_nome": "nome da pessoa (primeiro nome + inicial)",
+        "decisao": "\"publicada\" | \"recusada\" | \"ocultada\" | \"excluída\"",
+        "decisao_texto": "frase pronta: avisos.referencia_empresa_aceita ou referencia_empresa_ocultada",
+        "link": "…/empresa/referencias",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": false,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "vaga-interessados-lembrete.html",
+      "para": "empresa",
+      "assunto": "Sua vaga tem {{total}} pessoas esperando resposta · Vagas sem Caos",
+      "quando": "rotina da operação: vaga com candidaturas sem decisão há 5 dias (um lembrete por vaga)",
+      "variaveis": {
+        "responsavel_nome": "primeiro nome",
+        "vaga_titulo": "título da vaga",
+        "total": "candidaturas sem decisão",
+        "dias": "dias desde a mais antiga",
+        "link": "…/empresa/candidaturas",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": false,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "vaga-pausada.html",
+      "para": "pessoa",
+      "assunto": "A empresa pausou a vaga de {{vaga_titulo}} · Vagas sem Caos",
+      "quando": "empresa pausou ou encerrou uma vaga com candidaturas ativas (vagas_anuncio_acao pausar|encerrar); {{situacao}} = \"pausou\" | \"encerrou\"",
+      "variaveis": {
+        "nome": "primeiro nome",
+        "vaga_titulo": "título da vaga",
+        "empresa_nome": "nome da empresa ou \"A empresa\" se confidencial",
+        "situacao": "\"pausou\" ou \"encerrou\"",
+        "link": "…/minhas-candidaturas",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": false
+    },
+    {
+      "arquivo": "incidente-de-dados.html",
+      "para": "pessoa ou empresa afetada",
+      "assunto": "Aviso de segurança sobre os seus dados · Vagas sem Caos",
+      "quando": "incidente de segurança com risco relevante (LGPD art. 48; ANPD Res. 15/2024); texto final sempre do(a) advogado(a) e do(a) encarregado(a); enviado pelo sistema, nunca pelo operador",
+      "variaveis": {
+        "nome": "primeiro nome",
+        "data_incidente": "dd/mm/aaaa",
+        "dados_afetados": "lista do que pode ter sido exposto (ex.: \"nome, e-mail e cidade\")",
+        "o_que_fizemos": "medidas tomadas (1 a 3 frases)",
+        "o_que_fazer": "o que a pessoa pode fazer (ex.: trocar a senha; desconfiar de contatos)",
+        "link": "…/meus-dados",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": true
+    },
+    {
+      "arquivo": "conta-sera-apagada.html",
+      "para": "pessoa ou empresa",
+      "assunto": "Sua conta será apagada em 30 dias · Vagas sem Caos",
+      "quando": "conta sem nenhum acesso há 23 meses (24 meses = exclusão); um único aviso",
+      "variaveis": {
+        "nome": "primeiro nome",
+        "data_exclusao": "dd/mm/aaaa",
+        "link": "…/entrar.html",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": false
+    }
+  ]
+}
