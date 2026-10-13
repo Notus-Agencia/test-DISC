@@ -1,26 +1,489 @@
 /*
- * Vagas sem Caos — estilos próprios do site (por cima de comum/notus.css; só tokens da identidade: docs/IDENTIDADE-VISUAL.md).
- * Por enquanto só a página "em construção" (index.html). As telas (docs/VAGAS-TELAS.md) acrescentam aqui as classes vg-*.
+ * Vagas sem Caos — estilos do site (por cima de comum/notus.css). Só tokens e peças da identidade (docs/IDENTIDADE-VISUAL.md);
+ * nenhuma cor nova. Componentes e classes: docs/VAGAS-TELAS.md §9 (CSS proposto nos mockups do design, portado aqui).
+ *
+ * Celular primeiro (referência 390 px) para quem procura vaga; computador (1280 px) para empresa, operador e painel, com o
+ * menu lateral igual ao do painel do DISC; abaixo de 900 px o menu vira gaveta.
+ *
+ * Seções: 1 base (peças do teste DISC) · 2 página de espera · 3 estados · 4 avisos · 5 topo, navegação e faixas da pessoa ·
+ * 6 lista pública e filtros · 7 folha e janela · 8 cartão de vaga · 9 página da vaga · 10 anti-golpe · 11 selo · 12 cartão cego ·
+ * 13 referência · 14 conversa e convite · 15 linhas com status · 16 formulários da pessoa · 17 prova e testes · 18 entrar ·
+ * 20 documento (termos e privacidade) · 21 telas maiores e movimento. A seção 19 (computador: menu lateral, cabeçalho, resumo,
+ * tabelas, fila do operador, pedido, números do painel) fica em vagas-pc.css, carregado só pelas telas de computador (empresa,
+ * operador, referência da empresa): assim a lista pública cabe nos 100 KB da primeira visita.
  */
 
+/* ============================================================================================================================
+   1. Base: peças do teste DISC (assets/styles.css) copiadas tal qual — o site de vagas é publicado sozinho e não enxerga assets/
+   ============================================================================================================================ */
+[hidden] { display: none !important; }
+.pular { position: absolute; left: 16px; top: -60px; z-index: 100; background: var(--tinta); color: var(--branco); padding: 8px 16px; border-radius: var(--raio-pilula); font-size: var(--t-rotulo); text-decoration: none; }
+.pular:focus { top: 12px; }
+h1:focus, h1:focus-visible, h2[tabindex="-1"]:focus { outline: none; }
+.conteudo:focus, main:focus { outline: none; }
+.icone { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+.topo { position: relative; z-index: 5; }
+.topo-interno { max-width: 720px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topo-logo { height: 24px; margin-right: 4px; }
+.topo-nome { font-size: var(--t-corpo); font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; padding-left: 12px; border-left: 1px solid var(--linha); }
+
+.conteudo { max-width: 720px; margin: 0 auto; padding: 16px 16px 48px; padding-bottom: max(48px, env(safe-area-inset-bottom)); }
+.caixa { overflow-wrap: anywhere; }
+.centro { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.giro--grande { width: 32px; height: 32px; border-width: 3px; color: var(--tinta); }
+.titulo-pagina { font-size: var(--t-pagina); font-weight: 600; }
+.subtitulo { margin-top: 6px; font-size: var(--t-corpo); color: var(--suave); }
+.subtitulo strong { color: var(--tinta); }
+
+/* Grupo de botões: no celular empilha (principal por cima); a partir de 480 px lado a lado */
+.acoes { display: flex; flex-direction: column-reverse; gap: 10px; margin-top: 24px; }
+.acoes > .botao { width: 100%; }
+.acoes-coluna { flex-direction: column; }
+
+.formulario { display: grid; gap: 18px; margin-top: 24px; }
+.formulario .acoes { margin-top: 6px; }
+.campo__rotulo { font-weight: 600; }
+.obrigatorio { color: var(--suave); font-weight: 400; }
+.campo--grupo { border: 0; padding: 0; margin: 0; min-width: 0; }
+.campo--grupo legend { padding: 0; }
+.consentimento { padding: 14px 16px; border-radius: 16px; background: var(--nevoa); }
+.consentimento .marcar { font-size: var(--t-rotulo); line-height: 1.55; color: var(--medio); }
+.consentimento strong { color: var(--tinta); }
+.consentimento__explicacao { margin: 8px 0 0 30px; font-size: var(--t-nota); color: var(--suave); line-height: 1.5; }
+
+/* Barra fixa inferior (ação principal sempre no mesmo lugar). Nunca junto com a .vg-nav. */
+.barra-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--branco) 88%, transparent); -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%); border-top: 1px solid var(--linha); }
+.barra-nav > * { max-width: 640px; margin-left: auto; margin-right: auto; }
+.barra-dica { height: 18px; line-height: 18px; margin-bottom: 8px; font-size: var(--t-nota); color: var(--suave); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.barra-botoes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.barra-botoes--um { grid-template-columns: minmax(0, 1fr); }
+.barra-botoes .botao { width: 100%; min-width: 0; padding-left: 12px; padding-right: 12px; }
+body.vg-com-barra .conteudo { padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
+
+/* Escolha em cartão (retrato): seleção = contorno laranja, sem mudar o tamanho */
+.retrato { display: flex; align-items: flex-start; gap: 10px; width: 100%; min-height: 44px; margin: 0; padding: 12px 14px; background: var(--branco); color: var(--tinta); border: 1px solid var(--linha); border-radius: 18px; font: inherit; font-size: var(--t-rotulo); line-height: 1.5; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: border-color .15s, box-shadow .15s; }
+.retrato[aria-pressed="true"] { border-color: var(--notus); box-shadow: inset 0 0 0 1px var(--notus); }
+.retrato-texto { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.escolha-marca { flex: none; width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--ardosia-clara); background: var(--branco); color: transparent; }
+.retrato[aria-pressed="true"] .escolha-marca { background: var(--notus); border-color: var(--notus); color: var(--sobre-notus); }
+
+.codigo { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--t-campo); line-height: 1.45; word-break: break-all; background: var(--nevoa); border-color: transparent; }
+.rodape { text-align: center; padding: 8px 8px 0; margin-top: 24px; display: grid; justify-items: center; gap: 4px; }
+.rodape-nota { font-size: var(--t-nota); color: var(--suave); }
+.botao--sem-borda { padding-left: 0; padding-right: 0; min-height: 0; }
+
+/* ============================================================================================================================
+   2. Página de espera ("estamos preparando"): usada pelo index.html enquanto não há cidade ativa
+   ============================================================================================================================ */
 .vg-espera { min-height: 100vh; display: flex; flex-direction: column; }
 .vg-espera__envoltorio { width: 100%; max-width: 640px; margin: 0 auto; padding: 0 16px; }
-
 .vg-espera__topo { position: sticky; top: 0; z-index: 2; padding: 14px 0; }
 .vg-espera__marca { display: flex; align-items: center; gap: 12px; }
 .vg-espera__fio { width: 1px; height: 22px; background: var(--cinza-claro); flex: none; }
 .vg-espera__produto { font-size: var(--t-rotulo); font-weight: 600; color: var(--tinta); white-space: nowrap; }
-
 .vg-espera__principal { flex: 1; padding-top: 40px; padding-bottom: 40px; display: flex; flex-direction: column; gap: 16px; }
 .vg-espera__titulo { font-size: var(--t-pagina); color: var(--tinta); }
 .vg-espera__texto { color: var(--medio); }
 .vg-espera__caixa { margin-top: 8px; }
-
 .vg-espera__golpe { background: var(--branco); border: 1px solid var(--linha); color: var(--medio); }
 .vg-espera__golpe strong { color: var(--notus-forte); font-weight: 600; }
-
 .vg-espera__rodape { padding: 20px 0 28px; font-size: var(--t-nota); color: var(--suave); }
 
+/* ============================================================================================================================
+   3. Estados padrão (carregando, vazio, erro, sem internet): nada pula de lugar
+   ============================================================================================================================ */
+.vg-estado { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 16px; text-align: center; color: var(--medio); font-size: var(--t-corpo); }
+.vg-estado .giro { color: var(--tinta); }
+.vg-estado--erro { align-items: stretch; text-align: left; padding: 16px 0; }
+.vg-estado--erro .acoes { margin-top: 12px; }
+.vazio { text-align: center; padding: 40px 24px; }
+.vazio__titulo { font-size: var(--t-titulo); }
+.vazio__texto { color: var(--suave); font-size: var(--t-corpo); max-width: 32rem; margin: 8px auto 0; }
+.vazio .acoes { max-width: 320px; margin-left: auto; margin-right: auto; }
+.vg-esqueleto { min-height: 132px; border-radius: 20px; background: var(--nevoa); }
+.vg-esqueletos { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+/* ============================================================================================================================
+   4. Avisos: aviso flutuante (#vg-aviso-geral, 4 s) e status para leitor de tela (#aviso)
+   ============================================================================================================================ */
+.aviso-geral { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 70; width: calc(100% - 32px); max-width: 560px; margin: 0; display: flex; align-items: flex-start; gap: 10px; background: var(--branco); color: var(--tinta); box-shadow: 0 12px 40px rgba(19, 40, 63, .18); }
+.aviso-geral.aviso--ok { background: var(--ok-fundo); color: var(--ok); }
+.aviso-geral.aviso--erro { background: var(--erro-fundo); color: var(--erro); }
+.aviso-geral__texto { flex: 1; min-width: 0; padding-top: 2px; }
+.aviso-geral__acao { flex: none; min-height: 0; padding: 2px 0; color: inherit; font-weight: 600; }
+.aviso p + p, .aviso .acoes { margin-top: 8px; }
+
+/* ============================================================================================================================
+   5. Pessoa: pílula da cidade, navegação inferior (4 destinos) e faixas de estado
+   ============================================================================================================================ */
+.vg-cidade { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; max-width: 52vw; padding: 6px 12px; border-radius: var(--raio-pilula); background: var(--branco); border: 1px solid var(--linha); font: inherit; font-size: var(--t-rotulo); font-weight: 600; color: var(--tinta); cursor: pointer; white-space: nowrap; }
+.vg-cidade__nome { overflow: hidden; text-overflow: ellipsis; }
+.vg-cidade .icone { width: 16px; height: 16px; color: var(--notus-forte); }
+@media (max-width: 479px) { .topo-interno:has(.vg-cidade) .topo-nome { display: none; } }
+
+.vg-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--branco) 92%, transparent); -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%); border-top: 1px solid var(--linha); }
+.vg-nav__item { display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 48px; padding: 6px 4px; border-radius: 12px; color: var(--suave); font-size: var(--t-eixo); font-weight: 600; text-decoration: none; position: relative; }
+.vg-nav__item[aria-current="page"] { color: var(--tinta); }
+.vg-nav__item[aria-current="page"] .icone { color: var(--notus); }
+.vg-nav__item .icone { width: 22px; height: 22px; }
+.vg-nav__n { position: absolute; top: 4px; right: calc(50% - 22px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--raio-pilula); background: var(--notus); color: var(--sobre-notus); font-size: var(--t-eixo); line-height: 16px; text-align: center; }
+body.vg-com-nav .conteudo { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+
+/* Faixas (cidade pausada, sem internet, conta suspensa, empresa em análise): moldura azul-escura, destaque em âmbar */
+.vg-faixa { display: flex; gap: 10px; align-items: flex-start; padding: 10px 16px; font-size: var(--t-rotulo); line-height: 1.45; background: var(--tinta); color: var(--branco); }
+.vg-faixa > p { max-width: 688px; flex: 1; min-width: 0; }
+.vg-faixa strong { color: var(--ambar); font-weight: 600; }
+.vg-faixa .icone { margin-top: 2px; color: var(--ambar); }
+.vg-faixa .botao--link { color: var(--branco); padding: 0 0 0 4px; min-height: 0; }
+.vg-faixa--offline { background: var(--ardosia); }
+
+/* ============================================================================================================================
+   6. Lista pública: busca, chips, barra de filtros resumida, contagem
+   ============================================================================================================================ */
+.vg-busca { position: relative; margin-top: 12px; }
+.vg-busca .entrada { border-radius: var(--raio-pilula); padding-left: 42px; min-height: 48px; border-color: transparent; }
+.vg-busca .entrada:focus { border-color: rgba(19, 40, 63, .4); }
+.vg-busca .icone { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--suave); pointer-events: none; }
+.vg-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 2px 16px 6px; }
+.vg-chips::-webkit-scrollbar { display: none; }
+.vg-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 14px; border-radius: var(--raio-pilula); border: 1px solid var(--linha); background: var(--branco); color: var(--tinta); font: inherit; font-size: var(--t-rotulo); font-weight: 600; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+.vg-chip[aria-pressed="true"], .vg-chip[aria-checked="true"], .vg-chip[aria-expanded="true"] { border-color: var(--notus); box-shadow: inset 0 0 0 1px var(--notus); background: color-mix(in srgb, var(--notus) 6%, var(--branco)); color: var(--notus-forte); }
+.vg-chip:disabled { opacity: .5; cursor: not-allowed; }
+.vg-chip .icone { width: 14px; height: 14px; }
+.vg-filtros-barra { display: flex; gap: 8px; align-items: center; margin-top: 10px; min-width: 0; }
+.vg-chip--filtrar, .vg-chip--filtrar[aria-expanded="true"] { flex: none; background: var(--tinta); color: var(--branco); border-color: var(--tinta); box-shadow: none; }
+.vg-chip__n { min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--raio-pilula); background: var(--notus); color: var(--sobre-notus); font-size: var(--t-eixo); line-height: 18px; text-align: center; }
+.vg-chips--ativos { margin: 0; padding: 2px 0; flex: 1; min-width: 0; }
+.vg-chips--ativos .vg-chip { min-height: 40px; padding: 6px 12px; }
+.vg-contagem { margin: 14px 0 8px; font-size: var(--t-rotulo); color: var(--suave); display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 24px; }
+.vg-contagem strong { color: var(--tinta); }
+.vg-contagem .botao--link { padding: 0; min-height: 0; }
+.vg-nota-lista { margin-top: 12px; text-align: center; font-size: var(--t-nota); color: var(--suave); }
+
+/* ============================================================================================================================
+   7. Folha que sobe de baixo (celular) / janela (computador), véu e confirmação na página
+   ============================================================================================================================ */
+.vg-camada { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; justify-content: flex-end; }
+.vg-folha-veu { position: absolute; inset: 0; background: rgba(19, 40, 63, .35); }
+.vg-folha { position: relative; width: 100%; max-width: 720px; max-height: 92vh; margin: 0 auto; display: flex; flex-direction: column; background: var(--branco); border-radius: 24px 24px 0 0; box-shadow: 0 -20px 60px rgba(19, 40, 63, .25); animation: vg-subir .25s var(--curva) both; }
+.vg-folha__cab { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 16px 8px; }
+.vg-folha__cab .botao--link { padding: 0; min-height: 0; }
+.vg-folha__alca { position: absolute; left: 50%; top: 6px; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--cinza-claro); }
+.vg-folha__corpo { flex: 1; overflow-y: auto; padding: 0 16px 16px; overscroll-behavior: contain; }
+.vg-folha__grupo { border: 0; padding: 14px 0 0; margin: 12px 0 0; display: grid; gap: 6px; border-top: 1px solid var(--linha); min-width: 0; }
+.vg-folha__grupo legend { padding: 0; float: left; width: 100%; margin-bottom: 4px; }
+.vg-folha .barra-nav { position: static; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+.vg-checks { display: grid; gap: 8px; margin-top: 6px; }
+@keyframes vg-subir { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Janela / confirmação no meio da tela (nunca confirm() do navegador) */
+.vg-camada--janela { justify-content: center; align-items: center; padding: 16px; }
+.vg-janela { position: relative; width: 100%; max-width: 480px; max-height: calc(100vh - 32px); overflow-y: auto; display: grid; gap: 16px; animation: surgir .2s var(--curva) both; }
+.vg-janela__titulo { font-size: var(--t-titulo); }
+.vg-janela__acoes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.confirmar__caixa { width: 100%; max-width: 440px; display: grid; gap: 16px; }
+.confirmar__titulo { font-size: var(--t-titulo); }
+.confirmar__acoes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+/* ============================================================================================================================
+   8. Cartão de vaga (lista, prévia na empresa), etiquetas, empresa verificada, iniciais
+   ============================================================================================================================ */
+.vg-iniciais { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--nevoa); color: var(--tinta); font-size: var(--t-rotulo); font-weight: 600; letter-spacing: .02em; flex: none; }
+.vg-iniciais--grande { width: 56px; height: 56px; font-size: var(--t-corpo); }
+.vg-iniciais--confidencial { background: var(--branco); border: 1.5px dashed var(--cinza-claro); color: var(--suave); }
+.vg-vagas { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.vg-vaga { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 16px; border-radius: 20px; background: var(--branco); color: inherit; text-decoration: none; position: relative; -webkit-tap-highlight-color: transparent; }
+.vg-vaga:focus-visible { outline-offset: 0; }
+.vg-vaga--destaque { box-shadow: inset 0 0 0 1px rgba(243, 68, 5, .35); }
+.vg-vaga__corpo { min-width: 0; display: grid; gap: 4px; }
+.vg-vaga__titulo { font-size: var(--t-corpo); font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; padding-right: 56px; }
+.vg-vaga__empresa { font-size: var(--t-rotulo); color: var(--suave); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.vg-vaga__valor { font-size: var(--t-corpo); font-weight: 700; color: var(--tinta); font-variant-numeric: tabular-nums; }
+.vg-vaga__meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: var(--t-nota); color: var(--medio); }
+.vg-vaga__etiquetas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.vg-vaga__quando { font-size: var(--t-nota); color: var(--suave); position: absolute; right: 16px; top: 16px; }
+.vg-etiqueta { display: inline-flex; align-items: center; gap: 4px; border-radius: var(--raio-pilula); padding: 2px 10px; font-size: var(--t-eixo); font-weight: 600; white-space: nowrap; background: var(--fundo); color: var(--medio); }
+.vg-etiqueta .icone { width: 12px; height: 12px; }
+.vg-etiqueta--urgente { background: var(--notus); color: var(--sobre-notus); }
+.vg-etiqueta--destaque { background: var(--branco); color: var(--notus-forte); box-shadow: inset 0 0 0 1px rgba(243, 68, 5, .35); }
+.vg-etiqueta--hoje { background: var(--tinta); color: var(--branco); }
+.vg-etiqueta--selo { background: var(--nevoa); color: var(--tinta); }
+.vg-verificada { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-eixo); font-weight: 600; color: var(--tinta); }
+.vg-verificada .icone { width: 14px; height: 14px; color: var(--notus); }
+
+/* ============================================================================================================================
+   9. Página da vaga
+   ============================================================================================================================ */
+.vg-voltar { padding-left: 0; }
+.vg-voltar .icone { width: 16px; height: 16px; }
+.vg-vaga-pagina { margin-top: 8px; }
+.vg-vaga-pagina__etiquetas { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.vg-vaga-pagina__titulo { font-size: var(--t-indicador); font-weight: 600; }
+.vg-vaga-pagina__empresa { display: flex; align-items: flex-start; gap: 12px; margin-top: 12px; }
+.vg-vaga-pagina__valor { margin-top: 16px; font-size: var(--t-indicador); font-weight: 700; font-variant-numeric: tabular-nums; }
+.vg-vaga-pagina__valor small { font-size: var(--t-rotulo); font-weight: 400; color: var(--suave); }
+.vg-vaga-pagina__secao { margin-top: 20px; font-size: var(--t-corpo); font-weight: 600; }
+.vg-vaga-pagina__texto { margin-top: 6px; font-size: var(--t-corpo); color: var(--medio); white-space: pre-line; }
+.vg-lista-texto { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 4px; font-size: var(--t-corpo); color: var(--medio); }
+.vg-dados { margin: 12px 0 0; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 10px; font-size: var(--t-rotulo); }
+.vg-dados dt { color: var(--suave); }
+.vg-dados dd { margin: 0; color: var(--tinta); overflow-wrap: anywhere; }
+.vg-links-pe { margin-top: 12px; font-size: var(--t-nota); color: var(--suave); }
+.vg-links-pe .botao--link { padding: 0; min-height: 0; font-size: var(--t-nota); }
+.vg-ok-icone { width: 56px; height: 56px; border-radius: 50%; background: var(--ok-fundo); color: var(--ok); display: grid; place-items: center; }
+.vg-ok-icone .icone { width: 28px; height: 28px; }
+
+/* ============================================================================================================================
+   10. Aviso anti-golpe (texto fixo; na lista, na vaga, no cadastro, no convite e na conversa)
+   ============================================================================================================================ */
+.vg-golpe { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: 16px; background: var(--nevoa); color: var(--medio); font-size: var(--t-rotulo); line-height: 1.45; }
+.vg-golpe .icone { color: var(--notus-forte); margin-top: 1px; }
+.vg-golpe strong { color: var(--tinta); font-weight: 600; }
+.vg-golpe .botao--link { padding: 0; min-height: 0; font-size: inherit; color: inherit; }
+
+/* ============================================================================================================================
+   11. Selo (resultado, catálogo, vaga, cartão cego, conferência): nota com a margem; nunca "aprovado"
+   ============================================================================================================================ */
+.vg-selo { display: grid; gap: 6px; padding: 14px 16px; border-radius: 16px; background: var(--branco); box-shadow: inset 0 0 0 1px var(--linha); }
+.vg-selo--destaque { box-shadow: inset 0 0 0 1px rgba(243, 68, 5, .35); }
+.vg-selo__topo { display: flex; align-items: center; gap: 10px; }
+.vg-selo__icone { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--nevoa); color: var(--notus); flex: none; }
+.vg-selo__rotulo { font-size: var(--t-eixo); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--notus-forte); }
+.vg-selo__nome { font-size: var(--t-corpo); font-weight: 600; }
+.vg-selo__nota { font-size: var(--t-rotulo); color: var(--tinta); font-variant-numeric: tabular-nums; }
+.vg-selo__nota strong { font-size: var(--t-indicador); font-weight: 700; letter-spacing: -0.02em; margin-right: 4px; }
+.vg-selo__linha { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--t-nota); color: var(--suave); }
+.vg-selo__codigo { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--t-rotulo); color: var(--tinta); letter-spacing: .06em; }
+.vg-selo--mini { padding: 8px 12px; gap: 2px; }
+.vg-selo--mini .vg-selo__nome { font-size: var(--t-rotulo); }
+.vg-selo--mini .vg-selo__nota strong { font-size: var(--t-corpo); }
+
+/* ============================================================================================================================
+   12. Cartão cego da pessoa (lado da empresa e passo 5): sem nome, foto, idade; ordem de chegada
+   ============================================================================================================================ */
+.vg-cartoes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.vg-cartao { display: flex; flex-direction: column; gap: 12px; }
+.vg-cartao__topo { display: flex; align-items: center; gap: 10px; }
+.vg-cartao__ordem { width: 40px; height: 40px; border-radius: 50%; background: var(--nevoa); display: grid; place-items: center; font-size: var(--t-rotulo); font-weight: 700; color: var(--tinta); font-variant-numeric: tabular-nums; flex: none; }
+.vg-cartao__quem { font-size: var(--t-corpo); font-weight: 600; }
+.vg-cartao__chegou { font-size: var(--t-nota); color: var(--suave); }
+.vg-cartao__topo .vg-status { margin-left: auto; }
+.vg-cartao__linhas { margin: 0; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 10px; font-size: var(--t-rotulo); }
+.vg-cartao__linhas dt { color: var(--suave); }
+.vg-cartao__linhas dd { margin: 0; color: var(--tinta); overflow-wrap: anywhere; }
+.vg-cartao__selos { display: flex; flex-wrap: wrap; gap: 6px; }
+.vg-cartao__refs { display: grid; gap: 2px; }
+.vg-cartao__acoes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: auto; padding-top: 4px; }
+.vg-cartao__status { font-size: var(--t-rotulo); font-weight: 600; color: var(--medio); }
+.vg-cartao--decidido { opacity: .6; }
+.vg-cartao--previa { box-shadow: inset 0 0 0 1px var(--linha); }
+
+/* ============================================================================================================================
+   13. Referência profissional: carta (sem estrelas, sem média), pontos fortes da lista fechada
+   ============================================================================================================================ */
+.vg-refs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.vg-ref { display: grid; gap: 10px; padding: 16px; border-radius: 20px; background: var(--branco); box-shadow: inset 0 0 0 1px var(--linha); }
+.vg-ref--pendente { box-shadow: inset 0 0 0 1px rgba(243, 68, 5, .35); }
+.vg-ref__topo { display: flex; align-items: center; gap: 10px; }
+.vg-ref__quem { min-width: 0; }
+.vg-ref__empresa { font-size: var(--t-corpo); font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.vg-ref__meta { font-size: var(--t-nota); color: var(--suave); }
+.vg-ref__pontos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.vg-ref__recomenda { font-size: var(--t-rotulo); color: var(--tinta); }
+.vg-ref__texto { font-size: var(--t-corpo); line-height: 1.5; color: var(--tinta); }
+.vg-ref__assina { font-size: var(--t-eixo); color: var(--suave); }
+.vg-ref__acoes { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+.vg-ref-contagem { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-rotulo); font-weight: 600; color: var(--tinta); }
+.vg-ref-contagem .icone { width: 16px; height: 16px; color: var(--notus); }
+.vg-contador { font-size: var(--t-eixo); color: var(--suave); text-align: right; margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+/* ============================================================================================================================
+   14. Conversa pela plataforma (pessoa e empresa) e convite (o momento em que o nome da empresa aparece)
+   ============================================================================================================================ */
+.vg-conversa__cab { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--linha); }
+.vg-conversa__quem { min-width: 0; flex: 1; }
+.vg-conversa__nome { font-size: var(--t-corpo); font-weight: 600; }
+.vg-conversa__vaga { font-size: var(--t-nota); color: var(--suave); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.vg-conversa__acoes { display: grid; gap: 8px; margin: 12px 0; }
+.vg-conversa__faixa { margin: 12px 0 0; }
+.vg-mensagens { list-style: none; margin: 0; padding: 12px 0; display: grid; gap: 8px; }
+.vg-msg { max-width: 86%; padding: 10px 14px; border-radius: 18px; border-bottom-left-radius: 6px; font-size: var(--t-corpo); line-height: 1.45; background: var(--nevoa); color: var(--tinta); justify-self: start; white-space: pre-line; overflow-wrap: anywhere; }
+.vg-msg--minha { background: var(--tinta); color: var(--branco); justify-self: end; border-bottom-left-radius: 18px; border-bottom-right-radius: 6px; }
+.vg-msg--sistema { max-width: 100%; justify-self: center; text-align: center; background: transparent; color: var(--suave); font-size: var(--t-nota); padding: 4px 8px; }
+.vg-msg--pendente { opacity: .65; }
+.vg-msg__hora { display: block; margin-top: 4px; font-size: var(--t-eixo); opacity: .75; text-align: right; }
+.vg-escrever { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; padding-top: 10px; border-top: 1px solid var(--linha); }
+.vg-escrever .entrada { min-height: 48px; border-radius: 18px; resize: none; }
+.vg-escrever .botao { min-height: 48px; }
+.vg-escrever__info { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; font-size: var(--t-eixo); color: var(--suave); }
+.vg-escrever .campo__erro { grid-column: 1 / -1; margin-top: 0; }
+.vg-bloqueio { font-size: var(--t-nota); color: var(--suave); margin-top: 6px; }
+.vg-bloqueio .botao--link { padding: 0; min-height: 0; font-size: inherit; }
+.vg-convite { display: grid; gap: 12px; padding: 16px; border-radius: 20px; background: var(--branco); box-shadow: inset 0 0 0 1px rgba(243, 68, 5, .35); }
+.vg-convite__titulo { font-size: var(--t-titulo); font-weight: 600; letter-spacing: -0.02em; }
+.vg-convite__empresa { display: flex; align-items: flex-start; gap: 12px; }
+.vg-convite__empresa .vg-iniciais { margin-top: 2px; }
+.vg-convite__lista { margin: 0; padding-left: 20px; font-size: var(--t-rotulo); color: var(--medio); display: grid; gap: 4px; }
+
+/* ============================================================================================================================
+   15. Linhas com status (candidaturas, vagas, tabelas)
+   ============================================================================================================================ */
+.vg-linhas { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.vg-linha { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 18px; background: var(--branco); text-decoration: none; color: inherit; }
+.vg-linha__titulo { display: block; font-size: var(--t-corpo); font-weight: 600; }
+.vg-linha__sub { display: block; font-size: var(--t-nota); color: var(--suave); margin-top: 2px; }
+.vg-status { display: inline-flex; align-items: center; gap: 4px; border-radius: var(--raio-pilula); padding: 3px 10px; font-size: var(--t-eixo); font-weight: 600; white-space: nowrap; background: var(--fundo); color: var(--medio); }
+.vg-status--enviada, .vg-status--novo { background: var(--nevoa); color: var(--tinta); }
+.vg-status--conversar { background: var(--notus); color: var(--sobre-notus); }
+.vg-status--combinou, .vg-status--publicado { background: var(--tinta); color: var(--branco); }
+.vg-status--contratada, .vg-status--ativa { background: var(--ok-fundo); color: var(--ok); }
+.vg-status--agora-nao, .vg-status--retirada, .vg-status--recusada, .vg-status--encerrada, .vg-status--pausada, .vg-status--rascunho { background: var(--fundo); color: var(--suave); }
+.vg-status--revisao, .vg-status--analise { background: var(--nevoa); color: var(--medio); }
+.vg-status--suspensa, .vg-status--removida { background: var(--erro-fundo); color: var(--erro); }
+
+/* ============================================================================================================================
+   16. Formulários da pessoa: passos do currículo, rascunho, opções em pílula, itens com ação, foto (só depois do Combinou)
+   ============================================================================================================================ */
+.progresso-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: var(--t-rotulo); color: var(--medio); }
+.progresso-num { font-size: var(--t-indicador); font-weight: 700; color: var(--tinta); letter-spacing: -0.02em; }
+.vg-passos { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.vg-passo { height: 6px; border-radius: var(--raio-pilula); background: var(--trilho); }
+.vg-passo--feito { background: var(--tinta); }
+.vg-passo--atual { background: var(--notus); }
+.vg-rascunho { margin-top: 8px; min-height: 18px; font-size: var(--t-nota); color: var(--suave); display: flex; align-items: center; gap: 6px; }
+.vg-rascunho .icone { width: 14px; height: 14px; color: var(--ok); }
+.vg-opcoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.vg-opcoes .vg-chip { min-height: 44px; }
+.vg-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--linha); }
+.vg-item:first-child { border-top: 0; }
+.vg-item__texto { flex: 1; min-width: 0; }
+.vg-item__titulo { font-size: var(--t-corpo); font-weight: 600; }
+.vg-item__sub { font-size: var(--t-nota); color: var(--suave); }
+.vg-lista-itens { list-style: none; margin: 0; padding: 0; }
+.vg-foto { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.vg-foto__previa { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: var(--nevoa); color: var(--ardosia-clara); flex: none; }
+.vg-foto__previa .icone { width: 28px; height: 28px; }
+.vg-foto__previa img { width: 100%; height: 100%; object-fit: cover; }
+.vg-foto__acoes { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.vg-foto__mini { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none; background: var(--nevoa); }
+.vg-foto__mini--grande { width: 48px; height: 48px; }
+
+/* ============================================================================================================================
+   17. Prova (uma questão por tela) e catálogo de testes
+   ============================================================================================================================ */
+.vg-prova__topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.vg-tempo { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border-radius: var(--raio-pilula); background: var(--nevoa); color: var(--tinta); font-size: var(--t-rotulo); font-weight: 600; font-variant-numeric: tabular-nums; }
+.vg-tempo--pouco { background: color-mix(in srgb, var(--notus) 10%, var(--branco)); color: var(--notus-forte); box-shadow: inset 0 0 0 1px rgba(243, 68, 5, .35); }
+.vg-prova__barra { height: 8px; margin-top: 10px; border-radius: var(--raio-pilula); position: relative; background: var(--trilho); }
+.vg-prova__feito { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--raio-pilula); background: var(--tinta); }
+.vg-prova__enunciado { font-size: var(--t-titulo); font-weight: 600; line-height: 1.35; letter-spacing: -0.01em; margin-top: 20px; }
+.vg-prova__apoio { margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: var(--nevoa); font-size: var(--t-corpo); line-height: 1.5; font-variant-numeric: tabular-nums; }
+.vg-prova__opcoes { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
+.vg-opcao { min-height: 56px; font-size: var(--t-corpo); align-items: center; }
+.vg-opcao__letra { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--nevoa); font-size: var(--t-rotulo); font-weight: 700; }
+.vg-opcao[aria-pressed="true"] .vg-opcao__letra { background: var(--notus); color: var(--sobre-notus); }
+.vg-reconectando { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; font-size: var(--t-rotulo); color: var(--medio); }
+.vg-testes { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; }
+.vg-teste { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 16px; border-radius: 20px; background: var(--branco); }
+.vg-teste__nome { font-size: var(--t-corpo); font-weight: 600; }
+.vg-teste__info { font-size: var(--t-nota); color: var(--suave); }
+.vg-teste__acao { grid-row: 1 / 3; grid-column: 2; }
+.vg-conferir { text-align: center; display: grid; gap: 12px; justify-items: center; }
+.vg-conferir__ok { width: 56px; height: 56px; border-radius: 50%; background: var(--ok-fundo); color: var(--ok); display: grid; place-items: center; }
+.vg-conferir__ok .icone { width: 28px; height: 28px; }
+
+/* ============================================================================================================================
+   18. Entrar e criar conta: moldura laranja (pessoa) e login em duas metades (empresa; pessoa no computador)
+   ============================================================================================================================ */
+.vg-entrada { max-width: 720px; margin: 0 auto; padding: 16px 16px 48px; }
+.vg-captcha { min-height: 65px; }
+.vg-pilha { display: grid; gap: 12px; margin-top: 16px; }
+.vg-pilha > .acoes { margin-top: 4px; }
+.vg-entrada__moldura { border-radius: 24px; padding: 24px; margin-bottom: 12px; }
+.vg-entrada__produto { margin-top: 20px; font-size: var(--t-titulo); font-weight: 600; }
+.vg-entrada__frase { margin-top: 6px; font-size: var(--t-rotulo); }
+.vg-entrada .segmento { display: flex; margin-bottom: 16px; }
+.vg-entrada .segmento__botao { flex: 1; }
+.vg-entrada__nota { margin-top: 4px; text-align: center; font-size: var(--t-nota); color: var(--suave); }
+.vg-entrada__nota .botao--link { padding: 0; min-height: 0; font-size: inherit; }
+.vg-entrada__golpe { margin-top: 12px; }
+.segmento { display: inline-flex; gap: 4px; padding: 4px; margin-bottom: 12px; border-radius: var(--raio-pilula); background: var(--fundo); max-width: 100%; }
+.segmento__botao { min-height: 40px; padding: 6px 14px; border: 0; border-radius: var(--raio-pilula); background: none; color: var(--medio); font: inherit; font-size: var(--t-rotulo); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.segmento__botao[aria-pressed="true"], .segmento__botao[aria-selected="true"] { background: var(--tinta); color: var(--branco); }
+
+/* Login em duas metades (empresa): laranja com o logo e a chamada, azul-escura com o formulário */
+.login { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 100vh; }
+.login__laranja { padding: 28px 24px; display: flex; flex-direction: column; gap: 24px; }
+.login__titulo { font-size: var(--t-pagina); font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; max-width: 22rem; }
+.login__apoio { margin-top: 10px; font-size: var(--t-corpo); max-width: 26rem; }
+.login__passos { list-style: none; margin: 24px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.login__passo { display: flex; gap: 8px; align-items: flex-start; padding: 12px; border-radius: 16px; background: rgba(255, 255, 255, .55); font-size: var(--t-eixo); line-height: 1.35; }
+.login__passo--noite { background: var(--tinta); color: var(--branco); }
+.login__num { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: var(--t-eixo); font-weight: 700; background: rgba(255, 255, 255, .7); color: var(--preto); flex: none; }
+.login__passo--noite .login__num { background: var(--ambar); }
+.login__pe { font-size: var(--t-nota); }
+.login__noite { padding: 32px 24px; display: flex; align-items: flex-start; justify-content: center; }
+.login__form { width: 100%; max-width: 380px; display: grid; gap: 8px; }
+.login__h { font-size: var(--t-pagina); text-align: center; }
+.login__texto { text-align: center; color: rgba(255, 255, 255, .7); font-size: var(--t-rotulo); margin-bottom: 8px; }
+.login__rotulo { font-size: var(--t-rotulo); color: rgba(255, 255, 255, .85); margin-top: 8px; }
+.login__botao { margin-top: 14px; }
+.login__link { justify-self: center; background: none; border: 0; color: rgba(255, 255, 255, .8); text-decoration: underline; font: inherit; font-size: var(--t-rotulo); padding: 8px; min-height: 44px; cursor: pointer; }
+.login__nota { font-size: var(--t-nota); color: rgba(255, 255, 255, .6); text-align: center; }
+.login__erro { padding: 10px 14px; border-radius: 12px; background: rgba(220, 38, 38, .14); color: #fca5a5; font-size: var(--t-rotulo); }
+.login .campo__erro { color: #fca5a5; }
+.login .marcar { color: rgba(255, 255, 255, .85); margin-top: 10px; }
+.login .marcar a { color: var(--branco); }
+.login .caixa { color: var(--tinta); }
+
+/* ============================================================================================================================
+   20. Documento (termos de uso e aviso de privacidade gerados de conteudo/vagas-textos/)
+   ============================================================================================================================ */
+.vg-doc { line-height: 1.6; }
+.vg-doc h1 { font-size: var(--t-pagina); margin-bottom: 8px; }
+.vg-doc h2 { font-size: var(--t-titulo); margin: 28px 0 8px; }
+.vg-doc h3 { font-size: var(--t-corpo); margin: 20px 0 6px; }
+.vg-doc p, .vg-doc ul, .vg-doc ol, .vg-doc table, .vg-doc blockquote { margin: 0 0 12px; }
+.vg-doc ul, .vg-doc ol { padding-left: 22px; }
+.vg-doc li + li { margin-top: 4px; }
+.vg-doc hr { border: 0; border-top: 1px solid var(--linha); margin: 24px 0; }
+.vg-doc blockquote { padding: 10px 14px; border-radius: 12px; background: var(--nevoa); color: var(--medio); }
+.vg-doc code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--t-rotulo); }
+.vg-doc table { width: 100%; border-collapse: collapse; font-size: var(--t-rotulo); display: block; overflow-x: auto; }
+.vg-doc th, .vg-doc td { padding: 8px 10px; border-bottom: 1px solid var(--linha); text-align: left; vertical-align: top; min-width: 120px; }
+.vg-doc th { color: var(--suave); font-weight: 600; }
+
+/* ============================================================================================================================
+   21. Telas maiores, gaveta abaixo de 900 px e movimento reduzido
+   ============================================================================================================================ */
+@media (min-width: 480px) {
+  .acoes { flex-direction: row; justify-content: flex-end; }
+  .acoes > .botao { width: auto; }
+  .acoes-coluna { flex-direction: column; }
+  .acoes-coluna > .botao { width: 100%; }
+}
 @media (min-width: 640px) {
+  .topo-interno { padding: 14px 24px; }
+  .conteudo { padding: 24px 24px 64px; }
   .vg-espera__principal { padding-top: 64px; }
+}
+@media (min-width: 900px) {
+  /* Folha vira janela no meio da tela */
+  .vg-camada:not(.vg-camada--janela) { justify-content: center; align-items: center; padding: 24px; }
+  .vg-folha { max-width: 560px; max-height: calc(100vh - 48px); border-radius: 24px; box-shadow: 0 30px 80px rgba(19, 40, 63, .30); }
+  .vg-folha__alca { display: none; }
+  .vg-folha .barra-nav { border-radius: 0 0 24px 24px; }
+  /* Entrar no computador: metade laranja, metade azul-escura (como o login do painel) */
+  .login { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .login__laranja { padding: 40px; justify-content: space-between; }
+  .login__noite { padding: 40px; align-items: center; }
+  .vg-entrada { max-width: none; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 100vh; }
+  .vg-entrada__moldura { margin: 0; border-radius: 0; padding: 40px; display: flex; flex-direction: column; justify-content: center; }
+  .vg-entrada__produto { font-size: var(--t-pagina); }
+  .vg-entrada__lado { background: var(--tinta); padding: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; }
+  .vg-entrada__lado > * { width: 100%; max-width: 460px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vg-folha, .vg-janela, .menu-lateral { animation: none; transition: none; }
 }
