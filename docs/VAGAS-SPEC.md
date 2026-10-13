@@ -575,50 +575,6 @@ empresa.` · `A descrição pode ter até 800 caracteres.` · `WhatsApp da empre
 #### `vagas_minhas_empresas()` — `VAGAS_API.minhasEmpresas()`
 `{"ok":true,"empresas":[{<empresa>,"papel":"dono","anuncios":{"total":4,"noAr":2,"rascunhos":1,"emRevisao":1},"candidaturasNovas":3}]}`
 
-### 8.4a Equipe da empresa (20261024; só conta de empresa)
-
-Quem é **dono(a)** convida por e-mail (papel `recrutador`), vê a equipe, cancela convite e remove membro; nunca a última
-pessoa dona. Recrutador(a) vê e usa a empresa (vagas, cartões, conversas), mas não vê nem muda a equipe; pode sair sozinho(a).
-O convite (`convidarEquipe`, ação `convite_equipe` da `vagas-conta`, §9) é um token de 64 algarismos hexadecimais, de uso
-único, que vale 72 h, só para a conta com AQUELE e-mail, confirmada, e só vira membro depois do aceite. No banco fica só o
-sha256 do token. Limites: 10 convites por empresa por dia, 3 por dia para o mesmo e-mail, 30 por hora por origem; até 20
-pessoas na equipe e 20 convites abertos. Tudo vai para `vagas_moderacao` (papel `empresa`, ações `equipe_convidar`,
-`equipe_convite_cancelar`, `equipe_aceitar`, `equipe_remover`, `equipe_sair`; sem e-mail no registro).
-Erros comuns: os de conta (§2; conta de pessoa → `Esta área é para empresas.`) · `Empresa não encontrada.` (não é membro) ·
-`Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.`
-
-#### `vagas_equipe_empresa(p_empresa)` — `VAGAS_API.equipeDaEmpresa(empresaId)`
-Só dono(a). Membros ativos (donos primeiro) e convites (abertos + os encerrados nos últimos 30 dias, até 50):
-```json
-{"ok":true,"empresa":{"id":"…","nomeFantasia":"Mercadinho Sol do Norte","status":"ativa"},
- "membros":[{"userId":"…","email":"dona@exemplo.com","nome":"Maria Souza","papel":"dono","desde":"…","eu":true,"podeRemover":false},
-            {"userId":"…","email":"rita@exemplo.com","nome":"Rita Moraes","papel":"recrutador","desde":"…","eu":false,"podeRemover":true}],
- "convites":[{"id":"…","email":"nova@exemplo.com","papel":"recrutador","status":"pendente","criadoEm":"…","expiraEm":"…"}],
- "limites":{"convitesPorDia":10,"convitesHoje":1,"membrosMax":20,"convitesAbertosMax":20,"validadeHoras":72}}
-```
-`podeRemover:false` só para a única pessoa dona. O token nunca volta.
-
-#### `vagas_equipe_convite_cancelar(p_convite)` — `VAGAS_API.cancelarConvite(conviteId)`
-Só dono(a). `{"ok":true,"convite":{…,"status":"cancelado"}}` (de novo: `+ "duplicado":true`).
-Erros: `Convite não encontrado.` · `Este convite já foi aceito. Para tirar o acesso, remova a pessoa da equipe.`
-
-#### `vagas_equipe_remover(p_empresa, p_membro)` — `VAGAS_API.removerMembro(empresaId, userId)`
-Dono(a) remove qualquer membro; qualquer membro pode sair (`p_membro` = o próprio id). Os convites abertos de quem sai são
-cancelados. `{"ok":true,"removido":true,"saiu":false}` (`saiu:true` quando foi a própria pessoa).
-Erros: `Esta pessoa não está na equipe.` · `A empresa precisa ter pelo menos uma pessoa como dona. Esta pessoa não pode sair da equipe.`
-
-#### `vagas_equipe_convite(p_token)` — `VAGAS_API.conviteEquipe(token)`
-A tela de aceite (logada com o e-mail convidado) mostra de quem é o convite ANTES do aceite:
-`{"ok":true,"convite":{"empresa":{"id":"…","nomeFantasia":"Mercadinho Sol do Norte","cidade":{"slug":"uruacu-go","nome":"Uruaçu"}},"papel":"recrutador","expiraEm":"…","jaMembro":false}}`.
-Erro (token errado, usado, cancelado, vencido, de outro e-mail, ou quem convidou deixou de ser dono(a)) — sempre o mesmo:
-`Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.`
-
-#### `vagas_equipe_convite_aceitar(p_token)` — `VAGAS_API.aceitarConviteEquipe(token)`
-Só depois do clique em "Aceitar" (conta de empresa, e-mail confirmado). `{"ok":true,"empresa":{"id":"…","nomeFantasia":"…","papel":"recrutador","status":"ativa"},"duplicado":false}`
-(já era membro: `duplicado:true`, papel mantido). O token não vale de novo.
-Erros: `Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.` · `Esta empresa está suspensa. Fale com a
-Gestão sem Caos.` (`suspensa`) · `A equipe desta empresa está completa. Fale com quem convidou.`
-
 #### `vagas_anuncio_salvar(p_dados)` — `VAGAS_API.salvarAnuncio({...})`
 Cria (com `empresaId`) ou edita (com `id`) um rascunho/vaga. Campos (chaves do design; snake_case também aceito):
 
@@ -724,6 +680,50 @@ compartilhar o contato com a sua empresa.` (`contatoCortado`) · `Esta empresa e
 #### `vagas_marcar_contratada(p_candidatura)` — `VAGAS_API.marcarContratada(id)`
 `{"ok":true,"candidaturaId":"…","status":"contratada"}` · erros `Candidatura não encontrada.` · `Só dá para marcar como
 contratada depois do Combinou.`
+
+### 8.4a Equipe da empresa (20261024; só conta de empresa)
+
+Quem é **dono(a)** convida por e-mail (papel `recrutador`), vê a equipe, cancela convite e remove membro; nunca a última
+pessoa dona. Recrutador(a) vê e usa a empresa (vagas, cartões, conversas), mas não vê nem muda a equipe; pode sair sozinho(a).
+O convite (`convidarEquipe`, ação `convite_equipe` da `vagas-conta`, §9) é um token de 64 algarismos hexadecimais, de uso
+único, que vale 72 h, só para a conta com AQUELE e-mail, confirmada, e só vira membro depois do aceite. No banco fica só o
+sha256 do token. Limites: 10 convites por empresa por dia, 3 por dia para o mesmo e-mail, 30 por hora por origem; até 20
+pessoas na equipe e 20 convites abertos. Tudo vai para `vagas_moderacao` (papel `empresa`, ações `equipe_convidar`,
+`equipe_convite_cancelar`, `equipe_aceitar`, `equipe_remover`, `equipe_sair`; sem e-mail no registro).
+Erros comuns: os de conta (§2; conta de pessoa → `Esta área é para empresas.`) · `Empresa não encontrada.` (não é membro) ·
+`Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.`
+
+#### `vagas_equipe_empresa(p_empresa)` — `VAGAS_API.equipeDaEmpresa(empresaId)`
+Só dono(a). Membros ativos (donos primeiro) e convites (abertos + os encerrados nos últimos 30 dias, até 50):
+```json
+{"ok":true,"empresa":{"id":"…","nomeFantasia":"Mercadinho Sol do Norte","status":"ativa"},
+ "membros":[{"userId":"…","email":"dona@exemplo.com","nome":"Maria Souza","papel":"dono","desde":"…","eu":true,"podeRemover":false},
+            {"userId":"…","email":"rita@exemplo.com","nome":"Rita Moraes","papel":"recrutador","desde":"…","eu":false,"podeRemover":true}],
+ "convites":[{"id":"…","email":"nova@exemplo.com","papel":"recrutador","status":"pendente","criadoEm":"…","expiraEm":"…"}],
+ "limites":{"convitesPorDia":10,"convitesHoje":1,"membrosMax":20,"convitesAbertosMax":20,"validadeHoras":72}}
+```
+`podeRemover:false` só para a única pessoa dona. O token nunca volta.
+
+#### `vagas_equipe_convite_cancelar(p_convite)` — `VAGAS_API.cancelarConvite(conviteId)`
+Só dono(a). `{"ok":true,"convite":{…,"status":"cancelado"}}` (de novo: `+ "duplicado":true`).
+Erros: `Convite não encontrado.` · `Este convite já foi aceito. Para tirar o acesso, remova a pessoa da equipe.`
+
+#### `vagas_equipe_remover(p_empresa, p_membro)` — `VAGAS_API.removerMembro(empresaId, userId)`
+Dono(a) remove qualquer membro; qualquer membro pode sair (`p_membro` = o próprio id). Os convites abertos de quem sai são
+cancelados. `{"ok":true,"removido":true,"saiu":false}` (`saiu:true` quando foi a própria pessoa).
+Erros: `Esta pessoa não está na equipe.` · `A empresa precisa ter pelo menos uma pessoa como dona. Esta pessoa não pode sair da equipe.`
+
+#### `vagas_equipe_convite(p_token)` — `VAGAS_API.conviteEquipe(token)`
+A tela de aceite (logada com o e-mail convidado) mostra de quem é o convite ANTES do aceite:
+`{"ok":true,"convite":{"empresa":{"id":"…","nomeFantasia":"Mercadinho Sol do Norte","cidade":{"slug":"uruacu-go","nome":"Uruaçu"}},"papel":"recrutador","expiraEm":"…","jaMembro":false}}`.
+Erro (token errado, usado, cancelado, vencido, de outro e-mail, ou quem convidou deixou de ser dono(a)) — sempre o mesmo:
+`Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.`
+
+#### `vagas_equipe_convite_aceitar(p_token)` — `VAGAS_API.aceitarConviteEquipe(token)`
+Só depois do clique em "Aceitar" (conta de empresa, e-mail confirmado). `{"ok":true,"empresa":{"id":"…","nomeFantasia":"…","papel":"recrutador","status":"ativa"},"duplicado":false}`
+(já era membro: `duplicado:true`, papel mantido). O token não vale de novo.
+Erros: `Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.` · `Esta empresa está suspensa. Fale com a
+Gestão sem Caos.` (`suspensa`) · `A equipe desta empresa está completa. Fale com quem convidou.`
 
 ### 8.5 Conversa (pessoa e empresa)
 
