@@ -375,6 +375,11 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
    (nunca pessoas nem contatos).
 8. **Na semana de abrir:** plano Pro do Supabase (o grátis pausa projeto parado e tem limites menores) e domínio `vagas` no DNS
    ([VAGAS-HOSPEDAGEM.md](VAGAS-HOSPEDAGEM.md)).
+9. **Excluir uma conta do Vagas (LGPD):** SEMPRE pela ação `excluir` da função `vagas-conta` (botão "Excluir minha conta" no
+   site, ou a equipe chamando a função com o login da pessoa). Ela apaga a foto do bucket `vagas-fotos` ANTES de apagar o
+   usuário — apagar pelo painel do Supabase (Authentication → Users → Delete) deixa a foto órfã no Storage. Os prazos de
+   retenção propostos estão em [VAGAS-SPEC.md §7.1](VAGAS-SPEC.md) (para o advogado confirmar); a limpeza automática entra
+   depois da decisão.
 
 | Erro no site do Vagas | Causa | O que fazer |
 |---|---|---|

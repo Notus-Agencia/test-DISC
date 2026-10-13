@@ -1843,7 +1843,8 @@
     pessoas_formulario: 'histórico por pessoa e perguntas do formulário', empresas_equipes: 'empresas, organograma e relatórios da equipe',
     parte2: 'segunda parte do teste', fotos: 'fotos', mover_versao: 'mover resposta de processo e contratar',
     vendas: 'vendas, pedidos e cupons', infinitepay: 'pagamento pela InfinitePay', conexoes: 'testes da aba Conexões',
-    stripe: 'pagamento pelo Stripe', minimo_cobranca: 'conferência do preço mínimo dos cupons e pacotes no servidor'
+    stripe: 'pagamento pelo Stripe', minimo_cobranca: 'conferência do preço mínimo dos cupons e pacotes no servidor',
+    vagas: 'Vagas sem Caos (nada do DISC deixa de funcionar)'
   };
   function impactoBanco(resp) {
     var falt = resp && Array.isArray(resp.faltando) ? resp.faltando.map(String) : [];

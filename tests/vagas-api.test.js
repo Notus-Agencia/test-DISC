@@ -86,7 +86,7 @@ test('entrar: guarda a sessão, chama vagas_eu com Bearer; erro de login em port
     ['/auth/v1/token?grant_type=password', (c) => (c.corpo.password === 'certa' ? resposta(200, SESSAO) : resposta(400, { error_code: 'invalid_credentials' }))],
     ['/rest/v1/rpc/vagas_eu', () => resposta(200, { ok: true, conta: { tipo: 'pessoa' } })]
   ], arm);
-  await assert.rejects(api.entrar('ana@exemplo.com', 'errada'), (e) => e.message === 'E-mail ou senha incorretos.');
+  await assert.rejects(api.entrar('ana@exemplo.com', 'errada'), (e) => e.message === 'E-mail ou senha não conferem.');
   const eu = await api.entrar(' ANA@exemplo.com ', 'certa');
   assert.equal(eu.conta.tipo, 'pessoa');
   assert.equal(fetch.chamadas[1].corpo.email, 'ana@exemplo.com');
@@ -127,6 +127,17 @@ test('respostas do banco: {ok:false} vira Error com as marcas; 404/PGRST202 = ba
   await assert.rejects(api.anuncio('ABC123'), (e) => e.message === 'Vaga não encontrada ou já encerrada.' && e.naoEncontrada === true &&
     e.resposta.naoEncontrada === true);
   await assert.rejects(api.listaEspera({}), (e) => e.bancoDesatualizado === true && /20261022120000_vagas/.test(e.message));
+  // Toda marca do contrato (docs/VAGAS-SPEC.md §2) chega em e.<marca>, inclusive linkExpirado, existe e ativa.
+  const marcas = ['sessaoExpirada', 'confirmar', 'bloqueado', 'suspensa', 'semConta', 'completar', 'naoConfigurado', 'captcha', 'bancoDesatualizado',
+    'naoEncontrada', 'listaEspera', 'pausada', 'verEmpresa', 'semCombinou', 'contatoCortado', 'bloqueada', 'aguardar', 'semFoto', 'linkExpirado', 'existe', 'ativa'];
+  const todas = {};
+  marcas.forEach((k) => { todas[k] = true; });
+  const m = criar([['/rest/v1/rpc/vagas_lista_espera_sair', () => resposta(200, Object.assign({ ok: false, erro: 'Teste das marcas.' }, todas))]]);
+  await assert.rejects(m.api.listaEsperaSair({ cidade: 'rorainopolis-rr', email: 'a@b.com' }), (e) => {
+    for (const k of marcas) assert.equal(e[k], true, 'marca ' + k);
+    return e.message === 'Teste das marcas.';
+  });
+  assert.deepEqual(m.fetch.chamadas[0].corpo, { p_dados: { cidade: 'rorainopolis-rr', email: 'a@b.com' } });
   await assert.rejects(api.cidades(), (e) => e.message === 'O servidor recusou a solicitação.');
   const fora = API.criar({ modo: 'supabase', url: URL_SB, chave: CHAVE, armazenamento: memoria(), fetch: () => Promise.reject(new TypeError('Failed to fetch')) });
   await assert.rejects(fora.cidades(), (e) => e.conexao === true && /conexão com a internet/.test(e.message));
@@ -159,7 +170,11 @@ test('link do e-mail: lê token_hash/type do endereço, confirma (verify) e cria
     ['/auth/v1/verify', (c) => (c.corpo.token_hash === 'pkce_abcdef123456' ? resposta(200, SESSAO) : resposta(403, { error_code: 'otp_expired' }))],
     ['/auth/v1/user', () => resposta(200, { id: 'u1' })]
   ]);
-  await assert.rejects(api.confirmarLink({ tokenHash: 'outro_token_123', tipo: 'invite' }), (e) => e.message === 'O link expirou ou já foi usado. Peça outro na tela de entrada.');
+  await assert.rejects(api.confirmarLink({ tokenHash: 'outro_token_123', tipo: 'invite' }), (e) => {
+    assert.equal(e.linkExpirado, true, 'a marca linkExpirado chega em e.linkExpirado');
+    return e.message === 'O link expirou ou já foi usado. Peça outro na tela de entrada.';
+  });
+  await assert.rejects(api.confirmarLink(null), (e) => e.linkExpirado === true);
   assert.deepEqual(await api.confirmarLink(link), { ok: true, tipo: 'invite', precisaSenha: true });
   assert.deepEqual(fetch.chamadas[1].corpo, { type: 'invite', token_hash: 'pkce_abcdef123456' });
   await assert.rejects(api.definirSenha('curta'), (e) => e.message === 'A senha precisa ter de 8 a 72 caracteres.');

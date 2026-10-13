@@ -34,6 +34,10 @@ test('index.html: CSP fechada, sem script inline, redirecionamento antes de tudo
   m[1].split(';').map((x) => x.trim()).filter(Boolean).forEach((x) => { const p = x.split(/\s+/); dir[p[0]] = p.slice(1); });
   assert.deepEqual(dir['script-src'], ["'self'"]);
   assert.deepEqual(dir['object-src'], ["'none'"]);
+  // No modo supabase a tela fala com o projeto (fetch) e mostra a foto assinada (img): a meta libera só o domínio do Supabase;
+  // o _headers da hospedagem pode apertar para o projeto exato (meta + cabeçalho = interseção), nunca precisa abrir mais.
+  assert.deepEqual(dir['connect-src'], ["'self'", 'https://*.supabase.co']);
+  assert.ok(dir['img-src'].includes('https://*.supabase.co') && dir['img-src'].includes('blob:'));
   assert.equal([...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>/g)].length, 0, 'sem <script> inline');
   assert.ok(!/\son[a-z]+=/.test(html), 'sem atributos on*');
   assert.ok(html.indexOf('js/endereco.js') < html.indexOf('<link rel="stylesheet"'), 'o redirecionamento vem antes do CSS');

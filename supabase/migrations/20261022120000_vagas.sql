@@ -334,7 +334,7 @@ create table if not exists public.vagas_denuncias (
   autor             uuid,   -- conta que denunciou; null = sem login (não entra na regra das 3)
   origem            text check (origem is null or char_length(origem) <= 200),
   conta_no_limite   boolean not null default false,
-  motivo            text not null check (motivo in ('golpe', 'cobranca', 'discriminacao', 'falsa', 'ofensa', 'contato', 'outro')),
+  motivo            text not null check (motivo in ('golpe', 'cobranca', 'documento', 'discriminacao', 'falsa', 'ofensa', 'contato', 'outro')),
   detalhe           text not null default '' check (char_length(detalhe) <= 600),
   texto_denunciado  text not null default '' check (char_length(texto_denunciado) <= 1000),
   autor_mensagem    text check (autor_mensagem is null or autor_mensagem in ('empresa', 'pessoa')),
@@ -351,6 +351,10 @@ create unique index if not exists vagas_denuncias_uma_por_autor on public.vagas_
   where autor is not null;
 create index if not exists vagas_denuncias_cidade_idx on public.vagas_denuncias (cidade_id, status, criado_em desc);
 create index if not exists vagas_denuncias_anuncio_idx on public.vagas_denuncias (anuncio_id) where anuncio_id is not null;
+-- Motivos da lista fechada (mesma lista em VAGAS_REGRAS.MOTIVOS_DENUNCIA); refeita a cada aplicação para quem já tinha a tabela.
+alter table public.vagas_denuncias drop constraint if exists vagas_denuncias_motivo_check;
+alter table public.vagas_denuncias add constraint vagas_denuncias_motivo_check
+  check (motivo in ('golpe', 'cobranca', 'documento', 'discriminacao', 'falsa', 'ofensa', 'contato', 'outro'));
 
 -- Registro de moderação: só inclusão (a equipe "reverte" com um registro novo).
 create table if not exists public.vagas_moderacao (
@@ -458,7 +462,8 @@ create table if not exists public.vagas_referencias (
   texto            text not null default '' check (char_length(texto) <= 300),
   declaracao       boolean not null check (declaracao),
   status           text not null default 'pendente' check (status in ('pendente', 'aceita', 'ocultada', 'recusada', 'removida')),
-  texto_status     text not null default 'sem_texto' check (texto_status in ('sem_texto', 'pendente', 'aprovado', 'recusado')),
+  -- Situação do texto livre (moderação): publicado = aparece para terceiros. Nunca "aprovado/reprovado" (a palavra não vai à tela).
+  texto_status     text not null default 'sem_texto' check (texto_status in ('sem_texto', 'pendente', 'publicado', 'nao_publicado')),
   texto_motivo     text not null default '' check (char_length(texto_motivo) <= 300),
   moderado_por     uuid,
   moderado_em      timestamptz,
@@ -473,6 +478,12 @@ create table if not exists public.vagas_referencias (
 );
 create index if not exists vagas_referencias_pessoa_idx on public.vagas_referencias (pessoa_id, status);
 create index if not exists vagas_referencias_empresa_idx on public.vagas_referencias (empresa_id, criado_em desc);
+-- Quem já tinha a tabela com os valores antigos do texto ('aprovado'/'recusado'): converte e refaz a restrição.
+alter table public.vagas_referencias drop constraint if exists vagas_referencias_texto_status_check;
+update public.vagas_referencias set texto_status = case texto_status when 'aprovado' then 'publicado' when 'recusado' then 'nao_publicado' else texto_status end
+ where texto_status in ('aprovado', 'recusado');
+alter table public.vagas_referencias add constraint vagas_referencias_texto_status_check
+  check (texto_status in ('sem_texto', 'pendente', 'publicado', 'nao_publicado'));
 
 do $$
 begin
@@ -869,6 +880,13 @@ begin
     end if;
     update public.vagas_contas set status = 'ativa', confirmada_em = coalesce(confirmada_em, v_conf) where user_id = v_uid
       returning * into c;
+    -- O consentimento (termos + privacidade, com data) só vale a partir do clique no link: é aqui que ele é gravado.
+    -- Antes disso a versão fica guardada em termos_versao, sem data e sem linha em vagas_consentimentos.
+    if c.termos_versao <> '' and c.termos_aceitos_em is null then
+      update public.vagas_contas set termos_aceitos_em = now() where user_id = v_uid returning * into c;
+      insert into public.vagas_consentimentos (user_id, tipo, versao, aceito)
+      values (v_uid, 'termos', c.termos_versao, true), (v_uid, 'privacidade', c.termos_versao, true);
+    end if;
   end if;
   if p_tipo is not null and c.tipo <> p_tipo then
     return jsonb_build_object('ok', false, 'erro', case p_tipo
@@ -913,7 +931,15 @@ returns void language sql volatile security definer set search_path = '' as $$
           coalesce(disc_interno.limpar_texto(p_motivo, 300), ''), coalesce(p_dados, '{}'::jsonb));
 $$;
 
--- Cidade (com zonas ativas e, na lista de espera, o total de interessados).
+-- Interessados na lista de espera de uma cidade, APROXIMADO: só quem entrou até o dia anterior, arredondado para baixo em
+-- dezenas. Assim ninguém descobre, entrando um e-mail e olhando o contador, se aquele e-mail já estava na lista.
+create or replace function vagas_interno.interessados(p_cidade uuid)
+returns int language sql stable security definer set search_path = '' as $$
+  select ((count(*) / 10) * 10)::int from public.vagas_lista_espera l
+   where l.cidade_id = p_cidade and l.criado_em < date_trunc('day', now());
+$$;
+
+-- Cidade (com zonas ativas e, na lista de espera, o total aproximado de interessados).
 create or replace function vagas_interno.cidade_json(c public.vagas_cidades)
 returns jsonb language sql stable security definer set search_path = '' as $$
   select jsonb_build_object('id', c.id, 'slug', c.slug, 'nome', c.nome, 'uf', c.uf, 'status', c.status, 'fuso', c.fuso,
@@ -921,8 +947,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'zonas', coalesce((select jsonb_agg(jsonb_build_object('id', z.id, 'slug', z.slug, 'nome', z.nome, 'bairros', to_jsonb(z.bairros))
                                  order by z.ordem, z.nome)
                          from public.vagas_zonas z where z.cidade_id = c.id and z.ativa), '[]'::jsonb),
-    'interessados', case when c.status = 'lista_espera'
-                         then (select count(*)::int from public.vagas_lista_espera l where l.cidade_id = c.id) else null end,
+    'interessados', case when c.status = 'lista_espera' then vagas_interno.interessados(c.id) else null end,
     'metaListaEspera', c.meta_lista_espera);
 $$;
 
@@ -1048,6 +1073,15 @@ returns boolean language sql stable security definer set search_path = '' as $$
                   where r.pessoa_id = p_user and vagas_interno.referencia_para_empresa(r, case when p_empresa is null then null else array[p_empresa] end));
 $$;
 
+-- Referências que contam no limite de 20 em 30 dias da empresa: as que ela consegue ver (nunca a pendente por e-mail, para
+-- que o contador "restantes" não revele se um e-mail tem conta de pessoa).
+create or replace function vagas_interno.referencias_no_mes(p_empresa uuid)
+returns int language sql stable security definer set search_path = '' as $$
+  select count(*)::int from public.vagas_referencias r
+   where r.empresa_id = p_empresa and r.criado_em > now() - interval '30 days'
+     and (r.origem <> 'email' or vagas_interno.referencia_status_empresa(r) = 'aceita');
+$$;
+
 -- Referência completa. p_texto_sempre: a própria pessoa e a empresa autora veem o texto antes da moderação.
 create or replace function vagas_interno.referencia_json(r public.vagas_referencias, p_texto_sempre boolean)
 returns jsonb language sql stable security definer set search_path = '' as $$
@@ -1055,7 +1089,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'empresa', jsonb_build_object('nome', e.nome_fantasia, 'conferida', e.cnpj_conferido_em is not null, 'cidade', c.nome),
     'funcao', r.funcao, 'vinculo', r.vinculo, 'inicio', to_char(r.inicio, 'YYYY-MM'), 'fim', coalesce(to_char(r.fim, 'YYYY-MM'), ''),
     'atual', r.fim is null, 'pontosFortes', to_jsonb(r.pontos_fortes), 'recomendaPara', to_jsonb(r.recomenda_para),
-    'texto', case when p_texto_sempre or r.texto_status = 'aprovado' then r.texto else '' end,
+    'texto', case when p_texto_sempre or r.texto_status = 'publicado' then r.texto else '' end,
     'textoStatus', r.texto_status, 'criadoEm', disc_interno.iso(r.criado_em))
   from public.vagas_empresas e join public.vagas_cidades c on c.id = e.cidade_id
   where e.id = r.empresa_id;
@@ -1184,7 +1218,11 @@ returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if tg_op = 'UPDATE' then
     new.user_id := old.user_id;
-    new.tipo := old.tipo;
+    -- O tipo só muda enquanto a conta está pendente e o e-mail não foi confirmado (quem tem o e-mail decide; ver
+    -- vagas_conta_registrar). Depois, nunca.
+    if not (old.status = 'pendente' and not exists (select 1 from auth.users u where u.id = old.user_id and u.email_confirmed_at is not null)) then
+      new.tipo := old.tipo;
+    end if;
     new.criado_em := old.criado_em;
   end if;
   return new;
@@ -1337,6 +1375,32 @@ drop trigger if exists vagas_anuncios_antes_gravar on public.vagas_anuncios;
 create trigger vagas_anuncios_antes_gravar before insert or update on public.vagas_anuncios
   for each row execute function vagas_interno.anuncios_antes_gravar();
 
+-- Empresa que fica sem nenhum membro ativo (o último excluiu a conta): as vagas saem do ar (encerradas) e as conversas
+-- abertas são encerradas com aviso — ninguém mais responderia às pessoas.
+create or replace function vagas_interno.membros_depois_sair()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  v_empresa uuid := old.empresa_id;
+  k record;
+begin
+  if tg_op = 'UPDATE' and new.ativo then return null; end if;
+  if exists (select 1 from public.vagas_empresa_membros m where m.empresa_id = v_empresa and m.ativo) then return null; end if;
+  if not exists (select 1 from public.vagas_empresas e where e.id = v_empresa) then return null; end if;
+  update public.vagas_anuncios set status = 'encerrado', encerrado_em = now(), status_motivo = 'A empresa saiu da plataforma.'
+   where empresa_id = v_empresa and status in ('em_revisao', 'publicado', 'pausado');
+  for k in select c.id from public.vagas_candidaturas c join public.vagas_conversas v on v.candidatura_id = c.id
+            where c.empresa_id = v_empresa and v.status = 'aberta' loop
+    perform vagas_interno.avisar_conversa(k.id, 'A empresa saiu da plataforma. Esta conversa foi encerrada.', 'encerrada');
+  end loop;
+  insert into public.vagas_moderacao (cidade_id, ator, papel, acao, alvo, alvo_id, motivo)
+  select e.cidade_id, null, 'sistema', 'empresa_sem_membros', 'empresa', e.id, '' from public.vagas_empresas e where e.id = v_empresa;
+  return null;
+end;
+$$;
+drop trigger if exists vagas_empresa_membros_depois_sair on public.vagas_empresa_membros;
+create trigger vagas_empresa_membros_depois_sair after delete or update of ativo on public.vagas_empresa_membros
+  for each row execute function vagas_interno.membros_depois_sair();
+
 -- Candidatura: empresa copiada do anúncio; anúncio, pessoa e empresa não mudam depois.
 create or replace function vagas_interno.candidaturas_antes_gravar()
 returns trigger language plpgsql security definer set search_path = '' as $$
@@ -1475,8 +1539,13 @@ begin
     v_padrao := cardinality(v_areas) > 0;
   end if;
   if v_depois ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}Z_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' and not v_total then
-    v_dep_em := split_part(v_depois, '_', 1)::timestamptz;
-    v_dep_id := split_part(v_depois, '_', 2)::uuid;
+    -- Cursor com data impossível (ex.: mês 99) é só ignorado: nenhuma RPC lança erro cru para a tela.
+    begin
+      v_dep_em := split_part(v_depois, '_', 1)::timestamptz;
+      v_dep_id := split_part(v_depois, '_', 2)::uuid;
+    exception
+      when others then v_dep_em := null; v_dep_id := null;
+    end;
   end if;
   for a in
     select x.* from public.vagas_anuncios x
@@ -1656,8 +1725,33 @@ begin
   end if;
   insert into public.vagas_lista_espera (cidade_id, email, perfil) values (c.id, v_email, v_perfil)
     on conflict (cidade_id, email) do nothing;
-  return vagas_interno.ok(jsonb_build_object('cidade', c.slug,
-    'interessados', (select count(*)::int from public.vagas_lista_espera l where l.cidade_id = c.id)));
+  -- A resposta não revela se o e-mail já estava: o contador é aproximado e não inclui quem entrou hoje.
+  return vagas_interno.ok(jsonb_build_object('cidade', c.slug, 'interessados', vagas_interno.interessados(c.id)));
+end;
+$$;
+
+-- Sair da lista de espera (LGPD): {cidade, email}. Resposta sempre igual, exista ou não o e-mail na lista.
+create or replace function public.vagas_lista_espera_sair(p_dados jsonb)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  d jsonb := case when jsonb_typeof(p_dados) = 'object' then p_dados else '{}'::jsonb end;
+  c public.vagas_cidades%rowtype;
+  v_email text := vagas_interno.email(disc_interno.texto(d -> 'email'));
+  v_origens text[] := disc_interno.origens_requisicao();
+  o text;
+begin
+  select * into c from public.vagas_cidades where slug = lower(btrim(disc_interno.texto(d -> 'cidade')));
+  if not found then return vagas_interno.erro('Cidade não encontrada.'); end if;
+  if v_email = '' then return vagas_interno.erro('E-mail inválido.'); end if;
+  if v_origens is not null then
+    foreach o in array v_origens loop
+      if vagas_interno.contar('lista_espera', o, interval '1 hour') > 10 then
+        return vagas_interno.erro('Muitas tentativas. Tente de novo mais tarde.', '{"bloqueado": true}');
+      end if;
+    end loop;
+  end if;
+  delete from public.vagas_lista_espera where cidade_id = c.id and email = v_email;
+  return vagas_interno.ok(jsonb_build_object('cidade', c.slug, 'removido', true));
 end;
 $$;
 
@@ -1683,7 +1777,7 @@ declare
   r public.vagas_referencias%rowtype;
   v_uuid boolean := v_id ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
 begin
-  if v_motivo not in ('golpe', 'cobranca', 'discriminacao', 'falsa', 'ofensa', 'contato', 'outro') then
+  if v_motivo not in ('golpe', 'cobranca', 'documento', 'discriminacao', 'falsa', 'ofensa', 'contato', 'outro') then
     return vagas_interno.erro('Escolha o motivo da denúncia.');
   end if;
   if v_uid is not null then
@@ -2003,7 +2097,14 @@ begin
     if vagas_interno.contar('quero', v_uid::text, interval '1 day') > 30 then
       return vagas_interno.erro('Você já se candidatou a muitas vagas hoje. Tente de novo amanhã.', '{"bloqueado": true}');
     end if;
-    insert into public.vagas_candidaturas (anuncio_id, pessoa_id, empresa_id) values (a.id, v_uid, a.empresa_id) returning * into k;
+    begin
+      insert into public.vagas_candidaturas (anuncio_id, pessoa_id, empresa_id) values (a.id, v_uid, a.empresa_id) returning * into k;
+    exception
+      when unique_violation then
+        -- Dois "Quero" ao mesmo tempo (toque duplo): o segundo devolve a candidatura que o primeiro gravou.
+        select * into k from public.vagas_candidaturas where anuncio_id = a.id and pessoa_id = v_uid;
+        return vagas_interno.ok(jsonb_build_object('candidatura', vagas_interno.candidatura_pessoa(k), 'duplicado', true));
+    end;
   end if;
   delete from public.vagas_pulos where pessoa_id = v_uid and anuncio_id = a.id;
   return vagas_interno.ok(jsonb_build_object('candidatura', vagas_interno.candidatura_pessoa(k)));
@@ -2114,8 +2215,9 @@ declare
   v_dup boolean := false;
 begin
   if not (v_conta ->> 'ok')::boolean then return v_conta::json; end if;
-  k := vagas_interno.minha_candidatura(p_candidatura);
-  if k.id is null then return vagas_interno.erro('Candidatura não encontrada.'); end if;
+  -- Tranca a candidatura: dois "Combinou" ao mesmo tempo viram um Combinou e um "duplicado" (uma só mensagem de sistema).
+  select * into k from public.vagas_candidaturas where id = p_candidatura and pessoa_id = auth.uid() for update;
+  if not found then return vagas_interno.erro('Candidatura não encontrada.'); end if;
   select * into a from public.vagas_anuncios where id = k.anuncio_id;
   select * into e from public.vagas_empresas where id = k.empresa_id;
   if k.status in ('combinou', 'contratada') then
@@ -2720,7 +2822,6 @@ declare
   v_turnos text[] := vagas_interno.lista_enum(f -> 'turnos', vagas_interno.turnos());
   v_cnh text[] := vagas_interno.lista_enum(f -> 'cnh', array['A', 'B', 'C', 'D', 'E']);
   v_pret int := vagas_interno.inteiro(f -> 'pretensaoMaxCentavos');
-  v_selo boolean := coalesce(f -> 'temSelo' = 'true'::jsonb, false);
   lista jsonb;
 begin
   if not (v_conta ->> 'ok')::boolean then return v_conta::json; end if;
@@ -2740,8 +2841,8 @@ begin
        and (v_exp is null or coalesce((select sum(vagas_interno.meses(x.inicio, x.fim)) from public.vagas_experiencias x where x.user_id = p.user_id), 0) >= v_exp)
        and (cardinality(v_turnos) = 0 or p.turnos && v_turnos)
        and (cardinality(v_cnh) = 0 or p.cnh @> v_cnh)
-       and (v_pret is null or p.pretensao_centavos is null or p.pretensao_centavos <= v_pret)
-       and (not v_selo or jsonb_array_length(vagas_interno.selos(p.user_id)) > 0)) x;
+       and (v_pret is null or p.pretensao_centavos is null or p.pretensao_centavos <= v_pret)) x;
+  -- Sem filtro por selo, nota ou referência (veto P3): o selo é só informação no cartão; a chave "temSelo" é ignorada.
   return vagas_interno.ok(jsonb_build_object('anuncio', jsonb_build_object('id', a.id, 'codigo', a.codigo, 'titulo', a.titulo, 'status', a.status),
     'cartoes', lista, 'total', jsonb_array_length(lista)));
 end;
@@ -2798,11 +2899,13 @@ begin
   if k.contato_cortado_em is not null then
     return vagas_interno.erro('A pessoa deixou de compartilhar o contato com a sua empresa.', '{"contatoCortado": true}');
   end if;
+  select * into e from public.vagas_empresas where id = k.empresa_id;
+  -- Empresa suspensa pela moderação não lê mais o contato (a pessoa não sabe da suspensão para cortar o acesso).
+  if e.status <> 'ativa' then return vagas_interno.erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.', '{"suspensa": true}'); end if;
   if vagas_interno.contar('contato_empresa', k.empresa_id::text, interval '1 day') > 300 then
     return vagas_interno.erro('Muitas consultas de contato hoje. Tente de novo amanhã.', '{"bloqueado": true}');
   end if;
   select * into a from public.vagas_anuncios where id = k.anuncio_id;
-  select * into e from public.vagas_empresas where id = k.empresa_id;
   select * into ct from public.vagas_pessoa_contato where user_id = k.pessoa_id;
   select * into p from public.vagas_pessoas where user_id = k.pessoa_id;
   insert into public.vagas_acessos_contato (candidatura_id, pessoa_id, empresa_id, empresa_nome, anuncio_titulo, user_id)
@@ -2870,7 +2973,8 @@ begin
   end if;
   if v_lado = 'empresa' then
     v_pode := k.status in ('enviada', 'conversar', 'combinou', 'contratada') and a.status not in ('suspenso', 'removido')
-              and k.contato_cortado_em is null;
+              and k.contato_cortado_em is null
+              and exists (select 1 from public.vagas_empresas e where e.id = k.empresa_id and e.status = 'ativa');
     v_outro := 'Pessoa candidata';
   else
     v_pode := v.id is not null and v.status = 'aberta' and k.status in ('conversar', 'combinou', 'contratada');
@@ -3093,6 +3197,7 @@ declare
   v_cand text := btrim(disc_interno.texto(d -> 'candidaturaId'));
   v_email_txt text := btrim(disc_interno.texto(d -> 'email'));
   neutro constant json := vagas_interno.ok('{"enviada": true}');
+  v_no_limite boolean;
 begin
   if not (v_conta ->> 'ok')::boolean then return v_conta::json; end if;
   if v_emp_txt !~ re then return vagas_interno.erro('Empresa não encontrada.'); end if;
@@ -3153,15 +3258,19 @@ begin
   end loop;
   t := vagas_interno.conferir_texto(v_texto, 'referencia');
   if t is not null then return vagas_interno.erro(t ->> 'erro'); end if;
+  -- Limite de 20 em 30 dias, decidido ANTES de saber se o e-mail tem conta: a resposta por e-mail é a mesma com ou sem
+  -- conta, inclusive no limite (e o limite conta só o que a empresa consegue ver: nada por e-mail que não foi aceito).
+  v_no_limite := vagas_interno.referencias_no_mes(e.id) >= 20;
+  if v_neutro and v_no_limite then return neutro; end if;
   if v_pessoa is null then return neutro; end if;
-  -- Limites e regra "1 por empresa por pessoa". Depois que a pessoa respondeu, a empresa só muda a referência se a pessoa
+  -- Regra "1 por empresa por pessoa". Depois que a pessoa respondeu, a empresa só muda a referência se a pessoa
   -- pedir de novo (convite). A mesma resposta para aceita, ocultada, removida ou recusada (veto P2: nada denuncia a ocultação).
   select * into r from public.vagas_referencias where empresa_id = e.id and pessoa_id = v_pessoa for update;
   if found and r.status <> 'pendente' and v_origem <> 'convite' then
     if v_neutro then return neutro; end if;
     return vagas_interno.erro('Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.');
   end if;
-  if not found and (select count(*) from public.vagas_referencias x2 where x2.empresa_id = e.id and x2.criado_em > now() - interval '30 days') >= 20 then
+  if not found and v_no_limite then
     return vagas_interno.erro('Sua empresa chegou ao limite de 20 referências em 30 dias.', '{"bloqueado": true}');
   end if;
   begin
@@ -3181,6 +3290,10 @@ begin
     end if;
   exception
     when raise_exception then return vagas_interno.erro(sqlerrm);
+    when unique_violation then
+      -- Duas ofertas ao mesmo tempo para a mesma pessoa: a segunda recebe a mesma resposta de "já deu referência".
+      if v_neutro then return neutro; end if;
+      return vagas_interno.erro('Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.');
     when check_violation or not_null_violation then return vagas_interno.erro('Dados inválidos. Confira os campos.');
   end;
   insert into public.vagas_referencia_historico (referencia_id, acao, por) values (r.id, 'oferecida', 'empresa');
@@ -3326,8 +3439,7 @@ begin
       order by r.criado_em desc)
     from public.vagas_referencias r
    where r.empresa_id = p_empresa and (r.origem <> 'email' or vagas_interno.referencia_status_empresa(r) = 'aceita')), '[]'::jsonb),
-    'restantes30Dias', greatest(0, 20 - (select count(*)::int from public.vagas_referencias r where r.empresa_id = p_empresa
-                                           and r.criado_em > now() - interval '30 days'))));
+    'restantes30Dias', greatest(0, 20 - vagas_interno.referencias_no_mes(p_empresa))));
 end;
 $$;
 
@@ -3428,7 +3540,7 @@ returns json language plpgsql volatile security definer set search_path = '' as 
 declare
   f jsonb := case when jsonb_typeof(p_filtro) = 'object' then p_filtro else '{}'::jsonb end;
   v_cids uuid[] := vagas_interno.cidades_do_filtro(f);
-  v_status text[] := vagas_interno.lista_enum(f -> 'textoStatus', array['pendente', 'aprovado', 'recusado']);
+  v_status text[] := vagas_interno.lista_enum(f -> 'textoStatus', array['pendente', 'publicado', 'nao_publicado']);
 begin
   if auth.uid() is null then return vagas_interno.erro('Sessão expirada. Entre de novo.', '{"sessaoExpirada": true}'); end if;
   if cardinality(vagas_interno.cidades_operadas()) = 0 then return vagas_interno.erro('Sem permissão.'); end if;
@@ -3461,12 +3573,12 @@ begin
   if v_papel is null then return vagas_interno.erro('Referência não encontrada.'); end if;
   if p_acao = 'aprovar_texto' then
     if r.texto_status <> 'pendente' then return vagas_interno.erro('Este texto não está esperando a moderação.'); end if;
-    update public.vagas_referencias set texto_status = 'aprovado', texto_motivo = '', moderado_por = auth.uid(), moderado_em = now()
+    update public.vagas_referencias set texto_status = 'publicado', texto_motivo = '', moderado_por = auth.uid(), moderado_em = now()
      where id = r.id returning * into r;
   elsif p_acao = 'recusar_texto' then
     if v_motivo = '' then return vagas_interno.erro('Informe o motivo.'); end if;
-    if r.texto_status not in ('pendente', 'aprovado') then return vagas_interno.erro('Este texto não está esperando a moderação.'); end if;
-    update public.vagas_referencias set texto_status = 'recusado', texto_motivo = v_motivo, moderado_por = auth.uid(), moderado_em = now()
+    if r.texto_status not in ('pendente', 'publicado') then return vagas_interno.erro('Este texto não está esperando a moderação.'); end if;
+    update public.vagas_referencias set texto_status = 'nao_publicado', texto_motivo = v_motivo, moderado_por = auth.uid(), moderado_em = now()
      where id = r.id returning * into r;
   elsif p_acao = 'remover' then
     if v_motivo = '' then return vagas_interno.erro('Informe o motivo.'); end if;
@@ -3476,7 +3588,7 @@ begin
     return vagas_interno.erro('Ação inválida.');
   end if;
   insert into public.vagas_referencia_historico (referencia_id, acao, por)
-  values (r.id, case p_acao when 'aprovar_texto' then 'texto_aprovado' when 'recusar_texto' then 'texto_recusado' else 'removida' end, 'moderacao');
+  values (r.id, case p_acao when 'aprovar_texto' then 'texto_publicado' when 'recusar_texto' then 'texto_nao_publicado' else 'removida' end, 'moderacao');
   perform vagas_interno.registrar(v_cidade, v_papel, 'referencia_' || p_acao, 'referencia', r.id, v_motivo);
   return vagas_interno.ok(jsonb_build_object('referencia', jsonb_build_object('id', r.id, 'status', vagas_interno.referencia_status_empresa(r),
     'textoStatus', r.texto_status)));
@@ -3497,7 +3609,7 @@ returns uuid[] language sql stable security definer set search_path = '' as $$
 $$;
 
 create or replace function public.vagas_op_resumo()
-returns json language plpgsql volatile security definer set search_path = '' as $$
+returns json language plpgsql stable security definer set search_path = '' as $$
 declare
   v_cids uuid[] := vagas_interno.cidades_operadas();
 begin
@@ -3565,6 +3677,12 @@ begin
   elsif p_acao = 'suspender' then
     if v_motivo = '' then return vagas_interno.erro('Informe o motivo.'); end if;
     update public.vagas_empresas set status = 'suspensa', status_motivo = v_motivo where id = e.id returning * into e;
+  elsif p_acao = 'recusar' then
+    -- Cadastro recusado (ex.: CNPJ não confere): a empresa continua em análise, com o motivo visível para ela corrigir.
+    if v_papel = 'moderador' then return vagas_interno.erro('Sem permissão.'); end if;
+    if v_motivo = '' then return vagas_interno.erro('Informe o motivo.'); end if;
+    if e.status <> 'em_analise' then return vagas_interno.erro('Só dá para recusar uma empresa em análise.'); end if;
+    update public.vagas_empresas set status_motivo = v_motivo where id = e.id returning * into e;
   elsif p_acao = 'reativar' then
     if v_papel = 'moderador' then return vagas_interno.erro('Sem permissão.'); end if;
     if e.status <> 'suspensa' then return vagas_interno.erro('Esta empresa não está suspensa.'); end if;
@@ -3623,6 +3741,11 @@ begin
    where lower(u.email) = vagas_interno.email(p_email) and c.tipo = 'empresa';
   if v_user is null then
     return vagas_interno.erro('Não há conta de empresa com este e-mail. Peça para a empresa criar a conta (ou faça o cadastro assistido).');
+  end if;
+  -- Só para o cadastro assistido (empresa ainda sem ninguém). Empresa com membro ativo convida pelo painel dela: a operação
+  -- nunca entra numa empresa alheia (e nunca chega ao contato das pessoas).
+  if exists (select 1 from public.vagas_empresa_membros m where m.empresa_id = e.id and m.ativo and m.user_id <> v_user) then
+    return vagas_interno.erro('Esta empresa já tem acesso. Peça a quem é dono(a) para convidar pelo painel da empresa.');
   end if;
   v_papel_membro := case when exists (select 1 from public.vagas_empresa_membros m where m.empresa_id = e.id and m.papel = 'dono' and m.ativo)
                          then 'recrutador' else 'dono' end;
@@ -3685,6 +3808,11 @@ begin
     update public.vagas_denuncias set status = 'improcedente', decidida_por = auth.uid(), decidida_em = now(),
       decisao_motivo = coalesce(nullif(v_motivo, ''), 'Vaga devolvida ao ar pela moderação.')
      where anuncio_id = a.id and alvo = 'anuncio' and status = 'aberta';
+  elsif p_acao = 'devolver' then
+    -- Volta para a empresa corrigir: rascunho com o motivo (chave de conteudo/vagas-textos/moderacao.json) em statusMotivo.
+    if v_motivo = '' then return vagas_interno.erro('Informe o motivo.'); end if;
+    if a.status not in ('em_revisao', 'suspenso') then return vagas_interno.erro('Esta vaga não está esperando a moderação.'); end if;
+    update public.vagas_anuncios set status = 'rascunho', status_motivo = v_motivo where id = a.id returning * into a;
   elsif p_acao = 'remover' then
     if v_motivo = '' then return vagas_interno.erro('Informe o motivo.'); end if;
     update public.vagas_anuncios set status = 'removido', status_motivo = v_motivo where id = a.id returning * into a;
@@ -3897,7 +4025,8 @@ begin
       contrato_versao = case when d ? 'contratoVersao' then excluded.contrato_versao else x.contrato_versao end
     returning * into o;
   exception
-    when invalid_text_representation or check_violation then return vagas_interno.erro('Percentual de repasse inválido (0 a 100).');
+    when invalid_text_representation or numeric_value_out_of_range or check_violation then
+      return vagas_interno.erro('Percentual de repasse inválido (0 a 100).');
   end;
   perform vagas_interno.registrar(c.id, 'admin', 'operador_salvar', 'operador', null, '', jsonb_build_object('papel', o.papel, 'ativo', o.ativo));
   return vagas_interno.ok(jsonb_build_object('operador', jsonb_build_object('cidade', c.slug, 'papel', o.papel, 'ativo', o.ativo,
@@ -3975,11 +4104,27 @@ begin
   end if;
   insert into public.vagas_contas (user_id, tipo, assistida_por, assistida_cidade_id, codigo_evento) values (p_user, v_tipo, v_ator, v_cid, v_evento)
   on conflict (user_id) do nothing;
-  select * into c from public.vagas_contas where user_id = p_user;
-  if c.tipo <> v_tipo then return vagas_interno.erro('Este e-mail já tem uma conta de outro tipo.'); end if;
+  select * into c from public.vagas_contas where user_id = p_user for update;
+  if c.tipo <> v_tipo then
+    -- Conta pendente com e-mail ainda não confirmado: quem tem o e-mail é quem decide o tipo (um terceiro pode ter
+    -- "pré-registrado" o e-mail com o tipo errado). Confirmada, o tipo não muda mais.
+    if c.status = 'pendente' and not exists (select 1 from auth.users u where u.id = p_user and u.email_confirmed_at is not null) then
+      delete from public.vagas_empresa_membros where user_id = p_user;
+      delete from public.vagas_operadores where user_id = p_user;
+      update public.vagas_contas set tipo = v_tipo where user_id = p_user returning * into c;
+    else
+      return vagas_interno.erro('Este e-mail já tem uma conta de outro tipo.');
+    end if;
+  end if;
+  -- A versão dos termos fica guardada; o CONSENTIMENTO (data + linhas em vagas_consentimentos) só é gravado quando a conta
+  -- passa de pendente a ativa, no clique do link (vagas_interno.conta_atual). Conta já ativa: grava na hora.
   if v_versao ~ '^[A-Za-z0-9._-]{1,40}$' and c.termos_versao is distinct from v_versao then
-    update public.vagas_contas set termos_versao = v_versao, termos_aceitos_em = now() where user_id = p_user;
-    insert into public.vagas_consentimentos (user_id, tipo, versao, aceito) values (p_user, 'termos', v_versao, true), (p_user, 'privacidade', v_versao, true);
+    if c.status = 'ativa' then
+      update public.vagas_contas set termos_versao = v_versao, termos_aceitos_em = now() where user_id = p_user;
+      insert into public.vagas_consentimentos (user_id, tipo, versao, aceito) values (p_user, 'termos', v_versao, true), (p_user, 'privacidade', v_versao, true);
+    else
+      update public.vagas_contas set termos_versao = v_versao, termos_aceitos_em = null where user_id = p_user;
+    end if;
   end if;
   if v_emp is not null and v_tipo = 'empresa' then
     if not exists (select 1 from public.vagas_empresas e where e.id = v_emp and (v_cid is null or e.cidade_id = v_cid)) then
@@ -4042,6 +4187,9 @@ begin
   if k.contato_cortado_em is not null then
     return vagas_interno.erro('A pessoa deixou de compartilhar o contato com a sua empresa.', '{"contatoCortado": true}');
   end if;
+  if not exists (select 1 from public.vagas_empresas e where e.id = k.empresa_id and e.status = 'ativa') then
+    return vagas_interno.erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.', '{"suspensa": true}');
+  end if;
   if not vagas_interno.tem_foto(k.pessoa_id) then return vagas_interno.erro('Esta pessoa não pôs foto.', '{"semFoto": true}'); end if;
   return vagas_interno.ok(jsonb_build_object('caminho', k.pessoa_id::text || '/foto.jpg'));
 end;
@@ -4088,6 +4236,10 @@ begin
     'foto', case when vagas_interno.tem_foto(v_uid) then 'Você tem uma foto guardada (só as empresas com Combinou a veem). Baixe pelo seu perfil.' else '' end,
     'candidaturas', coalesce((select jsonb_agg(vagas_interno.candidatura_pessoa(k) order by k.criado_em) from public.vagas_candidaturas k
                                where k.pessoa_id = v_uid), '[]'::jsonb),
+    'pulos', coalesce((select jsonb_agg(jsonb_build_object('anuncio', jsonb_build_object('codigo', a.codigo, 'titulo', a.titulo), 'em', disc_interno.iso(p.em))
+                         order by p.em) from public.vagas_pulos p join public.vagas_anuncios a on a.id = p.anuncio_id where p.pessoa_id = v_uid), '[]'::jsonb),
+    'denunciasFeitas', coalesce((select jsonb_agg(jsonb_build_object('alvo', x.alvo, 'motivo', x.motivo, 'detalhe', x.detalhe, 'status', x.status,
+                                   'em', disc_interno.iso(x.criado_em)) order by x.criado_em) from public.vagas_denuncias x where x.autor = v_uid), '[]'::jsonb),
     'mensagensEnviadas', coalesce((select jsonb_agg(jsonb_build_object('em', disc_interno.iso(m.criado_em), 'texto', m.texto) order by m.criado_em)
                                      from public.vagas_mensagens m where m.autor_user = v_uid), '[]'::jsonb),
     'acessosAoContato', coalesce((select jsonb_agg(jsonb_build_object('empresa', l.empresa_nome, 'anuncio', l.anuncio_titulo, 'em', disc_interno.iso(l.em))
@@ -4313,7 +4465,11 @@ begin
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
     grant select on public.vagas_cidades, public.vagas_zonas, public.vagas_areas, public.vagas_contas, public.vagas_consentimentos, public.vagas_pessoas,
       public.vagas_pessoa_contato, public.vagas_experiencias, public.vagas_pulos, public.vagas_empresas, public.vagas_empresa_membros,
-      public.vagas_anuncios, public.vagas_denuncias, public.vagas_moderacao, public.vagas_operadores, public.vagas_acessos_contato to authenticated;
+      public.vagas_anuncios, public.vagas_moderacao, public.vagas_operadores, public.vagas_acessos_contato to authenticated;
+    -- Denúncias: a operação lê só o conteúdo; quem denunciou (autor, origem = chave do IP) e quem escreveu a mensagem
+    -- denunciada (autor_mensagem_user) ficam fora do alcance de qualquer leitura direta (só a service_role).
+    grant select (id, alvo, anuncio_id, referencia_id, mensagem_id, conversa_id, empresa_id, cidade_id, conta_no_limite, motivo, detalhe,
+      texto_denunciado, autor_mensagem, status, decidida_por, decidida_em, decisao_motivo, criado_em) on public.vagas_denuncias to authenticated;
   end if;
 end $$;
 
@@ -4324,7 +4480,7 @@ declare
   papel text;
   f record;
   publicas text[] := array['vagas_cidades_publicas', 'vagas_anuncios_publicos', 'vagas_anuncio_publico', 'vagas_lista_espera_entrar',
-    'vagas_denunciar', 'vagas_referencias_publicas', 'vagas_anuncio_vista', 'vagas_areas_publicas'];
+    'vagas_lista_espera_sair', 'vagas_denunciar', 'vagas_referencias_publicas', 'vagas_anuncio_vista', 'vagas_areas_publicas'];
   servico text[] := array['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar', 'vagas_conta_quem', 'vagas_conta_foto'];
 begin
   foreach papel in array array['anon', 'authenticated'] loop

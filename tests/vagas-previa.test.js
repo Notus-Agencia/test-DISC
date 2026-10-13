@@ -185,7 +185,7 @@ test('conta na prévia: cadastro sem senha → link → criar senha → entrar; 
   assert.match(c.linkPrevia, /^entrar\.html\?token_hash=previa[0-9a-f]+&type=invite$/);
   const repetido = await ok(b.conta.cadastrar({ email: 'pessoa@previa.com', tipo: 'pessoa' }));
   assert.equal(repetido.mensagem, c.mensagem, 'não revela que o e-mail já existe');
-  await erro(b.conta.entrar('nova@exemplo.com', 'qualquer'), 'E-mail ou senha incorretos.');
+  await erro(b.conta.entrar('nova@exemplo.com', 'qualquer'), 'E-mail ou senha não conferem.');
   const link = API.linkDoEndereco({ search: '?' + c.linkPrevia.split('?')[1] });
   assert.equal((await ok(b.conta.confirmarLink(link))).precisaSenha, true);
   await erro(b.conta.definirSenha('curta'), 'A senha precisa ter de 8 a 72 caracteres.');
@@ -280,4 +280,87 @@ test('foto opcional na prévia: só a pessoa grava; a empresa só vê depois do 
   await api.entrar('pessoa@previa.com', PREVIA.SENHA_PREVIA);
   await api.apagarFoto();
   assert.equal((await api.minhaPessoa()).pessoa.temFoto, false);
+});
+
+test('correções da revisão na prévia: lista de espera (contador aproximado, sair), devolver/recusar, vincular, empresa suspensa, temSelo ignorado, exportar, consentimento', async () => {
+  const b = novo();
+  const st = b.estado();
+  // Lista de espera: contador aproximado (dezenas, até o dia anterior) — não muda com o e-mail de agora; sair da lista.
+  const e1 = await ok(b.rpc('vagas_lista_espera_entrar', { p_dados: { cidade: 'rorainopolis-rr', email: 'alvo@exemplo.com' } }));
+  const e2 = await ok(b.rpc('vagas_lista_espera_entrar', { p_dados: { cidade: 'rorainopolis-rr', email: 'alvo@exemplo.com' } }));
+  const e3 = await ok(b.rpc('vagas_lista_espera_entrar', { p_dados: { cidade: 'rorainopolis-rr', email: 'novo@exemplo.com' } }));
+  assert.deepEqual([e1.interessados, e2.interessados, e3.interessados], [0, 0, 0]);
+  const ror = async () => (await ok(b.rpc('vagas_cidades_publicas', {}))).cidades.find((c) => c.slug === 'rorainopolis-rr').interessados;
+  assert.equal(await ror(), 0);
+  for (let i = 0; i < 12; i++) st.listaEspera.push({ cidade: 'rorainopolis-rr', email: 'antiga' + i + '@exemplo.com', perfil: 'pessoa', criadoEm: AGORA - 2 * 86400000 });
+  assert.equal(await ror(), 10, 'arredondado para baixo em dezenas');
+  const antes = st.listaEspera.length;
+  assert.deepEqual(await ok(b.rpc('vagas_lista_espera_sair', { p_dados: { cidade: 'rorainopolis-rr', email: 'alvo@exemplo.com' } })), { ok: true, cidade: 'rorainopolis-rr', removido: true });
+  assert.deepEqual(await ok(b.rpc('vagas_lista_espera_sair', { p_dados: { cidade: 'rorainopolis-rr', email: 'ninguem@exemplo.com' } })), { ok: true, cidade: 'rorainopolis-rr', removido: true });
+  assert.equal(st.listaEspera.length, antes - 1);
+  // Operação: devolver a vaga (volta a rascunho com o motivo) e recusar a empresa (fica em análise com o motivo).
+  await entrar(b, 'operador@previa.com');
+  const emRevisao = st.anuncios.find((a) => a.status === 'em_revisao' && a.cidade === 'boa-vista-rr');
+  await erro(b.rpc('vagas_op_anuncio_decidir', { p_anuncio: emRevisao.id, p_acao: 'devolver', p_motivo: '' }), 'Informe o motivo.');
+  const dev = await ok(b.rpc('vagas_op_anuncio_decidir', { p_anuncio: emRevisao.id, p_acao: 'devolver', p_motivo: 'anuncio_sem_valor' }));
+  assert.deepEqual([dev.anuncio.status, dev.anuncio.statusMotivo], ['rascunho', 'anuncio_sem_valor']);
+  await erro(b.rpc('vagas_op_anuncio_decidir', { p_anuncio: emRevisao.id, p_acao: 'devolver', p_motivo: 'x' }), 'Esta vaga não está esperando a moderação.');
+  const emAnalise = st.empresas.find((e) => e.status === 'em_analise' && e.cidade === 'boa-vista-rr');
+  const rec = await ok(b.rpc('vagas_op_empresa_decidir', { p_empresa: emAnalise.id, p_acao: 'recusar', p_motivo: 'empresa_cnpj_nao_confere' }));
+  assert.deepEqual([rec.empresa.status, rec.empresa.statusMotivo], ['em_analise', 'empresa_cnpj_nao_confere']);
+  await erro(b.rpc('vagas_op_empresa_decidir', { p_empresa: st.empresas[0].id, p_acao: 'recusar', p_motivo: 'x' }), 'Só dá para recusar uma empresa em análise.');
+  // Vincular membro: só empresa sem ninguém (cadastro assistido).
+  await erro(b.rpc('vagas_op_vincular_membro', { p_empresa: st.empresas[0].id, p_email: 'empresa2@previa.com' }),
+    'Esta empresa já tem acesso. Peça a quem é dono(a) para convidar pelo painel da empresa.');
+  // Empresa suspensa não lê o contato nem a foto e não escreve na conversa.
+  const restaurante = st.empresas.find((e) => e.nomeFantasia === 'Restaurante Sabor da Terra');
+  const kComb = st.candidaturas.find((k) => k.empresaId === restaurante.id && k.status === 'combinou');
+  await ok(b.rpc('vagas_op_empresa_decidir', { p_empresa: restaurante.id, p_acao: 'suspender', p_motivo: 'teste' }));
+  await ok(b.conta.sair());
+  await entrar(b, 'empresa6@previa.com');
+  const ct = await erro(b.rpc('vagas_contato_pessoa', { p_candidatura: kComb.id }), 'Esta empresa está suspensa. Fale com a Gestão sem Caos.');
+  assert.equal(ct.suspensa, true);
+  await erro(b.conta.fotoUrl(kComb.id), 'Esta empresa está suspensa. Fale com a Gestão sem Caos.');
+  assert.equal((await ok(b.rpc('vagas_conversa', { p_candidatura: kComb.id }))).podeEscrever, false);
+  await ok(b.conta.sair());
+  await entrar(b, 'operador@previa.com');
+  await ok(b.rpc('vagas_op_empresa_decidir', { p_empresa: restaurante.id, p_acao: 'reativar', p_motivo: '' }));
+  await ok(b.conta.sair());
+  await entrar(b, 'empresa6@previa.com');
+  assert.ok('temFoto' in (await ok(b.rpc('vagas_contato_pessoa', { p_candidatura: kComb.id }))).pessoa);
+  // "temSelo" não filtra os cartões (veto P3): o selo é só informação no cartão.
+  await ok(b.conta.sair());
+  await entrar(b, 'empresa@previa.com');
+  const minhas = (await ok(b.rpc('vagas_minhas_empresas', {}))).empresas[0];
+  const anuncios = (await ok(b.rpc('vagas_anuncios_empresa', { p_empresa: minhas.id }))).anuncios;
+  let maior = 0;
+  for (const a of anuncios) {
+    const c = await ok(b.rpc('vagas_cartoes', { p_anuncio: a.id, p_filtro: {} }));
+    const comSelo = await ok(b.rpc('vagas_cartoes', { p_anuncio: a.id, p_filtro: { temSelo: true } }));
+    assert.equal(comSelo.total, c.total, 'temSelo ignorado em ' + a.titulo);
+    maior = Math.max(maior, c.total);
+  }
+  assert.ok(maior >= 2);
+  // Exportar traz pulos e denúncias feitas; motivo "documento" aceito.
+  await ok(b.conta.sair());
+  await entrar(b, 'pessoa@previa.com');
+  const feed = await ok(b.rpc('vagas_feed', { p_filtro: { areas: [] } }));
+  await ok(b.rpc('vagas_pular', { p_anuncio: feed.anuncios[0].id }));
+  await ok(b.rpc('vagas_denunciar', { p_dados: { alvo: 'anuncio', id: feed.anuncios[1].id, motivo: 'documento' } }));
+  const exp = await ok(b.rpc('vagas_exportar_meus_dados', {}));
+  assert.ok(exp.pulos.length >= 1 && exp.pulos[0].anuncio.codigo);
+  assert.ok(exp.denunciasFeitas.some((d) => d.motivo === 'documento'));
+  // Conta nova: o tipo pode ser trocado enquanto pendente; o consentimento só é gravado depois do clique no link.
+  await ok(b.conta.sair());
+  await ok(b.conta.cadastrar({ email: 'terceiro@exemplo.com', tipo: 'empresa', termosVersao: R.VERSAO_TERMOS }));
+  const c2 = await ok(b.conta.cadastrar({ email: 'terceiro@exemplo.com', tipo: 'pessoa', termosVersao: R.VERSAO_TERMOS }));
+  const u = st.usuarios.find((x) => x.email === 'terceiro@exemplo.com');
+  assert.equal(st.contas[u.id].tipo, 'pessoa');
+  assert.equal(st.consentimentos.filter((x) => x.userId === u.id).length, 0, 'nada antes do clique');
+  assert.equal(st.contas[u.id].termosAceitosEm, null);
+  await ok(b.conta.confirmarLink(API.linkDoEndereco({ search: '?' + c2.linkPrevia.split('?')[1] })));
+  const eu = await ok(b.rpc('vagas_eu', {}));
+  assert.equal(eu.conta.tipo, 'pessoa');
+  assert.ok(eu.conta.termosAceitosEm);
+  assert.deepEqual(st.consentimentos.filter((x) => x.userId === u.id).map((x) => x.tipo), ['termos', 'privacidade']);
 });

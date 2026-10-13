@@ -4,7 +4,7 @@
  * tests/supabase/vagas.test.js confere que conferirTexto, normalizar, cnpjValido e normalizarWhatsapp dão o MESMO resultado
  * que vagas_interno.conferir_texto / normalizar / cnpj_valido / normalizar_whatsapp.
  *
- *   Listas fechadas (id + rótulo): MODALIDADES, TURNOS, ESCOLARIDADES, CNH, UNIDADES, PONTOS_FORTES, VINCULOS, MOTIVOS_DENUNCIA,
+ *   Listas fechadas (id + rótulo): MODALIDADES, TURNOS, ESCOLARIDADES, CNH, UNIDADES, PONTOS_FORTES, VINCULOS, MOTIVOS_DENUNCIA (+ _TELA), TEXTO_STATUS,
  *     STATUS_CANDIDATURA, STATUS_ANUNCIO, STATUS_EMPRESA, STATUS_REFERENCIA, STATUS_REFERENCIA_EMPRESA; da vaga ("como produto"):
  *     AREAS (24), TURNOS_VAGA, EXPERIENCIAS_VAGA, ESCOLARIDADES_VAGA, REQUISITOS_VAGA, BENEFICIOS, TESTES_SELO.
  *   Filtro de textos: PADROES, tiposDoContexto(ctx), mensagemTexto(tipo, trecho, ctx), conferirTexto(texto, ctx) -> null | {tipo, trecho, erro}
@@ -65,8 +65,15 @@
     ['comunicacao', 'Passa recado e informação de forma clara'], ['iniciativa', 'Resolve o que vê sem esperar ordem'],
     ['cuidado_material', 'Cuida do material, do equipamento e do ambiente'], ['vendas', 'Vende bem e oferece o produto certo'],
     ['situacao_dificil', 'Resolve reclamação ou situação difícil com calma']]);
-  var MOTIVOS_DENUNCIA = lista([['golpe', 'Parece golpe'], ['cobranca', 'Pediram dinheiro'], ['discriminacao', 'Discriminação'],
-    ['falsa', 'Vaga falsa'], ['ofensa', 'Ofensa ou assédio'], ['contato', 'Pediram contato fora da plataforma'], ['outro', 'Outro motivo']]);
+  // Motivos da denúncia (mesma lista fechada da migração; rótulos do design/textos). "cobranca" fica por compatibilidade
+  // com "golpe" (os dois são "pede dinheiro"); as telas mostram só os da lista MOTIVOS_DENUNCIA_TELA.
+  var MOTIVOS_DENUNCIA = lista([['golpe', 'Pede dinheiro'], ['cobranca', 'Pede dinheiro (taxa ou cobrança)'], ['documento', 'Pede documento'],
+    ['discriminacao', 'Discriminação'], ['falsa', 'Parece falsa'], ['ofensa', 'Assédio ou ofensa'], ['contato', 'Pede contato fora da plataforma'],
+    ['outro', 'Outro']]).map(function (m) { return { id: m.id, rotulo: m.rotulo, chave: m.id, texto: m.rotulo }; });   // chave/texto: formato dos textos
+  var MOTIVOS_DENUNCIA_TELA = MOTIVOS_DENUNCIA.filter(function (m) { return m.id !== 'cobranca'; });
+  // Situação do texto livre da referência (moderação). Nunca "aprovado/reprovado" em tela: o texto é publicado ou não.
+  var TEXTO_STATUS = lista([['sem_texto', 'Sem texto'], ['pendente', 'Texto em revisão'], ['publicado', 'Texto publicado'],
+    ['nao_publicado', 'Texto não publicado']]);
   // Rótulos para a PESSOA (docs/VAGAS-TELAS.md): "agora_nao" aparece como "Encerrada" (nunca "a empresa disse não").
   var STATUS_CANDIDATURA = lista([['enviada', 'Enviada'], ['conversar', 'Responder'], ['agora_nao', 'Encerrada'],
     ['combinou', 'Combinou'], ['contratada', 'Contratada'], ['recusada', 'Você recusou'], ['retirada', 'Retirada']]);
@@ -554,7 +561,8 @@
     VERSAO_TERMOS: VERSAO_TERMOS, MODALIDADES: MODALIDADES, VINCULOS: VINCULOS, TURNOS: TURNOS, ESCOLARIDADES: ESCOLARIDADES, CNH: CNH,
     UNIDADES: UNIDADES, AREAS: AREAS, TURNOS_VAGA: TURNOS_VAGA, EXPERIENCIAS_VAGA: EXPERIENCIAS_VAGA,
     ESCOLARIDADES_VAGA: ESCOLARIDADES_VAGA, REQUISITOS_VAGA: REQUISITOS_VAGA, BENEFICIOS: BENEFICIOS, TESTES_SELO: TESTES_SELO,
-    PONTOS_FORTES: PONTOS_FORTES, MOTIVOS_DENUNCIA: MOTIVOS_DENUNCIA, STATUS_CANDIDATURA: STATUS_CANDIDATURA,
+    PONTOS_FORTES: PONTOS_FORTES, MOTIVOS_DENUNCIA: MOTIVOS_DENUNCIA, MOTIVOS_DENUNCIA_TELA: MOTIVOS_DENUNCIA_TELA, TEXTO_STATUS: TEXTO_STATUS,
+    STATUS_CANDIDATURA: STATUS_CANDIDATURA,
     STATUS_ANUNCIO: STATUS_ANUNCIO, STATUS_EMPRESA: STATUS_EMPRESA, STATUS_REFERENCIA: STATUS_REFERENCIA,
     STATUS_REFERENCIA_EMPRESA: STATUS_REFERENCIA_EMPRESA, MSG: MSG,
     PADROES: PADROES, tiposDoContexto: tiposDoContexto, mensagemTexto: mensagemTexto, conferirTexto: conferirTexto, normalizar: normalizar,

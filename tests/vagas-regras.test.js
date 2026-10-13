@@ -27,6 +27,37 @@ test('listas fechadas: modalidades, vínculos e os 12 pontos fortes da psicologi
   // Para a empresa, "ocultada" não existe (veto P2).
   assert.ok(!R.STATUS_REFERENCIA_EMPRESA.some((s) => s.id === 'ocultada'));
   assert.equal(R.STATUS_CANDIDATURA.find((s) => s.id === 'agora_nao').rotulo, 'Encerrada');
+  // Motivos da denúncia: a mesma lista fechada da restrição do banco, com rótulo em português para TODAS as chaves (formato
+  // {chave, texto} dos textos, além de {id, rotulo}); a tela mostra MOTIVOS_DENUNCIA_TELA (sem "cobranca", que é "golpe").
+  const motivos = R.MOTIVOS_DENUNCIA.map((m) => m.id);
+  assert.deepEqual(motivos, ['golpe', 'cobranca', 'documento', 'discriminacao', 'falsa', 'ofensa', 'contato', 'outro']);
+  const noBanco = /constraint vagas_denuncias_motivo_check\s+check \(motivo in \(([^)]+)\)\)/.exec(SQL)[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1));
+  assert.deepEqual(noBanco, motivos);
+  for (const m of R.MOTIVOS_DENUNCIA) {
+    assert.ok(m.rotulo.length >= 4 && m.texto === m.rotulo && m.chave === m.id, m.id);
+  }
+  const rotulo = (id) => R.MOTIVOS_DENUNCIA.find((m) => m.id === id).rotulo;
+  assert.deepEqual([rotulo('golpe'), rotulo('documento'), rotulo('falsa'), rotulo('ofensa'), rotulo('contato'), rotulo('outro'), rotulo('discriminacao')],
+    ['Pede dinheiro', 'Pede documento', 'Parece falsa', 'Assédio ou ofensa', 'Pede contato fora da plataforma', 'Outro', 'Discriminação']);
+  assert.deepEqual(R.MOTIVOS_DENUNCIA_TELA.map((m) => m.id), motivos.filter((m) => m !== 'cobranca'));
+  // Texto da referência: publicado ou não (nunca "aprovado"), igual à restrição do banco.
+  assert.deepEqual(R.TEXTO_STATUS.map((s) => s.id), ['sem_texto', 'pendente', 'publicado', 'nao_publicado']);
+  const textoNoBanco = /constraint vagas_referencias_texto_status_check\s+check \(texto_status in \(([^)]+)\)\)/.exec(SQL)[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1));
+  assert.deepEqual(textoNoBanco, R.TEXTO_STATUS.map((s) => s.id));
+});
+
+test('palavras proibidas em tela: nenhum rótulo das listas nem valor de enum das RPCs diz "aprovado"/"reprovado" (nem "Notus")', () => {
+  const proibido = /aprovad|reprovad|notus/i;
+  const listas = Object.keys(R).filter((k) => Array.isArray(R[k]) && R[k].length && R[k][0] && typeof R[k][0] === 'object' && 'rotulo' in R[k][0]);
+  assert.ok(listas.length >= 12, 'listas com rótulo: ' + listas.join(', '));
+  for (const k of listas) for (const item of R[k]) {
+    assert.ok(!proibido.test(item.rotulo), k + ': ' + item.rotulo);
+    assert.ok(!proibido.test(item.id), k + ': ' + item.id);
+  }
+  // Valores que as RPCs devolvem (status, textoStatus, ações do histórico): nenhum literal 'aprovado'/'recusado' no banco
+  // (fora dos comentários e da conversão dos dados gravados com os valores antigos).
+  const sql = SQL.replace(/--[^\n]*/g, '').replace(/update public\.vagas_referencias set texto_status = case[\s\S]*?;/, '');
+  assert.ok(!/'(aprovado|recusado|texto_aprovado|texto_recusado|reprovado)'/.test(sql), 'enum com palavra proibida na migração');
 });
 
 test('textos de marca: "Gestão sem Caos", nunca "Notus"; frase anti-golpe exata', () => {

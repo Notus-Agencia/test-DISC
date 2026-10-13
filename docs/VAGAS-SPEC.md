@@ -38,6 +38,16 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
 - **Prévia:** com `VAGAS_CONFIG.MODO = 'previa'` (padrão até o banco estar pronto) o `VAGAS_API` usa `vagas/js/api-previa.js`:
   mesmo contrato, mesmas mensagens, dados fictícios guardados só no navegador. `?previa=1` na URL liga a prévia na aba;
   `?previa=0` desliga.
+- **Dependência do DISC no banco:** as funções do Vagas usam quatro auxiliares do schema `disc_interno` da migração
+  `20261005120000_disc`: `texto(jsonb)`, `iso(timestamptz)`, `limpar_texto(text, int)` e `origens_requisicao()` (e, por ela,
+  `ip_de_texto`, `ip_publico`, `chave_ip`). Quem mudar a assinatura ou o comportamento dessas funções no DISC quebra o Vagas:
+  `tests/supabase/vagas.test.js` aplica as duas migrações em sequência e pega isso. (Copiá-las para `vagas_interno` fica para
+  quando o DISC precisar mudá-las.)
+- **CSP das telas:** a meta `Content-Security-Policy` de `vagas/index.html` (modelo para as outras telas) libera
+  `connect-src 'self' https://*.supabase.co` (RPC/Auth/Function por `fetch`) e `img-src 'self' data: blob: https://*.supabase.co`
+  (foto assinada). O `_headers` da hospedagem pode apertar para o projeto exato (meta + cabeçalho = interseção) — nunca
+  precisa abrir mais do que a meta. Sem a meta, a tela dependeria só do cabeçalho da hospedagem; com ela, uma tela aberta
+  fora do Cloudflare (ex.: localmente) continua com a mesma política.
 
 ## 2. Convenções do contrato
 
@@ -47,9 +57,11 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
 - Marcas (flags) possíveis: `sessaoExpirada` (sem login ou login vencido: mandar para Entrar), `confirmar` (e-mail ainda não
   confirmado), `suspensa`, `semConta` (login de fora do Vagas, ex.: só do painel DISC), `completar` (falta o currículo),
   `bloqueado` (limite anti-abuso), `naoEncontrada`, `listaEspera`, `pausada`, `verEmpresa`, `semCombinou`, `contatoCortado`,
-  `bloqueada` + `tipo` (mensagem barrada pelo filtro), `aguardar` (3 mensagens seguidas), `semFoto`, `duplicado` (repetição sem efeito,
-  vem em respostas `ok:true`). Do cliente: `bancoDesatualizado` (migração não aplicada), `conexao` (sem internet),
-  `naoConfigurado` (Edge Function ou e-mail não publicados), `linkExpirado`, `captcha`.
+  `bloqueada` + `tipo` (mensagem barrada pelo filtro), `aguardar` (3 mensagens seguidas), `semFoto`, `ativa` (lista de espera de
+  cidade que já abriu), `existe` (cadastro assistido de e-mail que já tem conta), `duplicado` (repetição sem efeito, vem em
+  respostas `ok:true`). `suspensa` também vem quando a EMPRESA da candidatura está suspensa pela moderação (contato, foto).
+  Do cliente: `bancoDesatualizado` (migração não aplicada), `conexao` (sem internet), `naoConfigurado` (Edge Function ou
+  e-mail não publicados), `linkExpirado`, `captcha`. Toda marca chega em `e.<marca>` (teste em `tests/vagas-api.test.js`).
 - **Dinheiro sempre em CENTAVOS** (inteiro): `162100` = R$ 1.621,00. `VAGAS_REGRAS.reais(c)` e `formatarValor(valor)` formatam.
 - **Datas-hora** ISO UTC (`2026-10-13T15:00:00.000Z`); vazio = `''`. **Datas** `AAAA-MM-DD` (no fuso da cidade:
   `America/Boa_Vista`, UTC−4). **Horas** `HH:MM`. **Mês de experiência/referência** `AAAA-MM`.
@@ -93,13 +105,20 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
   Semente: `boa-vista-rr` (ativa, zonas `centro-leste`, `zona-norte`, `zona-sul`, `zona-oeste`), `mucajai-rr` e `canta-rr`
   (ativas, entorno de Boa Vista, zona `cidade-toda`), `rorainopolis-rr` (lista de espera).
 - **Conta** `pendente` (criada, e-mail não confirmado) → `ativa` (no 1º uso depois de confirmar) | `suspensa`.
-  Guarda `termos_versao` + `termos_aceitos_em` (histórico em `vagas_consentimentos`). Conta assistida (criada pelo operador)
-  nasce sem `termos_versao`: a pessoa aceita no 1º acesso (`vagas_aceitar_termos`).
+  Guarda `termos_versao` + `termos_aceitos_em` (histórico em `vagas_consentimentos`). **O consentimento só é gravado quando a
+  conta passa de pendente a ativa (o clique no link)**: antes disso só a versão fica anotada, sem data e sem linha de
+  consentimento. Enquanto pendente e sem e-mail confirmado, um novo `cadastrar` do mesmo e-mail pode trocar o `tipo` (quem
+  tem o e-mail decide; ninguém "reserva" o e-mail de outra pessoa com o tipo errado); confirmada, o tipo não muda mais.
+  Conta assistida (criada pelo operador) nasce sem `termos_versao`: a pessoa aceita no 1º acesso (`vagas_aceitar_termos`).
 - **Empresa** `em_analise` (cadastrada pela própria empresa) → `ativa` (= CNPJ conferido pela operação; "verificada") |
-  `suspensa`. Cadastrada pelo operador já nasce `ativa`.
+  `suspensa`. Cadastrada pelo operador já nasce `ativa`. A operação pode **recusar** o cadastro: continua `em_analise`, com
+  `statusMotivo` (chave de `conteudo/vagas-textos/moderacao.json`) para a empresa corrigir e pedir de novo.
 - **Anúncio** `rascunho → em_revisao | publicado → pausado | encerrado`; moderação: `suspenso` (3 denúncias de contas
-  diferentes) e `removido`. As **3 primeiras vagas publicadas de cada empresa** (e qualquer vaga de empresa não ativa) vão
+  diferentes), `removido` e **devolver** (volta a `rascunho` com `statusMotivo`; a empresa corrige e publica de novo).
+  As **3 primeiras vagas publicadas de cada empresa** (e qualquer vaga de empresa não ativa) vão
   para `em_revisao`. "No ar" = `publicado` + dentro do prazo + empresa ativa + cidade ativa + (diária) data de hoje em diante.
+  Empresa que fica sem nenhum membro ativo (o último excluiu a conta): vagas `encerrado` ("A empresa saiu da plataforma.")
+  e conversas abertas encerradas com aviso.
   Prazo: 7 a 60 dias (padrão 30); **diária**: `prazoHoras` de 48 a 168 h (padrão 48); depois do dia do trabalho ela sai do ar.
 - **Candidatura** `enviada` (Quero) → `conversar` (empresa quer conversar ou escreveu) | `agora_nao` → `combinou` (a pessoa
   liberou o contato) → `contratada`; a pessoa pode `retirada` (antes do Combinou) ou `recusada` (recusa o convite).
@@ -110,7 +129,8 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
 - **Referência** (visão da pessoa) `pendente → aceita ⇄ ocultada`, `pendente → recusada`, qualquer → `removida`.
   Visão da EMPRESA AUTORA (veto P2): `pendente | aceita | recusada | removida` — ocultada e removida pela pessoa depois do
   aceite aparecem como **aceita**; removida antes do aceite = **recusada**; `removida` só quando foi a moderação.
-  Texto livre: `sem_texto | pendente | aprovado | recusado` (aparece para terceiros só `aprovado`).
+  Texto livre: `sem_texto | pendente | publicado | nao_publicado` (aparece para terceiros só `publicado`; rótulos em
+  `VAGAS_REGRAS.TEXTO_STATUS`). Nenhuma RPC devolve a palavra "aprovado": o texto é publicado ou não.
 - **Denúncia** `aberta → procedente | improcedente`.
 
 ## 5. Regras de privacidade (cada uma tem teste no banco: `tests/supabase/vagas.test.js`)
@@ -141,15 +161,29 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
 10. **Conta do Vagas nunca vira administradora do painel DISC** (`garantir_primeiro_admin` recusa `app_metadata.produto =
     'vagas'` ou linha em `vagas_contas`, mesmo sendo o primeiro login do projeto).
 11. **Anti-enumeração:** cadastro, reenviar e esqueci respondem sempre a mesma frase neutra; referência por e-mail responde
-    `{ok:true, enviada:true}` exista ou não a pessoa, e só aparece para a empresa depois do aceite.
+    `{ok:true, enviada:true}` exista ou não a pessoa (inclusive quando a empresa está no limite de 20), só aparece para a
+    empresa depois do aceite e **não entra em `restantes30Dias` nem no limite** enquanto pendente (o contador conta só o que a
+    empresa consegue ver). Lista de espera: `interessados` é aproximado (dezenas, até o dia anterior) e não muda com o
+    e-mail de agora.
 12. **Foto opcional:** bucket PRIVADO `vagas-fotos` do Storage (`<user_id>/foto.jpg`, até 1 MB, jpg/png/webp). A pessoa grava,
     troca, vê e apaga só a própria; ninguém mais lê direto (nem operador, nem equipe, nem anon). Nunca vai para o cartão
     cego, a busca, a prévia do cartão nem a operação. Depois do Combinou (e sem corte de acesso), a empresa DAQUELA
     candidatura recebe uma URL assinada de 5 minutos pela Edge Function (o banco confere em `vagas_conta_foto`). Excluir a
     conta apaga o arquivo.
-13. **Nenhum filtro por dado da pessoa na lista de vagas:** `vagas_anuncios_publicos`/`vagas_feed` não leem nota, selo,
-    referência, idade nem sexo (as chaves são ignoradas; teste no banco olha até o código-fonte da função). O `selo` da vaga
-    é só informativo ("esta vaga valoriza o selo X"), nunca filtro nem corte.
+13. **Nenhum filtro por dado da pessoa na lista de vagas nem nos cartões:** `vagas_anuncios_publicos`/`vagas_feed` não leem
+    nota, selo, referência, idade nem sexo (as chaves são ignoradas; teste no banco olha até o código-fonte da função), e
+    `vagas_cartoes` ignora `temSelo` (veto P3: o selo é só informação no cartão). O `selo` da vaga é só informativo ("esta
+    vaga valoriza o selo X"), nunca filtro nem corte.
+14. **Empresa suspensa pela moderação** não lê mais o contato nem a foto de ninguém (`suspensa`) e não escreve na conversa
+    (`podeEscrever:false`), mesmo depois do Combinou — a pessoa não fica sabendo da suspensão para cortar o acesso.
+15. **Operação:** `vagas_op_vincular_membro` só liga uma conta a empresa SEM membro ativo (cadastro assistido); empresa com
+    membro convida pelo painel dela (onda do painel). Na denúncia, a operação lê só o conteúdo: `autor`, `origem` (chave do
+    IP) e `autor_mensagem_user` ficam fora do alcance de qualquer leitura (privilégio por coluna, só a `service_role`).
+16. **Toques duplos e erros crus:** Quero, Combinou e oferta de referência em dobro não lançam erro nem duplicam (uma
+    candidatura, uma mensagem de sistema, uma referência); cursor impossível e número gigante viram `{ok:false}`.
+17. **Limite por origem** (`vagas_interno.origens_de`): usa `cf-connecting-ip` e o primeiro IP público de `x-forwarded-for`.
+    PRESSUPÕE o Cloudflare na frente do Supabase (é assim no projeto, `cf-connecting-ip` sempre presente); sem ele, o
+    `x-forwarded-for` é forjável e sobram só os tetos totais (300/h) e por e-mail (3/h).
 
 ## 6. Fluxos
 
@@ -195,9 +229,11 @@ renova (`vagas_anuncio_acao`).
 
 ### 6.4 Denúncia
 
-`vagas_denunciar({alvo:'anuncio'|'mensagem'|'referencia', id, motivo, detalhe})`. Motivos: `golpe` (Parece golpe),
-`cobranca` (Pediram dinheiro), `discriminacao`, `falsa` (Vaga falsa), `ofensa` (Ofensa ou assédio), `contato` (Pediram contato
-fora da plataforma), `outro`. Anúncio aceita `id` = uuid ou código. Mensagem e referência só com login.
+`vagas_denunciar({alvo:'anuncio'|'mensagem'|'referencia', id, motivo, detalhe})`. Motivos (`VAGAS_REGRAS.MOTIVOS_DENUNCIA`,
+itens `{id, rotulo, chave, texto}`): `golpe` (Pede dinheiro), `documento` (Pede documento), `discriminacao` (Discriminação),
+`falsa` (Parece falsa), `ofensa` (Assédio ou ofensa), `contato` (Pede contato fora da plataforma), `outro` (Outro); `cobranca`
+continua aceito por compatibilidade (é "pede dinheiro"; fora de `MOTIVOS_DENUNCIA_TELA`). Anúncio aceita `id` = uuid ou
+código. Mensagem e referência só com login.
 
 ### 6.5 Referência profissional (pública, positiva, factual)
 
@@ -255,6 +291,29 @@ Cadastro (`cadastrar`, sem senha) → e-mail com link `…/entrar.html?token_has
 
 Leitura direta (RLS) existe só para cidades/zonas e dados da própria conta; as telas devem usar as RPCs.
 
+### 7.1 Retenção e exclusão (LGPD) — hipóteses, a confirmar com o(a) advogado(a)
+
+Hoje o banco apaga sozinho só `vagas_limites` (8 dias) e expira o banco de talentos (`banco_ate`, 180 dias do aceite). Os prazos
+abaixo são a PROPOSTA da fundação; quem decide é o dono com o(a) advogado(a), e a limpeza (job ou `pg_cron`) entra depois
+da decisão. Até lá, tudo fica enquanto a conta existir.
+
+| Dado | Proposta de prazo | Como sai |
+|---|---|---|
+| Candidaturas, conversas e mensagens | 12 meses depois do fim da vaga (encerrada/expirada) | job mensal; a pessoa apaga tudo excluindo a conta |
+| Contas inativas (sem acesso) | aviso aos 18 meses, exclusão aos 24 meses | job mensal + e-mail pela `vagas-conta` |
+| Denúncias (com `autor`, `origem`) | decididas: 12 meses; `origem` (chave do IP) apagada em 30 dias | job mensal |
+| Registro de moderação (`vagas_moderacao`) | 5 anos (defesa em disputa) | só inclusão; limpeza anual |
+| `vagas_acessos_contato` ("quem viu meu contato") | enquanto a candidatura existir | cascata da candidatura |
+| Lista de espera (`vagas_lista_espera`) | até a cidade abrir + 90 dias, ou a pedido (`vagas_lista_espera_sair`) | RPC pública + job |
+| Referências profissionais | enquanto a conta da pessoa existir (ela remove quando quiser) | cascata / `vagas_referencia_responder('remover')` |
+| Foto (Storage) | enquanto a conta existir | **só pela ação `excluir` da Function** (apaga o arquivo antes da conta) |
+| Contadores (`vagas_limites`, `vagas_anuncio_vistas`) | 8 dias / só totais por dia | automático |
+
+Exclusão da conta: `VAGAS_API.excluirConta()` (ação `excluir` da `vagas-conta`) apaga a foto e depois o usuário do Auth; a
+cascata leva tudo das tabelas `vagas_*`, menos `vagas_denuncias.autor` (uuid sem chave estrangeira) e `assistida_por`/`ator`
+da moderação (registro). **Nunca apagar pelo painel do Supabase** (a foto ficaria órfã no bucket). Exportação:
+`vagas_exportar_meus_dados` (§8.2) traz tudo o que é da pessoa, inclusive pulos e denúncias que ela fez.
+
 ---
 
 ## 8. RPCs
@@ -269,9 +328,10 @@ exemplo · erros (texto exato). Os erros de conta da §2 não são repetidos.
 {"ok":true,"cidades":[{"id":"…","slug":"boa-vista-rr","nome":"Boa Vista","uf":"RR","status":"ativa","fuso":"America/Boa_Vista",
   "praca":null,"zonas":[{"id":"…","slug":"centro-leste","nome":"Centro e Zona Leste","bairros":["Centro","São Pedro","…"]}],
   "interessados":null,"metaListaEspera":null},
- {"slug":"rorainopolis-rr","status":"lista_espera","praca":null,"zonas":[…],"interessados":12,"metaListaEspera":null}]}
+ {"slug":"rorainopolis-rr","status":"lista_espera","praca":null,"zonas":[…],"interessados":10,"metaListaEspera":null}]}
 ```
-Sem erros.
+Sem erros. `interessados` é APROXIMADO: quem entrou até o dia anterior, arredondado para baixo em dezenas (0 nos primeiros
+dias) — a tela mostra "mais de 10 pessoas" ou esconde quando 0; nunca "N pessoas" exato.
 
 #### `vagas_areas_publicas()` — `VAGAS_API.areas()`
 `{"ok":true,"areas":[{"slug":"atendimento","nome":"Atendimento e recepção"},…]}` — as 24 (mesma lista em `VAGAS_REGRAS.AREAS`):
@@ -322,9 +382,14 @@ anúncio por dia; membro da própria empresa não conta. `{"ok":true,"contada":t
 encerrada.` (`naoEncontrada`).
 
 #### `vagas_lista_espera_entrar(p_dados)` — `VAGAS_API.listaEspera({cidade, email, perfil:'pessoa'|'empresa'})`
-`{"ok":true,"cidade":"rorainopolis-rr","interessados":13}` (repetir o e-mail não duplica).
+`{"ok":true,"cidade":"rorainopolis-rr","interessados":10}` (repetir o e-mail não duplica; `interessados` aproximado como em
+`vagas_cidades_publicas` — a resposta não revela se o e-mail já estava na lista).
 Erros: `Cidade não encontrada.` · `Esta cidade já está aberta: faça o seu cadastro.` (`ativa`) · `E-mail inválido.` ·
 `Muitas tentativas. Tente de novo mais tarde.` (`bloqueado`; 10 por hora por origem).
+
+#### `vagas_lista_espera_sair(p_dados)` — `VAGAS_API.listaEsperaSair({cidade, email})`
+Sair da lista (LGPD; link "não quero mais receber" do e-mail de aviso). `{"ok":true,"cidade":"rorainopolis-rr","removido":true}`
+sempre, exista ou não o e-mail na lista. Erros: `Cidade não encontrada.` · `E-mail inválido.` · `Muitas tentativas…` (`bloqueado`).
 
 #### `vagas_denunciar(p_dados)` — `VAGAS_API.denunciar({alvo, id, motivo, detalhe?})`
 `{"ok":true,"recebida":true}` (repetida pela mesma conta: `+ "duplicado":true`).
@@ -366,8 +431,10 @@ o banco de talentos por 180 dias (texto em `conteudo/vagas-textos/consentimentos
 Erro: `Versão dos termos inválida.`
 
 #### `vagas_exportar_meus_dados()` — `VAGAS_API.exportarMeusDados()`
-Tudo da conta (LGPD): conta, consentimentos, pessoa, candidaturas, mensagens enviadas, acessos ao contato, empresas,
-operador, referências recebidas (com histórico) e pedidos de referência. `geradoEm` ISO.
+Tudo da conta (LGPD): conta, consentimentos, pessoa, testes/selos (`testes`, pela migração dos testes), aviso da foto,
+candidaturas, `pulos` (`[{anuncio:{codigo, titulo}, em}]`), `denunciasFeitas` (`[{alvo, motivo, detalhe, status, em}]`),
+mensagens enviadas, acessos ao contato, empresas, operador, referências recebidas (com histórico) e pedidos de referência.
+`geradoEm` ISO.
 
 Excluir a conta é pela Edge Function (`VAGAS_API.excluirConta()`, §9).
 
@@ -551,9 +618,10 @@ Só totais, nunca quem.
 `quero` não conta as retiradas; `combinou` inclui as contratadas; `comSelo` = quem disse Quero e tem selo válido.
 Erro: `Vaga não encontrada.`
 
-#### `vagas_cartoes(p_anuncio, p_filtro)` — `VAGAS_API.cartoes(anuncioId, {status?, zona?, escolaridadeMin?, experienciaMinMeses?, turnos?, cnh?, pretensaoMaxCentavos?, temSelo?})`
+#### `vagas_cartoes(p_anuncio, p_filtro)` — `VAGAS_API.cartoes(anuncioId, {status?, zona?, escolaridadeMin?, experienciaMinMeses?, turnos?, cnh?, pretensaoMaxCentavos?})`
 Cartões cegos por ORDEM DE CHEGADA (sem ranking). Filtros só da lista fechada; qualquer outra chave é ignorada (inclusive
-"tem referência" — veto P3). `status` = o filtro "Mostrar" da tela (`enviada|conversar|agora_nao|combinou|contratada|recusada`).
+"tem referência" e `temSelo` — veto P3: o selo é só informação no cartão). `status` = o filtro "Mostrar" da tela
+(`enviada|conversar|agora_nao|combinou|contratada|recusada`).
 ```json
 {"ok":true,"anuncio":{"id","codigo","titulo","status"},"total":1,
  "cartoes":[{"candidaturaId":"…","status":"enviada","chegouEm":"…","contatoCortado":false,"cartao":<cartão cego>,
@@ -576,7 +644,8 @@ Só depois do Combinou; cada chamada fica registrada para a pessoa ("quem viu").
   "experiencias":[{"funcao":"Atendente","empregador":"Loja Antiga Ltda","inicio":"2024-01","fim":"2025-06","informal":false}]}}
 ```
 Erros: `Candidatura não encontrada.` · `O contato só aparece depois do Combinou.` (`semCombinou`) · `A pessoa deixou de
-compartilhar o contato com a sua empresa.` (`contatoCortado`) · `Muitas consultas de contato hoje. Tente de novo amanhã.`
+compartilhar o contato com a sua empresa.` (`contatoCortado`) · `Esta empresa está suspensa. Fale com a Gestão sem Caos.`
+(`suspensa`; empresa suspensa pela moderação) · `Muitas consultas de contato hoje. Tente de novo amanhã.`
 (`bloqueado`; 300/dia por empresa).
 
 #### `vagas_marcar_contratada(p_candidatura)` — `VAGAS_API.marcarContratada(id)`
@@ -592,7 +661,8 @@ Marca como lidas para quem abriu.
  "conversa":{"id":"…","status":"aberta"},"podeEscrever":true,"outroLado":"Empresa confidencial","contatoCortado":false,
  "mensagens":[{"id":"…","autor":"empresa","texto":"Olá! …","em":"…","minha":false},{"autor":"sistema","texto":"Combinou! O contato foi liberado para os dois lados.",…}]}
 ```
-Para a empresa, `outroLado` é sempre `Pessoa candidata`. Erro: `Conversa não encontrada.`
+Para a empresa, `outroLado` é sempre `Pessoa candidata`; `podeEscrever` é `false` quando a vaga está fora do ar, o acesso foi
+cortado ou a EMPRESA está suspensa. Erro: `Conversa não encontrada.`
 
 #### `vagas_mensagem_enviar(p_candidatura, p_texto, p_id)` — `VAGAS_API.enviarMensagem(id, texto, idGeradoNoAparelho)`
 `p_id` (uuid gerado no aparelho) torna o reenvio seguro (`duplicado:true`). A empresa abre a conversa (vale como "Quero
@@ -654,7 +724,8 @@ Erros: `Referência não encontrada.` · `Ação inválida para esta referência
 
 #### `vagas_referencias_empresa(p_empresa)` — `VAGAS_API.referenciasDaEmpresa(empresaId)`
 "Referências dadas". `status` pela visão da empresa (`VAGAS_REGRAS.STATUS_REFERENCIA_EMPRESA`), `aceitaEm` (não muda ao
-ocultar), sem dados da pessoa. As enviadas por e-mail só aparecem depois do aceite.
+ocultar), sem dados da pessoa. As enviadas por e-mail só aparecem depois do aceite, e `restantes30Dias` conta só o que a
+empresa vê (as pendentes por e-mail não entram: o contador não revela se um e-mail tem conta).
 `{"ok":true,"referencias":[{<completa com texto>,"status":"aceita","textoMotivo":"","origem":"candidatura","aceitaEm":"…"}],"restantes30Dias":19}`
 Erro: `Empresa não encontrada.`
 
@@ -671,12 +742,12 @@ Filtro comum `{cidade?}` (slug, dentro das cidades que a pessoa opera). Erros co
 |---|---|---|
 | `vagas_op_resumo()` (`opResumo`) | — | `{cidades:[{id, slug, nome, status, papel, contagens:{empresasEmAnalise, empresasAtivas, anunciosEmRevisao, anunciosSuspensos, anunciosNoAr, denunciasAbertas, pessoas, listaEspera}}]}` |
 | `vagas_op_empresas(p_filtro)` (`opEmpresas`) | `{cidade?, status?[], busca?}` | `{empresas:[<empresa> + anuncios:{total,noAr}, denunciasAbertas, membros]}` (em análise primeiro) |
-| `vagas_op_empresa_decidir(p_empresa, p_acao, p_motivo)` (`opEmpresaDecidir`) | `'aprovar'|'suspender'|'reativar'` | `{empresa}` · erros `Empresa não encontrada.` · `Sem permissão.` (moderador não aprova/reativa) · `Empresa suspensa: use "Reativar".` · `Informe o motivo.` · `Esta empresa não está suspensa.` · `Ação inválida.` |
+| `vagas_op_empresa_decidir(p_empresa, p_acao, p_motivo)` (`opEmpresaDecidir`) | `'aprovar'|'recusar'|'suspender'|'reativar'` (`recusar`: continua `em_analise` com `statusMotivo` = chave de `moderacao.json`, para a empresa corrigir) | `{empresa}` · erros `Empresa não encontrada.` · `Sem permissão.` (moderador não aprova/recusa/reativa) · `Empresa suspensa: use "Reativar".` · `Informe o motivo.` · `Só dá para recusar uma empresa em análise.` · `Esta empresa não está suspensa.` · `Ação inválida.` |
 | `vagas_op_empresa_cadastrar(p_dados)` (`opEmpresaCadastrar`) | como `vagas_empresa_cadastrar` | `{empresa}` já `ativa` (CNPJ conferido na hora) |
-| `vagas_op_vincular_membro(p_empresa, p_email)` (`opVincularMembro`) | e-mail de conta `empresa` | `{membro:{papel:'dono'|'recrutador'}}` · erro `Não há conta de empresa com este e-mail. Peça para a empresa criar a conta (ou faça o cadastro assistido).` |
+| `vagas_op_vincular_membro(p_empresa, p_email)` (`opVincularMembro`) | e-mail de conta `empresa`; SÓ empresa sem membro ativo (cadastro assistido) | `{membro:{papel:'dono'}}` · erros `Não há conta de empresa com este e-mail. Peça para a empresa criar a conta (ou faça o cadastro assistido).` · `Esta empresa já tem acesso. Peça a quem é dono(a) para convidar pelo painel da empresa.` |
 | `vagas_op_anuncios(p_filtro)` (`opAnuncios`) | `{cidade?, status?[]}` (padrão `em_revisao`+`suspenso`) | `{anuncios:[<anúncio da empresa> + empresa:{id, nomeFantasia, status, cnpjFormatado, conferida}, denunciasAbertas]}` |
 | `vagas_op_anuncio_salvar(p_dados)` (`opAnuncioSalvar`) | vaga assistida: os MESMOS campos de `vagas_anuncio_salvar` + `empresaId` (ou `id`) + `publicar?: true` (a operação já é a revisão) | `{anuncio}` · registro `anuncio_assistido` · erros de `vagas_anuncio_salvar` + `Sem permissão.` (moderador) · `Aprove a empresa antes de publicar a vaga.` |
-| `vagas_op_anuncio_decidir(p_anuncio, p_acao, p_motivo)` (`opAnuncioDecidir`) | `'publicar'|'remover'` (motivo = chave de `conteudo/vagas-textos/moderacao.json`) | `{anuncio}` · erros `Vaga não encontrada.` · `Esta vaga não está esperando a moderação.` · `Aprove a empresa antes de publicar a vaga.` · `A data da diária já passou.` · `Informe o motivo.` · `Ação inválida.` (publicar uma suspensa fecha as denúncias abertas como improcedentes) |
+| `vagas_op_anuncio_decidir(p_anuncio, p_acao, p_motivo)` (`opAnuncioDecidir`) | `'publicar'|'devolver'|'remover'` (motivo = chave de `conteudo/vagas-textos/moderacao.json`; `devolver`: de `em_revisao`/`suspenso` volta a `rascunho` com `statusMotivo`, a empresa corrige e publica de novo) | `{anuncio}` · erros `Vaga não encontrada.` · `Esta vaga não está esperando a moderação.` · `Aprove a empresa antes de publicar a vaga.` · `A data da diária já passou.` · `Informe o motivo.` · `Ação inválida.` (publicar uma suspensa fecha as denúncias abertas como improcedentes) |
 | `vagas_op_denuncias(p_filtro)` (`opDenuncias`) | `{cidade?, status?[]}` (padrão `aberta`) | `{denuncias:[{id, alvo, motivo, detalhe, status, contaNoLimite, criadoEm, decisaoMotivo, decididaEm, anuncio:{…empresa}|null, mensagem:{texto, autor}|null, referencia:{id, funcao, texto, textoStatus, status (visão da empresa), empresa}|null}]}` (nunca quem denunciou) |
 | `vagas_op_denuncia_decidir(p_denuncia, p_dados)` (`opDenunciaDecidir`) | `{decisao:'procedente'|'improcedente', motivo, removerAnuncio?, suspenderEmpresa?, suspenderAutor?, removerReferencia?}` | `{denuncia:{id, status, decisaoMotivo}}` · erros `Denúncia não encontrada.` · `Decisão inválida.` · `Informe o motivo.` · `Sem permissão.` (moderador não suspende) |
 | `vagas_op_moderacao(p_filtro)` (`opModeracao`) | `{cidade?, limite? ≤200}` | `{registros:[{id, em, papel, acao, alvo, alvoId, motivo, dados, cidade}]}` |
@@ -699,7 +770,8 @@ origem, 3/h por e-mail, 300/h no total; erro `Muitas tentativas. Tente de novo m
 a foto? sem candidatura = a própria; com candidatura = membro ativo da empresa dela, depois do Combinou, sem corte →
 `{ok, caminho:'<pessoa>/foto.jpg'}`; erros `Sessão expirada. Entre de novo.` · `Candidatura não encontrada.` · `A foto só
 aparece depois do Combinou.` (`semCombinou`) · `A pessoa deixou de compartilhar o contato com a sua empresa.`
-(`contatoCortado`) · `Esta pessoa não pôs foto.` / `Sem foto.` (`semFoto`)).
+(`contatoCortado`) · `Esta empresa está suspensa. Fale com a Gestão sem Caos.` (`suspensa`) · `Esta pessoa não pôs foto.` /
+`Sem foto.` (`semFoto`)).
 
 ## 9. Edge Function `vagas-conta`
 
@@ -729,7 +801,9 @@ A tela faz: `const link = VAGAS_API.linkDoEndereco(location)` → `VAGAS_API.con
 → formulário "Crie sua senha" → `VAGAS_API.definirSenha(senha)` (8 a 72 caracteres; `A senha precisa ter de 8 a 72
 caracteres.`) → `VAGAS_API.eu()`. Link vencido/usado: `O link expirou ou já foi usado. Peça outro na tela de entrada.`
 (`linkExpirado`). Login: `VAGAS_API.entrar(email, senha)` (resolve com a resposta de `vagas_eu`; erro `E-mail ou senha
-incorretos.` ou `Confirme seu e-mail pelo link que enviamos antes de continuar.`). Sair: `VAGAS_API.sair()`.
+não conferem.` ou `Confirme seu e-mail pelo link que enviamos antes de continuar.`). Sair: `VAGAS_API.sair()`.
+Cadastro de e-mail já pendente (não confirmado): o link vai de novo e o `tipo` passa a ser o pedido agora (banco +
+`app_metadata`); o consentimento só é gravado no clique do link (§4, Conta).
 
 Segredos (Supabase → Edge Functions → Secrets): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`
 (`https://vagas.gestaosemcaos.com.br`), `VAGAS_EMAIL_REMETENTE` (sugestão: `Vagas · Gestão sem Caos
@@ -789,13 +863,23 @@ VAGAS_API.anuncios({ cidade: 'boa-vista-rr', paraHoje: true })
 ## 12. Ganchos e combinados com outras partes
 
 - **Selos (migração 20261023):** se existir `vagas_interno.selos_cartao(p_user uuid) returns jsonb` (lista de selos VÁLIDOS:
-  `[{teste, nome, nota, data, codigo, validoAte, supervisao}]`), o cartão (`selos`), o filtro `temSelo` e
+  `[{teste, nome, nota, data, codigo, validoAte, supervisao}]`), o cartão (`selos`; nunca filtro) e
   `vagas_anuncio_numeros.comSelo` passam a usá-la; sem ela, `[]`. A 20261023 deve copiar a `versao_banco()` desta e
   acrescentar as suas entradas.
 - **Hospedagem:** a Pages Function de `/v/<código>` lê `vagas_anuncio_publico` (formato §8.1) e a chave pública de
   `vagas/js/config.js` (`SUPABASE_ANON_KEY: '…'`). Não chama `vagas_anuncio_vista`. Logos em `vagas/comum/marca/`.
   `titulo` continua vindo (= função); `requisitos` agora é LISTA de chaves: para o texto, use `requisitosLista.join(' · ')`.
-  A foto (URL assinada) precisa de `img-src https://<projeto>.supabase.co` na CSP das telas da empresa.
+  A foto (URL assinada) precisa de `img-src https://<projeto>.supabase.co` na CSP das telas da empresa (a meta de
+  `vagas/index.html` já libera `https://*.supabase.co` em `img-src` e `connect-src`; o `_headers` pode fixar o projeto — §1).
+- **Limite por origem:** pressupõe `cf-connecting-ip` (Cloudflare na frente do Supabase, como no projeto); sem ele o
+  `x-forwarded-for` é forjável (§5, item 17).
+- **Avisos de moderação por e-mail (devolver vaga, recusar empresa):** o banco grava o motivo em `statusMotivo` (chave de
+  `conteudo/vagas-textos/moderacao.json`) e a tela da empresa mostra o texto; o e-mail com o mesmo texto entra na onda do
+  painel (Edge Function, junto de `vagas_op_avisar_contatos`).
+- **Avisos para as telas:** (a) os textos livres do cartão (`cargos`, `cursos`, `experiencias.funcao`) só passam pelo filtro
+  de contato/link — a tela deve avisar a pessoa para não escrever idade, sexo, religião etc. (o que a lei não deixa pedir);
+  (b) `vagas_mensagem_enviar` com `p_id` de mensagem alheia responde `Identificador da mensagem inválido.` (só confirma que
+  o uuid existe; uuid não se adivinha — aceitável).
 - **Testes de habilidade (20261023):** `vagas_exportar_meus_dados.testes` chama `vagas_interno.testes_exportar(p_user)` se
   existir (mesmo padrão dos selos); o `selo` da vaga usa os 5 slugs dos testes (`vagas_interno.testes_selo()`).
 - **Endereço:** `vagas/js/endereco.js` manda quem abrir `disc.gestaosemcaos.com.br/vagas/…` (GitHub Pages do DISC) para

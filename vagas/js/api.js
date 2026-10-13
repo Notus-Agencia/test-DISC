@@ -12,7 +12,7 @@
  *   erro.resposta (o JSON {ok:false, erro, ...}), erro.sessaoExpirada, erro.confirmar (e-mail não confirmado),
  *   erro.bancoDesatualizado (migração não aplicada), erro.conexao (sem internet / servidor fora).
  *
- * Métodos (nome -> RPC; ver METODOS): públicos — cidades, areas, anuncios(filtro), anuncio(codigo), anuncioVista(codigo), listaEspera(dados),
+ * Métodos (nome -> RPC; ver METODOS): públicos — cidades, areas, anuncios(filtro), anuncio(codigo), anuncioVista(codigo), listaEspera(dados), listaEsperaSair(dados),
  *   denunciar(dados), referenciasPublicas(token), seloPublico(codigo) (RPC da migração dos testes), versaoBanco; conta — eu,
  *   aceitarTermos(dados), exportarMeusDados; pessoa — minhaPessoa, salvarPessoa(dados), feed(filtro), quero(anuncioId), pular(anuncioId),
  *   retirar(candId), minhasCandidaturas, verEmpresa(candId), combinar(candId), recusar(candId), quemViuMeuContato, cortarAcesso(candId);
@@ -48,7 +48,7 @@
   var MSG_SESSAO = 'Sessão expirada. Entre de novo.';
   var MSG_RECUSA = 'O servidor recusou a solicitação.';
   var MSG_BANCO = 'O banco de dados ainda não tem o Vagas sem Caos. Peça para aplicar a migração 20261022120000_vagas (docs/SUPABASE.md).';
-  var MSG_LOGIN = 'E-mail ou senha incorretos.';
+  var MSG_LOGIN = 'E-mail ou senha não conferem.';
   var MSG_CONFIRMAR = 'Confirme seu e-mail pelo link que enviamos antes de continuar.';
   var MSG_LINK = 'O link expirou ou já foi usado. Peça outro na tela de entrada.';
   var MSG_SENHA = 'A senha precisa ter de 8 a 72 caracteres.';
@@ -69,6 +69,7 @@
     anuncioVista: { rpc: 'vagas_anuncio_vista', p: ['p_codigo'], publico: true },
     seloPublico: { rpc: 'vagas_selo_publico', p: ['p_codigo'], publico: true },
     listaEspera: { rpc: 'vagas_lista_espera_entrar', p: ['p_dados'], publico: true },
+    listaEsperaSair: { rpc: 'vagas_lista_espera_sair', p: ['p_dados'], publico: true },
     denunciar: { rpc: 'vagas_denunciar', p: ['p_dados'], publico: true },
     referenciasPublicas: { rpc: 'vagas_referencias_publicas', p: ['p_token'], publico: true },
     versaoBanco: { rpc: 'versao_banco', p: [], publico: true },
@@ -134,7 +135,8 @@
     var e = new Error((json && json.erro) ? String(json.erro) : MSG_RECUSA);
     e.resposta = json || null;
     ['sessaoExpirada', 'confirmar', 'bloqueado', 'suspensa', 'semConta', 'completar', 'naoConfigurado', 'captcha', 'bancoDesatualizado',
-      'naoEncontrada', 'listaEspera', 'pausada', 'verEmpresa', 'semCombinou', 'contatoCortado', 'bloqueada', 'aguardar', 'semFoto'].forEach(function (k) {
+      'naoEncontrada', 'listaEspera', 'pausada', 'verEmpresa', 'semCombinou', 'contatoCortado', 'bloqueada', 'aguardar', 'semFoto',
+      'linkExpirado', 'existe', 'ativa'].forEach(function (k) {
       if (json && json[k]) e[k] = true;
     });
     if (extra) Object.keys(extra).forEach(function (k) { e[k] = extra[k]; });

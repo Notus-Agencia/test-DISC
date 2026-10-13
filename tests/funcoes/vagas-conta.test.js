@@ -39,7 +39,11 @@ function preparar(op) {
     },
     async registrar(userId, dados) {
       if (op.registroFalha) return { ok: false, erro: 'Empresa não encontrada.' };
-      if (contas[userId] && contas[userId].tipo !== dados.tipo) return { ok: false, erro: 'Este e-mail já tem uma conta de outro tipo.' };
+      if (contas[userId] && contas[userId].tipo !== dados.tipo) {
+        // Como o banco: conta pendente com e-mail não confirmado troca de tipo; confirmada, não.
+        const u = usuarios.find((x) => x.id === userId);
+        if (!((contas[userId].status || 'pendente') === 'pendente' && !(u && u.confirmada))) return { ok: false, erro: 'Este e-mail já tem uma conta de outro tipo.' };
+      }
       contas[userId] = Object.assign({ status: 'pendente' }, contas[userId] || {}, dados);
       if (dados.operador) operadores[userId] = [{ cidade: dados.operador.cidade, papel: dados.operador.papel }];
       return { ok: true, userId, tipo: dados.tipo };
@@ -55,8 +59,9 @@ function preparar(op) {
   };
   const storage = {
     async assinar(bucket, caminho, segundos) { assinadas.push({ bucket, caminho, segundos }); return 'https://p.supabase.co/storage/v1/object/sign/' + bucket + '/' + caminho + '?token=t'; },
-    async remover(bucket, caminhos) { removidos.push({ bucket, caminhos }); }
+    async remover(bucket, caminhos) { if (op.removerFalha) throw new Error('Storage: falha ao apagar'); removidos.push({ bucket, caminhos }); }
   };
+  const apps = [];
   const auth = {
     async criarUsuario(u) {
       n += 1;
@@ -73,6 +78,7 @@ function preparar(op) {
       const u = (op.jwts || {})[jwt];
       return u ? { id: u, email: '' } : null;
     },
+    async atualizarApp(id, app) { apps.push({ id, app }); const u = usuarios.find((x) => x.id === id); if (u) u.app = app; },
     async excluirUsuario(id) { excluidos.push(id); }
   };
   const enviados = [];
@@ -92,7 +98,7 @@ function preparar(op) {
   }
   const env = Object.assign({ VAGAS_SITE_URL: SITE + '/', RESEND_API_KEY: 're_teste', VAGAS_EMAIL_REMETENTE: 'Vagas sem Caos <vagas@gestaosemcaos.com.br>' }, op.env);
   const base = { env, fetch, db, auth, storage, aleatorio: () => 'senha-aleatoria-' + (n + 1) };
-  return { base, usuarios, contas, operadores, links, enviados, captchas, chamadasLimite, excluidos, fotosPedidas, assinadas, removidos };
+  return { base, usuarios, contas, operadores, links, enviados, captchas, chamadasLimite, excluidos, fotosPedidas, assinadas, removidos, apps };
 }
 
 async function chamar(base, corpo, op) {
@@ -149,6 +155,25 @@ test('cadastrar: resposta neutra — conta do Vagas pendente recebe link novo; c
     ['confirmada@x.com', 'Você já tem conta — Vagas sem Caos']]);
   assert.ok(w.enviados[1].html.includes(SITE + '/entrar.html'));
   assert.equal(w.contas.d1, undefined, 'nunca vira conta do Vagas');
+});
+
+test('cadastrar: conta pendente "pré-registrada" por outro com o tipo errado troca o tipo (banco + app_metadata); invite recusado cai no magiclink', async () => {
+  const w = preparar({ usuarios: [
+    { id: 'v', email: 'vitima@x.com', confirmada: false, app: { produto: 'vagas', tipo: 'empresa' }, conta: { tipo: 'empresa', status: 'pendente' } },
+    { id: 'c1', email: 'confirmada@x.com', confirmada: true, app: { produto: 'vagas', tipo: 'empresa' }, conta: { tipo: 'empresa', status: 'ativa' } }
+  ], inviteFalha: true });
+  const r = await chamar(w.base, { acao: 'cadastrar', email: 'vitima@x.com', tipo: 'pessoa', termosVersao: '2026-10-13' });
+  assert.deepEqual(r.json, NEUTRA('vitima@x.com'), 'resposta neutra, como sempre');
+  assert.equal(w.contas.v.tipo, 'pessoa', 'o banco troca o tipo da conta pendente');
+  assert.deepEqual(w.apps, [{ id: 'v', app: { produto: 'vagas', tipo: 'pessoa' } }], 'o app_metadata acompanha');
+  assert.deepEqual(w.links, [{ tipo: 'magiclink', email: 'vitima@x.com' }], 'invite recusado no cadastrar: cai no magiclink');
+  assert.ok(w.enviados[0].html.includes('&amp;type=magiclink'));
+  // Mesmo tipo: nada muda no app_metadata; conta confirmada: nem o banco nem o Auth mudam o tipo.
+  await chamar(w.base, { acao: 'cadastrar', email: 'vitima@x.com', tipo: 'pessoa', termosVersao: '2026-10-13' });
+  assert.equal(w.apps.length, 1);
+  assert.deepEqual((await chamar(w.base, { acao: 'cadastrar', email: 'confirmada@x.com', tipo: 'pessoa', termosVersao: '2026-10-13' })).json, NEUTRA('confirmada@x.com'));
+  assert.equal(w.contas.c1.tipo, 'empresa');
+  assert.equal(w.apps.length, 1);
 });
 
 test('cadastrar: validações, e-mail não configurado, captcha (Turnstile) e limite por origem', async () => {
@@ -252,6 +277,12 @@ test('excluir: só com JWT e "EXCLUIR"; conta que também é do painel DISC não
   assert.deepEqual((await chamar(w.base, { acao: 'excluir', confirmar: 'EXCLUIR' }, { jwt: 'jwt-p' })).json, { ok: true, excluida: true });
   assert.deepEqual(w.excluidos, ['p']);
   assert.deepEqual(w.removidos, [{ bucket: 'vagas-fotos', caminhos: ['p/foto.jpg'] }], 'a foto sai junto com a conta');
+  // Storage falhou ao apagar a foto: a conta NÃO é apagada (a foto ficaria órfã) e a resposta é o erro genérico, sem detalhe.
+  const q = preparar({ usuarios: [{ id: 'p', email: 'p@x.com', confirmada: true, app: { produto: 'vagas' }, conta: { tipo: 'pessoa' } }],
+    jwts: { 'jwt-p': 'p' }, removerFalha: true });
+  assert.deepEqual((await chamar(q.base, { acao: 'excluir', confirmar: 'EXCLUIR' }, { jwt: 'jwt-p' })).json,
+    { ok: false, erro: 'Erro interno no servidor. Tente novamente em instantes.' });
+  assert.deepEqual(q.excluidos, [], 'conta intacta quando a foto não pôde ser apagada');
 });
 
 test('foto: só com JWT; o banco decide (vagas_conta_foto); URL assinada de 5 minutos só quando ele deixa', async () => {

@@ -518,8 +518,10 @@ async function registrarEnvio(db, r) {
 //       Cria a conta (senha aleatória que ninguém conhece) e manda o link "Confirme seu e-mail e crie sua senha".
 //       A SENHA SÓ É CRIADA DEPOIS DO CLIQUE no link (a tela entrar.html chama verifyOtp e depois updateUser): assim ninguém
 //       consegue criar antes uma conta com o e-mail de outra pessoa e uma senha que só ele sabe.
-//       Resposta NEUTRA (não revela se o e-mail já existe): conta do Vagas ainda não confirmada = manda o link de novo;
+//       Resposta NEUTRA (não revela se o e-mail já existe): conta do Vagas ainda não confirmada = manda o link de novo (e o
+//       tipo passa a ser o pedido agora: quem tem o e-mail decide, mesmo que um terceiro tenha "pré-registrado" com outro);
 //       já confirmada = e-mail "você já tem conta"; conta de outro produto (painel DISC) = nada é enviado.
+//       O consentimento (termos/privacidade com data) só é gravado no banco quando a pessoa clica no link, nunca antes.
 //   reenviar {email, captcha?}  -> link novo de confirmação (só conta do Vagas não confirmada). Resposta neutra.
 //   esqueci {email, captcha?}   -> link "Crie uma nova senha" (só conta do Vagas). Resposta neutra.
 //   assistido (JWT de operador(a) da cidade ou da equipe) {email, tipo, cidade, empresaId?, nome?, codigoEvento?}
@@ -678,7 +680,11 @@ async function acaoVagasCadastrar(base, corpo, origem) {
     await enviarEmailVagas(base, email, 'confirmar', { nome, url: linkVagas(base.env, l.hash, l.tipo) });
   } else if (c.produto === 'vagas' || c.conta) {
     if (!c.confirmada) {
-      if (c.conta) await base.db.registrar(c.userId, { tipo: c.conta.tipo, termosVersao: versao });
+      // Conta pendente (ninguém confirmou o e-mail ainda): quem tem o e-mail decide o tipo. Se um terceiro "pré-registrou"
+      // o e-mail com outro tipo, o banco troca (vagas_conta_registrar) e o app_metadata acompanha.
+      const reg = await base.db.registrar(c.userId, { tipo, termosVersao: versao });
+      if (!reg || reg.ok !== true) throw new Error('registro da conta falhou');
+      if (c.conta && c.conta.tipo !== tipo && base.auth.atualizarApp) await base.auth.atualizarApp(c.userId, { produto: 'vagas', tipo });
       const l = await linkConfirmacaoVagas(base, email);
       await enviarEmailVagas(base, email, 'confirmar', { nome, url: linkVagas(base.env, l.hash, l.tipo) });
     } else {
@@ -860,6 +866,10 @@ function criarBaseVagasConta(createClient, getEnv, extras) {
         const { data, error } = await sb.auth.getUser(jwt);
         if (error || !data || !data.user) return null;
         return { id: data.user.id, email: data.user.email || '' };
+      },
+      async atualizarApp(id, app) {
+        const { error } = await sb.auth.admin.updateUserById(id, { app_metadata: app });
+        if (error) throw new Error('Auth: ' + String(error.message || 'falha ao atualizar').substring(0, 160));
       },
       async excluirUsuario(id) {
         const { error } = await sb.auth.admin.deleteUser(id);
