@@ -74,13 +74,13 @@ Na prova presencial (fase 2), o operador confere o seu documento na hora, para d
 | Enviar novidades da plataforma | e-mail | consentimento (art. 7º, I), com descadastro em um clique |
 | Números gerais da cidade (vagas, selos, contratações), sem identificar ninguém | dados anonimizados | não são dados pessoais (art. 12) |
 
-Não usamos os seus dados para decisão automatizada que afete você: não há ranking, nota mínima nem filtro automático de pessoa. Quem decide é sempre alguém da empresa (art. 20).
+Não usamos os seus dados para decisão automatizada que afete você: não há ordem do melhor para o pior, nota mínima nem filtro automático de pessoa. Quem decide é sempre alguém da empresa (art. 20).
 
 ## 4. Quem vê o quê
 
 | Quem | Vê | Não vê |
 |---|---|---|
-| Empresa, antes do Combinou | cartão cego: zona, experiência, escolaridade, turnos, CNH, pretensão, selos, quantidade de referências de empresas verificadas e os pontos fortes marcados | nome, contato, e-mail, currículo completo, nome da empresa que deu referência, texto da referência, qualquer dado que não existe (seção 2.4) |
+| Empresa, antes do Combinou | cartão cego: zona, experiência, escolaridade, turnos, CNH, pretensão, selos (nota com margem) e "Referência de empresa verificada: sim" | nome, foto, contato, e-mail, currículo completo, nome da empresa que deu referência, pontos fortes e texto da referência, qualquer dado que não existe (seção 2.4) |
 | Empresa, depois do Combinou | nome, WhatsApp, currículo completo, as referências que você aceitou (com o nome da empresa) e a conversa | o que você escreveu para outras empresas; as suas outras candidaturas |
 | Empresa, depois do Combinou, se você enviou foto | a sua foto, enquanto a conversa daquela vaga estiver aberta | a foto em qualquer outra tela (cartão cego, busca, perfil público) |
 | Empresa que deixou uma referência | o que ela mesma escreveu e a sua decisão (publicada, recusada, ocultada, excluída) | o motivo da sua decisão; o resto da sua conta |

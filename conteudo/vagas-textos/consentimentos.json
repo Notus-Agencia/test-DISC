@@ -124,12 +124,11 @@
       "quando": "ao aceitar uma referência profissional que uma empresa deixou (antes disso, só a pessoa vê)",
       "titulo": "Aceitar e publicar esta referência",
       "texto": "Aceito que a referência profissional de {{empresa_nome}} apareça no meu cartão e no meu perfil, com o nome da empresa. Sei que ela é pública e que posso ocultar ou excluir quando quiser.",
-      "explicacao": "Antes do Combinou, a empresa que vê o seu cartão enxerga só \"{{total}} referências de empresas verificadas\" e os pontos fortes marcados, sem o nome da empresa nem o texto. Depois do Combinou (ou no perfil que você escolher tornar público), aparece a referência completa, com o nome da empresa. Se você ocultar, a empresa é avisada. A referência é informação de terceiro sobre você: sai junto com a conta e vai no arquivo de \"Baixar meus dados\". [REVISÃO JURÍDICA]",
+      "explicacao": "Antes do Combinou, a empresa que vê o seu cartão enxerga só \"Referência de empresa verificada: sim\", sem o nome da empresa, sem os pontos fortes e sem o texto. Depois do Combinou (ou no perfil que você escolher tornar público), aparece a referência completa, com o nome da empresa. Se você ocultar, a empresa é avisada. A referência é informação de terceiro sobre você: sai junto com a conta e vai no arquivo de \"Baixar meus dados\". [REVISÃO JURÍDICA]",
       "obrigatorio": true,
       "base_legal": "LGPD art. 7º, I e art. 8º (consentimento específico e revogável para publicar dado de terceiro sobre a pessoa)",
       "variaveis": [
-        "empresa_nome",
-        "total"
+        "empresa_nome"
       ]
     },
     {
@@ -163,7 +162,7 @@
       "quem": "empresa",
       "quando": "ao enviar uma referência profissional (membro logado de empresa com CNPJ conferido)",
       "titulo": "Declaração da empresa",
-      "texto": "Declaro que a pessoa trabalhou nesta empresa no período informado. A referência é pública e aparece com o nome da empresa. Ela é uma recomendação: não contém avaliação negativa, dado sensível, termo discriminatório nem contato.",
+      "texto": "Declaro que a pessoa trabalhou nesta empresa no período informado. A referência é pública e aparece com o nome da empresa. Ela é uma recomendação: não contém crítica, dado sensível, termo discriminatório nem contato.",
       "explicacao": "A empresa responde pela veracidade do que declara. Só aparece depois que a pessoa aceitar; ela pode ocultar ou excluir, e você é avisado(a). A referência passa por moderação. Limite: 1 referência por pessoa; até {{limite_mes}} por mês. [REVISÃO JURÍDICA]",
       "obrigatorio": true,
       "base_legal": "LGPD art. 7º, I (publicação depende do aceite da pessoa); responsabilidade civil pela veracidade (Código Civil, arts. 186 e 927)",

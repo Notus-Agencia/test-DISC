@@ -23,7 +23,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 1.1. O Vagas sem Caos ("plataforma") é um mural de vagas de trabalho por cidade, no endereço `vagas.gestaosemcaos.com.br`. É mantido pela Gestão sem Caos ([razão social e CNPJ a preencher], "nós"), com sede em Boa Vista, Roraima.
 
-1.2. A plataforma **não é agência de emprego** nem intermediadora de mão de obra. Ela só mostra o anúncio da empresa para a pessoa e o interesse da pessoa para a empresa. Nós não selecionamos, não indicamos, não ordenamos pessoas por ranking automático e não participamos da decisão de contratar.
+1.2. A plataforma **não é agência de emprego** nem intermediadora de mão de obra. Ela só mostra o anúncio da empresa para a pessoa e o interesse da pessoa para a empresa. Nós não selecionamos, não indicamos, não ordenamos pessoas do melhor para o pior e não participamos da decisão de contratar.
 
 1.3. A plataforma **não fornece trabalho temporário** nem trabalhadores a terceiros. Isso é atividade exclusiva de empresa de trabalho temporário registrada (Lei 6.019/1974). Todo contrato de trabalho, de prestação de serviço, de estágio ou de diária é feito **direto entre a pessoa e a empresa**, sem a nossa participação.
 
@@ -51,9 +51,9 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 ## 4. Como funciona para a pessoa
 
-4.1. A pessoa escolhe até 2 cidades, monta o currículo e, se quiser, faz os testes da função. [REVISÃO PSICOLOGIA] Cada teste é de **conhecimento prático da função** (por exemplo, atendimento, caixa, português), feito online, sem supervisão. Não é teste psicológico: não mede personalidade, inteligência, caráter, potencial nem "perfil". O resultado mostra o que a pessoa acertou naquele teste, naquele dia, e nada além disso.
+4.1. A pessoa escolhe até 2 cidades, monta o currículo e, se quiser, faz os testes da função. [REVISÃO PSICOLOGIA] Cada teste é de **conhecimento prático da função** (por exemplo, atendimento, caixa, português), feito online, sem supervisão. O teste mede o que a pessoa sabe hoje do básico da função; não mede inteligência nem personalidade, e não diz nada sobre caráter, potencial ou "perfil". O resultado mostra o que a pessoa acertou naquele teste, naquele dia, com a margem da prova, e nada além disso.
 
-4.2. **Selo.** [REVISÃO PSICOLOGIA] Quem faz o teste ganha um selo com o nome do teste, a data, a nota, um código e o aviso "online, sem supervisão". O selo vale 12 meses. O selo nunca diz "aprovado" ou "reprovado": ele mostra o resultado e a empresa decide o que fazer com ele, junto com a entrevista e o resto do processo. O selo não confere identidade (a prova online pode ter sido feita com ajuda) e não substitui a entrevista. O teste pode ser refeito de graça depois de 30 dias.
+4.2. **Selo.** [REVISÃO PSICOLOGIA] Quem faz o teste ganha um selo com o nome do teste, a data, a nota, um código e o aviso "online, sem supervisão". O selo vale 12 meses. O selo não diz se a pessoa "passou" ou não: ele mostra a nota com a margem da prova, e a empresa decide o que fazer com isso, junto com a entrevista e o resto do processo. O selo não confere identidade (a prova online pode ter sido feita com ajuda) e não substitui a entrevista. O teste pode ser refeito de graça depois de 30 dias.
 
 4.3. **Quero / Pular.** A pessoa vê cada vaga e responde "Quero" ou "Pular". "Quero" envia a candidatura: a empresa recebe o cartão cego (seção 6). "Pular" não envia nada.
 
@@ -71,7 +71,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 5.2. **O anúncio** precisa ter: função, modalidade (CLT, temporário, diária, autônomo ou estágio), cidade e zona, turno, e **faixa salarial ou valor da diária**. Anúncio sem valor não é publicado.
 
-5.3. A empresa recebe os cartões por ordem de chegada. Não existe ranking automático: quem lê e decide é uma pessoa da empresa. A empresa marca "Quero conversar" ou "Agora não".
+5.3. A empresa recebe os cartões por ordem de chegada, sem ordem do melhor para o pior e sem filtro por nota: quem lê e decide é uma pessoa da empresa. No Combinou, a empresa recebe um roteiro de entrevista (20 a 30 minutos, as mesmas perguntas para todo mundo); a plataforma não calcula nota nem ordena. A empresa marca "Quero conversar" ou "Agora não".
 
 5.4. **Combinou.** Quando a empresa marca "Quero conversar" e a pessoa confirma, os dois lados veem nome e contato e a conversa é liberada. Só então a empresa pode ver o currículo completo.
 
@@ -93,10 +93,10 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 - o nome da empresa aparece para a pessoa **no momento em que ela aceita conversar**, antes de o contato dela ser liberado. A pessoa pode então recusar sem que a empresa veja nada.
 
 6.3. **Referência profissional.** [REVISÃO JURÍDICA] Uma empresa com CNPJ conferido pode deixar, por um membro logado, uma referência profissional para uma pessoa que trabalhou nela: período, função, vínculo, até 3 pontos fortes de uma lista fechada, funções que recomenda e um texto curto opcional. Regras:
-- a referência é **sempre uma recomendação**. Não existe referência negativa, nota, estrela, média nem ranking. Quem não quer recomendar simplesmente não dá referência. Texto com crítica, ressalva, ofensa, dado sensível, termo discriminatório ou contato é recusado na moderação;
+- a referência é **sempre uma recomendação**. Não existe referência negativa, nota, estrela, média nem ordem do melhor para o pior. Quem não quer recomendar simplesmente não dá referência. O texto livre descreve uma situação de trabalho (o que a pessoa fez), não qualidades pessoais; texto com crítica, ressalva, ofensa, qualidade pessoal no lugar de fato, dado sensível, termo discriminatório ou contato é recusado na moderação;
 - a referência é **pública e leva o nome da empresa**. Referência confidencial não existe;
 - a referência **só aparece depois que a pessoa aceita**. Até lá, só ela vê. A pessoa pode ocultar ou excluir a qualquer momento, sem dar motivo; a empresa é avisada;
-- antes do Combinou, a empresa que vê o cartão cego enxerga só a quantidade de referências de empresas verificadas e os pontos fortes, sem o nome da empresa nem o texto. A referência completa aparece depois do Combinou ou no perfil público, se a pessoa ligar essa opção;
+- antes do Combinou, a empresa que vê o cartão cego enxerga só "Referência de empresa verificada: sim", sem o nome da empresa, sem os pontos fortes e sem o texto. A referência completa aparece depois do Combinou ou no perfil público, se a pessoa ligar essa opção;
 - a empresa **declara que a pessoa trabalhou nela no período informado** e responde pela veracidade. Referência falsa leva à remoção e à suspensão da empresa;
 - limites: uma referência por empresa por pessoa, com teto mensal por empresa, só para pessoa com conta. A pessoa pode pedir referência a uma empresa; a empresa decide se dá;
 - é proibido usar referências, dentro ou fora da plataforma, para montar lista de pessoas "não recomendadas" ou qualquer forma de lista discriminatória (Lei 9.029/1995).
@@ -133,7 +133,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 9.1. A plataforma aceita anúncios de diária, trabalho temporário, autônomo e estágio, só de contratante com CNPJ ou MEI. Para diária, data, horário e valor do dia são obrigatórios. O anúncio fica no ar de 48 horas a 7 dias.
 
-9.2. **A plataforma é só um mural.** Ela não fixa preço, escala, horário, punição nem avaliação. Não cobra comissão, não recebe nem repassa o pagamento do serviço. Tudo isso é combinado e pago direto entre as partes.
+9.2. **A plataforma é só um mural.** Ela não fixa preço, escala, horário, punição nem nota de quem trabalhou. Não cobra comissão, não recebe nem repassa o pagamento do serviço. Tudo isso é combinado e pago direto entre as partes.
 
 9.3. A plataforma não fornece mão de obra temporária e não é parte do contrato (Lei 6.019/1974). O contratante é responsável por cumprir a lei trabalhista, previdenciária e de segurança que se aplica ao caso.
 

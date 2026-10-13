@@ -88,6 +88,21 @@
       "revisao_psicologia": false
     },
     {
+      "arquivo": "contratada.html",
+      "para": "pessoa",
+      "assunto": "Parabéns! {{empresa_nome}} marcou você como contratada(o) · Vagas sem Caos",
+      "quando": "empresa marcou a candidatura como contratada (vagas_marcar_contratada)",
+      "variaveis": {
+        "nome": "primeiro nome",
+        "empresa_nome": "nome da empresa",
+        "vaga_titulo": "título da vaga",
+        "link": "…/minhas-candidaturas",
+        "email": "e-mail do destinatário"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": false
+    },
+    {
       "arquivo": "vaga-aprovada.html",
       "para": "empresa",
       "assunto": "Sua vaga está no ar · Vagas sem Caos",
@@ -144,6 +159,7 @@
         "nome": "primeiro nome",
         "teste_nome": "nome do teste",
         "nota": "nota (0 a 100)",
+        "margem": "margem em pontos (padrão 10; texto fixo da psicologia: \"Nota N de 100 (15 questões; margem de cerca de ±10 pontos)\")",
         "data": "dd/mm/aaaa",
         "codigo": "código do selo",
         "valido_ate": "dd/mm/aaaa",

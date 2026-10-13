@@ -60,9 +60,9 @@
       "chave": "anuncio_teste_psicologico",
       "alvo": "anuncio",
       "acao": "recusar",
-      "titulo": "Pede teste psicológico ou DISC para concorrer",
-      "texto_empresa": "Sua vaga \"{{vaga_titulo}}\" ainda não foi publicada porque pede teste psicológico, de personalidade ou DISC como condição para concorrer. Só psicólogo(a) pode usar teste psicológico em seleção.",
-      "correcao": "Tire a exigência. Se quiser, peça o selo do teste da função (conhecimento prático, feito online sem supervisão; não é teste psicológico). O Mapa DISC é oferecido depois da contratação, na integração.",
+      "titulo": "Pede teste de personalidade ou DISC para concorrer",
+      "texto_empresa": "Sua vaga \"{{vaga_titulo}}\" ainda não foi publicada porque pede teste de personalidade, de perfil ou DISC como condição para concorrer. Só psicólogo(a) pode usar esse tipo de teste em seleção.",
+      "correcao": "Tire a exigência. Se quiser, peça o selo do teste da função (conhecimento prático, feito online sem supervisão; mede o que a pessoa sabe hoje do básico da função, não personalidade). O Mapa DISC é oferecido depois da contratação, na integração.",
       "lei": "Lei 4.119/1962, art. 13, §1º; Resolução CFP 31/2022",
       "revisao_psicologia": true
     },
@@ -299,6 +299,17 @@
       "correcao": "Envie outra foto ou siga sem foto: nada muda na sua candidatura. Foto é opcional e só aparece depois do Combinou.",
       "lei": "LGPD art. 11 (inferência de dado sensível); Lei 9.029/1995; termos de uso, seção 4.7",
       "frase_curta": "Foto não aceita: precisa ser sua, do rosto, sem outras pessoas, documento ou texto."
+    },
+    {
+      "chave": "referencia_qualidade_pessoal",
+      "alvo": "referencia",
+      "acao": "recusar",
+      "titulo": "Qualidade pessoal em vez de fato",
+      "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi recusada porque o texto traz qualidade pessoal (\"{{detalhe}}\") em vez de um fato. Referência aqui descreve o que a pessoa fez, numa situação que você viu.",
+      "correcao": "Troque a qualidade pela situação: em vez de \"responsável\", \"fechou o caixa certo todos os dias durante 8 meses\". Os pontos fortes marcados na lista já cobrem o resto.",
+      "lei": "padrão da psicologia (evidencias.md §4A.4): comportamento observável, não traço",
+      "frase_curta": "Recusada: tem qualidade pessoal no lugar de um fato. Descreva o que a pessoa fez.",
+      "revisao_psicologia": true
     }
   ]
 }

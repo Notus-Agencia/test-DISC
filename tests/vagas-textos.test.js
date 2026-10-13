@@ -33,6 +33,25 @@ test('nenhum texto cita a agência, app de namoro, "swipe", promessa ("garant"),
   }
 });
 
+// Lista da psicologia (mesa): nem em negação. As regex de filtro (padrao/padroes/termos) não são texto de tela.
+test('frases proibidas pela psicologia não aparecem em texto de tela, e-mail ou documento', () => {
+  const proibidas = [/\bmatch\b/i, /currículo verificado/i, /\bvalidad[oa]s?\b/i, /científic/i, /certificad/i, /ranking/i, /os melhores/i, /teste psicológico/i, /avaliação/i, /\baprovad[oa]s?\b/i];
+  const semRegex = (v) => {
+    if (Array.isArray(v)) return v.map(semRegex);
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).filter(([k]) => !['padrao', 'padroes', 'termos'].includes(k)).map(([k, x]) => [k, semRegex(x)]));
+    return v;
+  };
+  for (const a of TODOS) {
+    const t = a.endsWith('.json') ? JSON.stringify(semRegex(json(a))) : ler(a);
+    for (const re of proibidas) {
+      const m = t.match(re);
+      // "vaga aprovada" (moderação de anúncio) é a única exceção: não é sobre pessoa.
+      if (m && re.source.includes('aprovad') && /vaga (foi )?aprovada|vaga-aprovada/i.test(t) && !/pessoa aprovada|selo aprovado|aprovado no teste/i.test(t)) continue;
+      assert.ok(!m, a + ' contém ' + re + (m ? ' ("' + m[0] + '")' : ''));
+    }
+  }
+});
+
 test('linguagem neutra: "candidato(a)" não aparece (usar "pessoa" / "quem se candidata")', () => {
   const re = /\b(?<!se )candidat[oa]s?\b/i; // "quem se candidata" é verbo e pode
   for (const a of TODOS) {
@@ -176,9 +195,21 @@ test('referência profissional: aceite da pessoa, declaração da empresa, aviso
   const decl = c.aceites.find((a) => a.chave === 'empresa_referencia_declaracao');
   assert.match(decl.texto, /^Declaro que a pessoa trabalhou nesta empresa no período informado\. A referência é pública e aparece com o nome da empresa\./);
   const av = json('avisos.json');
-  for (const k of ['referencia_o_que_e', 'referencia_so_se_aceitar', 'referencia_publica', 'referencia_cartao_cego', 'referencia_recebida', 'referencia_ocultada', 'referencia_sem_ranking']) assert.equal(typeof av.avisos[k], 'string', 'avisos.' + k);
+  for (const k of ['referencia_o_que_e', 'referencia_so_se_aceitar', 'referencia_publica', 'referencia_cartao_cego', 'referencia_recebida', 'referencia_ocultada', 'referencia_sem_ordem']) assert.equal(typeof av.avisos[k], 'string', 'avisos.' + k);
   assert.match(av.avisos.referencia_so_se_aceitar, /só aparece se você aceitar/);
-  assert.ok(av.referencia.pontos_fortes.length >= 8 && av.referencia.pontos_fortes.every((p) => p.chave && p.texto));
+  assert.equal(av.referencia.pontos_fortes.length, 12, 'lista fechada da psicologia: 12 pontos fortes');
+  assert.ok(av.referencia.pontos_fortes.every((p) => p.chave && p.texto));
+  assert.equal(av.referencia.pontos_fortes.find((p) => p.chave === 'caixa_certo').texto, 'Caixa fecha certo');
+  assert.match(av.avisos.referencia_cartao_cego, /Referência de empresa verificada: sim/);
+  assert.match(av.avisos.referencia_texto_regras, /^Descreva uma situação de trabalho que você viu \(o que a pessoa fez\)\. Não escreva qualidades pessoais\./);
+  assert.ok(json('moderacao.json').motivos.some((x) => x.chave === 'referencia_qualidade_pessoal'));
+  // Textos fixos da psicologia: tela antes da prova, resultado sem selo, nota com margem.
+  assert.equal(av.avisos.teste_antes, 'Faça sozinho(a), sem consultar. A empresa pode pedir a prova presencial. O teste mede o que você sabe hoje do básico da função; não mede inteligência nem personalidade. Pode refazer em 30 dias.');
+  assert.equal(av.avisos.selo_sem_selo, 'Ainda sem selo neste teste. Você pode refazer em 30 dias, de graça.');
+  assert.match(av.avisos.selo_emitido, /Nota {{nota}} de 100 \(15 questões; margem de cerca de ±{{margem}} pontos\)/);
+  assert.match(ler('emails/seu-selo.html'), /Nota {{nota}} de 100<\/strong> \(15 questões; margem de cerca de ±{{margem}} pontos\)/);
+  assert.ok(EMAILS.includes('contratada.html'));
+  assert.equal(typeof av.botoes.roteiro_entrevista, 'string');
   // Pontos fortes são comportamentos observáveis (frases com verbo no passado), não traços.
   for (const p of av.referencia.pontos_fortes) assert.ok(!/\b(honest|leal|inteligent|esfor[cç]ad|dedicad|proativ|carism)/i.test(p.texto), p.texto + ' parece traço, não comportamento');
   assert.ok(!/estrela|nota|média|ranking/i.test(av.avisos.referencia_o_que_e.replace(/Sem estrelas, sem nota, sem média/, '')));

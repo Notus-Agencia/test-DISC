@@ -1,5 +1,5 @@
 {
-  "_sobre": "Microtextos fixos do Vagas sem Caos. As chaves são estáveis: as telas, as RPCs e os testes usam `avisos.<chave>`, `botoes.<chave>`, `anuncio.termos_proibidos[].chave`, `mensagem.<chave>`, `validacao.<chave>`. Texto com {{variavel}} é preenchido pela tela. Nada aqui diz 'aprovado', promete resultado nem descreve 'perfil' de pessoa.",
+  "_sobre": "Microtextos fixos do Vagas sem Caos. As chaves são estáveis: as telas, as RPCs e os testes usam `avisos.<chave>`, `botoes.<chave>`, `anuncio.termos_proibidos[].chave`, `mensagem.<chave>`, `validacao.<chave>`. Texto com {{variavel}} é preenchido pela tela. Nada aqui promete resultado, classifica pessoa nem descreve 'perfil' de pessoa.",
   "versao": "2026-10-13",
   "avisos": {
     "nunca_pague": "Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.",
@@ -7,7 +7,7 @@
     "gratis_para_sempre": "Grátis para quem procura trabalho. Sempre.",
     "cartao_cego": "A empresa vê só este cartão: sem nome, sem foto, sem idade, sem contato. Seu nome (e a sua foto, se você enviou) aparece só se você aceitar conversar.",
     "cartao_cego_empresa": "Cartão sem nome e sem contato, por ordem de chegada. Nome e WhatsApp aparecem quando a pessoa aceitar conversar.",
-    "cartao_cego_ordem": "Os cartões aparecem por ordem de chegada. Não há ranking: quem decide é você.",
+    "cartao_cego_ordem": "Os cartões aparecem por ordem de chegada, sem ordem do melhor para o pior: quem decide é você.",
     "empresa_confidencial": "Vaga confidencial: o nome da empresa aparece para você quando você aceitar conversar, antes de o seu contato ser liberado. Você pode recusar sem que a empresa veja nada.",
     "empresa_confidencial_cartao": "Empresa confidencial · CNPJ conferido pela Gestão sem Caos",
     "empresa_confidencial_empresa": "Seu nome fica escondido no anúncio e aparece para a pessoa no momento em que ela aceita conversar. Só empresa com CNPJ conferido pode usar.",
@@ -28,18 +28,18 @@
     "combinou_aguardando": "A empresa quer conversar. Falta você confirmar.",
     "combinou_quem_viu": "{{empresa_nome}} abriu o seu contato em {{data}}.",
     "combinou_ninguem_viu": "Nenhuma empresa abriu o seu contato ainda. Seu contato só aparece depois do Combinou.",
-    "selo_descricao": "Selo: mostra o teste, a data, a nota e um código. É um teste de conhecimento prático da função, feito online, sem supervisão. Vale 12 meses.",
-    "selo_emitido": "Selo emitido: {{teste_nome}}, nota {{nota}}, {{data}}. Código {{codigo}}. Vale até {{valido_ate}}. Ele já aparece no seu cartão.",
-    "selo_sem_selo": "Desta vez não saiu selo. É um teste curto do básico da função, feito num dia; ele não mede quem você é nem o que você pode vir a aprender. Você pode refazer de graça a partir de {{pode_refazer_em}}.",
+    "selo_descricao": "Selo: mostra o teste, a data, a nota com a margem e um código. É um teste de conhecimento prático da função, feito online, sem supervisão. Vale 12 meses.",
+    "selo_emitido": "Selo emitido: {{teste_nome}}, {{data}}. Nota {{nota}} de 100 (15 questões; margem de cerca de ±{{margem}} pontos). Código {{codigo}}. Vale até {{valido_ate}}. Ele já aparece no seu cartão.",
+    "selo_sem_selo": "Ainda sem selo neste teste. Você pode refazer em 30 dias, de graça.",
     "selo_supervisao": "online, sem supervisão",
     "selo_validade": "Vale 12 meses. Depois é só refazer, de graça.",
     "selo_refazer": "Você pode refazer o teste de graça 30 dias depois da última tentativa.",
-    "selo_nao_e_psicologico": "Os testes são de conhecimento prático da função, feitos online, sem supervisão. Não são testes psicológicos: não medem personalidade, inteligência, caráter, potencial nem \"perfil\".",
-    "selo_empresa": "Selo: teste de conhecimento prático da função, feito online, sem supervisão. Mostra teste, data, nota e código. Não confere identidade e não substitui a entrevista.",
+    "selo_nao_e_psicologico": "Os testes são de conhecimento prático da função, feitos online, sem supervisão. O teste mede o que você sabe hoje do básico da função; não mede inteligência nem personalidade.",
+    "selo_empresa": "Selo: teste de conhecimento prático da função, feito online, sem supervisão. Mostra teste, data, nota com margem e código. Não confere identidade e não substitui a entrevista.",
     "selo_filtro_empresa": "Filtrar por \"tem selo\" mostra quem fez o teste da função. Não há nota mínima nem ordem por nota: quem lê e decide é você.",
     "selo_conferir": "Confira um selo pelo código em vagas.gestaosemcaos.com.br/selo/{{codigo}}.",
     "selo_presencial": "Selo presencial: a mesma prova de conhecimento prático, feita no ponto da Gestão sem Caos, com documento conferido na hora (não guardamos cópia). Grátis nos mutirões.",
-    "teste_antes": "São {{total}} questões, cerca de {{minutos}} minutos. Se a conexão cair, a tentativa continua de onde parou. Depois de começar, dá para refazer em 30 dias.",
+    "teste_antes": "Faça sozinho(a), sem consultar. A empresa pode pedir a prova presencial. O teste mede o que você sabe hoje do básico da função; não mede inteligência nem personalidade. Pode refazer em 30 dias.",
     "teste_reconectando": "Reconectando… sua tentativa está salva.",
     "bico_mural": "Diária e bico: a plataforma é só um mural. Valor, horário e pagamento são combinados direto entre você e o contratante. Não pagamos nem cobramos nada.",
     "bico_contratante": "A plataforma não fixa valor, escala nem punição, não recebe pagamento e não fornece mão de obra temporária. O contrato é direto entre você e a pessoa.",
@@ -70,11 +70,11 @@
     "conta_parada": "Conta sem uso há {{meses}} meses. Contas paradas por 24 meses são apagadas, com aviso 30 dias antes.",
     "denuncia_ok": "Denúncia recebida. Ela é confidencial: quem foi denunciado não sabe quem denunciou. Decidimos em até 24 horas.",
     "denuncia_motivos": [
-      "Pede dinheiro, Pix ou taxa",
-      "Pede documento, senha ou código",
-      "Vaga parece falsa",
-      "Anúncio discriminatório",
-      "Assédio, ameaça ou ofensa",
+      "Pede dinheiro",
+      "Pede documento",
+      "Discriminação",
+      "Parece falsa",
+      "Assédio ou ofensa",
       "Outro"
     ],
     "whatsapp_opcional": "O botão de WhatsApp só aparece quando os dois lados quiserem. Você pode conversar só por aqui.",
@@ -82,13 +82,13 @@
     "disc_fora": "O Mapa DISC não entra na seleção. Ele é oferecido só depois da contratação, para a integração da pessoa na equipe.",
     "assinatura": "uma ferramenta da Gestão sem Caos",
     "rodape_legal": "Vagas sem Caos · uma ferramenta da Gestão sem Caos · Termos de uso · Aviso de privacidade · Denunciar",
-    "referencia_o_que_e": "Referência profissional: uma empresa com CNPJ conferido diz, com o nome dela, que você trabalhou lá e o que recomenda. É sempre uma recomendação, nunca uma avaliação negativa. Sem estrelas, sem nota, sem média.",
+    "referencia_o_que_e": "Referência profissional: uma empresa com CNPJ conferido diz, com o nome dela, que você trabalhou lá e o que recomenda. É sempre uma recomendação, nunca uma crítica. Sem estrelas, sem nota, sem média.",
     "referencia_so_se_aceitar": "A referência só aparece se você aceitar. Até lá, só você vê. Depois, você pode ocultar quando quiser e a empresa é avisada.",
     "referencia_publica": "Referência é pública: aparece com o nome da empresa para quem vê o seu perfil e, depois do Combinou, para a empresa da vaga.",
-    "referencia_cartao_cego": "Antes do Combinou, a empresa vê só \"{{total}} referências de empresas verificadas\" e os pontos fortes. Nem o nome da empresa nem o texto.",
-    "referencia_cartao_cego_empresa": "{{total}} referências de empresas verificadas. Pontos fortes: {{pontos_fortes}}. O nome da empresa e o texto aparecem depois do Combinou.",
+    "referencia_cartao_cego": "Antes do Combinou, a empresa vê só \"Referência de empresa verificada: sim\". Nem o nome da empresa, nem os pontos fortes, nem o texto.",
+    "referencia_cartao_cego_empresa": "Referência de empresa verificada: {{quantidade}}. O nome da empresa, os pontos fortes e o texto aparecem depois do Combinou.",
     "referencia_recebida": "{{empresa_nome}} deixou uma referência profissional para você. Leia e decida: aceitar e publicar, ou recusar. Ninguém vê antes de você aceitar.",
-    "referencia_aceita": "Referência publicada. Ela aparece no seu cartão (só a contagem e os pontos fortes) e, depois do Combinou ou no seu perfil público, com o nome de {{empresa_nome}}.",
+    "referencia_aceita": "Referência publicada. No seu cartão aparece só \"Referência de empresa verificada: sim\"; depois do Combinou ou no seu perfil público, a referência completa, com o nome de {{empresa_nome}}.",
     "referencia_recusada": "Referência recusada. Ela não aparece para ninguém. A empresa é avisada, sem o motivo.",
     "referencia_ocultada": "Referência ocultada. Ela some do seu cartão e do seu perfil. A empresa é avisada. Você pode mostrar de novo quando quiser.",
     "referencia_excluida": "Referência excluída. Isso não tem volta; a empresa pode deixar outra só se você pedir.",
@@ -100,8 +100,8 @@
     "referencia_empresa_em_moderacao": "Referência enviada. Ela passa por moderação (até 1 dia útil) e depois vai para a pessoa aceitar. Avisamos quando ela decidir.",
     "referencia_empresa_aceita": "{{pessoa_nome}} aceitou e publicou a sua referência.",
     "referencia_empresa_ocultada": "{{pessoa_nome}} ocultou ou excluiu a referência que a sua empresa deixou. Isso é direito da pessoa e não precisa de motivo.",
-    "referencia_texto_regras": "Texto livre opcional, até 300 letras: fatos e recomendação. Sem dado sensível (saúde, família, religião, origem), sem termo discriminatório, sem telefone ou e-mail, sem crítica. Passa por moderação.",
-    "referencia_sem_ranking": "Referências não geram nota, média, estrela nem ordem. Quem lê e decide é a empresa, na entrevista.",
+    "referencia_texto_regras": "Descreva uma situação de trabalho que você viu (o que a pessoa fez). Não escreva qualidades pessoais. Até 300 letras. Sem dado sensível, sem telefone ou e-mail, sem crítica. Passa por moderação.",
+    "referencia_sem_ordem": "Referências não geram nota, média, estrela nem ordem. Quem lê e decide é a empresa, na entrevista.",
     "referencia_pedido_recebido": "{{pessoa_nome}} pediu uma referência profissional à sua empresa sobre o período {{periodo}} como {{funcao}}. Você decide se dá. Se preferir não dar, é só ignorar.",
     "referencia_mutirao": "Trabalhou em alguma empresa da cidade? Dá para pedir uma referência profissional a ela aqui mesmo: a empresa decide se dá, e a referência só aparece se você aceitar. É pública, com o nome da empresa, e é sempre uma recomendação.",
     "golpe_vaga_fora_do_ar": "A vaga \"{{vaga_titulo}}\" saiu do ar por suspeita de golpe. Se alguém falou com você em nome dela e pediu dinheiro, Pix ou documento, não mande nada e denuncie. Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.",
@@ -109,7 +109,14 @@
     "vaga_pausada_pessoa": "A empresa pausou a vaga \"{{vaga_titulo}}\". Sua candidatura continua guardada; se a vaga voltar, você é avisada(o).",
     "vaga_encerrada_pessoa": "A vaga \"{{vaga_titulo}}\" foi encerrada pela empresa. Sua candidatura fica no seu histórico e some do painel da empresa em 90 dias.",
     "vaga_interessados_lembrete": "Sua vaga \"{{vaga_titulo}}\" tem {{total}} pessoas esperando resposta há {{dias}} dias. Responder em até 7 dias mantém a vaga viva: marque \"Quero conversar\" ou \"Agora não\".",
-    "incidente_dados_resumo": "Houve um incidente de segurança que pode ter exposto alguns dados seus. Explicamos o que aconteceu, o que fizemos e o que você pode fazer."
+    "incidente_dados_resumo": "Houve um incidente de segurança que pode ter exposto alguns dados seus. Explicamos o que aconteceu, o que fizemos e o que você pode fazer.",
+    "teste_antes_tempo": "São {{total}} questões, cerca de {{minutos}} minutos. Se a conexão cair, a tentativa continua de onde parou.",
+    "selo_nota": "Nota {{nota}} de 100 (15 questões; margem de cerca de ±{{margem}} pontos)",
+    "selo_sem_selo_competencias": "Onde você acertou menos: {{competencias}}.",
+    "combinou_roteiro_entrevista": "Quer uma entrevista mais justa e mais rápida? Use o roteiro de entrevista (20 a 30 minutos): 8 perguntas iguais para todo mundo, o que não perguntar e uma ficha para anotar. A plataforma não calcula nota nem ordena.",
+    "contratada_pessoa": "{{empresa_nome}} marcou você como contratada(o) na vaga de {{vaga_titulo}}. Parabéns! A candidatura foi encerrada. Se algo não bater, fale com a empresa ou com a gente.",
+    "denuncia_titulo": "Denunciar",
+    "denuncia_texto": "O que está errado? A denúncia é confidencial: quem foi denunciado não sabe quem denunciou."
   },
   "botoes": {
     "quero": "Quero",
@@ -160,7 +167,8 @@
     "perfil_publico_desligar": "Desligar perfil público",
     "foto_enviar": "Enviar foto (opcional)",
     "foto_remover": "Remover foto",
-    "foto_trocar": "Trocar foto"
+    "foto_trocar": "Trocar foto",
+    "roteiro_entrevista": "Roteiro de entrevista (20–30 min)"
   },
   "anuncio": {
     "_sobre": "Validação do anúncio. `termos_proibidos`: se o texto do anúncio contém um dos `termos` (sem acento, sem caixa), a tela mostra `explicacao` ao lado do trecho e não deixa publicar. `padroes` são expressões regulares (sem acento, minúsculas) para casos com número ou variação. `bloqueios` são itens que não são discriminação, mas golpe ou fuga da plataforma. Os `termos` são comparados como palavras inteiras (não como pedaço de outra palavra).",
@@ -412,7 +420,7 @@
       {
         "chave": "disc",
         "padrao": "\\b(disc|perfil comportamental|teste psicologico|teste de personalidade)\\b",
-        "explicacao": "Não pode pedir teste psicológico ou DISC para concorrer: só psicólogo(a) pode usar isso em seleção (Lei 4.119/1962). O Mapa DISC é oferecido depois da contratação."
+        "explicacao": "Não pode pedir teste de personalidade, de perfil ou DISC para concorrer: só psicólogo(a) pode usar isso em seleção (Lei 4.119/1962). O Mapa DISC é oferecido depois da contratação."
       }
     ],
     "campos": {
@@ -423,7 +431,7 @@
       "modalidade_obrigatoria": "Escolha a modalidade: CLT, temporário, diária, autônomo ou estágio.",
       "titulo_curto": "O título precisa ter entre 5 e 60 letras.",
       "descricao_curta": "Descreva as tarefas em pelo menos 3 linhas.",
-      "selo_sugerido": "Quer pedir o selo de {{teste_nome}}? A pessoa faz o teste de conhecimento prático no celular e você vê a nota. Não é obrigatório e não substitui a entrevista."
+      "selo_sugerido": "Quer pedir o selo de {{teste_nome}}? A pessoa faz o teste de conhecimento prático no celular e você vê a nota com a margem. Não é obrigatório e não substitui a entrevista."
     }
   },
   "mensagem": {
@@ -491,52 +499,60 @@
     "referencia": [
       "pontos_fortes",
       "avisos.referencia_o_que_e",
-      "avisos.referencia_sem_ranking",
+      "avisos.referencia_sem_ordem",
       "avisos.referencia_mutirao"
     ]
   },
   "referencia": {
-    "_sobre": "Referência profissional (acréscimo do dono, 13/10). Listas fechadas: pontos fortes são COMPORTAMENTOS OBSERVÁVEIS no trabalho (não traços de personalidade). [REVISÃO PSICOLOGIA] A lista final é do agente psicologia; esta é a proposta de texto. `validacao` são as mensagens quando a referência não passa.",
+    "_sobre": "Referência profissional (acréscimo do dono, 13/10). `pontos_fortes`: lista fechada de 12 comportamentos observáveis FIXADA pelo agente psicologia (evidencias.md §4A.4); a empresa marca até 3. `recomenda_para` = lista fechada de funções dos anúncios + \"a mesma função\". No cartão cego só \"Referência de empresa verificada: sim\" (ou 1 / 2+), sem pontos fortes e sem texto. `validacao` são as mensagens quando a referência não passa.",
     "pontos_fortes": [
       {
         "chave": "pontualidade",
-        "texto": "Chegava no horário"
+        "texto": "Chega no horário e avisa quando não pode"
       },
       {
         "chave": "atendimento",
-        "texto": "Atendia bem as pessoas"
+        "texto": "Atende bem o cliente"
+      },
+      {
+        "chave": "caixa_certo",
+        "texto": "Caixa fecha certo"
       },
       {
         "chave": "organizacao",
-        "texto": "Mantinha o trabalho organizado"
+        "texto": "Mantém o posto organizado"
       },
       {
         "chave": "equipe",
-        "texto": "Trabalhava bem em equipe"
+        "texto": "Ajuda os colegas quando precisa"
       },
       {
         "chave": "aprende_rapido",
-        "texto": "Aprendia as tarefas rápido"
+        "texto": "Aprende uma tarefa nova em poucos dias"
       },
       {
-        "chave": "caixa_confiavel",
-        "texto": "Cuidava bem do caixa e do dinheiro"
+        "chave": "regras_seguranca",
+        "texto": "Segue as regras e a segurança do trabalho"
       },
       {
         "chave": "comunicacao",
-        "texto": "Se comunicava com clareza"
+        "texto": "Passa recado e informação de forma clara"
       },
       {
         "chave": "iniciativa",
-        "texto": "Resolvia o que aparecia sem precisar mandar"
+        "texto": "Resolve o que vê sem esperar ordem"
       },
       {
-        "chave": "cuidado",
-        "texto": "Cuidava do material e do espaço"
+        "chave": "cuidado_material",
+        "texto": "Cuida do material, do equipamento e do ambiente"
       },
       {
-        "chave": "assiduidade",
-        "texto": "Faltava pouco e avisava quando precisava"
+        "chave": "vendas",
+        "texto": "Vende bem e oferece o produto certo"
+      },
+      {
+        "chave": "situacao_dificil",
+        "texto": "Resolve reclamação ou situação difícil com calma"
       }
     ],
     "vinculos": {
@@ -557,7 +573,8 @@
       "ja_existe": "Sua empresa já deixou uma referência para esta pessoa. Dá para editar só se ela pedir.",
       "limite_mes": "Sua empresa chegou ao limite de {{limite_mes}} referências neste mês.",
       "pessoa_sem_conta": "Referência só para quem tem conta. Convide a pessoa a se cadastrar: ela recebe o seu convite e, depois, você deixa a referência.",
-      "declaracao_obrigatoria": "Para enviar, marque a declaração de que a pessoa trabalhou na empresa no período informado."
+      "declaracao_obrigatoria": "Para enviar, marque a declaração de que a pessoa trabalhou na empresa no período informado.",
+      "texto_qualidade_pessoal": "Troque a qualidade pessoal por um fato: o que a pessoa fez, numa situação que você viu. Exemplo: em vez de \"responsável\", \"fechou o caixa certo todos os dias\"."
     }
   },
   "foto": {
