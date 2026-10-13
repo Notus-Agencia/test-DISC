@@ -270,9 +270,11 @@
     { nome: '20261018120000_clima_identificacao', descricao: 'Pesquisa de Clima: modos de identificação e links pessoais' },
     { nome: '20261019120000_versao_tecnica', descricao: 'versão técnica dos relatórios de equipe e "Como liderar" (leitura por psicólogo(a), com CRP)' },
     { nome: '20261020120000_codigos_processo', descricao: 'códigos de link com 10 caracteres e limite de tentativas por código' },
-    { nome: '20261021120000_feedback360', descricao: 'Feedback 360 da Liderança (ciclos, links individuais, moderação e relatório)' }
+    { nome: '20261021120000_feedback360', descricao: 'Feedback 360 da Liderança (ciclos, links individuais, moderação e relatório)' },
+    { nome: '20261023120000_vagas_testes', descricao: 'Vagas sem Caos: motor dos testes de habilidade (tentativas, sorteio, nota e selo)' },
+    { nome: '20261023120001_vagas_questoes', descricao: 'Vagas sem Caos: banco de questões dos testes de habilidade (carga à mão, a partir da cópia privada; o arquivo é só um espelho)' }
   ];
-  var VERSAO_ATUAL = 20261021120000;
+  var VERSAO_ATUAL = 20261023120001;
   var MSG_PRIMEIRO_ACESSO = 'Com o Supabase não há chave de primeiro acesso: crie o seu usuário no painel do Supabase ' +
     '(Authentication > Users > Add user) e entre com esse e-mail e senha. O primeiro login vira administrador.';
   var MSG_REDEFINIR = 'Com o Supabase cada pessoa cria a própria senha nova pelo "Esqueci minha senha", na tela de entrada.';

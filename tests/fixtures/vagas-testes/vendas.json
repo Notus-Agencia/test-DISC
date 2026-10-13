@@ -1,0 +1,1422 @@
+{
+  "teste": "vendas",
+  "nome": "Vendas (FICTÍCIO)",
+  "descricao": "Banco FICTÍCIO para os testes automáticos do motor. Não é o conteúdo real: nenhum item tem significado.",
+  "versao": "2026-10-v0",
+  "ativo": true,
+  "prova": {
+    "questoes": 15,
+    "minutos": 20
+  },
+  "competencias": [
+    {
+      "id": "fic_a",
+      "nome": "Competência fictícia A"
+    },
+    {
+      "id": "fic_b",
+      "nome": "Competência fictícia B"
+    },
+    {
+      "id": "fic_c",
+      "nome": "Competência fictícia C"
+    },
+    {
+      "id": "fic_d",
+      "nome": "Competência fictícia D"
+    },
+    {
+      "id": "fic_e",
+      "nome": "Competência fictícia E"
+    }
+  ],
+  "tarefas": [
+    {
+      "id": "tarefa_a",
+      "nome": "Tarefa fictícia A"
+    },
+    {
+      "id": "tarefa_b",
+      "nome": "Tarefa fictícia B"
+    },
+    {
+      "id": "tarefa_c",
+      "nome": "Tarefa fictícia C"
+    },
+    {
+      "id": "tarefa_d",
+      "nome": "Tarefa fictícia D"
+    }
+  ],
+  "questoes": [
+    {
+      "id": "VEN-001",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "grupo": "fic_par_a",
+      "enunciado": "FICTÍCIO VEN-001: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-002",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-002: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-003",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-003: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-004",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-004: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-005",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-005: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-006",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "grupo": "fic_par_a",
+      "enunciado": "FICTÍCIO VEN-006: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-007",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-007: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-008",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-008: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-009",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-009: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-010",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-010: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-011",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-011: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-012",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "grupo": "fic_par_b",
+      "enunciado": "FICTÍCIO VEN-012: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-013",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-013: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-014",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-014: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-015",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-015: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-016",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-016: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-017",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "grupo": "fic_par_b",
+      "enunciado": "FICTÍCIO VEN-017: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-018",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-018: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-019",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-019: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-020",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-020: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-021",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-021: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-022",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-022: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-023",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-023: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-024",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-024: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-025",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-025: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-026",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "texto": "FICTÍCIO: texto de apoio do item VEN-026, só para exercitar o campo.",
+      "enunciado": "FICTÍCIO VEN-026: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-027",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_c",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "texto": "FICTÍCIO: texto de apoio do item VEN-027, só para exercitar o campo.",
+      "enunciado": "FICTÍCIO VEN-027: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-028",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_d",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "texto": "FICTÍCIO: texto de apoio do item VEN-028, só para exercitar o campo.",
+      "enunciado": "FICTÍCIO VEN-028: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-029",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_a",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "texto": "FICTÍCIO: texto de apoio do item VEN-029, só para exercitar o campo.",
+      "enunciado": "FICTÍCIO VEN-029: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-030",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_b",
+      "dificuldade": 1,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "texto": "FICTÍCIO: texto de apoio do item VEN-030, só para exercitar o campo.",
+      "enunciado": "FICTÍCIO VEN-030: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-031",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-031: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-032",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-032: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-033",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-033: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-034",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-034: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-035",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-035: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-036",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-036: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-037",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-037: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-038",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-038: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-039",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-039: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-040",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-040: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-041",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-041: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-042",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-042: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-043",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-043: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-044",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-044: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-045",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-045: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-046",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-046: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-047",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-047: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-048",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-048: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-049",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-049: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-050",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-050: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-051",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-051: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-052",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-052: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-053",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-053: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-054",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-054: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-055",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-055: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-056",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-056: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-057",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_a",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-057: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-058",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_b",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-058: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-059",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_c",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-059: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-060",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_d",
+      "dificuldade": 2,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-060: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-061",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_a",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-061: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-062",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_b",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-062: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-063",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_c",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-063: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-064",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_d",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-064: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-065",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_a",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-065: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-066",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_b",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-066: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-067",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_c",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-067: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-068",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_d",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-068: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-069",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_a",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-069: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-070",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_b",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-070: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-071",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_c",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-071: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-072",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_d",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-072: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-073",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_a",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-073: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-074",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_b",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-074: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-075",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_c",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-075: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-076",
+      "competencia": "fic_a",
+      "tarefa": "tarefa_d",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-076: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho).",
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-077",
+      "competencia": "fic_b",
+      "tarefa": "tarefa_a",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-077: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 0,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-078",
+      "competencia": "fic_c",
+      "tarefa": "tarefa_b",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-078: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 1,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-079",
+      "competencia": "fic_d",
+      "tarefa": "tarefa_c",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-079: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 2,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    },
+    {
+      "id": "VEN-080",
+      "competencia": "fic_e",
+      "tarefa": "tarefa_d",
+      "dificuldade": 3,
+      "funcao_alvo": "função fictícia (testes automáticos)",
+      "enunciado": "FICTÍCIO VEN-080: neste item de teste automático, qual é a resposta marcada como certa?",
+      "alternativas": [
+        "Resposta fictícia 4 (a maior das quatro, para equilibrar o tamanho da certa).",
+        "Resposta fictícia 1 (curta).",
+        "Resposta fictícia 2 (um pouco maior).",
+        "Resposta fictícia 3 (maior ainda, para variar o tamanho)."
+      ],
+      "correta": 3,
+      "explicacao": "FICTÍCIO: item de teste automático; a resposta marcada como certa não tem significado.",
+      "fonte_ou_justificativa": "Prática: item FICTÍCIO para os testes automáticos do motor."
+    }
+  ]
+}
