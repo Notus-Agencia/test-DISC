@@ -256,6 +256,7 @@ test.describe('Pesquisa de clima com identificação: painel (computador)', () =
     await page.click('#janela-ok');
     await expect(page.locator('#janela-erro')).toHaveText('Informe os 3 últimos dígitos do CPF.');
     await page.fill('#colab-cpf3', '123');
+    await expect(page.locator('#janela-erro')).toHaveText(''); // corrigiu o campo: a mensagem velha some
     await page.fill('#colab-email-clima', 'tiago@clinica.com.br');
     await capturar(page, 'painel-colaborador');
     await page.click('#janela-ok');

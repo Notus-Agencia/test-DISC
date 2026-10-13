@@ -2873,7 +2873,8 @@
       if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); fecharPerguntando(); }
       else prenderFoco(form, e);
     }
-    form.addEventListener('input', function () { sujo = true; });
+    // Corrigiu um campo: a mensagem de erro do último "Salvar" sai (não fica o aviso velho com o campo já certo).
+    form.addEventListener('input', function () { sujo = true; erro.textContent = ''; });
     form.addEventListener('change', function () { sujo = true; });
     form.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -6865,7 +6866,7 @@
           redesenharRel();
         }).catch(function (e) { if (!(e && e.tratado)) erro.textContent = (e && e.message) || 'Não foi possível gerar a versão técnica.'; btn.disabled = false; });
       }, { id: 'btn-rel-tec-gerar' });
-      sec.appendChild(el('div', { classe: 'form-secao rel-tecnica__form' }, [
+      var formTec = el('div', { classe: 'form-secao rel-tecnica__form' }, [
         el('div', { classe: 'form-grade' }, [
           campoTexto('rel-tec-nome', 'Nome de quem vai ler (psicólogo ou psicóloga)', { maxlength: 120, autocomplete: 'off', placeholder: 'Nome e sobrenome' }),
           campoTexto('rel-tec-crp', 'CRP', { maxlength: 16, autocomplete: 'off', inputmode: 'numeric', placeholder: '06/12345' })
@@ -6873,7 +6874,10 @@
         el('p', { classe: 'aviso rel-tecnica__aviso', id: 'rel-tec-aviso', texto: VT.AVISO_CRP }),
         erro,
         btn
-      ]));
+      ]);
+      // O erro some assim que a pessoa corrige um dos campos (não fica a mensagem velha com o campo já certo).
+      formTec.addEventListener('input', function () { erro.textContent = ''; });
+      sec.appendChild(formTec);
     }
     var hist = Array.isArray(info.historico) ? info.historico : [];
     if (hist.length) {

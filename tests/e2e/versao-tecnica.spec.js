@@ -228,6 +228,7 @@ test.describe('Painel: versão técnica (prévia)', () => {
     await expect(page.locator('#rel-tec-erro')).toHaveText('Informe o nome completo de quem vai ler (nome e sobrenome, só letras).');
     await expect(page.locator('#rel-tec-link')).toHaveCount(0);
     await page.fill('#rel-tec-nome', 'Fulana de Tal');
+    await expect(page.locator('#rel-tec-erro')).toHaveText(''); // corrigiu o campo: a mensagem velha some
     await page.locator('#rel-tecnica').scrollIntoViewIfNeeded();
     await print(page, 'versao-tecnica-painel-formulario');
     await page.click('#btn-rel-tec-gerar');
