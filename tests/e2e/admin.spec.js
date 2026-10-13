@@ -1265,6 +1265,21 @@ test.describe('Admin com Supabase (DISC_API.MODO "supabase", API falsa)', () => 
     expect(erros).toEqual([]);
   });
 
+  test('link novo do e-mail (no domínio do site: ?token_hash=…&type=recovery) também pede a nova senha e sai do endereço', async ({ page }) => {
+    const erros = coletarErros(page);
+    await simularSupabase(page);
+    await page.goto('/admin.html?token_hash=a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8&type=recovery');
+    await expect(page.locator('#form-nova-senha')).toBeVisible();
+    await expect(page.locator('#titulo-nova-senha')).toHaveText('Defina sua nova senha');
+    await page.fill('#ns-senha', 'nova-senha-1');
+    await page.fill('#ns-confirmar', 'nova-senha-1');
+    await page.click('#btn-salvar-nova-senha');
+    await expect(page.locator('#tela-painel')).toBeVisible({ timeout: 15000 });
+    expect(await chamadasSb(page, 'definirNovaSenha')).toEqual([['nova-senha-1']]);
+    expect(new URL(page.url()).search).toBe('');
+    expect(erros).toEqual([]);
+  });
+
   test('convite (type=invite) pede para criar a senha; link vencido avisa no login', async ({ page }) => {
     const erros = coletarErros(page);
     await simularSupabase(page);

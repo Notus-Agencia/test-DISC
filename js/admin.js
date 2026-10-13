@@ -9264,6 +9264,9 @@
     if (!fn) return;
     Promise.resolve().then(function () { return fn.call(root.DISC_API); }).then(function (r) {
       if (r && r.ok && r.email) mostrar(r.email);
+      // Link novo (?token_hash=…): o código é conferido ao abrir; vencido ou já usado, avisa antes de digitar a senha.
+      var link = metodoApi('linkDeAcesso') ? root.DISC_API.linkDeAcesso() : null;
+      if (link && link.erro && !(r && r.email)) erroNoForm('erro-nova-senha', link.erro);
     }).catch(function () { /* sem e-mail: segue sem o campo visível */ });
   }
 

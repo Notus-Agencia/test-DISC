@@ -24,7 +24,8 @@
  * Diferenças do Supabase (métodos extras, usados pelo painel quando DISC_API.backend === 'supabase'):
  *   recuperarSenha(email)            -> envia o e-mail "Esqueci minha senha" (link volta para admin.html)
  *   linkDeAcesso()                   -> {tipo: 'recovery'|'invite'|'signup'|'magiclink'|'', erro} lido do
- *                                       endereço ao abrir a página (#type=recovery = "Defina sua nova senha")
+ *                                       endereço ao abrir a página (#type=recovery = "Defina sua nova senha").
+ *                                       Link novo dos e-mails: ?token_hash=…&type=… (verifyOtp aqui no navegador)
  *   definirNovaSenha(novaSenha)      -> grava a senha da sessão aberta pelo link e entra: {ok, token, usuario}
  *   sessaoAtual()                    -> {ok, token, usuario} da sessão guardada (ou rejeita com sessaoExpirada)
  *   emailDaSessao()                  -> {ok, email} da sessão aberta pelo link do e-mail ('' sem sessão)
@@ -589,7 +590,19 @@
     var tipo = ['recovery', 'invite', 'signup', 'magiclink', 'email_change'].indexOf(p.type) >= 0 ? p.type : '';
     var erro = '';
     if (p.error || p.error_code) erro = MSG_LINK_EXPIRADO;
-    return { tipo: (p.access_token || p.code || p.token_hash) ? tipo : (erro ? tipo : ''), erro: erro, temSessao: !!(p.access_token || p.code) };
+    // ?token_hash=…&type=… : link do e-mail no domínio do site (modelos em supabase/templates); a sessão sai daqui.
+    var tokenHash = (tipo && !erro && /^[A-Za-z0-9_-]{16,200}$/.test(String(p.token_hash || ''))) ? String(p.token_hash) : '';
+    return { tipo: (p.access_token || p.code || p.token_hash) ? tipo : (erro ? tipo : ''), erro: erro,
+      temSessao: !!(p.access_token || p.code), tokenHash: tokenHash };
+  }
+
+  /** Endereço atual sem token_hash e type (depois de usar o link do e-mail, ele não fica no histórico). */
+  function enderecoSemToken(local) {
+    var busca = String((local && local.search) || '').replace(/^\?/, '').split('&').filter(function (par) {
+      var k = par.split('=')[0];
+      return par && k !== 'token_hash' && k !== 'type';
+    }).join('&');
+    return String((local && local.pathname) || '') + (busca ? '?' + busca : '') + String((local && local.hash) || '');
   }
 
   /** Endereço do painel (mesma pasta da página atual + admin.html). */
@@ -925,6 +938,21 @@
     }
     // Link de recuperação/convite no endereço: cria o cliente já, para o supabase-js ler a sessão do #.
     if (linkInicial.temSessao) { try { cliente(); } catch (e) { /* o erro aparece na primeira chamada */ } }
+    // Link no domínio do site (admin.html?token_hash=…&type=recovery): o código vira sessão aqui, no navegador.
+    // Robôs de antivírus que só abrem o link do e-mail não gastam o código (precisa do JavaScript da página).
+    // Toda leitura de sessão espera esta troca. Código vencido/usado: sem sessão, e "Defina sua nova senha" avisa.
+    var verificacao = null;
+    if (linkInicial.tokenHash) {
+      verificacao = Promise.resolve().then(function () {
+        return cliente().auth.verifyOtp({ token_hash: linkInicial.tokenHash, type: linkInicial.tipo });
+      }).then(function (r) {
+        if (r && r.error) linkAtual = { tipo: linkAtual.tipo, erro: MSG_LINK_EXPIRADO };
+        var hist = opcoes.historico || (root && root.history);
+        if (local && hist && typeof hist.replaceState === 'function') {
+          try { hist.replaceState(null, '', enderecoSemToken(local)); } catch (e) { /* segue com o endereço */ }
+        }
+      }, function () { /* sem rede: o código não foi gasto; recarregar a página tenta de novo */ });
+    }
 
     function scoring() { return opcoes.scoring || (root && root.DISC_SCORING) || null; }
 
@@ -961,7 +989,7 @@
 
     // ---- sessão ----
     function sessaoGuardada() {
-      return Promise.resolve().then(function () { return cliente().auth.getSession(); }).then(function (r) {
+      return Promise.resolve(verificacao).then(function () { return cliente().auth.getSession(); }).then(function (r) {
         var s = r && r.data && r.data.session;
         if (r && r.error) throw erroDoAuth(r.error);
         return s || null;
@@ -2320,7 +2348,7 @@
     TIMEOUT_LONGO_MS: TIMEOUT_LONGO_MS,
     criar: criar,
     instalar: instalar,
-    lerLinkDeAcesso: lerLinkDeAcesso,
+    lerLinkDeAcesso: lerLinkDeAcesso, enderecoSemToken: enderecoSemToken,
     enderecoDoPainel: enderecoDoPainel,
     validarConfigProcesso: validarConfigProcesso,
     normalizarFormulario: normalizarFormulario,

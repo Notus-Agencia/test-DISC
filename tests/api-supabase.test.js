@@ -151,7 +151,15 @@ function libFalsa(opcoes) {
             if (d.password) estado.senhas[estado.sessao.user.email] = d.password;
             return { data: { user: estado.sessao.user }, error: null };
           },
-          async resetPasswordForEmail(email, op) { estado.chamadas.push({ auth: 'reset', email, op }); return { data: {}, error: null }; }
+          async resetPasswordForEmail(email, op) { estado.chamadas.push({ auth: 'reset', email, op }); return { data: {}, error: null }; },
+          async verifyOtp(d) {
+            estado.chamadas.push({ auth: 'verifyOtp', d });
+            const email = estado.otps && estado.otps[d.token_hash + ':' + d.type];
+            if (!email) return { data: { session: null }, error: { name: 'AuthApiError', status: 403, code: 'otp_expired', message: 'Email link is invalid or has expired' } };
+            delete estado.otps[d.token_hash + ':' + d.type];
+            estado.sessao = sessaoDe(email);
+            return { data: { session: estado.sessao, user: estado.sessao.user }, error: null };
+          }
         },
         async rpc(nome, args) {
           estado.chamadas.push({ rpc: nome, args });
@@ -396,6 +404,40 @@ test('recuperarSenha manda o link para admin.html; linkDeAcesso lê #type=recove
   assert.equal(SB.lerLinkDeAcesso({ hash: '#access_token=x&type=invite', search: '' }).tipo, 'invite');
   assert.equal(SB.lerLinkDeAcesso({ hash: '#a-SEL1', search: '' }).tipo, '');
   assert.equal(SB.enderecoDoPainel({ origin: 'http://localhost:4173', pathname: '/sub/index.html' }), 'http://localhost:4173/sub/admin.html');
+});
+
+test('link do e-mail no domínio do site (?token_hash=…&type=recovery): verifyOtp no navegador, limpa o endereço, entra', async () => {
+  const H = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8';
+  const local = { origin: 'https://disc.gestaosemcaos.com.br', pathname: '/admin.html', hash: '', search: '?token_hash=' + H + '&type=recovery' };
+  const trocas = [];
+  const historico = { replaceState: (a, b, url) => trocas.push(url) };
+  const lib = libFalsa({});
+  lib.estado.otps = { [H + ':recovery']: 'dona@empresa.com' };
+  const api = SB.criar({ supabase: lib, url: URL_SB, chave: 'anon-publica', scoring: S, timeoutMs: 1000, timeoutLongoMs: 1000, local, historico });
+  assert.deepEqual(api.linkDeAcesso(), { tipo: 'recovery', erro: '' });
+  assert.deepEqual(await api.emailDaSessao(), { ok: true, email: 'dona@empresa.com' }, 'a sessão espera a troca do código');
+  const v = lib.estado.chamadas.filter((c) => c.auth === 'verifyOtp');
+  assert.equal(v.length, 1);
+  assert.deepEqual(v[0].d, { token_hash: H, type: 'recovery' });
+  assert.deepEqual(trocas, ['/admin.html'], 'o código sai do endereço (não fica no histórico)');
+  const ok = await api.definirNovaSenha('nova-senha-1');
+  assert.equal(ok.usuario.papel, 'admin');
+  assert.equal(lib.estado.senhas['dona@empresa.com'], 'nova-senha-1');
+
+  // Código vencido ou já usado: avisa e não entra.
+  const lib2 = libFalsa({});
+  const api2 = SB.criar({ supabase: lib2, url: URL_SB, chave: 'anon-publica', scoring: S, timeoutMs: 1000, timeoutLongoMs: 1000,
+    local: { origin: 'https://disc.gestaosemcaos.com.br', pathname: '/admin.html', hash: '#x', search: '?a=1&token_hash=' + H + '&type=invite' },
+    historico: { replaceState: (a, b, url) => trocas.push(url) } });
+  assert.deepEqual(api2.linkDeAcesso(), { tipo: 'invite', erro: '' });
+  await assert.rejects(api2.definirNovaSenha('nova-senha-1'), /O link expirou ou já foi usado/);
+  assert.deepEqual(api2.linkDeAcesso(), { tipo: 'invite', erro: 'O link expirou ou já foi usado. Peça outro em "Esqueci minha senha".' });
+  assert.equal(trocas[1], '/admin.html?a=1#x');
+
+  // Formato estranho ou tipo desconhecido: não chama o Supabase.
+  assert.equal(SB.lerLinkDeAcesso({ hash: '', search: '?token_hash=<script>&type=recovery' }).tokenHash, '');
+  assert.equal(SB.lerLinkDeAcesso({ hash: '', search: '?token_hash=' + H + '&type=outra' }).tokenHash, '');
+  assert.equal(SB.lerLinkDeAcesso({ hash: '', search: '?token_hash=' + H + '&type=invite' }).temSessao, false);
 });
 
 test('listar: itens no formato do Code.gs (resultado recalculado, processo embutido, datas ISO)', async () => {

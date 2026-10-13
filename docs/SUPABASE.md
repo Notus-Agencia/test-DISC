@@ -142,10 +142,11 @@ O Supabase manda e-mails sozinho, **mas o servidor de e-mail grátis dele só en
 
 1. **Authentication** → **Emails** → aba **SMTP Settings** → ligue **Enable Custom SMTP**.
 2. Preencha com os dados do seu provedor de e-mail (ex.: Gmail com "senha de app", Brevo, Resend, Zoho):
-   - **Sender email** (ex.: `nao-responda@gestaosemcaos.com.br`) e **Sender name** (ex.: `Notus · Teste DISC`);
+   - **Sender email** (ex.: `nao-responda@gestaosemcaos.com.br`) e **Sender name** (ex.: `Gestão sem Caos`);
    - **Host**, **Port**, **Username**, **Password** (o provedor informa).
 3. **Save changes**.
-4. Opcional: na aba **Templates**, traduza os textos de **Invite user** e **Reset Password** (ex.: assunto "Seu acesso ao painel DISC"). Mantenha o trecho `{{ .ConfirmationURL }}`, que é o link.
+4. Na aba **Templates**, cole os modelos de `supabase/templates/` (um por tipo de e-mail: `recuperar-senha.html` em **Reset Password**, `convite.html` em **Invite user**, `link-de-acesso.html` em **Magic Link**, `confirmar-cadastro.html` em **Confirm signup**, `trocar-email.html` em **Change Email Address**).
+   O botão deles leva para `https://disc.gestaosemcaos.com.br/admin.html?token_hash={{ .TokenHash }}&type=…`: o link fica no domínio do site (e não no do Supabase) e o próprio painel confere o código (`verifyOtp`), de modo que antivírus de e-mail que "abrem" o link antes da pessoa não o gastam. Links antigos (`{{ .ConfirmationURL }}`) continuam funcionando. Se o domínio do site mudar, troque o endereço nos cinco modelos.
 
 > Sem SMTP próprio, você ainda pode dar acesso a alguém: crie o usuário à mão (como no passo 7, com **Auto Confirm User**), mande a senha por um canal seguro e depois, **no painel**, aba **Usuários** → **Convidar administrador** com o **mesmo e-mail** (como o usuário já existe, o painel só libera o acesso, sem mandar e-mail). Sem esse último passo a pessoa entra e vê "Este e-mail ainda não tem acesso ao painel". No primeiro acesso ela troca a senha pelo menu do painel.
 
