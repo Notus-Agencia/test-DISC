@@ -364,18 +364,29 @@ test('modelo pessoa simples: duas seções curtas, forças, cuidados, hábitos e
   assert.match(html, /Olá, Carla\./);
 });
 
-test('modelo liderança: mapa, combinação e esforço de adaptação ao cargo', () => {
+// Versão técnica (js/versao-tecnica.js): só com {nome, crp} de quem vai ler o documento sai completo.
+const LEITURA = { nome: 'Fulana de Tal', crp: '06/12345' };
+const tecnica = (d) => Object.assign({}, d, { leituraTecnica: LEITURA });
+
+test('modelo liderança: mapa, combinação e esforço de adaptação ao cargo (versão técnica)', () => {
   const d = MODELOS.lideranca({ pessoa: { nome: 'Bruno Lima', cargo: 'Gerente', resultado: RES.SC, exigido: EXIGIDO_DI }, empresa: { nome: 'Cartório' } }, { geradoEm: GERADO });
-  const html = V.montarHtml(d);
+  const html = V.montarHtml(tecnica(d));
   assert.match(html, /class="mapa-rf mapa-rf--exigido"/);
   assert.match(html, /Esforço de adaptação ao cargo/);
   assert.match(html, /class="natex"/);
+  // versão do dono (padrão): título e a linha no lugar; nada do natural × exigido
+  const dono = V.montarHtml(d);
+  assert.match(dono, /data-leitura="dono"/);
+  assert.match(dono, /Esforço de adaptação ao cargo<\/h3><div class="restrito-doc" data-restrito="esforco"/);
+  assert.ok(dono.includes('Este capítulo é liberado só para leitura por psicólogo(a).'));
+  assert.ok(!/class="natex"|mapa-rf--exigido|mapa-rf__seta|Índice de esforço/.test(dono));
   const sem = V.montarHtml(MODELOS.lideranca({ pessoa: { nome: 'Bruno Lima', resultado: RES.SC }, empresa: { nome: 'X' } }, { geradoEm: GERADO }));
   assert.ok(!sem.includes('Esforço de adaptação ao cargo'));
+  assert.ok(!sem.includes('restrito-doc'), 'sem Parte 2: nada a esconder, nenhuma linha');
   assert.match(sem, /class="mapa-rf"/);
 });
 
-test('modelo equipe: seção ritmo e foco com todos no mapa, decisão do grupo e pressão (com Parte 2)', () => {
+test('modelo equipe: seção ritmo e foco com todos no mapa, decisão do grupo e pressão (com Parte 2, versão técnica)', () => {
   const d = dadosEquipe(true);
   const html = V.montarHtml(d);
   assert.match(html, /data-secao="ritmo"/);
@@ -387,7 +398,7 @@ test('modelo equipe: seção ritmo e foco com todos no mapa, decisão do grupo e
     colaboradores: [{ pessoaId: 'a', nome: 'Ana Souza', resultado: RES.SC, exigido: EXIGIDO_DI }, { pessoaId: 'b', nome: 'Bia Lima', resultado: RES.IS }],
     relacoes: []
   }, { geradoEm: GERADO });
-  const h2 = V.montarHtml(e);
+  const h2 = V.montarHtml(tecnica(e));
   assert.ok(!h2.includes('Pressão do trabalho'));
   assert.match(h2, /Distância entre o estilo natural e o que o cargo pede/);
   assert.ok(h2.includes(V.esc(V.TEXTOS_EQUIPE.fixos.distancia)), 'aviso: não mede estresse, saúde nem risco psicossocial');
@@ -404,11 +415,17 @@ test('modelo equipe: distância natural × cargo por pessoa só no guia do líde
     colaboradores: [{ pessoaId: 'a', nome: 'Ana Souza', resultado: RES.DI }, { pessoaId: 'b', nome: 'Bia Lima', resultado: RES.SC, exigido: EXIGIDO_DI }],
     relacoes: [{ de: 'a', para: 'b', tipo: 'lidera' }]
   }, { geradoEm: GERADO });
-  const html = V.montarHtml(e);
+  const html = V.montarHtml(tecnica(e));
   const guia = html.slice(html.indexOf('data-secao="lideres"'), html.indexOf('data-secao="pessoas"'));
   assert.equal((guia.match(/class="liderado-doc__dist"/g) || []).length, 1);
   assert.match(guia, /Distância do natural ao que o cargo pede/);
   assert.ok(!/\/100|Esforço/.test(html.replace(/<[^>]+>/g, ' ')));
+  // versão do dono: nem o capítulo nem as barras por pessoa; uma linha no lugar de cada um
+  const dono = V.montarHtml(e);
+  const guiaDono = dono.slice(dono.indexOf('data-secao="lideres"'), dono.indexOf('data-secao="pessoas"'));
+  assert.ok(!/liderado-doc__dist|distancia-doc|barra--dist/.test(dono));
+  assert.match(guiaDono, /data-restrito="distancia-pessoas"/);
+  assert.ok(guiaDono.includes('Este capítulo é liberado só para leitura por psicólogo(a).'));
 });
 
 test('fotos: data:image/jpeg válida vira <img>; inválida ou URL externa vira iniciais; processo sem foto não muda', () => {

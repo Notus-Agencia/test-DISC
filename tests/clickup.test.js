@@ -119,7 +119,7 @@ test('clickup.listas: percorre time > espaço > pasta > lista (e listas sem past
 
 test('processos: salvar/listar com campos novos e config; alias avaliacoes.*; recusas', () => {
   const { ctx, T, proc } = preparar();
-  assert.match(proc.codigo, /^[A-Z0-9]{4}$/);
+  assert.match(proc.codigo, /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$/);
   assert.equal(proc.tipo, 'selecao');
   assert.equal(proc.ativa, true);
   assert.equal(proc.empresa, 'Clínica Alfa');

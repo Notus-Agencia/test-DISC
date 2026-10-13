@@ -871,3 +871,18 @@ O Psi usou "Diagnóstico de Clima / NR-1" como nome de etapa. Aqui ele foi troca
 9. Modelo demanda-controle (Karasek) como referência de N2 [M].
 10. Retenção de 90 dias e 12 meses; base legal; art. 14 da LGPD para menores [I]/[M].
 11. **Resolvido pelo moderador [Cód]:** Ét apontou que `docs/SPEC.md` (linha ~268) diria "conduzida pela Notus". O texto atual diz "conduzida pela Gestão sem Caos". As menções a "Notus" que restam na SPEC tratam do sistema visual interno, o que o CLAUDE.md permite.
+
+---
+
+## Adendo (out/2026): modos de identificação — decisão do dono
+
+Depois deste parecer, o dono decidiu oferecer, **por rodada**, três modos (implementação: migração `20261018120000_clima_identificacao.sql`; regras completas em `docs/SPEC.md`, seção "Pesquisa de Clima: modos de identificação"):
+
+1. **Anônima** (padrão e recomendada): exatamente o que este parecer descreve (P12, 3.1.7, 3.1.8, 6.1-a).
+2. **Identificação opcional**: link pessoal por colaborador; no fim a pessoa escolhe se identificar (só para a Gestão sem Caos) ou manter o anonimato (a resposta vai como no link coletivo, sem marcar nada).
+3. **Identificada**: todos se identificam pelo link pessoal.
+
+O que **não** muda (condições do dono): a empresa nunca vê nomes; o relatório do cliente usa as mesmas regras de k (5/10) e a mesma supressão; o relatório e o anexo PGR dizem "pesquisa identificada" por transparência; quem vê o nome é só administrador da Gestão sem Caos, numa tela "uso interno da consultoria" com registro de acesso; nunca IP. O painel mostra o alerta "Nos modos com identificação as respostas tendem a ser menos sinceras, principalmente sobre liderança; recomende o modo anônimo".
+
+Pendente (mesmas condições de 3.1.9 e 8): **revisão jurídica dos avisos dos modos com identificação** (a variante 6.1-b deste parecer cobria só o link individual "confidencial"); base legal e RIPD para o tratamento identificado; regra de uso para relatos de tratamento ofensivo (N4) que cheguem identificados à consultoria.
+

@@ -6,7 +6,9 @@ export const NOMES_ENV = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE
   'CLICKUP_PASTA_ID', 'CLICKUP_WEBHOOK_SECRET', 'ANTHROPIC_API_KEY', 'SITE_URL',
   // Só para a aba Conexões (presença) e os pagamentos de teste (Stripe/InfinitePay): os valores nunca saem do servidor.
   'PAGAMENTO_PROVEDOR', 'STRIPE_SECRET_KEY', 'STRIPE_PUBLISHABLE_KEY', 'STRIPE_WEBHOOK_SECRET', 'INFINITEPAY_HANDLE', 'ASAAS_API_KEY', 'ASAAS_WEBHOOK_TOKEN', 'ASAAS_AMBIENTE',
-  'RESEND_API_KEY', 'EMAIL_REMETENTE'];
+  'RESEND_API_KEY', 'EMAIL_REMETENTE',
+  // Pesquisa de Clima: provedor de WhatsApp para o código do link pessoal (nenhum contratado ainda; ver whatsapp.js).
+  'WHATSAPP_PROVEDOR'];
 
 /** Lê os segredos pelo getter (Deno.env.get). Ausente -> ''. */
 export function lerEnv(get) {
@@ -46,7 +48,7 @@ export function criarDb(sb) {
     /** Respostas do DISC do processo (pelo processo_id; histórico importado só com o código também vale). */
     async respostasDoProcesso(proc) {
       let q = sb.from('respostas').select('id, pessoa_id, telefone, respostas, validacao, protocolo, recebido_em, foto, pessoas(foto)');
-      q = /^[A-Z0-9]{4}$/.test(proc.codigo || '')
+      q = /^(?:[A-Z0-9]{4}|[A-Z0-9]{10})$/.test(proc.codigo || '')   // código do link: 4 (antigos) ou 10 (novos)
         ? q.or('processo_id.eq.' + proc.id + ',avaliacao.eq.' + proc.codigo)
         : q.eq('processo_id', proc.id);
       return (await dados(q.order('recebido_em', { ascending: true }))) || [];

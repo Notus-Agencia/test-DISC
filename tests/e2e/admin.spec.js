@@ -3,6 +3,9 @@ const { test, expect } = require('@playwright/test');
 const fs = require('node:fs');
 const { API_FALSA, coletarErros, configurar, simularApi, fazerTesteCompleto } = require('./util.js');
 
+// Endereço do servidor de teste (mesma porta do playwright.config.js): os links copiados pelo painel começam por ele.
+const BASE = 'http://localhost:' + (Number(process.env.PORT) || 4173);
+
 // Escolhe uma opção no seletor em pílula (substitui o <select> nativo).
 async function escolher(page, seletor, valor) {
   await page.click(seletor);
@@ -514,7 +517,7 @@ test.describe('Admin com API (servidor simulado por page.route)', () => {
 
     // Página do processo: link do teste e geração do rascunho
     await expect(page.locator('#vista-processos h2')).toHaveText('Escrevente 2026');
-    await expect(page.locator('#proc-link')).toHaveText('http://localhost:4173/index.html?a=K7QZ');
+    await expect(page.locator('#proc-link')).toHaveText(BASE + '/index.html?a=K7QZ');   // processo antigo: código de 4
     await expect(page.locator('#proc-perfil')).toHaveText('CD');
     await page.click('#btn-gerar-rascunho');
     await expect(page.locator('#vista-processos h2')).toHaveText('Rascunho do relatório');
@@ -544,7 +547,7 @@ test.describe('Admin com API (servidor simulado por page.route)', () => {
 
     // Publicar: link + mensagem para o contratante
     await page.click('#btn-publicar');
-    const url = 'http://localhost:4173/relatorio.html?r=' + REL;
+    const url = BASE + '/relatorio.html?r=' + REL;
     await expect(page.locator('#rel-link')).toHaveText(url);
     await expect(page.locator('#rel-mensagem')).toContainText('Olá, Marina! O relatório do processo seletivo de Escrevente de atendimento (Cartório Exemplo) está pronto:');
     await page.click('#btn-copiar-link-relatorio');
@@ -927,8 +930,9 @@ test.describe('Admin na prévia (API_URL "simulada")', () => {
     await expect(page.locator('#vista-processos h2')).toHaveText('Atendente 2027');
     const link = (await page.locator('#proc-link').innerText()).trim();
     const codigo = link.split('?a=')[1];
-    expect(codigo).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}$/);
-    expect(link).toBe('http://localhost:4173/index.html?a=' + codigo);
+    // Código do link: 10 caracteres do alfabeto sem ambíguos nos processos novos; 4 nos antigos (continuam valendo).
+    expect(codigo).toMatch(/^(?:[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}|[A-Z0-9]{4})$/);
+    expect(link).toBe(BASE + '/index.html?a=' + codigo);
     await page.locator('.proc-link-acoes [data-acao="copiar-link"]').click();
     await expect(page.locator('#aviso-geral')).toHaveText('Link copiado.');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);

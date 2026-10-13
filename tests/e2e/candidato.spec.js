@@ -807,6 +807,110 @@ test.describe('Candidato: link de avaliação (API simulada)', () => {
   });
 });
 
+// Códigos de link: processos novos com 10 caracteres; os antigos (4) continuam valendo — na prévia e com o servidor
+// Supabase (supabase-js de verdade, rede falsa: o PostgREST responde pelas rotas abaixo).
+test.describe('Candidato: código de link novo (10) e antigo (4)', () => {
+  test('prévia: processo criado agora tem código de 10; o link com ele (minúsculo ou #a-) abre e envia; o antigo segue', async ({ page }) => {
+    const erros = coletarErros(page);
+    await configurar(page, { API_URL: 'simulada' });
+    await page.goto('/index.html');
+    const codigo = await page.evaluate(async () => {
+      const t = (await window.DISC_API.login('admin@previa.com', 'previa123')).token;
+      return (await window.DISC_API.processosSalvar(t, { nome: 'Vendedor 2027', empresa: 'Loja Nova Exemplo', vaga: 'Vendedor' })).processo.codigo;
+    });
+    expect(codigo).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$/);
+    // #a- (a prévia em artefato só repassa o #) também abre
+    await page.goto('/index.html#a-' + codigo);
+    await expect(page.locator('#topo-empresa')).toHaveText('Loja Nova Exemplo');
+    await page.goto('about:blank');
+    await fazerTesteCompleto(page, { nome: 'Lia Código Novo', telefone: '11987650010', vaga: 'Vendedor' }, ['D', 'I', 'S', 'C'], {
+      caminho: '/index.html?a=' + codigo.toLowerCase(),
+      confirmacao: {}
+    });
+    await page.locator('[data-acao="enviar"]').click();
+    await expect(page.locator('h1')).toHaveText('Obrigado, Lia!');
+    expect((await linhaSimulada(page, 'Lia Código Novo')).avaliacao).toBe(codigo);
+    // O código antigo (4) continua abrindo o processo dele
+    await page.goto('about:blank');
+    await page.goto('/index.html?a=sel1');
+    await expect(page.locator('.boasvindas-sobre')).toHaveText('Processo seletivo · Clínica Exemplo');
+    // 9 ou 11 caracteres: link mal formado
+    for (const ruim of [codigo.slice(0, 9), codigo + 'X']) {
+      await page.goto('about:blank');
+      await page.goto('/index.html?a=' + ruim);
+      await expect(page.locator('h1')).toHaveText('Link inválido ou avaliação encerrada');
+    }
+    expect(erros).toEqual([]);
+  });
+
+  test('Supabase: avaliacao_publica e enviar_resposta recebem o código de 10 (e o de 4); bloqueado = link inválido', async ({ page }) => {
+    const erros = coletarErros(page);
+    const BASE_SB = 'https://projeto-teste.supabase.co';
+    await configurar(page, { BACKEND: 'supabase', API_URL: BASE_SB, SUPABASE_URL: BASE_SB, SUPABASE_ANON_KEY: 'anon-publica' });
+    const PROCESSOS = {
+      K7QZ3MWR9T: { codigo: 'K7QZ3MWR9T', nome: 'Vendedor 2027', tipo: 'selecao', empresaNome: 'Loja Nova Exemplo', mostrarResultado: false },
+      SEL1: { codigo: 'SEL1', nome: 'Recepcionista 2026', tipo: 'selecao', empresaNome: 'Clínica Antiga Exemplo', mostrarResultado: false }
+    };
+    const consultas = [];
+    const envios = [];
+    let bloqueado = false;
+    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
+    const responder = (route, corpo) => route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify(corpo) });
+    await page.route(BASE_SB + '/**', async (route) => {
+      const req = route.request();
+      if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors, body: '' });
+      const url = req.url();
+      let corpo = {};
+      try { corpo = JSON.parse(req.postData() || '{}'); } catch (e) { corpo = {}; }
+      if (url.endsWith('/rest/v1/rpc/avaliacao_publica')) {
+        consultas.push(corpo.p_codigo);
+        const p = PROCESSOS[corpo.p_codigo];
+        // Banco: inexistente, desativado e origem bloqueada dão a MESMA resposta.
+        return responder(route, p && !bloqueado ? Object.assign({ ok: true, avaliacao: p }, p)
+          : { ok: false, erro: 'Link inválido ou avaliação encerrada. Fale com quem enviou o link.' });
+      }
+      if (url.endsWith('/rest/v1/rpc/enviar_resposta')) {
+        envios.push(corpo.p_payload);
+        return responder(route, { ok: true, id: corpo.p_payload.id, protocolo: '47K' });
+      }
+      return responder(route, { ok: true });   // disc-sync (Edge Function) e o resto
+    });
+
+    // Código novo, no #a- e em minúsculas: o banco recebe o código normalizado.
+    await fazerTesteCompleto(page, { nome: 'Davi Código Novo', telefone: '11987650011', vaga: 'Vendedor' }, ['C', 'S', 'I', 'D'], {
+      caminho: '/index.html#a-k7qz3mwr9t',
+      confirmacao: {}
+    });
+    await expect(page.locator('#topo-empresa')).toHaveText('Loja Nova Exemplo');
+    await page.locator('[data-acao="enviar"]').click();
+    await expect(page.locator('h1')).toHaveText('Obrigado, Davi!');
+    expect(consultas).toEqual(['K7QZ3MWR9T']);
+    expect(envios).toHaveLength(1);
+    expect(envios[0].avaliacao).toBe('K7QZ3MWR9T');
+
+    // Código antigo (4) continua abrindo.
+    await page.goto('about:blank');
+    await page.goto('/index.html?a=SEL1');
+    await expect(page.locator('.boasvindas-sobre')).toHaveText('Processo seletivo · Clínica Antiga Exemplo');
+    expect(consultas).toEqual(['K7QZ3MWR9T', 'SEL1']);
+
+    // Origem bloqueada pelo banco: a tela é a mesma de código inexistente, até para um código certo.
+    bloqueado = true;
+    for (const caminho of ['/index.html?a=K7QZ3MWR9T', '/index.html?a=ZZZZZZZZZZ']) {
+      await page.goto('about:blank');
+      await page.goto(caminho);
+      await expect(page.locator('h1')).toHaveText('Link inválido ou avaliação encerrada');
+      await expect(page.locator('[data-acao="comecar"]')).toHaveCount(0);
+    }
+    // Tamanho errado nem chega ao banco.
+    await page.goto('about:blank');
+    await page.goto('/index.html?a=K7QZ3MWR9');
+    await expect(page.locator('h1')).toHaveText('Link inválido ou avaliação encerrada');
+    expect(consultas).toEqual(['K7QZ3MWR9T', 'SEL1', 'K7QZ3MWR9T', 'ZZZZZZZZZZ']);
+    expect(erros).toEqual([]);
+  });
+});
+
 test.describe('Candidato: etapa de confirmação', () => {
   test('obrigatória, nada pula de lugar, sobrevive ao recarregar e vai no payload', async ({ page }) => {
     const erros = coletarErros(page);

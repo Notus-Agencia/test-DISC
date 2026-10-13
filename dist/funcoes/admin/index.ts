@@ -2254,6 +2254,42 @@ async function registrarEnvio(db, r) {
   }
 }
 
+// ======== supabase/funcoes-compartilhadas/whatsapp.js ========
+// Código de confirmação pelo WhatsApp (Pesquisa de Clima, link pessoal): a interface está pronta, mas NENHUM provedor
+// foi contratado ainda (decisão do dono). Sem provedor, configurado = false e a opção "Código por WhatsApp" não aparece
+// nem no painel nem para quem responde.
+//
+// Para ligar um provedor (ex.: API oficial do WhatsApp Business ou um intermediário):
+//   1. acrescente em PROVEDORES_WHATSAPP uma fábrica nome -> ({env, fetch}) => ({ configurado, enviarCodigo({para, codigo,
+//      empresa, minutos}) -> Promise<{id}> }) que leia as próprias credenciais de env (segredos do Supabase) e lance erro
+//      em falha;
+//   2. acrescente os nomes desses segredos em NOMES_ENV_WHATSAPP;
+//   3. defina o segredo WHATSAPP_PROVEDOR = <nome> nas Edge Functions "clima" e "admin".
+// "para" é o telefone só com dígitos e DDI (ex.: 5511999998888). Nunca registre o código em log.
+
+const NOMES_ENV_WHATSAPP = ['WHATSAPP_PROVEDOR'];
+
+/** Fábricas dos provedores (vazio: nenhum contratado). Os testes registram um falso aqui. */
+const PROVEDORES_WHATSAPP = {};
+
+/** {configurado, provedor, enviarCodigo(m)} — enviarCodigo lança erro se não houver provedor configurado. */
+function criarWhatsApp(op) {
+  const env = (op && op.env) || {};
+  const nome = String(env.WHATSAPP_PROVEDOR || '').trim().toLowerCase();
+  const fabrica = nome && Object.prototype.hasOwnProperty.call(PROVEDORES_WHATSAPP, nome) ? PROVEDORES_WHATSAPP[nome] : null;
+  let prov = null;
+  try { prov = fabrica ? fabrica({ env, fetch: op && op.fetch }) : null; } catch (err) { prov = null; }
+  const ok = !!(prov && prov.configurado && typeof prov.enviarCodigo === 'function');
+  return {
+    configurado: ok,
+    provedor: ok ? nome : '',
+    async enviarCodigo(m) {
+      if (!ok) throw new Error('WhatsApp: nenhum provedor configurado.');
+      return prov.enviarCodigo(m);
+    }
+  };
+}
+
 // ======== supabase/funcoes-compartilhadas/admin.js ========
 // Ações da Edge Function "admin" (só administrador). Mesmos nomes, entradas e respostas {ok, ...} das
 // ações do Apps Script (Code.gs/ClickUp.gs/Relatorio.gs), mais usuarios.* do Supabase Auth.
@@ -2578,6 +2614,9 @@ const ACOES_ADMIN = {
   'usuarios.listar': (ctx) => acaoUsuariosListar(ctx),
   'usuarios.convidar': (ctx, c) => acaoUsuariosConvidar(ctx, c),
   'usuarios.remover': (ctx, c) => acaoUsuariosRemover(ctx, c.id),
+  // Pesquisa de Clima: o que está ligado para mandar o código do link pessoal (nunca o valor dos segredos).
+  'clima.envios': (ctx) => ({ ok: true, email: !!(ctx.env && ctx.env.RESEND_API_KEY),
+    whatsapp: criarWhatsApp({ env: ctx.env || {}, fetch: ctx.fetch }).configurado }),
   // Aba Conexões (supabase/funcoes-compartilhadas/conexoes.js): nunca devolvem valores de segredos.
   'conexoes.diagnostico': (ctx) => acaoDiagnostico(ctx),
   'conexoes.testar': (ctx, c) => acaoTestar(ctx, c)
@@ -2870,7 +2909,9 @@ const NOMES_ENV = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_K
   'CLICKUP_PASTA_ID', 'CLICKUP_WEBHOOK_SECRET', 'ANTHROPIC_API_KEY', 'SITE_URL',
   // Só para a aba Conexões (presença) e os pagamentos de teste (Stripe/InfinitePay): os valores nunca saem do servidor.
   'PAGAMENTO_PROVEDOR', 'STRIPE_SECRET_KEY', 'STRIPE_PUBLISHABLE_KEY', 'STRIPE_WEBHOOK_SECRET', 'INFINITEPAY_HANDLE', 'ASAAS_API_KEY', 'ASAAS_WEBHOOK_TOKEN', 'ASAAS_AMBIENTE',
-  'RESEND_API_KEY', 'EMAIL_REMETENTE'];
+  'RESEND_API_KEY', 'EMAIL_REMETENTE',
+  // Pesquisa de Clima: provedor de WhatsApp para o código do link pessoal (nenhum contratado ainda; ver whatsapp.js).
+  'WHATSAPP_PROVEDOR'];
 
 /** Lê os segredos pelo getter (Deno.env.get). Ausente -> ''. */
 function lerEnv(get) {
@@ -2910,7 +2951,7 @@ function criarDb(sb) {
     /** Respostas do DISC do processo (pelo processo_id; histórico importado só com o código também vale). */
     async respostasDoProcesso(proc) {
       let q = sb.from('respostas').select('id, pessoa_id, telefone, respostas, validacao, protocolo, recebido_em, foto, pessoas(foto)');
-      q = /^[A-Z0-9]{4}$/.test(proc.codigo || '')
+      q = /^(?:[A-Z0-9]{4}|[A-Z0-9]{10})$/.test(proc.codigo || '')   // código do link: 4 (antigos) ou 10 (novos)
         ? q.or('processo_id.eq.' + proc.id + ',avaliacao.eq.' + proc.codigo)
         : q.eq('processo_id', proc.id);
       return (await dados(q.order('recebido_em', { ascending: true }))) || [];

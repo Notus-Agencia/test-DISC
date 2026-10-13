@@ -37,7 +37,8 @@
  *   Pública:   relatorioPublico(relatorioToken) -> {relatorio} (só relatório publicado)
  *   Só Supabase (aqui rejeitam com "Disponível só com o servidor Supabase."): listarEquipe, salvarColaborador,
  *              moverColaborador, desligarColaborador, salvarRelacoes, salvarRelatorioModelo, listarRelatoriosModelo,
- *              excluirRelatorioModelo, salvarMinhaFoto, removerFoto, moverResposta, contratarPessoa, versaoBanco
+ *              excluirRelatorioModelo, salvarMinhaFoto, removerFoto, moverResposta, contratarPessoa, versaoBanco,
+ *              relatorioTecnico, gerarRelatorioTecnico, despublicarRelatorioTecnico (versão técnica)
  *              (contrato em js/api-supabase.js e docs/SPEC.md).
  *   Venda direta (só Supabase; aqui também "Disponível só com o servidor Supabase."): pacotesPublicos, enviarPessoal,
  *              resumoPessoal, criarPedido, iniciarPagamento, statusPedido, relatorioPessoal, salvarParte2Pessoal,
@@ -46,8 +47,11 @@
  *   Aba Conexões (só Supabase/prévia; aqui também recusam): diagnosticoConexoes, testarConexao.
  *   E-mail (só Supabase/prévia; aqui também recusam): relatorioEnviarEmail, enviarLinkPorEmail, listarEnviosEmail.
  *   Pesquisa de clima (só Supabase/prévia; aqui também recusam): climaPublica, climaEnviar, climaListar, climaCriarRodada,
- *              climaEncerrar, climaResultado, climaComentarios, climaGerarRelatorio, climaExcluirRodada, climaApagarBrutas.
- *   Utilitários: protocoloValido, normalizarProtocolo, normalizarCodigoAvaliacao, codigoAvaliacaoDaUrl.
+ *              climaEncerrar, climaResultado, climaComentarios, climaGerarRelatorio, climaExcluirRodada, climaApagarBrutas,
+ *              climaPedirCodigo, climaEnvios, climaIdentificacao, climaDesidentificar, climaRenovarConvite,
+ *              climaColaboradoresDados, climaSalvarColaborador.
+ *   Utilitários: protocoloValido, normalizarProtocolo, normalizarCodigoAvaliacao, codigoAvaliacaoDaUrl
+ *              (código do link: 10 caracteres nos processos novos, 4 nos antigos; ALFABETO_CODIGO, TAMANHO_CODIGO).
  */
 (function (root) {
   var TIMEOUT_MS = 20000;
@@ -125,13 +129,16 @@
     if (typeof token !== 'string' || !token) throw erroDaResposta({ ok: false, erro: 'Sessão expirada. Entre de novo.', sessaoExpirada: true });
   }
 
-  // Código do link de avaliação: 4 letras/algarismos (o servidor sorteia só de ALFABETO_CODIGO, sem I, O, 0 e 1,
-  // mas aceita qualquer A-Z/0-9 — as avaliações da prévia são "SEL1" e "EQP1"). '' se inválido.
+  // Código do link de avaliação: 10 letras/algarismos nos processos novos (TAMANHO_CODIGO, sorteados só de
+  // ALFABETO_CODIGO, sem I, O, 0 e 1) ou 4 nos antigos, que continuam valendo. Aceita qualquer A-Z/0-9 — as avaliações
+  // da prévia são "SEL1" e "EQP1" — e minúsculas/espaços. '' se inválido. Mesma regra de disc_interno.normalizar_codigo.
   var ALFABETO_CODIGO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var TAMANHO_CODIGO = 10;
+  var RE_CODIGO_AVALIACAO = /^(?:[A-Z0-9]{4}|[A-Z0-9]{10})$/;
   function normalizarCodigoAvaliacao(v) {
     if (v === null || v === undefined) return '';
     var s = String(v).replace(/\s+/g, '').toUpperCase();
-    return /^[A-Z0-9]{4}$/.test(s) ? s : '';
+    return RE_CODIGO_AVALIACAO.test(s) ? s : '';
   }
   // Lê o código de "?a=SEL1" ou "#a-SEL1" (a prévia em artefato só repassa o #). '' se não houver.
   function codigoAvaliacaoDaUrl(search, hash) {
@@ -186,6 +193,7 @@
     TIMEOUT_MS: TIMEOUT_MS,
     TIMEOUT_LONGO_MS: TIMEOUT_LONGO_MS,
     ALFABETO_CODIGO: ALFABETO_CODIGO,
+    TAMANHO_CODIGO: TAMANHO_CODIGO,
     definirUrl: definirUrl,
     configurado: configurado,
     protocoloValido: protocoloValido,
@@ -310,6 +318,9 @@
     listarRelatoriosModelo: soSupabase,
     excluirRelatorioModelo: soSupabase,
     abrirRelatorioModelo: soSupabase,
+    relatorioTecnico: soSupabase,
+    gerarRelatorioTecnico: soSupabase,
+    despublicarRelatorioTecnico: soSupabase,
     salvarMinhaFoto: soSupabase,
     removerFoto: soSupabase,
     moverResposta: soSupabase,
@@ -352,6 +363,13 @@
     climaGerarRelatorio: soSupabase,
     climaExcluirRodada: soSupabase,
     climaApagarBrutas: soSupabase,
+    climaPedirCodigo: soSupabase,
+    climaEnvios: soSupabase,
+    climaIdentificacao: soSupabase,
+    climaDesidentificar: soSupabase,
+    climaRenovarConvite: soSupabase,
+    climaColaboradoresDados: soSupabase,
+    climaSalvarColaborador: soSupabase,
 
     // --- pública: página do relatório para o contratante ---
     relatorioPublico: seguro(function (relatorioToken) {
@@ -370,13 +388,15 @@
     'relatorioMelhorarTextos', 'relatorioPublico', 'relatorioEnviarEmail', 'listarEnviosEmail',
     'listarEquipe', 'salvarColaborador', 'moverColaborador', 'desligarColaborador', 'salvarRelacoes',
     'salvarRelatorioModelo', 'listarRelatoriosModelo', 'excluirRelatorioModelo', 'abrirRelatorioModelo', 'salvarMinhaFoto', 'removerFoto',
+    'relatorioTecnico', 'gerarRelatorioTecnico', 'despublicarRelatorioTecnico',
     'moverResposta', 'contratarPessoa', 'versaoBanco',
     'pacotesPublicos', 'enviarPessoal', 'resumoPessoal', 'criarPedido', 'iniciarPagamento', 'statusPedido', 'relatorioPessoal',
     'salvarParte2Pessoal', 'recuperarAcesso', 'enviarLinkPorEmail', 'confirmarRetorno',
     'listarPedidos', 'atualizarPedido', 'listarCupons', 'salvarCupom', 'excluirCupom', 'listarPacotes', 'salvarPacote', 'resumoVendas',
     'diagnosticoConexoes', 'testarConexao',
     'climaPublica', 'climaEnviar', 'climaListar', 'climaCriarRodada', 'climaEncerrar', 'climaResultado', 'climaComentarios',
-    'climaGerarRelatorio', 'climaExcluirRodada', 'climaApagarBrutas'];
+    'climaGerarRelatorio', 'climaExcluirRodada', 'climaApagarBrutas', 'climaPedirCodigo', 'climaEnvios', 'climaIdentificacao',
+    'climaDesidentificar', 'climaRenovarConvite', 'climaColaboradoresDados', 'climaSalvarColaborador'];
 
   if (typeof module !== 'undefined' && module.exports) module.exports = DISC_API;
   else root.DISC_API = DISC_API;

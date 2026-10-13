@@ -7,6 +7,11 @@
  * Equipe: equipeV2(dados) converte um snapshot v1 (já publicado, com harmonia/notas/"tensão") no formato v2 antes de
  * desenhar; nenhum relatório de equipe mostra nota de harmonia, de dupla ou de encaixe, nem "tensão".
  * 'clima' (Pesquisa de Clima da Equipe; snapshot montado pelo banco, textos de js/clima.js) desenha o relatório de clima.
+ * Equipe e "Como liderar" têm duas versões (js/versao-tecnica.js): a do dono/gestor (padrão; sem a distância entre o estilo
+ * natural e o que o cargo pede, com "Este capítulo é liberado só para leitura por psicólogo(a)." no lugar) e a técnica
+ * (dados.leituraTecnica = {nome, crp} válido, vinda só do link técnico): completa, com "Leitura técnica: <nome> · CRP <n>"
+ * na capa, no índice, no topo de cada página, no rodapé e no pé de todas as folhas impressas. Sem js/versao-tecnica.js
+ * carregado, esses dois modelos não são desenhados (nunca mostram o conteúdo restrito por engano).
  * organogramaHtml(organograma, {focoId?, rotulo?}) é exportado para o painel reutilizar (estilos: bloco ".org" de relatorio.css).
  *
  * Segurança:
@@ -38,6 +43,13 @@
     { n: '05', id: 'ranking', titulo: 'Ranking final', meta: 'Fórmula · Tabela mestre · Posição a posição' },
     { n: '06', id: 'encerramento', titulo: 'Encerramento e próximos passos', curto: 'Encerramento', meta: 'Decisão · Próximos passos' }
   ];
+
+  // Versão técnica (js/versao-tecnica.js): no navegador, a página carrega o arquivo antes deste; no Node, require.
+  function versaoTecnicaMod() {
+    if (root && root.DISC_VERSAO_TECNICA) return root.DISC_VERSAO_TECNICA;
+    if (typeof require === 'function') { try { return require('./versao-tecnica.js'); } catch (e) { /* ausente */ } }
+    return null;
+  }
 
   /* ------------------------------------------------------------------ formatação (funções puras) */
 
@@ -723,6 +735,7 @@
         '<span class="capa__meta"><span>' + esc(c.meta) + '</span></span>' +
       '</header>' +
       '<div class="capa__miolo">' +
+        (c.leitura ? '<p class="leitura-tec leitura-tec--capa" data-leitura-tecnica="">' + esc(c.leitura) + '</p>' : '') +
         (c.retrato ? '<div class="capa__retrato">' + avatarHtml(c.retrato.nome, c.retrato.foto, 96, 'avatar--capa') + '</div>' : '') +
         '<div class="capa__sobre"><span class="ponto" aria-hidden="true"></span>' + esc(c.sobre) + '</div>' +
         '<h1 class="capa__titulo">' + c.tituloHtml + '</h1>' +
@@ -733,9 +746,9 @@
     '</section>';
   }
 
-  function indiceModelo(secoes, titulo, sub) {
+  function indiceModelo(secoes, titulo, sub, extra) {
     return '<section class="pagina pagina--creme" id="indice" data-secao="indice" aria-labelledby="indice-tit">' +
-      '<div class="pag-cab"><span class="pag-cab__num">Índice</span><span class="pag-cab__regua" aria-hidden="true"></span></div>' +
+      '<div class="pag-cab"><span class="pag-cab__num">Índice</span><span class="pag-cab__regua" aria-hidden="true"></span></div>' + (extra || '') +
       '<div class="indice"><div class="indice__tit"><h2 id="indice-tit">' + esc(titulo) + '</h2><p>' + esc(sub) + '</p></div>' +
       '<ol class="indice__lista">' + secoes.map(function (s) {
         return '<li><a href="#' + s.id + '"><span class="indice__n">' + s.n + '</span><span class="indice__t">' + esc(s.titulo) + '</span><span class="indice__seta" aria-hidden="true">→</span></a></li>';
@@ -1002,6 +1015,46 @@
       (cb.descricao ? '<p>' + esc(cb.descricao) + '</p>' : '') + '</div>';
   }
 
+  /* ------------------------------------------------------------------ VERSÃO DO DONO × VERSÃO TÉCNICA
+   * js/versao-tecnica.js; decisão do painel científico (docs/painel-cientifico/decisao.md, seção 4, linha 12). Equipe e
+   * "Como liderar":
+   *   - sem leituraTecnica válida (link do dono, prévia do painel): versaoDono() tira a distância entre o estilo natural e o
+   *     que o cargo pede (Parte 2); onde ela estaria fica TEXTO_RESTRITO (restritoHtml);
+   *   - com leituraTecnica {nome, crp} válida (só o link técnico): documento completo e a linha "Leitura técnica: …" na capa,
+   *     no índice, no topo de cada página, no rodapé e no pé de todas as folhas impressas (@page, impressaoTecnicaHtml). */
+
+  var MODELOS_TECNICA = ['equipe', 'lideranca'];
+  // Snapshot pronto para desenhar; null = módulo ausente (o modelo não é desenhado).
+  function versaoParaDesenhar(rel) {
+    if (MODELOS_TECNICA.indexOf(rel.modelo) < 0) return rel;
+    var VT = versaoTecnicaMod();
+    if (!VT) return null;
+    return VT.leituraValida(rel.leituraTecnica) ? VT.versaoTecnica(rel, rel.leituraTecnica) : VT.versaoDono(rel);
+  }
+  function linhaTecnica(d) {
+    var VT = versaoTecnicaMod();
+    return VT && d && d.leituraTecnica ? VT.linhaLeitura(d.leituraTecnica) : '';
+  }
+  function linhaTecnicaHtml(d) {
+    var t = linhaTecnica(d);
+    return t ? '<p class="leitura-tec" data-leitura-tecnica="">' + esc(t) + '</p>' : '';
+  }
+  // Texto para o "content" do CSS: entre aspas, com \ e " escapados e sem quebra de linha.
+  function cssTexto(t) { return '"' + String(t).replace(/[\\"]/g, '\\$&').replace(/[\r\n\f]+/g, ' ') + '"'; }
+  // Impressão: a linha no pé de TODAS as folhas (caixa de margem da página). A capa não tem margem: traz a linha dentro dela.
+  function impressaoTecnicaHtml(d) {
+    var t = linhaTecnica(d);
+    return t ? '<style data-leitura-tecnica-impressao="">@media print { @page { @bottom-center { content: ' + cssTexto(t) +
+      '; font-family: \'JetBrains Mono Variable\', ui-monospace, monospace; font-size: 11px; color: #13283f; } } }</style>' : '';
+  }
+  // No lugar do conteúdo restrito (versão do dono): rótulo + "Este capítulo é liberado só para leitura por psicólogo(a)."
+  function restritoHtml(rotulo, chave) {
+    var VT = versaoTecnicaMod();
+    return '<div class="restrito-doc" data-restrito="' + esc(chave) + '" role="note"><span class="rotulo-doc">' + esc(rotulo) + '</span>' +
+      '<p>' + esc(VT.TEXTO_RESTRITO) + '</p></div>';
+  }
+  function atributoLeitura(d) { return ' data-leitura="' + (linhaTecnica(d) ? 'tecnica' : 'dono') + '"'; }
+
   /* ------------------------------------------------------------------ EQUIPE
    * Versão 2 do snapshot (js/relatorio-modelos.js, VERSAO_EQUIPE; decisão do painel científico,
    * docs/painel-cientifico/decisao.md, seção 4): sem nota de harmonia, de dupla ou de encaixe, sem "tensão", sem média
@@ -1202,7 +1255,10 @@
     var S = secoesEquipe(d);
     function sec(id) { return S.filter(function (x) { return x.id === id; })[0]; }
     var presentes = ehNumero(num.estilosPresentes) ? num.estilosPresentes : null;
+    var lt = linhaTecnicaHtml(d);
+    function cab(s, dir) { return cabecalhoPagina(s, dir) + lt; }
     var h = capaModelo({
+      leitura: linhaTecnica(d),
       meta: 'Relatório de equipe', sobre: 'Relatório de equipe · ' + (emp.nome || 'Empresa'),
       tituloHtml: 'Mapa da <em>equipe</em>' + (emp.nome ? '<br>' + esc(emp.nome) : ''),
       subtitulo: TEXTO_EQUIPE.subtitulo,
@@ -1219,7 +1275,7 @@
         { rotulo: 'Estilos', linhas: [eqb.rotulo || '—'] }
       ]
     });
-    h += indiceModelo(S, 'Quem é o time, que estilos ele reúne e como liderar cada pessoa.', 'Leitura comportamental (DISC) da equipe: use para conversar, combinar e desenvolver, não para rotular.');
+    h += indiceModelo(S, 'Quem é o time, que estilos ele reúne e como liderar cada pessoa.', 'Leitura comportamental (DISC) da equipe: use para conversar, combinar e desenvolver, não para rotular.', lt);
 
     // 01 Sumário
     var c = '<p class="lede">' + esc((sum.equilibrio && sum.equilibrio.texto) || eqb.texto || '') + '</p>';
@@ -1234,12 +1290,12 @@
       '</div></div><div><h3 class="h3">Pontos para conversar</h3><div class="obs-pilha">' +
       (conv.length ? conv.map(function (t, i) { return '<div class="obs obs--alerta"><div class="obs__tit">' + n2(i) + '</div><p>' + esc(t) + '</p></div>'; }).join('') : '<p class="nota-curta">Nenhum ponto para conversar até aqui.</p>') +
       '</div></div></div>';
-    h += secao(sec('sumario'), false, cabecalhoPagina(sec('sumario'), emp.nome) + c);
+    h += secao(sec('sumario'), false, cab(sec('sumario'), emp.nome) + c);
 
     // 02 Organograma
     c = '<h3 class="h2doc">Quem lidera quem</h3><p class="lede lede--curta">Cada cartão traz a letra principal do perfil DISC na cor do fator. Quem ainda não fez o teste aparece com traço.</p>' +
       '<div class="cartao-doc">' + organogramaHtml(d.organograma) + '</div>';
-    h += secao(sec('organograma'), true, cabecalhoPagina(sec('organograma'), numeroCurto(num.pessoas) + ' pessoas') + c);
+    h += secao(sec('organograma'), true, cab(sec('organograma'), numeroCurto(num.pessoas) + ' pessoas') + c);
 
     // 03 Estilos do time (só contagens: os percentuais do DISC são relativos dentro de cada pessoa)
     var dist = objeto(eqb.distribuicao);
@@ -1257,7 +1313,7 @@
       '<div class="obs obs--destaque mt24"><div class="obs__tit">Estilos variados</div><p>Cada estilo aparece como forte em ao menos uma pessoa, e nenhum é o estilo principal da maior parte do time.</p></div>');
     var sem = lista(eqb.semTeste).filter(function (x) { return x && x.nome; });
     if (sem.length) c += '<div class="obs obs--info mt24"><div class="obs__tit">Sem teste (' + esc(sem.length) + ')</div><p>' + esc(sem.map(function (x) { return x.nome + (x.cargo ? ' (' + x.cargo + ')' : ''); }).join(', ')) + '. Aplicar o teste completa a leitura do time.</p></div>';
-    h += secao(sec('equilibrio'), false, cabecalhoPagina(sec('equilibrio'), numeroCurto(eqb.comTeste) + ' com teste') + c);
+    h += secao(sec('equilibrio'), false, cab(sec('equilibrio'), numeroCurto(eqb.comTeste) + ' com teste') + c);
 
     // 04 Ritmo, foco e decisão
     var pts = lista(d.mapa && d.mapa.pontos);
@@ -1277,14 +1333,17 @@
           return '<li><span class="barras__rot">' + esc(b.nome) + '</span>' + barra(b.qtd, maxB || 1, '', b.nome + ': ' + b.qtd) + '<span class="barras__val"><strong>' + esc(numeroCurto(b.qtd || 0)) + '</strong></span></li>';
         }).join('') + '</ul></div><div class="cartao-doc">' + listaItens(dec.textos) + '</div></div>';
     }
-    // Distância natural × cargo: só o retrato do grupo; o detalhe por pessoa fica no guia do líder.
+    // Distância natural × cargo: só o retrato do grupo; o detalhe por pessoa fica no guia do líder. Só na versão técnica:
+    // na do dono (restrito), o título e a linha "liberado só para leitura por psicólogo(a)".
     if (prs) {
       c += '<h3 class="h3 mt48">Distância entre o estilo natural e o que o cargo pede</h3>' +
         '<div class="obs obs--info"><p>' + esc(TEXTO_EQUIPE.distancia) + '</p></div>' +
         '<div class="cartao-doc mt24 distancia-doc">' + listaItens(prs.textos) +
         '<p class="nota-curta">' + esc(numeroCurto(prs.comExigido)) + ' de ' + esc(numeroCurto(prs.total)) + ' pessoas responderam a segunda parte do teste. O detalhe por pessoa fica no guia de cada líder.</p></div>';
+    } else if (d.restrito) {
+      c += '<h3 class="h3 mt48">Distância entre o estilo natural e o que o cargo pede</h3>' + restritoHtml('Leitura técnica', 'distancia');
     }
-    h += secao(sec('ritmo'), true, cabecalhoPagina(sec('ritmo'), pts.length + ' no mapa') + c);
+    h += secao(sec('ritmo'), true, cab(sec('ritmo'), pts.length + ' no mapa') + c);
 
     // 05 Combinados sugeridos por relação (sem nota; dois rótulos; ordem pelo tipo de relação)
     var pares = lista(d.pares);
@@ -1309,7 +1368,7 @@
           '</div></li>';
       }).join('') + '</ol>';
     } else c += '<div class="obs obs--info mt24"><div class="obs__tit">Sem relações registradas</div><p>Registre quem lidera quem e quem trabalha com quem para ver as sugestões.</p></div>';
-    h += secao(sec('relacoes'), false, cabecalhoPagina(sec('relacoes'), pares.length + ' relações') + c);
+    h += secao(sec('relacoes'), false, cab(sec('relacoes'), pares.length + ' relações') + c);
 
     // 06 Guia por líder (aqui fica a distância natural × cargo de cada liderado)
     var lids = lista(d.liderancas).filter(function (l) { return l && typeof l === 'object'; });
@@ -1317,7 +1376,8 @@
     lista(prs && prs.pessoas).forEach(function (x) { if (x && x.id != null && ehNumero(x.indice)) distPorId[String(x.id)] = x; });
     var temDist = lids.some(function (l) { return lista(l.liderados).some(function (x) { return x && distPorId[String(x.id)]; }); });
     c = '<h3 class="h2doc">Como cada líder pode conduzir a equipe</h3><p class="lede lede--curta">Estilo provável de cada líder e, para cada liderado, a tendência da relação e sugestões para o dia a dia.</p>' +
-      (temDist ? '<p class="nota-curta">Distância entre o estilo natural e o que o cargo pede: ' + esc(TEXTO_EQUIPE.distancia.charAt(0).toLowerCase() + TEXTO_EQUIPE.distancia.slice(1)) + '</p>' : '');
+      (temDist ? '<p class="nota-curta">Distância entre o estilo natural e o que o cargo pede: ' + esc(TEXTO_EQUIPE.distancia.charAt(0).toLowerCase() + TEXTO_EQUIPE.distancia.slice(1)) + '</p>' : '') +
+      (d.restrito && lids.length ? restritoHtml('Distância do natural ao que o cargo pede, por pessoa', 'distancia-pessoas') : '');
     c += lids.length ? lids.map(function (l) {
       return '<article class="lider-doc">' +
         '<div class="lider-doc__cab">' + cartaoPessoa({ nome: l.nome, cargo: l.cargo, codigo: l.codigo, foto: l.foto }) + '</div>' +
@@ -1336,7 +1396,7 @@
             (textos(x.comoConduzir).length ? '<div class="rotulo-doc mt16">Como conduzir · sugestão de estilo</div>' + listaItens(x.comoConduzir) : '') + '</li>';
         }).join('') + '</ul></article>';
     }).join('') : '<div class="obs obs--info"><div class="obs__tit">Sem lideranças registradas</div><p>Registre as relações "lidera" para ver o guia por líder.</p></div>';
-    h += secao(sec('lideres'), true, cabecalhoPagina(sec('lideres'), lids.length + ' líderes') + c);
+    h += secao(sec('lideres'), true, cab(sec('lideres'), lids.length + ' líderes') + c);
 
     // 07 Como liderar cada pessoa
     var cols = lista(d.colaboradores).filter(function (p) { return p && typeof p === 'object'; });
@@ -1352,7 +1412,7 @@
         }).join('') : '<p class="nota-curta">Ainda sem teste: o guia aparece quando a pessoa responder.</p>') +
         '</article>';
     }).join('') + '</div>';
-    h += secao(sec('pessoas'), false, cabecalhoPagina(sec('pessoas'), cols.length + ' pessoas') + c);
+    h += secao(sec('pessoas'), false, cab(sec('pessoas'), cols.length + ' pessoas') + c);
 
     // 08 Plano de integração de quem foi contratado(a): sem nota, nível ou rótulo de encaixe
     if (d.foco) {
@@ -1370,7 +1430,7 @@
           return '<div class="cartao-doc"><div class="rotulo-doc">' + esc(e.periodo) + '</div>' + listaItens(e.itens) + '</div>';
         }).join('') + '</div>';
       }
-      h += secao(sec('foco'), true, cabecalhoPagina(sec('foco'), f.nome) + c);
+      h += secao(sec('foco'), true, cab(sec('foco'), f.nome) + c);
     }
 
     // Encerramento: uso proibido, limites e observações
@@ -1381,9 +1441,9 @@
         return '<li><span class="passos__n">' + n2(i) + '</span><span class="passos__t passos__t--texto">' + esc(t) + '</span></li>';
       }).join('') + '</ol>' +
       (textos(av.observacoes).length ? '<div class="passos-cab">Observações sobre os dados</div>' + listaItens(av.observacoes, 'itens-doc--escuro') : '');
-    h += encerramentoModelo(sec('encerramento'), emp.nome, c, d.consultor, d.geradoEm);
-    h += rodapeModelo([d.consultor ? 'Consultor: ' + d.consultor : '', emp.nome, 'Relatório de equipe'], 'Documento confidencial, para uso da direção. Sem dados de contato dos colaboradores.');
-    return '<article class="doc doc--equipe" data-modelo="equipe">' + h + '</article>';
+    h += encerramentoModelo(sec('encerramento'), emp.nome, lt + c, d.consultor, d.geradoEm);
+    h += rodapeModelo([d.consultor ? 'Consultor: ' + d.consultor : '', emp.nome, 'Relatório de equipe', linhaTecnica(d)], 'Documento confidencial, para uso da direção. Sem dados de contato dos colaboradores.');
+    return '<article class="doc doc--equipe" data-modelo="equipe"' + atributoLeitura(d) + '>' + h + impressaoTecnicaHtml(d) + '</article>';
   }
 
   /* ------------------------------------------------------------------ LIDERANÇA (individual)
@@ -1428,6 +1488,8 @@
     }
     if (ex) {
       c += '<h3 class="h3 mt48">Esforço de adaptação ao cargo</h3>' + naturalExigidoHtml(p.percentuais, ex) + (secEsforco ? '' : textosExigido(ex, null));
+    } else if (d.restrito) {
+      c += '<h3 class="h3 mt48">Esforço de adaptação ao cargo</h3>' + restritoHtml('Leitura técnica', 'esforco');
     }
     return c;
   }
@@ -1543,7 +1605,9 @@
     S.push({ id: 'encerramento', titulo: 'Limites e fundamentos', curto: 'Limites', meta: 'Como usar · Estudos de base' });
     S.forEach(function (x, i) { x.n = n2(i); });
     var cb = d.combinacao && d.combinacao.nome ? d.combinacao.nome : '';
+    var lt = linhaTecnicaHtml(d);
     var h = capaModelo({
+      leitura: linhaTecnica(d),
       retrato: { nome: p.nome, foto: p.foto },
       meta: 'Guia de liderança · avançado', sobre: 'Guia de liderança' + (emp.nome ? ' · ' + emp.nome : ''),
       tituloHtml: 'Como liderar <em>' + esc(p.nome || 'esta pessoa') + '</em>',
@@ -1559,22 +1623,22 @@
         { rotulo: 'Emitido em', linhas: [data(d.geradoEm) || '—'] }
       ]
     });
-    h += indiceModelo(S, 'Como liderar ' + (p.nome || 'esta pessoa') + ', capítulo a capítulo.', 'Leia na ordem ou vá direto ao tema do momento. Cada capítulo traz o que costuma funcionar com este perfil, exemplos do dia a dia e frases prontas.');
+    h += indiceModelo(S, 'Como liderar ' + (p.nome || 'esta pessoa') + ', capítulo a capítulo.', 'Leia na ordem ou vá direto ao tema do momento. Cada capítulo traz o que costuma funcionar com este perfil, exemplos do dia a dia e frases prontas.', lt);
     S.slice(0, -1).forEach(function (s, k) {
       var corpo;
       if (s.id === 'resumo') corpo = quemEHtml(d, av);
       else if (s.id === 'liderar') corpo = '<p class="lede lede--curta">O essencial para o dia a dia, em cartões. Os capítulos seguintes aprofundam cada tema.</p>' + guiaCartoesHtml(rapidas);
       else corpo = capituloLiderancaHtml(s.cap);
-      h += secao(s, k % 2 === 1, cabecalhoPagina(s, s.id === 'resumo' ? p.cargo : (p.nome || '')) + corpo);
+      h += secao(s, k % 2 === 1, cabecalhoPagina(s, s.id === 'resumo' ? p.cargo : (p.nome || '')) + lt + corpo);
     });
     var fund = so(av.fundamentos);
     var fim = S[S.length - 1];
     var corpoFim = '<div class="final__texto"><p>' + esc(d.aviso || '') + '</p></div>' +
       '<div class="passos-cab">Um ajuste de cada vez</div><p class="final__dica">Escolha um capítulo por semana, teste uma ou duas ideias com ' + esc(p.nome || 'esta pessoa') + ' e converse sobre o que funcionou. Liderar bem é ajustar no caminho.</p>' +
       (fund.length ? '<div class="passos-cab">Fundamentos</div><ol class="fundamentos-doc">' + fund.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ol>' : '');
-    h += encerramentoModelo(fim, emp.nome, corpoFim, d.consultor, d.geradoEm);
-    return '<article class="doc doc--lideranca doc--lideranca-avancado" data-modelo="lideranca" data-versao="avancado">' + h +
-      rodapeModelo([emp.nome, 'Guia de liderança', p.nome], 'Documento confidencial, para o líder direto. Sem dados de contato.') + '</article>';
+    h += encerramentoModelo(fim, emp.nome, lt + corpoFim, d.consultor, d.geradoEm);
+    return '<article class="doc doc--lideranca doc--lideranca-avancado" data-modelo="lideranca" data-versao="avancado"' + atributoLeitura(d) + '>' + h +
+      rodapeModelo([emp.nome, 'Guia de liderança', p.nome, linhaTecnica(d)], 'Documento confidencial, para o líder direto. Sem dados de contato.') + impressaoTecnicaHtml(d) + '</article>';
   }
 
   function liderancaHtml(d) {
@@ -1589,7 +1653,9 @@
     ];
     S.forEach(function (x, i) { x.n = n2(i); });
     var cod = codigoSeguro(p.codigo);
+    var lt = linhaTecnicaHtml(d);
     var h = capaModelo({
+      leitura: linhaTecnica(d),
       retrato: { nome: p.nome, foto: p.foto },
       meta: 'Guia de liderança', sobre: 'Guia de liderança' + (emp.nome ? ' · ' + emp.nome : ''),
       tituloHtml: 'Como liderar <em>' + esc(p.nome || 'esta pessoa') + '</em>',
@@ -1606,13 +1672,13 @@
       ]
     });
     // 01
-    var h1 = secao(S[0], false, cabecalhoPagina(S[0], p.cargo) + quemEHtml(d, null));
+    var h1 = secao(S[0], false, cabecalhoPagina(S[0], p.cargo) + lt + quemEHtml(d, null));
     // 02
     var secsRL = lista(d.secoes).filter(function (s) { return s && typeof s === 'object'; });
-    var h2 = secao(S[1], true, cabecalhoPagina(S[1], cod ? 'Perfil ' + cod : '') + guiaCartoesHtml(secsRL));
-    var h3 = encerramentoModelo(S[2], emp.nome, '<div class="final__texto"><p>' + esc(d.aviso || '') + '</p></div>', d.consultor, d.geradoEm);
-    return '<article class="doc doc--lideranca" data-modelo="lideranca">' + h + h1 + h2 + h3 +
-      rodapeModelo([emp.nome, 'Guia de liderança', p.nome], 'Documento confidencial, para o líder direto. Sem dados de contato.') + '</article>';
+    var h2 = secao(S[1], true, cabecalhoPagina(S[1], cod ? 'Perfil ' + cod : '') + lt + guiaCartoesHtml(secsRL));
+    var h3 = encerramentoModelo(S[2], emp.nome, lt + '<div class="final__texto"><p>' + esc(d.aviso || '') + '</p></div>', d.consultor, d.geradoEm);
+    return '<article class="doc doc--lideranca" data-modelo="lideranca"' + atributoLeitura(d) + '>' + h + h1 + h2 + h3 +
+      rodapeModelo([emp.nome, 'Guia de liderança', p.nome, linhaTecnica(d)], 'Documento confidencial, para o líder direto. Sem dados de contato.') + impressaoTecnicaHtml(d) + '</article>';
   }
 
   /* ------------------------------------------------------------------ PESSOA (desenvolvimento) */
@@ -1862,9 +1928,12 @@
     var taxa = ehNumero(res.taxa) ? res.taxa : 0;
     var nGrupos = grupos.filter(function (g) { return g.tipo !== 'empresa'; }).length;
     var periodo = [data(rod.abertaEm), data(rod.encerradaEm)].filter(Boolean).join(' a ');
+    // Modo de identificação (transparência): o relatório é o mesmo; só diz como as pessoas responderam. Nunca nomes.
+    var modo = C.modoValido ? C.modoValido(rod.modo) : 'anonima';
+    var comId = modo === 'opcional' || modo === 'identificada';
 
     var h = capaModelo({
-      meta: 'Pesquisa de clima', sobre: 'Pesquisa de Clima da Equipe · ' + (emp.nome || 'Empresa'),
+      meta: modo === 'identificada' ? 'Pesquisa de clima · identificada' : 'Pesquisa de clima', sobre: 'Pesquisa de Clima da Equipe · ' + (emp.nome || 'Empresa'),
       tituloHtml: 'Clima da <em>equipe</em>' + (emp.nome ? '<br>' + esc(emp.nome) : ''),
       subtitulo: 'Como as pessoas percebem o trabalho, por tema e por equipe, e o que fazer a partir daqui.',
       numeros: [
@@ -1891,7 +1960,8 @@
       '</ul></div><div class="cartao-doc"><div class="rotulo-doc">O que não é</div><ul class="itens-doc">' +
       '<li>' + esc('Não avalia pessoas, não é avaliação psicológica e não faz diagnóstico de saúde.') + '</li>' +
       '<li>' + esc(C.TEXTOS.usoProibido) + '</li>' +
-      '<li>' + esc('Ninguém vê a resposta de ninguém. Um grupo só aparece com 5 respostas ou mais; detalhes e comentários, com 10 ou mais.') + '</li>' +
+      '<li>' + esc((comId ? 'A empresa não vê a resposta de ninguém nem quem respondeu.' : 'Ninguém vê a resposta de ninguém.') +
+        ' Um grupo só aparece com 5 respostas ou mais; detalhes e comentários, com 10 ou mais.') + '</li>' +
       '</ul></div></div>';
     c += '<h3 class="h3 mt48">Faixas de leitura</h3><ul class="clima-faixas">' + FAIXAS_CLIMA.map(function (f) {
       var faixaTxt = f === 'favoravel' ? '75 a 100' : (f === 'intermediario' ? '50 a 74' : '0 a 49');
@@ -1903,6 +1973,7 @@
     var avisos = [];
     if ((res.respondentes || 0) > 0 && (res.respondentes || 0) < 10) avisos.push(nota('alerta', 'Margem ampla', C.TEXTOS.margem));
     if ((res.convidados || 0) > 0 && taxa < C.TAXA_MINIMA) avisos.push(nota('alerta', 'Adesão', C.TEXTOS.adesao(taxa)));
+    if (modo === 'identificada') avisos.push(nota('info', 'Pesquisa identificada', C.TEXTOS.identificada).replace('class="obs ', 'data-modo="identificada" class="obs '));
     avisos.push(nota('info', 'Origem das perguntas', C.TEXTOS.origem));
     c += '<div class="obs-grade">' + avisos.join('') + '</div>';
     h += secao(sec('como-ler'), alt('como-ler'), cabecalhoPagina(sec('como-ler'), emp.nome) + c);
@@ -1979,7 +2050,8 @@
         c += '<div class="obs obs--alerta mt32" data-n4="1"><div class="obs__tit">Relato de tratamento ofensivo (últimos 6 meses)</div>' +
           (n4 ? '<p>' + esc(n4.pct + '% de quem respondeu a esta pergunta (' + n4.n + ' pessoas) relatou ter sido tratado(a) com grosseria, humilhação ou ameaça uma vez ou mais. É um relato agregado: a apuração é da empresa, pelo próprio canal.') + '</p>'
             : '<p>' + esc('Menos de 10 respostas a esta pergunta: o resultado não aparece.') + '</p>') +
-          '<p>' + esc('Canal indicado às pessoas: ' + (rod.canalTexto || '—') + '. A pesquisa não é canal de denúncia e não identifica quem respondeu.') + '</p></div>';
+          '<p>' + esc('Canal indicado às pessoas: ' + (rod.canalTexto || '—') + '. A pesquisa não é canal de denúncia e ' +
+            (comId ? 'este relatório não identifica quem respondeu.' : 'não identifica quem respondeu.')) + '</p></div>';
       }
       h += secao(sec('fatores'), alt('fatores'), cabecalhoPagina(sec('fatores'), 'Apoio ao GRO') + c);
     }
@@ -2027,6 +2099,7 @@
         return y ? y.escore + ' · ' + C.rotuloFaixa(y.faixa) : 'sem resultado';
       }
       c = '<p class="lede lede--curta">' + esc(C.TEXTOS.nr1) + '</p>';
+      if (modo === 'identificada') c += '<div class="obs-grade">' + nota('info', 'Pesquisa identificada', C.TEXTOS.identificada).replace('class="obs ', 'data-modo="identificada" class="obs ') + '</div>';
       c += '<div class="clima-tabela-rolagem"><table class="tabela-doc clima-pgr"><thead><tr><th scope="col">Indicador</th><th scope="col">Fator (Guia MTE)</th><th scope="col">Sinal (empresa)</th>' +
         '<th scope="col">Severidade</th><th scope="col">Probabilidade</th><th scope="col">Responsável</th><th scope="col">Prazo</th></tr></thead><tbody>' +
         C.MAPA_PGR.map(function (m) {
@@ -2051,7 +2124,7 @@
         'O número do grupo é a média das pessoas, sem a resposta da liderança. Alinhamento: concordância dentro do grupo (rwg, com 0,70 e 0,50 como cortes de convenção).',
         'Anonimato: um grupo só aparece com 5 respostas ou mais; distribuição, comentários e o complemento de fatores psicossociais, com 10 ou mais; o relato de tratamento ofensivo, só no total da empresa. Nenhuma diferença entre recortes isola menos de 5 pessoas; equipes pequenas entram em "Outras equipes". Os grupos foram congelados no encerramento.',
         'As respostas brutas são apagadas ou viram números de grupo no prazo combinado depois da entrega. A empresa nunca recebe respostas individuais nem a lista de quem respondeu.'
-      ].map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
+      ].concat(comId ? [C.TEXTOS[modo]] : []).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
     c += '<h3 class="h3 mt48">Referências dos temas</h3><ul class="itens-doc clima-refs">' + C.REFERENCIAS.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>';
     h += secao(sec('metodo'), alt('metodo'), cabecalhoPagina(sec('metodo'), 'Versão ' + (rod.versaoItens || 'v0')) + c);
 
@@ -2084,7 +2157,9 @@
   function montarHtml(rel) {
     if (!rel || typeof rel !== 'object') return erroHtml(MENSAGEM_NAO_ENCONTRADO);
     if (rel.modelo && rel.modelo !== 'processo') {
-      return Object.prototype.hasOwnProperty.call(MODELOS, rel.modelo) ? MODELOS[rel.modelo](rel) : erroHtml(MENSAGEM_NAO_ENCONTRADO);
+      if (!Object.prototype.hasOwnProperty.call(MODELOS, rel.modelo)) return erroHtml(MENSAGEM_NAO_ENCONTRADO);
+      var d = versaoParaDesenhar(rel);
+      return d ? MODELOS[rel.modelo](d) : erroHtml(MENSAGEM_NAO_ENCONTRADO);
     }
     var ctx = contexto(rel);
     return '<article class="doc">' + capa(rel, ctx) + indice(rel, ctx) + sumario(rel, ctx) + atracao(rel, ctx) +
@@ -2140,15 +2215,19 @@
     busca.then(function (resp) {
       var rel = resp && resp.relatorio;
       if (!resp || resp.ok === false || !rel || typeof rel !== 'object') { mostrarErro(el); return; }
-      // relatorio_publico também devolve `modelo` ao lado do snapshot.
-      if (!rel.modelo && resp.modelo && resp.modelo !== 'processo') rel = Object.assign({}, rel, { modelo: resp.modelo });
+      // relatorio_publico também devolve `modelo` ao lado do snapshot. A versão técnica (link técnico) vem com
+      // versao: 'tecnica' e leituraTecnica {nome, crp} FORA do snapshot; qualquer outra resposta é a versão do dono.
+      rel = Object.assign({}, rel);
+      if (!rel.modelo && resp.modelo && resp.modelo !== 'processo') rel.modelo = resp.modelo;
+      delete rel.leituraTecnica;
+      if (resp.versao === 'tecnica' && resp.leituraTecnica && typeof resp.leituraTecnica === 'object') rel.leituraTecnica = resp.leituraTecnica;
       render(rel, el);
       el.insertAdjacentHTML('beforeend', botaoPdfHtml());
       ligarBotaoPdf(el);
       el.setAttribute('data-estado', 'pronto');
       if (rel.modelo && rel.modelo !== 'processo') {
         el.setAttribute('data-modelo', String(rel.modelo).replace(/[^a-z]/g, ''));
-        doc.title = tituloDaAba(rel.titulo);
+        doc.title = tituloDaAba(rel.titulo) + (linhaTecnica(rel) ? ' · versão técnica' : '');
         return;
       }
       var p = rel.processo || {};

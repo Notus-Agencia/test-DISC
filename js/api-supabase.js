@@ -60,6 +60,15 @@
  *     status, modelo, url?}} · listarRelatoriosModelo(token, {empresaId?, pessoaId?}) -> {relatorios:[…]}
  *   excluirRelatorioModelo(token, id) -> {id}. relatorioPublico devolve também o "modelo".
  *   abrirRelatorioModelo(token, id) -> {relatorio: {id, token, modelo, status, empresaId, pessoaId, titulo, url?, dados}}.
+ * Versão técnica (equipe e "Como liderar"; migração 20261019120000_versao_tecnica.sql; regra em js/versao-tecnica.js):
+ *   relatorioPublico pelo link de sempre: versão do dono (o banco tira a distância natural × cargo e marca restrito: true);
+ *   pelo link técnico: {ok, modelo, versao:'tecnica', relatorio (completo), leituraTecnica:{nome, crp}, publicadoEm}.
+ *   relatorioTecnico(token, id) -> {tecnica:{status:'publicado'|'despublicado'|'', token, url?, nome, crp, publicadoEm},
+ *     historico:[{acao:'gerada'|'despublicada', nome, crp, por, em}]} (banco sem a migração: {semMigracao:true, tecnica: null,
+ *     historico: []}) · gerarRelatorioTecnico(token, id, {nome, crp}) -> {tecnica, historico} (função do banco
+ *     gerar_relatorio_tecnico: só admin; valida nome e CRP "RR/NNNNN"; novo token técnico, o anterior para de abrir;
+ *     registra no histórico) · despublicarRelatorioTecnico(token, id) -> {tecnica, historico} (só o link técnico para).
+ *   salvarRelatorioModelo nunca grava leituraTecnica/restrito no snapshot.
  *   relatorioEnviarEmail(token, relatorioToken, {para, nome?, mensagem?}) -> {para, enviadoEm, assunto, por} (Edge Function
  *     "admin", ação relatorio.enviarEmail; só relatório publicado; 30 envios/h por admin; sem RESEND_API_KEY ->
  *     {ok:false, erro:'O envio por e-mail ainda não está configurado (veja Conexões).', naoConfigurado:true}).
@@ -83,6 +92,21 @@
  *     retencaoDias, abertaEm, encerradaEm, entregueEm, brutasApagadasEm, convidados, respondentes, equipes:[{id, nome, area, ordem,
  *     convidados, respondentes, tokenEquipe, tokenLider}], relatorio:{id, token, status, publicadoEm, atualizadoEm, temas, url?}|null}
  *   O relatório de clima (modelo 'clima') não aparece em listarRelatoriosModelo/abrirRelatorioModelo/excluirRelatorioModelo.
+ * Pesquisa de Clima: modos de identificação (migração 20261018120000_clima_identificacao.sql). rodada.modo = 'anonima' |
+ * 'opcional' | 'identificada' e rodada.metodos ⊂ ['email','whatsapp','dados'] (travados depois de criada; climaCriarRodada
+ * aceita {modo, metodos}); rodada.identificadas (quantas respostas vieram com nome) e equipes[].convites = links pessoais
+ * [{id, pessoaId, nome, token, metodos}] (clima.html?t=<token>). A empresa nunca vê nomes: o relatório só ganha rodada.modo.
+ *   climaPublica no link pessoal: + {modo, pessoal:true, metodos, emailMascarado, whatsappFinal}; link usado: rejeita com
+ *     erro.resposta.usado. climaEnviar(tokenClima, {…, identificar?: true, confirmacao?: {metodo:'email'|'whatsapp', codigo} |
+ *     {metodo:'dados', cpf3, nascimento:'DD/MM'}}) -> {ok, identificada?} (sem confirmação: erro.resposta.confirmar).
+ *   climaPedirCodigo(tokenClima, 'email'|'whatsapp') -> {canal, destino (mascarado), minutos} (Edge Function "clima"; pública).
+ *   Painel (só admin): climaEnvios(token) -> {email, whatsapp} (o que está ligado para mandar código; função "admin") ·
+ *     climaIdentificacao(token, rodadaId) -> {rodada, convites:[{id, nome, equipeNome, metodos, usado}], respostasDisponiveis,
+ *     motivo:''|'aberta'|'apagadas', respostas:[{respostaId, nome, equipeNome, confirmadoPor, escores, complemento, comentario}],
+ *     acessos:[{nome, acao, em}]} (USO INTERNO DA CONSULTORIA; cada abertura fica registrada) · climaDesidentificar(token,
+ *     rodadaId, respostaId) · climaRenovarConvite(token, conviteId) -> {convite:{id, token}} · climaColaboradoresDados(token,
+ *     empresaId) -> {pessoas:[{pessoaId, email, conferencia}]} · climaSalvarColaborador(token, {empresaId, pessoaId, email?,
+ *     cpf3?, nascimento?, apagarConferencia?}) -> {email, conferencia} (CPF/data viram hash com sal no banco).
  * Fotos (data URL "data:image/jpeg;base64,/9j/…", até 40 000 caracteres, guardada no banco; fotoValida(str)):
  *   enviar: payload.foto ('' = sem foto), conforme formulario.campos.foto ('obrigatorio'|'opcional'|'oculto').
  *   listar: item.foto (da resposta, '' sem foto) e item.pessoa.foto (da ficha). listarEquipe: colaborador.foto
@@ -203,6 +227,7 @@
   var MSG_ADMIN_AUSENTE = 'A função admin não está publicada no Supabase.';
   var MSG_BANCO_DESATUALIZADO = 'O banco de dados está desatualizado. Peça para aplicar as migrações (veja docs/SUPABASE.md).';
   var MSG_CLIMA_LINK = 'Link inválido ou pesquisa encerrada. Fale com quem enviou o link.';
+  var MSG_CLIMA_CODIGO_INDISPONIVEL = 'O envio do código não está disponível agora. Use outra forma de confirmação ou fale com quem enviou o link.';
   // Migrações (supabase/migrations), na ordem, e como conferir cada uma sem a função versao_banco.
   var MIGRACOES = [
     { nome: '20261005120000_disc', descricao: 'base (processos, respostas, relatórios)' },
@@ -218,9 +243,12 @@
     { nome: '20261014120000_stripe', descricao: 'Stripe (pagamento dentro do site)' },
     { nome: '20261015120000_minimo_cobranca', descricao: 'preço mínimo de R$ 0,50 em cupons e pacotes conferido no banco' },
     { nome: '20261016120000_envios_email', descricao: 'histórico de envios por e-mail' },
-    { nome: '20261017120000_clima', descricao: 'Pesquisa de Clima da Equipe (rodadas, respostas anônimas e relatório)' }
+    { nome: '20261017120000_clima', descricao: 'Pesquisa de Clima da Equipe (rodadas, respostas anônimas e relatório)' },
+    { nome: '20261018120000_clima_identificacao', descricao: 'Pesquisa de Clima: modos de identificação e links pessoais' },
+    { nome: '20261019120000_versao_tecnica', descricao: 'versão técnica dos relatórios de equipe e "Como liderar" (leitura por psicólogo(a), com CRP)' },
+    { nome: '20261020120000_codigos_processo', descricao: 'códigos de link com 10 caracteres e limite de tentativas por código' }
   ];
-  var VERSAO_ATUAL = 20261017120000;
+  var VERSAO_ATUAL = 20261020120000;
   var MSG_PRIMEIRO_ACESSO = 'Com o Supabase não há chave de primeiro acesso: crie o seu usuário no painel do Supabase ' +
     '(Authentication > Users > Add user) e entre com esse e-mail e senha. O primeiro login vira administrador.';
   var MSG_REDEFINIR = 'Com o Supabase cada pessoa cria a própria senha nova pelo "Esqueci minha senha", na tela de entrada.';
@@ -269,10 +297,11 @@
     if (senha.length > SENHA_MAX) return 'A senha pode ter no máximo ' + SENHA_MAX + ' caracteres.';
     return '';
   }
+  // Código do link do processo: 10 caracteres (novos) ou 4 (antigos) — igual a disc_interno.normalizar_codigo.
   function normalizarCodigo(v) {
     if (v === null || v === undefined) return '';
     var s = String(v).replace(/\s+/g, '').toUpperCase();
-    return /^[A-Z0-9]{4}$/.test(s) ? s : '';
+    return /^(?:[A-Z0-9]{4}|[A-Z0-9]{10})$/.test(s) ? s : '';
   }
   function normalizarProtocolo(v) {
     var s = v === null || v === undefined ? '' : String(v).replace(/\s+/g, '').toUpperCase();
@@ -1338,6 +1367,8 @@
       if (json.length > MAX_DADOS_RELATORIO) throw recusa(MSG_REL_GRANDE);
       snap = JSON.parse(json);
       snap.modelo = modelo;
+      delete snap.leituraTecnica; // a leitura técnica vem só do link técnico (nunca do snapshot)
+      delete snap.restrito;
       var linha = { modelo: modelo, empresa_id: empresaId || null, pessoa_id: pessoaId || null, dados: snap };
       if (dados.publicar === true) linha.status = 'publicado';
       else if (dados.publicar === false || !id) linha.status = 'rascunho';
@@ -1352,6 +1383,36 @@
         if (r.url) saida.url = r.url;
         return { ok: true, relatorio: saida };
       });
+    }
+
+    // ---- versão técnica (equipe e "Como liderar"; migração 20261019120000_versao_tecnica.sql) ----
+    function versaoTecnicaMod() {
+      if (root && root.DISC_VERSAO_TECNICA) return root.DISC_VERSAO_TECNICA;
+      if (typeof require === 'function') { try { return require('./versao-tecnica.js'); } catch (e) { /* ausente */ } }
+      return null;
+    }
+    function tecnicaDaRpc(t) {
+      t = t && typeof t === 'object' ? t : {};
+      var x = { status: t.status === 'publicado' || t.status === 'despublicado' ? t.status : '', token: String(t.token || ''),
+        nome: String(t.nome || ''), crp: String(t.crp || ''), publicadoEm: iso(t.publicadoEm) };
+      if (x.status === 'publicado' && x.token) x.url = urlRelatorio(x.token);
+      return x;
+    }
+    function respostaTecnica(r) {
+      var h = (Array.isArray(r.historico) ? r.historico : []).filter(function (x) { return x && typeof x === 'object'; }).map(function (x) {
+        return { acao: x.acao === 'despublicada' ? 'despublicada' : 'gerada', nome: String(x.nome || ''), crp: String(x.crp || ''),
+          por: String(x.por || ''), em: iso(x.em) };
+      });
+      return { ok: true, tecnica: tecnicaDaRpc(r.tecnica), historico: h };
+    }
+    function relatorioTecnicoRpc(token, idBruto, funcao, extra) {
+      exigirToken(token);
+      exigir(idBruto, 'Relatório não informado.');
+      var id = idValido(idBruto);
+      return exigirSessao(token).then(function () {
+        if (!id) throw recusa('Relatório não encontrado.');
+        return rpcOk(funcao, Object.assign({ p_relatorio: id }, extra || {}));
+      }).then(respostaTecnica);
     }
 
     // ---- Pesquisa de clima ----
@@ -1411,7 +1472,13 @@
       relatorioPublico: seguro(function (relatorioToken) {
         exigir(relatorioToken, MSG_REL_NAO_ENCONTRADO);
         return rpcOk('relatorio_publico', { p_token: String(relatorioToken) }).then(function (r) {
-          return { ok: true, modelo: MODELOS_RELATORIO.indexOf(r.modelo) >= 0 ? r.modelo : 'processo', relatorio: r.relatorio, publicadoEm: r.publicadoEm || '' };
+          var x = { ok: true, modelo: MODELOS_RELATORIO.indexOf(r.modelo) >= 0 ? r.modelo : 'processo', relatorio: r.relatorio, publicadoEm: r.publicadoEm || '' };
+          // Link técnico: o banco manda versao 'tecnica' e quem vai ler (fora do snapshot).
+          if (r.versao === 'tecnica' && r.leituraTecnica && typeof r.leituraTecnica === 'object') {
+            x.versao = 'tecnica';
+            x.leituraTecnica = { nome: String(r.leituraTecnica.nome || ''), crp: String(r.leituraTecnica.crp || '') };
+          }
+          return x;
         });
       }),
       // --- venda direta (B2C): públicas ---
@@ -1992,6 +2059,27 @@
           return { ok: true, relatorio: r };
         });
       }),
+      // Versão técnica: tudo pelas funções do banco (só admin; elas registram o histórico).
+      relatorioTecnico: seguro(function (token, idBruto) {
+        return relatorioTecnicoRpc(token, idBruto, 'relatorio_tecnico').catch(function (e) {
+          if (e && e.bancoDesatualizado) return { ok: true, semMigracao: true, tecnica: null, historico: [] };
+          throw e;
+        });
+      }),
+      gerarRelatorioTecnico: seguro(function (token, idBruto, leitor) {
+        var l = leitor && typeof leitor === 'object' ? leitor : {};
+        var VT = versaoTecnicaMod();
+        var nome = String(l.nome == null ? '' : l.nome), crp = String(l.crp == null ? '' : l.crp);
+        if (VT) {
+          var v = VT.validarLeitor(l);
+          if (!v.ok) throw recusa(v.erro);
+          nome = v.nome; crp = v.crp;
+        }
+        return relatorioTecnicoRpc(token, idBruto, 'gerar_relatorio_tecnico', { p_nome: nome, p_crp: crp });
+      }),
+      despublicarRelatorioTecnico: seguro(function (token, idBruto) {
+        return relatorioTecnicoRpc(token, idBruto, 'despublicar_relatorio_tecnico');
+      }),
 
       // --- avaliações (nome antigo dos processos) ---
       listarAvaliacoes: seguro(function (token) {
@@ -2148,7 +2236,20 @@
         return rpcOk('clima_enviar', { p_token: t, p_respostas: respostas }).then(function (r) {
           var x = { ok: true };
           if (r.duplicado) x.duplicado = true;
+          if (r.identificada) x.identificada = true;
           return x;
+        });
+      }),
+      // Código de confirmação do link pessoal (Edge Function "clima", pública): o código nunca volta para o navegador.
+      climaPedirCodigo: seguro(function (tokenClima, canal) {
+        var t = tokenClimaValido(tokenClima);
+        if (!t) throw recusa(MSG_CLIMA_LINK);
+        if (canal !== 'email' && canal !== 'whatsapp') throw recusa('Forma de confirmação inválida.');
+        return invocar('clima', { acao: 'codigo', token: t, canal: canal }).then(function (r) {
+          return { ok: true, canal: canal, destino: limparTexto(r.destino, 80), minutos: numero(r.minutos) || 10 };
+        }, function (e) {
+          if (e && e.funcaoAusente) throw recusa(MSG_CLIMA_CODIGO_INDISPONIVEL, { naoConfigurado: true });
+          throw e;
         });
       }),
       climaListar: seguro(function (token, empresaIdBruto) {
@@ -2205,6 +2306,52 @@
         if (o.rodadaId && !id) throw recusa('Pesquisa não encontrada.');
         return exigirSessao(token).then(function () { return rpcOk('clima_apagar_brutas', { p_rodada: id || null, p_agora: o.agora === true && !!id }); })
           .then(function (r) { return { ok: true, rodadas: numero(r.rodadas), respostas: numero(r.respostas) }; });
+      }),
+      // --- Pesquisa de clima: identificação (migração 20261018120000_clima_identificacao.sql) ---
+      climaEnvios: seguro(function (token) {
+        return admin(token, 'clima.envios').then(function (r) { return { ok: true, email: r.email === true, whatsapp: r.whatsapp === true }; });
+      }),
+      climaIdentificacao: seguro(function (token, rodadaId) {
+        return climaRodadaRpc(token, rodadaId, 'clima_identificacao').then(function (r) {
+          return { ok: true, rodada: r.rodada || {}, convites: Array.isArray(r.convites) ? r.convites : [],
+            respostasDisponiveis: r.respostasDisponiveis === true, motivo: String(r.motivo || ''),
+            respostas: Array.isArray(r.respostas) ? r.respostas : [], acessos: Array.isArray(r.acessos) ? r.acessos : [] };
+        });
+      }),
+      climaDesidentificar: seguro(function (token, rodadaId, respostaId) {
+        var rid = idValido(respostaId);
+        if (!rid) throw recusa('Resposta identificada não encontrada.');
+        return climaRodadaRpc(token, rodadaId, 'clima_desidentificar', { p_resposta: rid }).then(function () { return { ok: true }; });
+      }),
+      climaRenovarConvite: seguro(function (token, conviteId) {
+        exigirToken(token);
+        var id = idValido(conviteId);
+        return exigirSessao(token).then(function () {
+          if (!id) throw recusa('Link pessoal não encontrado.');
+          return rpcOk('clima_convite_renovar', { p_convite: id });
+        }).then(function (r) { return { ok: true, convite: { id: String((r.convite || {}).id || id), token: String((r.convite || {}).token || '') } }; });
+      }),
+      climaColaboradoresDados: seguro(function (token, empresaIdBruto) {
+        exigirToken(token);
+        var id = idValido(empresaIdBruto);
+        return exigirSessao(token).then(function () {
+          if (!id) throw recusa('Empresa não encontrada.');
+          return rpcOk('clima_colaboradores_dados', { p_empresa: id });
+        }).then(function (r) {
+          return { ok: true, pessoas: (Array.isArray(r.pessoas) ? r.pessoas : []).map(function (p) {
+            return { pessoaId: String(p.pessoaId || ''), email: String(p.email || ''), conferencia: p.conferencia === true };
+          }) };
+        });
+      }),
+      climaSalvarColaborador: seguro(function (token, dados) {
+        exigirToken(token);
+        var d = dados && typeof dados === 'object' ? dados : {};
+        var p = { empresaId: limparTexto(d.empresaId, 40), pessoaId: limparTexto(d.pessoaId, 40) };
+        if (d.email !== undefined && d.email !== null) p.email = limparTexto(d.email, 120);
+        if (d.apagarConferencia === true) p.apagarConferencia = true;
+        else if (d.cpf3 || d.nascimento) { p.cpf3 = limparTexto(d.cpf3, 10); p.nascimento = limparTexto(d.nascimento, 10); }
+        return exigirSessao(token).then(function () { return rpcOk('clima_colaborador_salvar', { p_dados: p }); })
+          .then(function (r) { return { ok: true, email: String(r.email || ''), conferencia: r.conferencia === true }; });
       }),
 
       // --- aba Conexões (só admin): banco testado aqui; o resto pela Edge Function "admin" (nunca valores de segredos) ---
@@ -2333,13 +2480,15 @@
     'relatorioMelhorarTextos', 'relatorioPublico', 'relatorioEnviarEmail', 'listarEnviosEmail',
     'listarEquipe', 'salvarColaborador', 'moverColaborador', 'desligarColaborador', 'salvarRelacoes',
     'salvarRelatorioModelo', 'listarRelatoriosModelo', 'excluirRelatorioModelo', 'abrirRelatorioModelo', 'salvarMinhaFoto', 'removerFoto',
+    'relatorioTecnico', 'gerarRelatorioTecnico', 'despublicarRelatorioTecnico',
     'moverResposta', 'contratarPessoa', 'versaoBanco',
     'pacotesPublicos', 'enviarPessoal', 'resumoPessoal', 'criarPedido', 'iniciarPagamento', 'statusPedido', 'relatorioPessoal',
     'salvarParte2Pessoal', 'recuperarAcesso', 'enviarLinkPorEmail', 'confirmarRetorno',
     'listarPedidos', 'atualizarPedido', 'listarCupons', 'salvarCupom', 'excluirCupom', 'listarPacotes', 'salvarPacote', 'resumoVendas',
     'diagnosticoConexoes', 'testarConexao',
     'climaPublica', 'climaEnviar', 'climaListar', 'climaCriarRodada', 'climaEncerrar', 'climaResultado', 'climaComentarios',
-    'climaGerarRelatorio', 'climaExcluirRodada', 'climaApagarBrutas'];
+    'climaGerarRelatorio', 'climaExcluirRodada', 'climaApagarBrutas', 'climaPedirCodigo', 'climaEnvios', 'climaIdentificacao',
+    'climaDesidentificar', 'climaRenovarConvite', 'climaColaboradoresDados', 'climaSalvarColaborador'];
 
   var DISC_API_SUPABASE = {
     METODOS: METODOS,

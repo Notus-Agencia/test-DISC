@@ -4,7 +4,8 @@
  * consentimento): só a composição desta tela. Cores e fontes só pelos tokens (docs/IDENTIDADE-VISUAL.md).
  */
 
-body[data-etapa="bloco"] .conteudo { padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
+body[data-etapa="bloco"] .conteudo,
+body[data-etapa="identificacao"] .conteudo { padding-bottom: calc(132px + env(safe-area-inset-bottom)); }
 
 .clima-mensagem .acoes { margin-top: 20px; }
 .clima-nota { margin-top: 10px; font-size: var(--t-rotulo); color: var(--suave); }
@@ -77,12 +78,44 @@ body[data-etapa="bloco"] .conteudo { padding-bottom: calc(132px + env(safe-area-
 .clima-campo-comentario { margin-top: 18px; }
 .clima-comentario { width: 100%; min-height: 112px; resize: vertical; font-size: var(--t-campo); line-height: 1.5; }
 
+/* Link pessoal (modos com identificação): quem vê o nome, em destaque (branco com contorno laranja leve). */
+.clima-quem-ve {
+  margin-top: 16px; padding: 14px 16px; border-radius: 16px;
+  background: var(--branco); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--notus) 45%, transparent);
+  font-size: var(--t-rotulo); line-height: 1.55; color: var(--medio);
+}
+.clima-quem-ve strong { color: var(--tinta); }
+
+/* Etapa "Identificação": escolha (quero me identificar / manter o anonimato) e forma de confirmação. */
+.clima-opcoes--escolha, .clima-opcoes--metodos { margin-top: 16px; }
+.clima-opcao--larga { align-items: flex-start; padding: 14px 16px; }
+.clima-opcao--larga .escolha-marca { margin-top: 2px; }
+.clima-opcao__texto strong { display: block; font-weight: 600; }
+.clima-opcao__ajuda { display: block; margin-top: 2px; font-size: var(--t-rotulo); line-height: 1.45; color: var(--suave); }
+.clima-confirmar { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--linha); }
+.clima-confirmar[hidden] { display: none; }
+.clima-confirmar__titulo { font-size: var(--t-titulo); font-weight: 600; }
+.clima-confirmar__campos { margin-top: 4px; }
+.clima-confirmar__campos .acoes { margin-top: 12px; }
+.clima-confirmar__campos .campo { margin-top: 12px; }
+.clima-campos .entrada { max-width: 220px; }
+.clima-entrada-curta { width: 100%; font-size: var(--t-campo); font-variant-numeric: tabular-nums; }
+.clima-codigo { max-width: 220px; letter-spacing: .2em; }
+.clima-previa-codigo {
+  margin-top: 10px; padding: 10px 14px; border-radius: 14px;
+  background: var(--nevoa); font-size: var(--t-rotulo); color: var(--notus-forte); font-weight: 600;
+}
+
 /* Computador: as 5 opções lado a lado (o rótulo continua escrito). */
 @media (min-width: 720px) {
   .clima-opcoes { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .clima-pergunta[data-item="N4"] .clima-opcoes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .clima-opcao { flex-direction: column; justify-content: center; gap: 8px; padding: 12px 8px; text-align: center; font-size: var(--t-rotulo); }
   .clima-opcao__texto { flex: none; }
+  .clima-opcoes--escolha, .clima-opcoes--metodos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .clima-opcoes--metodos:has(> :nth-child(3)) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .clima-opcao--larga { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 14px 16px; text-align: left; font-size: var(--t-corpo); }
+  .clima-opcao--larga .clima-opcao__texto { flex: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

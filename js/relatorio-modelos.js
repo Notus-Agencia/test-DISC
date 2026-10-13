@@ -21,6 +21,9 @@
  *     indireto; foco = plano de integração de quem foi contratado(a) { nome, cargo, foto, codigo, percentuais,
  *     organograma, observacoes, recomendacoes90 }. Relatórios v1 já publicados continuam no banco: a view
  *     (js/relatorio-view.js) esconde deles a harmonia, as notas e a "tensão".
+ *     pressao e colaboradores[].exigido / mapa.pontos[].exigido (Parte 2) ficam no snapshot gravado, mas só saem na
+ *     versão técnica (link técnico, com nome e CRP de quem vai ler); a do dono é DISC_VERSAO_TECNICA.versaoDono
+ *     (js/versao-tecnica.js; no banco, relatorio_publico). O mesmo vale para exigido/'esforco' do "Como liderar".
  *
  *   lideranca({ pessoa: {nome, cargo, resultado}, lider: {nome, resultado} | null, empresa: {nome}, consultor? }, opcoes?)
  *     -> { modelo: 'lideranca', versao, titulo, geradoEm, empresa, consultor, pessoa, lider, relacao, resumo, secoes, aviso }
