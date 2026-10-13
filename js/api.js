@@ -50,7 +50,8 @@
  *              climaEncerrar, climaResultado, climaComentarios, climaGerarRelatorio, climaExcluirRodada, climaApagarBrutas,
  *              climaPedirCodigo, climaEnvios, climaIdentificacao, climaDesidentificar, climaRenovarConvite,
  *              climaColaboradoresDados, climaSalvarColaborador.
- *   Utilitários: protocoloValido, normalizarProtocolo, normalizarCodigoAvaliacao, codigoAvaliacaoDaUrl.
+ *   Utilitários: protocoloValido, normalizarProtocolo, normalizarCodigoAvaliacao, codigoAvaliacaoDaUrl
+ *              (código do link: 10 caracteres nos processos novos, 4 nos antigos; ALFABETO_CODIGO, TAMANHO_CODIGO).
  */
 (function (root) {
   var TIMEOUT_MS = 20000;
@@ -128,13 +129,16 @@
     if (typeof token !== 'string' || !token) throw erroDaResposta({ ok: false, erro: 'Sessão expirada. Entre de novo.', sessaoExpirada: true });
   }
 
-  // Código do link de avaliação: 4 letras/algarismos (o servidor sorteia só de ALFABETO_CODIGO, sem I, O, 0 e 1,
-  // mas aceita qualquer A-Z/0-9 — as avaliações da prévia são "SEL1" e "EQP1"). '' se inválido.
+  // Código do link de avaliação: 10 letras/algarismos nos processos novos (TAMANHO_CODIGO, sorteados só de
+  // ALFABETO_CODIGO, sem I, O, 0 e 1) ou 4 nos antigos, que continuam valendo. Aceita qualquer A-Z/0-9 — as avaliações
+  // da prévia são "SEL1" e "EQP1" — e minúsculas/espaços. '' se inválido. Mesma regra de disc_interno.normalizar_codigo.
   var ALFABETO_CODIGO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var TAMANHO_CODIGO = 10;
+  var RE_CODIGO_AVALIACAO = /^(?:[A-Z0-9]{4}|[A-Z0-9]{10})$/;
   function normalizarCodigoAvaliacao(v) {
     if (v === null || v === undefined) return '';
     var s = String(v).replace(/\s+/g, '').toUpperCase();
-    return /^[A-Z0-9]{4}$/.test(s) ? s : '';
+    return RE_CODIGO_AVALIACAO.test(s) ? s : '';
   }
   // Lê o código de "?a=SEL1" ou "#a-SEL1" (a prévia em artefato só repassa o #). '' se não houver.
   function codigoAvaliacaoDaUrl(search, hash) {
@@ -189,6 +193,7 @@
     TIMEOUT_MS: TIMEOUT_MS,
     TIMEOUT_LONGO_MS: TIMEOUT_LONGO_MS,
     ALFABETO_CODIGO: ALFABETO_CODIGO,
+    TAMANHO_CODIGO: TAMANHO_CODIGO,
     definirUrl: definirUrl,
     configurado: configurado,
     protocoloValido: protocoloValido,

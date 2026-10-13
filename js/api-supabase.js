@@ -244,9 +244,10 @@
     { nome: '20261016120000_envios_email', descricao: 'histórico de envios por e-mail' },
     { nome: '20261017120000_clima', descricao: 'Pesquisa de Clima da Equipe (rodadas, respostas anônimas e relatório)' },
     { nome: '20261018120000_clima_identificacao', descricao: 'Pesquisa de Clima: modos de identificação e links pessoais' },
-    { nome: '20261019120000_versao_tecnica', descricao: 'versão técnica dos relatórios de equipe e "Como liderar" (leitura por psicólogo(a), com CRP)' }
+    { nome: '20261019120000_versao_tecnica', descricao: 'versão técnica dos relatórios de equipe e "Como liderar" (leitura por psicólogo(a), com CRP)' },
+    { nome: '20261020120000_codigos_processo', descricao: 'códigos de link com 10 caracteres e limite de tentativas por código' }
   ];
-  var VERSAO_ATUAL = 20261019120000;
+  var VERSAO_ATUAL = 20261020120000;
   var MSG_PRIMEIRO_ACESSO = 'Com o Supabase não há chave de primeiro acesso: crie o seu usuário no painel do Supabase ' +
     '(Authentication > Users > Add user) e entre com esse e-mail e senha. O primeiro login vira administrador.';
   var MSG_REDEFINIR = 'Com o Supabase cada pessoa cria a própria senha nova pelo "Esqueci minha senha", na tela de entrada.';
@@ -295,10 +296,11 @@
     if (senha.length > SENHA_MAX) return 'A senha pode ter no máximo ' + SENHA_MAX + ' caracteres.';
     return '';
   }
+  // Código do link do processo: 10 caracteres (novos) ou 4 (antigos) — igual a disc_interno.normalizar_codigo.
   function normalizarCodigo(v) {
     if (v === null || v === undefined) return '';
     var s = String(v).replace(/\s+/g, '').toUpperCase();
-    return /^[A-Z0-9]{4}$/.test(s) ? s : '';
+    return /^(?:[A-Z0-9]{4}|[A-Z0-9]{10})$/.test(s) ? s : '';
   }
   function normalizarProtocolo(v) {
     var s = v === null || v === undefined ? '' : String(v).replace(/\s+/g, '').toUpperCase();

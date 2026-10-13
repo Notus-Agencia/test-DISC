@@ -607,7 +607,9 @@ test('prévia: processos.salvar com config completa, campo sensível recusado e 
     nome: 'Atendente 2027', empresa: 'Padaria Exemplo', vaga: 'Atendente', cidade: 'Boa Vista / RR', consultor: 'Consultor Exemplo',
     contratante: 'Dona Exemplo', periodo: { inicio: '2026-10-01', fim: 'ontem' }, clickupListId: '900000000002', config
   })).processo;
-  assert.match(novo.codigo, /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}$/);
+  assert.match(novo.codigo, /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$/, 'processo novo: código de 10 caracteres');
+  assert.equal((await api.avaliacaoPublica(novo.codigo.toLowerCase())).avaliacao.codigo, novo.codigo);
+  assert.equal((await api.avaliacaoPublica('sel1')).avaliacao.codigo, 'SEL1', 'os códigos antigos (4) continuam valendo');
   assert.equal(novo.empresa, 'Padaria Exemplo');
   assert.equal(novo.empresaNome, 'Padaria Exemplo');
   assert.deepEqual(novo.periodo, { inicio: '2026-10-01', fim: '' });
@@ -1132,7 +1134,7 @@ test('topoIds do organograma: salvarRelacoes guarda na empresa; listarEquipe dev
   assert.deepEqual((await api.listarEquipe(T, clinica.id)).topoIds, [a.pessoaId]);
   await assert.rejects(api.salvarRelacoes(T, clinica.id, [], { topoIds: 'x' }), /Relações inválidas\./);
 
-  assert.deepEqual(await api.versaoBanco(), { ok: true, versao: 20261019120000, faltando: [] });
+  assert.deepEqual(await api.versaoBanco(), { ok: true, versao: 20261020120000, faltando: [] });
 });
 
 // ---------------------------------------------------------------------------

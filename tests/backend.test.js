@@ -663,7 +663,7 @@ test('trocarSenha: confere a atual, exige 8+ caracteres e mantém a sessão atua
 
 test('avaliacaoPublica e enviar com código ativo, inativo e inexistente', () => {
   const { ctx, T, eA, avA } = cenario();
-  assert.match(avA.codigo, /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}$/);
+  assert.match(avA.codigo, /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{10}$/);
   const pub = ctx.post({ acao: 'avaliacaoPublica', codigo: avA.codigo.toLowerCase() });
   assert.deepEqual(pub, { ok: true, avaliacao: { codigo: avA.codigo, nome: 'Recepção 2026', tipo: 'selecao', empresaNome: 'Clínica Alfa', mostrarResultado: false } });
   assert.equal(ctx.post({ acao: 'avaliacaoPublica', codigo: 'ZZZZ' }).erro, 'Link inválido ou avaliação encerrada. Fale com quem enviou o link.');
@@ -689,6 +689,16 @@ test('avaliacaoPublica e enviar com código ativo, inativo e inexistente', () =>
   const geral = ctx.post({ acao: 'enviar', payload: payloadValido({ id: 'geral-000001' }) });
   assert.equal(geral.ok, true, geral.erro);
   assert.equal(ctx.aba().linhas[2][cab.indexOf('empresaId')], '');
+  // Avaliação de antes da troca (código de 4 na planilha) continua abrindo e recebendo respostas.
+  const abaAv = ctx.abas.Avaliacoes;
+  const iCod = abaAv.linhas[0].indexOf('codigo');
+  const iLinha = abaAv.linhas.findIndex((l) => String(l[iCod]).replace(/^'/, '') === avA.codigo);
+  abaAv.linhas[iLinha][iCod] = 'OLD1';
+  ctx.post({ acao: 'avaliacoes.salvar', token: T, avaliacao: Object.assign({}, avA, { codigo: 'OLD1', ativa: true }) });
+  assert.equal(ctx.post({ acao: 'avaliacaoPublica', codigo: 'old1' }).avaliacao.codigo, 'OLD1');
+  const antigo = ctx.post({ acao: 'enviar', payload: payloadValido({ id: 'codigo-antigo-01', telefone: '5511977776666', avaliacao: 'old1' }) });
+  assert.equal(antigo.ok, true, antigo.erro);
+  assert.equal(String(ctx.aba().linhas[3][cab.indexOf('avaliacao')]).replace(/^'/, ''), 'OLD1');
 });
 
 test('validacao no payload: guardada como veio (formato básico), devolvida no listar; formato errado é recusado', () => {
