@@ -17,6 +17,8 @@
  *   ATD1 (Atendimento ao cliente, mostra resultado, formulário próprio: e-mail obrigatório, cidade opcional
  *   e 1 pergunta extra). 5 respostas de exemplo: a "Ana Exemplo Prévia" respondeu 2 vezes (SEL1 e ATD1), a
  *   mesma pessoa no painel. Chave de primeiro acesso da prévia: "previa".
+ *   Processo criado na prévia ganha código de 10 caracteres (como o banco, migração 20261020120000_codigos_processo);
+ *   os de 4 continuam valendo. O limite de tentativas por origem da consulta pelo código não vale aqui.
  *
  * Pessoas (como public.pessoas do Supabase): cada resposta é ligada à pessoa do mesmo WhatsApp (chave
  * disc_simulada_pessoas); o envio atualiza a ficha (campo vazio não apaga) e a pessoa que fica sem
@@ -84,7 +86,7 @@
 (function (root) {
   'use strict';
 
-  var VERSAO_BANCO = 20261017120000;                     // última migração (supabase/migrations)
+  var VERSAO_BANCO = 20261020120000;                     // última migração (supabase/migrations)
   var CHAVE_ARMAZENAMENTO = 'disc_planilha_simulada';     // respostas (mesma chave das versões anteriores)
   var CHAVES = {
     usuarios: 'disc_simulada_usuarios',
@@ -186,7 +188,7 @@
   var PAPEIS = ['admin', 'gestor'];
   var TIPOS_AVALIACAO = ['selecao', 'equipe'];
   var ALFABETO_CODIGO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  var TAMANHO_CODIGO = 4;
+  var TAMANHO_CODIGO = 10;                               // processos novos; os de 4 (SEL1, EQP1…) continuam valendo
   var SENHA_MIN = 8;
   var SENHA_MAX = 100;
   var ITERACOES_HASH = 2000;
@@ -414,10 +416,11 @@
     return livres[sorteio(livres.length)];
   }
 
+  // Código do link: 4 (antigos) ou 10 (novos) letras/algarismos — igual a disc_interno.normalizar_codigo.
   function normalizarCodigoAvaliacao(v) {
     if (v === null || v === undefined) return '';
     var s = String(v).replace(/^'/, '').replace(/\s+/g, '').toUpperCase();
-    return /^[A-Z0-9]{4}$/.test(s) ? s : '';
+    return /^(?:[A-Z0-9]{4}|[A-Z0-9]{10})$/.test(s) ? s : '';
   }
 
   function gerarCodigoAvaliacao(usados, aleatorio) {

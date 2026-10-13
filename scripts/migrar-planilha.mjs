@@ -27,7 +27,7 @@ const LIMITE_TEXTO = 120;
 const LIMITE_VALIDACAO = 4000;
 const RE_ID = /^[A-Za-z0-9_-]{6,64}$/;
 const RE_PROTOCOLO = /^[0-9]{2}[A-HJ-NP-Z]$/;
-const RE_CODIGO = /^[A-Z0-9]{4}$/;
+const RE_CODIGO = /^(?:[A-Z0-9]{4}|[A-Z0-9]{10})$/;   // código do link: 4 (antigos) ou 10 (novos)
 const RE_LISTA = /^[A-Za-z0-9_-]{1,40}$/;
 
 // ---------------------------------------------------------------------------

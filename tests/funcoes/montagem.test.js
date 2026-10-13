@@ -127,6 +127,14 @@ test('adaptador do banco: respostas do processo por processo_id ou código; rese
   ], relatorios: [], admins: [], configuracoes: [] } });
   const db = criarDb(sb.createClient('u', 'service'));
   assert.deepEqual((await db.respostasDoProcesso({ id: UUID_PROC, codigo: 'RCP2' })).map((x) => x.id), ['b', 'a']);
+  // Código de 10 caracteres (processos novos) também casa o histórico importado pelo código; lixo fica só no processo_id.
+  const sb10 = criarSupabaseFalso({ tabelas: { processos: [], respostas: [
+    { id: 'n1', processo_id: null, avaliacao: 'K7QZ3MWR9T', recebido_em: '1', clickup_sync: null },
+    { id: 'n2', processo_id: UUID_PROC, avaliacao: 'K7QZ3MWR9T', recebido_em: '2', clickup_sync: null }
+  ], relatorios: [], admins: [], configuracoes: [] } });
+  const db10 = criarDb(sb10.createClient('u', 'service'));
+  assert.deepEqual((await db10.respostasDoProcesso({ id: UUID_PROC, codigo: 'K7QZ3MWR9T' })).map((x) => x.id), ['n1', 'n2']);
+  assert.deepEqual((await db10.respostasDoProcesso({ id: UUID_PROC, codigo: 'K7QZ,x.eq.1' })).map((x) => x.id), ['n2']);
   assert.equal(await db.processoPorId('nao-uuid'), null);
   assert.equal((await db.processoPorId(UUID_PROC)).codigo, 'RCP2');
   assert.equal((await db.processoPorLista('L1')).id, UUID_PROC);

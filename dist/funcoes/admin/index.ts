@@ -2910,7 +2910,7 @@ function criarDb(sb) {
     /** Respostas do DISC do processo (pelo processo_id; histórico importado só com o código também vale). */
     async respostasDoProcesso(proc) {
       let q = sb.from('respostas').select('id, pessoa_id, telefone, respostas, validacao, protocolo, recebido_em, foto, pessoas(foto)');
-      q = /^[A-Z0-9]{4}$/.test(proc.codigo || '')
+      q = /^(?:[A-Z0-9]{4}|[A-Z0-9]{10})$/.test(proc.codigo || '')   // código do link: 4 (antigos) ou 10 (novos)
         ? q.or('processo_id.eq.' + proc.id + ',avaliacao.eq.' + proc.codigo)
         : q.eq('processo_id', proc.id);
       return (await dados(q.order('recebido_em', { ascending: true }))) || [];

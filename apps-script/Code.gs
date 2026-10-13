@@ -106,8 +106,8 @@ var TABELAS = {
 };
 var PAPEIS = ['admin', 'gestor'];
 var TIPOS_AVALIACAO = ['selecao', 'equipe'];
-var ALFABETO_CODIGO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // código do link de avaliação (4 caracteres)
-var TAMANHO_CODIGO = 4;
+var ALFABETO_CODIGO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // código do link de avaliação
+var TAMANHO_CODIGO = 10; // avaliações novas; as antigas, de 4, continuam valendo
 var SENHA_MIN = 8;
 var SENHA_MAX = 100;
 var ITERACOES_HASH = 2000;
@@ -697,18 +697,27 @@ function validarValidacao(v) {
 }
 
 /**
- * Código do link de avaliação: 4 letras/algarismos (A-Z, 0-9). Os códigos novos são sorteados só de
- * ALFABETO_CODIGO (sem I, O, 0 e 1), mas qualquer A-Z/0-9 é aceito. Aceita minúsculas/espaços. '' se inválido.
+ * Código do link de avaliação: 10 letras/algarismos nas avaliações novas (TAMANHO_CODIGO) ou 4 nas antigas, que
+ * continuam valendo (A-Z, 0-9). Os códigos novos são sorteados só de ALFABETO_CODIGO (sem I, O, 0 e 1), mas qualquer
+ * A-Z/0-9 é aceito. Aceita minúsculas/espaços. '' se inválido. Mesma regra do site (js/api.js) e do Supabase.
  */
 function normalizarCodigoAvaliacao(v) {
   if (v === null || v === undefined) return '';
   var s = String(v).replace(/^'/, '').replace(/\s+/g, '').toUpperCase();
-  return /^[A-Z0-9]{4}$/.test(s) ? s : '';
+  return /^(?:[A-Z0-9]{4}|[A-Z0-9]{10})$/.test(s) ? s : '';
+}
+
+/** Número em [0, 1) tirado de um UUID aleatório (Utilities.getUuid); sem Utilities, Math.random. */
+function sorteioUuid_() {
+  if (typeof Utilities === 'undefined' || !Utilities.getUuid) return Math.random();
+  var h = String(Utilities.getUuid()).replace(/[^0-9a-fA-F]/g, '');
+  var n = parseInt(h.substring(0, 8), 16);
+  return isNaN(n) ? Math.random() : n / 4294967296;
 }
 
 /** Sorteia um código de avaliação que não está em "usados" ({codigo:true}). */
 function gerarCodigoAvaliacao(usados, aleatorio) {
-  var rnd = typeof aleatorio === 'function' ? aleatorio : Math.random;
+  var rnd = typeof aleatorio === 'function' ? aleatorio : sorteioUuid_;
   for (var t = 0; t < 200; t++) {
     var c = '';
     for (var i = 0; i < TAMANHO_CODIGO; i++) c += ALFABETO_CODIGO.charAt(Math.min(ALFABETO_CODIGO.length - 1, Math.floor(rnd() * ALFABETO_CODIGO.length)));
