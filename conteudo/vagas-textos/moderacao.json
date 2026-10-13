@@ -1,0 +1,268 @@
+{
+  "_sobre": "Motivos padrão de recusa/remoção/suspensão usados pelo operador e pela equipe (RPCs vagas_op_anuncio_decidir, vagas_op_empresa_decidir, vagas_op_denuncia_decidir). `chave` é estável e vai em p_motivo. `texto_empresa` é o que a empresa (ou a pessoa, no caso de mensagem) recebe por e-mail e na tela; `correcao` é a orientação para resolver; `lei` é a fonte. O operador pode acrescentar um detalhe livre (sem dado de terceiros). MINUTA: para revisão do(a) advogado(a).",
+  "versao": "2026-10-13",
+  "motivos": [
+    {
+      "chave": "anuncio_discriminatorio",
+      "alvo": "anuncio",
+      "acao": "remover",
+      "titulo": "Anúncio com exigência discriminatória",
+      "texto_empresa": "Sua vaga \"{{vaga_titulo}}\" foi recusada porque o anúncio pede ou exclui por {{detalhe}}. A lei proíbe anúncio ou exigência por sexo, idade, cor, raça, origem, estado civil, situação familiar, gravidez, deficiência, religião ou aparência.",
+      "correcao": "Edite o anúncio descrevendo a função e as tarefas, não a pessoa. Exemplo: troque \"moça de boa aparência até 30 anos\" por \"atendimento no balcão, turno da tarde\". Depois é só publicar de novo.",
+      "lei": "Lei 9.029/1995; CLT, art. 373-A, I"
+    },
+    {
+      "chave": "anuncio_sem_valor",
+      "alvo": "anuncio",
+      "acao": "recusar",
+      "titulo": "Sem faixa salarial ou valor da diária",
+      "texto_empresa": "Sua vaga \"{{vaga_titulo}}\" ainda não foi publicada porque falta a faixa salarial (ou o valor do dia, na diária). Aqui toda vaga mostra o valor: isso evita candidatura perdida para os dois lados.",
+      "correcao": "Informe a faixa (por exemplo, R$ 1.600 a R$ 1.900) ou o valor do dia e publique de novo.",
+      "lei": "regra da plataforma (termos de uso, seção 5.2)"
+    },
+    {
+      "chave": "anuncio_cobranca",
+      "alvo": "anuncio",
+      "acao": "remover",
+      "titulo": "Anúncio cobra ou pede pagamento de quem se candidata",
+      "texto_empresa": "Sua vaga \"{{vaga_titulo}}\" foi removida porque pede pagamento, taxa, compra de material ou curso de quem se candidata. Concorrer é grátis, sempre. A Justiça do Trabalho já considerou ilícita a cobrança de quem procura emprego.",
+      "correcao": "Tire qualquer exigência de pagamento. Se a função exige curso ou uniforme, isso é tratado na contratação e pago pela empresa, não como condição para concorrer. Reincidência suspende a conta.",
+      "lei": "TRT-4, 5ª Turma (2025), ação do MPT; Convenção 181 da OIT, art. 7º (fonte subsidiária); termos de uso, seção 3"
+    },
+    {
+      "chave": "anuncio_contato_fora",
+      "alvo": "anuncio",
+      "acao": "recusar",
+      "titulo": "Telefone, e-mail ou link no anúncio",
+      "texto_empresa": "Sua vaga \"{{vaga_titulo}}\" ainda não foi publicada porque tem telefone, e-mail ou link no texto. A candidatura é pela plataforma: isso protege a sua empresa de golpe feito em seu nome e a pessoa de pedidos indevidos.",
+      "correcao": "Tire o contato e o link do texto. Depois do Combinou, o contato aparece para os dois lados e o botão de WhatsApp fica disponível.",
+      "lei": "regra da plataforma (termos de uso, seção 8.3)"
+    },
+    {
+      "chave": "anuncio_falso",
+      "alvo": "anuncio",
+      "acao": "remover",
+      "titulo": "Vaga que parece não existir",
+      "texto_empresa": "Sua vaga \"{{vaga_titulo}}\" foi removida porque não conseguimos confirmar que ela existe ({{detalhe}}). Vaga falsa é a porta de entrada do golpe do emprego e coloca em risco a reputação da sua empresa.",
+      "correcao": "Se a vaga é real, responda este e-mail com uma confirmação da pessoa responsável pela empresa e o operador revisa em até 1 dia útil.",
+      "lei": "termos de uso, seção 8.3; Código Penal, art. 171 (quando houver fraude)"
+    },
+    {
+      "chave": "anuncio_fora_do_tema",
+      "alvo": "anuncio",
+      "acao": "remover",
+      "titulo": "Não é uma vaga de trabalho",
+      "texto_empresa": "Sua publicação \"{{vaga_titulo}}\" foi removida porque não é uma vaga de trabalho (parece venda, captação de clientes, curso, marketing multinível ou promessa de ganho). O mural é só para vagas de emprego, estágio, diária e serviço.",
+      "correcao": "Publique só vaga real, com função, tarefas, modalidade e valor.",
+      "lei": "termos de uso, seção 8.5"
+    },
+    {
+      "chave": "anuncio_teste_psicologico",
+      "alvo": "anuncio",
+      "acao": "recusar",
+      "titulo": "Pede teste psicológico ou DISC para concorrer",
+      "texto_empresa": "Sua vaga \"{{vaga_titulo}}\" ainda não foi publicada porque pede teste psicológico, de personalidade ou DISC como condição para concorrer. Só psicólogo(a) pode usar teste psicológico em seleção.",
+      "correcao": "Tire a exigência. Se quiser, peça o selo do teste da função (conhecimento prático, feito online sem supervisão; não é teste psicológico). O Mapa DISC é oferecido depois da contratação, na integração.",
+      "lei": "Lei 4.119/1962, art. 13, §1º; Resolução CFP 31/2022",
+      "revisao_psicologia": true
+    },
+    {
+      "chave": "anuncio_diaria_irregular",
+      "alvo": "anuncio",
+      "acao": "recusar",
+      "titulo": "Diária sem data, horário ou valor, ou com cara de emprego fixo",
+      "texto_empresa": "Sua diária \"{{vaga_titulo}}\" ainda não foi publicada porque {{detalhe}}. Diária precisa de data, horário e valor do dia. Se o trabalho é toda semana, na mesma casa ou no mesmo lugar, não é diária: é vaga (CLT ou doméstico).",
+      "correcao": "Complete data, horário e valor, ou mude a modalidade para CLT. Lembre: em residência, mais de 2 dias por semana para a mesma família é emprego doméstico, com carteira assinada.",
+      "lei": "LC 150/2015, art. 1º; CLT, art. 3º"
+    },
+    {
+      "chave": "anuncio_denuncias",
+      "alvo": "anuncio",
+      "acao": "suspender",
+      "titulo": "Suspensa por denúncias",
+      "texto_empresa": "Sua vaga \"{{vaga_titulo}}\" saiu do ar porque recebeu 3 denúncias de contas diferentes. Ela fica suspensa até a revisão do operador, em até 24 horas.",
+      "correcao": "Não precisa fazer nada agora. Se a revisão não achar problema, a vaga volta ao ar e você é avisado(a). Se achar, você recebe o motivo e a orientação.",
+      "lei": "termos de uso, seção 10.2"
+    },
+    {
+      "chave": "anuncio_ok_apos_revisao",
+      "alvo": "anuncio",
+      "acao": "publicar",
+      "titulo": "Revisada e publicada",
+      "texto_empresa": "Sua vaga \"{{vaga_titulo}}\" foi revisada e está no ar. Link curto para compartilhar: {{link_curto}}.",
+      "correcao": "",
+      "lei": ""
+    },
+    {
+      "chave": "empresa_cnpj_nao_confere",
+      "alvo": "empresa",
+      "acao": "recusar",
+      "titulo": "CNPJ não confere ou está inativo",
+      "texto_empresa": "Não conseguimos conferir o CNPJ {{cnpj}} ({{detalhe}}). Enquanto isso, a empresa não publica.",
+      "correcao": "Confira o número no cartão CNPJ da Receita Federal. Se a situação cadastral está diferente de \"ativa\", regularize e peça nova análise.",
+      "lei": "termos de uso, seção 2.2"
+    },
+    {
+      "chave": "empresa_sem_representacao",
+      "alvo": "empresa",
+      "acao": "recusar",
+      "titulo": "Não foi possível confirmar quem responde pela empresa",
+      "texto_empresa": "Não conseguimos confirmar que a pessoa responsável cadastrada responde pela empresa {{empresa_nome}}. Enquanto isso, a empresa não publica.",
+      "correcao": "Responda este e-mail a partir de um e-mail do domínio da empresa, ou peça ao operador da sua cidade uma conferência por telefone com o número do cartão CNPJ.",
+      "lei": "termos de uso, seção 2.2"
+    },
+    {
+      "chave": "empresa_suspensa_golpe",
+      "alvo": "empresa",
+      "acao": "suspender",
+      "titulo": "Suspensa por pedido de dinheiro ou documento",
+      "texto_empresa": "A conta da empresa {{empresa_nome}} foi suspensa porque pediu dinheiro, Pix, documento ou senha de quem se candidatou ({{detalhe}}). Isso é proibido aqui e pode ser crime.",
+      "correcao": "Se discorda, peça revisão em até 30 dias respondendo este e-mail. Em caso de fraude confirmada, a suspensão é definitiva e o caso pode ser comunicado às autoridades.",
+      "lei": "termos de uso, seções 3, 7 e 10; Código Penal, art. 171"
+    },
+    {
+      "chave": "empresa_suspensa_discriminacao",
+      "alvo": "empresa",
+      "acao": "suspender",
+      "titulo": "Suspensa por discriminação reincidente",
+      "texto_empresa": "A conta da empresa {{empresa_nome}} foi suspensa porque, mesmo depois de avisada, publicou anúncio ou recusou pessoas por motivo discriminatório ({{detalhe}}).",
+      "correcao": "Peça revisão em até 30 dias, com o compromisso de seguir a regra. A reativação depende do operador e da equipe.",
+      "lei": "Lei 9.029/1995; CLT, art. 373-A"
+    },
+    {
+      "chave": "empresa_suspensa_retaliacao",
+      "alvo": "empresa",
+      "acao": "suspender",
+      "titulo": "Suspensa por retaliar quem denunciou ou recusou",
+      "texto_empresa": "A conta da empresa {{empresa_nome}} foi suspensa porque houve retaliação contra uma pessoa que denunciou, recusou conversa ou retirou a candidatura.",
+      "correcao": "Peça revisão em até 30 dias respondendo este e-mail.",
+      "lei": "termos de uso, seção 5.6"
+    },
+    {
+      "chave": "empresa_dados_fora_da_finalidade",
+      "alvo": "empresa",
+      "acao": "suspender",
+      "titulo": "Suspensa por usar dados fora da vaga",
+      "texto_empresa": "A conta da empresa {{empresa_nome}} foi suspensa porque usou dados de pessoas fora do processo da vaga (por exemplo, para marketing, repasse ou outra finalidade).",
+      "correcao": "Apague os dados recebidos, confirme por escrito e peça revisão em até 30 dias. A empresa responde como controladora pelo uso que fez.",
+      "lei": "LGPD, art. 6º, I a III, e art. 42; termos de uso, seção 5.5"
+    },
+    {
+      "chave": "empresa_reativada",
+      "alvo": "empresa",
+      "acao": "reativar",
+      "titulo": "Conta reativada",
+      "texto_empresa": "A conta da empresa {{empresa_nome}} foi reativada depois da revisão. Suas vagas pausadas podem ser retomadas no painel.",
+      "correcao": "",
+      "lei": ""
+    },
+    {
+      "chave": "mensagem_pedido_dinheiro",
+      "alvo": "mensagem",
+      "acao": "bloquear",
+      "titulo": "Mensagem pedia dinheiro ou pagamento",
+      "texto_empresa": "Uma mensagem sua na conversa da vaga \"{{vaga_titulo}}\" foi bloqueada porque pedia dinheiro, Pix, transferência ou pagamento de taxa. Concorrer é grátis, sempre.",
+      "correcao": "Reescreva sem pedido de pagamento. Reincidência suspende a conta.",
+      "lei": "termos de uso, seção 7.2"
+    },
+    {
+      "chave": "mensagem_pedido_documento",
+      "alvo": "mensagem",
+      "acao": "bloquear",
+      "titulo": "Mensagem pedia documento, senha ou código",
+      "texto_empresa": "Uma mensagem sua na conversa da vaga \"{{vaga_titulo}}\" foi bloqueada porque pedia foto ou cópia de documento, senha ou código de confirmação. Documentos são conferidos pessoalmente, na admissão.",
+      "correcao": "Combine a entrevista e peça os documentos só na admissão, presencialmente.",
+      "lei": "termos de uso, seção 7.2; LGPD, art. 6º, III (necessidade)"
+    },
+    {
+      "chave": "mensagem_assedio",
+      "alvo": "mensagem",
+      "acao": "suspender",
+      "titulo": "Assédio, ameaça ou ofensa",
+      "texto_empresa": "Sua conta foi suspensa porque uma mensagem na conversa da vaga \"{{vaga_titulo}}\" tinha assédio, ameaça ou ofensa. A outra pessoa foi protegida e a conversa foi encerrada.",
+      "correcao": "Peça revisão em até 30 dias. Em caso grave, o registro pode ser entregue às autoridades a pedido da pessoa atingida.",
+      "lei": "termos de uso, seção 7.4; Código Penal, arts. 140, 147 e 216-A"
+    },
+    {
+      "chave": "denuncia_improcedente",
+      "alvo": "denuncia",
+      "acao": "arquivar",
+      "titulo": "Denúncia revisada, sem problema encontrado",
+      "texto_empresa": "Revisamos a denúncia sobre \"{{alvo_descricao}}\" e não encontramos descumprimento das regras. Nada muda. Obrigado por denunciar: é assim que o mural fica seguro.",
+      "correcao": "",
+      "lei": ""
+    },
+    {
+      "chave": "denuncia_procedente",
+      "alvo": "denuncia",
+      "acao": "acatar",
+      "titulo": "Denúncia revisada e acatada",
+      "texto_empresa": "Revisamos a denúncia sobre \"{{alvo_descricao}}\" e tomamos uma providência ({{detalhe}}). Quem foi denunciado não sabe quem denunciou. Obrigado.",
+      "correcao": "",
+      "lei": ""
+    },
+    {
+      "chave": "referencia_dado_sensivel",
+      "alvo": "referencia",
+      "acao": "recusar",
+      "titulo": "Referência com dado sensível",
+      "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi recusada porque o texto traz dado sensível ({{detalhe}}): saúde, família, gravidez, religião, origem, orientação ou situação financeira não entram em referência.",
+      "correcao": "Edite o texto deixando só fatos do trabalho e a recomendação. Reenvie e a pessoa recebe para aceitar.",
+      "lei": "LGPD art. 11; Lei 9.029/1995"
+    },
+    {
+      "chave": "referencia_discriminatoria",
+      "alvo": "referencia",
+      "acao": "recusar",
+      "titulo": "Referência com termo discriminatório",
+      "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi recusada porque o texto tem termo ligado a aparência, idade, sexo, cor, origem ou estado civil ({{detalhe}}). Isso não entra em referência, mesmo como elogio.",
+      "correcao": "Descreva o que a pessoa fazia e como, não quem ela é. Exemplo: troque \"moça bonita e educada\" por \"atendia bem as pessoas\".",
+      "lei": "Lei 9.029/1995; CLT, art. 373-A"
+    },
+    {
+      "chave": "referencia_contato",
+      "alvo": "referencia",
+      "acao": "recusar",
+      "titulo": "Referência com telefone, e-mail ou link",
+      "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi recusada porque o texto tem telefone, e-mail ou link. Referência é pública: contato ali expõe a pessoa e a empresa.",
+      "correcao": "Tire o contato e reenvie. Quem quiser confirmar a referência fala com a empresa pelo canal público dela.",
+      "lei": "termos de uso, seção 8.3"
+    },
+    {
+      "chave": "referencia_negativa",
+      "alvo": "referencia",
+      "acao": "recusar",
+      "titulo": "Referência com crítica, ressalva ou ofensa",
+      "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi recusada porque contém crítica, ressalva ou ofensa. Aqui a referência é só recomendação, pública e com o nome da empresa. Referência negativa pública pode gerar dano moral e caracterizar \"lista\" de pessoas, o que é ilegal.",
+      "correcao": "Se você recomenda a pessoa, reescreva só com os pontos positivos e os fatos do período. Se não recomenda, não dê referência: isso basta.",
+      "lei": "[REVISÃO JURÍDICA] Código Civil, arts. 186 e 927; Constituição, art. 5º, X; Lei 9.029/1995 (listas discriminatórias)"
+    },
+    {
+      "chave": "referencia_periodo_improvavel",
+      "alvo": "referencia",
+      "acao": "recusar",
+      "titulo": "Período ou vínculo que não confere",
+      "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi recusada porque o período ou o vínculo informado não confere ({{detalhe}}). A empresa responde pela veracidade da declaração.",
+      "correcao": "Confira as datas e a função no registro da empresa e reenvie.",
+      "lei": "declaração da empresa (aceite empresa_referencia_declaracao)"
+    },
+    {
+      "chave": "referencia_denunciada",
+      "alvo": "referencia",
+      "acao": "remover",
+      "titulo": "Removida por denúncia",
+      "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi removida depois de denúncia ({{detalhe}}).",
+      "correcao": "Se discorda, responda este e-mail em até 30 dias.",
+      "lei": "termos de uso, seção 10"
+    },
+    {
+      "chave": "referencia_ok",
+      "alvo": "referencia",
+      "acao": "liberar",
+      "titulo": "Referência revisada e enviada à pessoa",
+      "texto_empresa": "A referência que a sua empresa deixou para {{pessoa_nome}} foi revisada e enviada para a pessoa aceitar. Avisamos quando ela decidir.",
+      "correcao": "",
+      "lei": ""
+    }
+  ]
+}

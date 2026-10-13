@@ -1,0 +1,212 @@
+{
+  "_sobre": "Mensagens prontas de WhatsApp do Vagas sem Caos. `uso`: 'wa_me' = botão que abre wa.me/<numero>?text=... (a tela codifica o texto); 'copiar' = botão 'Copiar' para colar à mão em grupo, canal ou status. Variáveis em {{ }} são preenchidas pela tela; nunca entram dados sensíveis (sem idade, documento, endereço, nota de teste de terceiros). Sem disparador automático: a pessoa sempre envia pelo próprio WhatsApp. MINUTA: para revisão do(a) advogado(a) antes de publicar.",
+  "versao": "2026-10-13",
+  "aviso_anti_golpe": "A Gestão sem Caos nunca pede dinheiro, Pix ou documento para você se candidatar. Se alguém pedir em nosso nome, é golpe.",
+  "mensagens": [
+    {
+      "chave": "empresa_para_pessoa_combinou",
+      "de": "empresa",
+      "para": "pessoa",
+      "uso": "wa_me",
+      "quando": "botão de WhatsApp na tela da empresa, depois do Combinou",
+      "variaveis": [
+        "pessoa_primeiro_nome",
+        "empresa_nome",
+        "vaga_titulo",
+        "responsavel_nome"
+      ],
+      "texto": "Oi, {{pessoa_primeiro_nome}}! Aqui é {{responsavel_nome}}, da {{empresa_nome}}. Vi a sua candidatura à vaga de {{vaga_titulo}} no Vagas sem Caos e deu Combinou. Podemos conversar sobre a vaga? Me diz um horário bom para você. (Nunca pedimos dinheiro, Pix ou documento para a vaga: só na admissão, pessoalmente.)"
+    },
+    {
+      "chave": "pessoa_para_empresa_combinou",
+      "de": "pessoa",
+      "para": "empresa",
+      "uso": "wa_me",
+      "quando": "botão de WhatsApp na tela da pessoa, depois do Combinou",
+      "variaveis": [
+        "pessoa_primeiro_nome",
+        "empresa_nome",
+        "vaga_titulo"
+      ],
+      "texto": "Oi! Sou {{pessoa_primeiro_nome}}. Deu Combinou na vaga de {{vaga_titulo}} da {{empresa_nome}} no Vagas sem Caos. Tenho interesse e posso conversar quando for melhor para vocês. Obrigado(a)!"
+    },
+    {
+      "chave": "empresa_para_pessoa_entrevista",
+      "de": "empresa",
+      "para": "pessoa",
+      "uso": "wa_me",
+      "quando": "opcional, depois de combinar a entrevista (botão \"Enviar lembrete\")",
+      "variaveis": [
+        "pessoa_primeiro_nome",
+        "empresa_nome",
+        "vaga_titulo",
+        "data",
+        "hora",
+        "local"
+      ],
+      "texto": "Oi, {{pessoa_primeiro_nome}}! Confirmando a entrevista para a vaga de {{vaga_titulo}} na {{empresa_nome}}: {{data}}, às {{hora}}, em {{local}}. Se não puder, me avisa por aqui. Até lá!"
+    },
+    {
+      "chave": "boletim_do_dia",
+      "de": "operador",
+      "para": "grupos e canal da cidade",
+      "uso": "copiar",
+      "quando": "botão \"Copiar boletim do dia\" no painel do operador; postado à mão no Canal e nos grupos parceiros",
+      "variaveis": [
+        "cidade",
+        "data",
+        "lista_vagas",
+        "total_vagas",
+        "link_cidade"
+      ],
+      "texto": "*Vagas sem Caos · {{cidade}} · {{data}}*\n\n{{lista_vagas}}\n\n{{total_vagas}} vagas abertas hoje. Veja todas e candidate-se pelo celular: {{link_cidade}}\n\nÉ grátis para quem procura trabalho. A Gestão sem Caos nunca pede dinheiro, Pix ou documento para você se candidatar. Se alguém pedir em nosso nome, é golpe.",
+      "formato_item": "• {{vaga_titulo}} · {{zona}} · {{valor}} · {{link_curto}}"
+    },
+    {
+      "chave": "vaga_compartilhar",
+      "de": "qualquer pessoa",
+      "para": "contatos e grupos",
+      "uso": "wa_me",
+      "quando": "botão \"Compartilhar no WhatsApp\" na página da vaga",
+      "variaveis": [
+        "vaga_titulo",
+        "empresa_nome_ou_confidencial",
+        "zona",
+        "valor",
+        "link_curto"
+      ],
+      "texto": "Vaga de {{vaga_titulo}} · {{empresa_nome_ou_confidencial}} · {{zona}} · {{valor}}. Candidatura grátis pelo celular: {{link_curto}} (Vagas sem Caos, uma ferramenta da Gestão sem Caos)"
+    },
+    {
+      "chave": "empresa_convite_colaborador",
+      "de": "empresa",
+      "para": "pessoa que a empresa quer cadastrar",
+      "uso": "wa_me",
+      "quando": "botão \"Convidar alguém\" no painel da empresa (a empresa não digita dados de terceiros: a pessoa se cadastra sozinha)",
+      "variaveis": [
+        "empresa_nome",
+        "link_cidade"
+      ],
+      "texto": "Oi! A {{empresa_nome}} está usando o Vagas sem Caos para contratar. Se quiser concorrer às nossas vagas, faça o seu cadastro aqui, pelo celular: {{link_cidade}}. É grátis e leva uns 3 minutos. Nunca pedimos dinheiro, Pix ou documento para se candidatar: se alguém pedir em nosso nome, é golpe."
+    },
+    {
+      "chave": "empresa_convite_membro",
+      "de": "empresa",
+      "para": "colega da mesma empresa",
+      "uso": "wa_me",
+      "quando": "botão \"Convidar colega\" (membro da conta da empresa)",
+      "variaveis": [
+        "empresa_nome",
+        "responsavel_nome",
+        "link_convite"
+      ],
+      "texto": "Oi! Aqui é {{responsavel_nome}}. Adicionei você na conta da {{empresa_nome}} no Vagas sem Caos, para publicar vagas e ver candidaturas. Entre por este link e crie a sua senha: {{link_convite}}"
+    },
+    {
+      "chave": "operador_convite_empresa",
+      "de": "operador",
+      "para": "empresa da cidade",
+      "uso": "wa_me",
+      "quando": "venda no balcão / prospecção (padrão de marca.md)",
+      "variaveis": [
+        "contato_nome",
+        "operador_nome",
+        "cidade",
+        "mes"
+      ],
+      "texto": "Oi, {{contato_nome}}! Aqui é {{operador_nome}}, da Gestão sem Caos. Estamos abrindo o Vagas sem Caos, um mural de vagas só de {{cidade}}, em que quem se candidata pode fazer antes um teste do básico da função. Tem alguma vaga aberta ou para abrir até {{mes}}? Eu cadastro para você em 5 minutos, sem custo nesta fase, e você vê quem fez o teste e quer a vaga. Pode ser?"
+    },
+    {
+      "chave": "operador_convite_pessoa",
+      "de": "operador",
+      "para": "pessoa da cidade",
+      "uso": "copiar",
+      "quando": "mutirão, grupos e status (padrão de marca.md)",
+      "variaveis": [
+        "cidade",
+        "link_cidade"
+      ],
+      "texto": "Oi! A Gestão sem Caos está reunindo vagas de empresas de {{cidade}} em um só lugar: {{link_cidade}}. 1) Cadastro em 3 minutos pelo celular. 2) Se quiser, teste do básico da função, uns 15 minutos. 3) Você diz \"Quero\" nas vagas e, se a empresa também quiser, vocês conversam. É grátis. A gente nunca pede dinheiro para você se candidatar: se alguém pedir em nosso nome, é golpe."
+    },
+    {
+      "chave": "operador_cadastro_assistido",
+      "de": "operador",
+      "para": "pessoa cadastrada no mutirão",
+      "uso": "wa_me",
+      "quando": "logo depois do cadastro assistido, para a pessoa confirmar o e-mail",
+      "variaveis": [
+        "pessoa_primeiro_nome",
+        "email"
+      ],
+      "texto": "Oi, {{pessoa_primeiro_nome}}! Começamos o seu cadastro no Vagas sem Caos. Para ele valer, confirme pelo link que foi para o e-mail {{email}} (olhe o spam se não achar). Só depois disso o seu cartão aparece para as empresas. Eu não vejo o seu currículo nem o seu contato. É grátis: se alguém pedir dinheiro em nosso nome, é golpe."
+    },
+    {
+      "chave": "lembrete_prova_presencial",
+      "de": "operador",
+      "para": "pessoa inscrita na prova presencial / mutirão",
+      "uso": "wa_me",
+      "quando": "véspera da prova presencial (fase 2) ou do mutirão",
+      "variaveis": [
+        "pessoa_primeiro_nome",
+        "teste_nome",
+        "data",
+        "hora",
+        "local"
+      ],
+      "texto": "Oi, {{pessoa_primeiro_nome}}! Lembrete: sua prova presencial de {{teste_nome}} do Vagas sem Caos é {{data}}, às {{hora}}, em {{local}}. Leve um documento com foto, só para conferir na hora (não tiramos cópia). É grátis. Chegue 10 minutos antes. Se não puder, me avisa por aqui."
+    },
+    {
+      "chave": "lembrete_mutirao",
+      "de": "operador",
+      "para": "grupos e canal da cidade",
+      "uso": "copiar",
+      "quando": "divulgação do mutirão de cadastro",
+      "variaveis": [
+        "cidade",
+        "data",
+        "hora",
+        "local"
+      ],
+      "texto": "*Mutirão Vagas sem Caos · {{cidade}}*\n{{data}}, das {{hora}}, em {{local}}.\nCadastro no celular com ajuda, teste do básico da função e as vagas abertas da cidade. Grátis. Leve o celular com internet ou use o nosso. A Gestão sem Caos nunca pede dinheiro, Pix ou documento para você se candidatar."
+    },
+    {
+      "chave": "pessoa_denunciar_golpe",
+      "de": "pessoa",
+      "para": "operador da cidade",
+      "uso": "wa_me",
+      "quando": "link \"Falar com a gente\" na tela de denúncia, quando a pessoa prefere WhatsApp",
+      "variaveis": [
+        "cidade"
+      ],
+      "texto": "Oi! Quero denunciar algo no Vagas sem Caos de {{cidade}}. Alguém pediu dinheiro/documento ou a vaga parece falsa. Podem me orientar? (Não vou mandar documento nem dados por aqui.)"
+    },
+    {
+      "chave": "pessoa_pedir_referencia",
+      "de": "pessoa",
+      "para": "empresa em que trabalhou",
+      "uso": "wa_me",
+      "quando": "botão \"Pedir referência\" (a pessoa manda o convite pelo próprio WhatsApp)",
+      "variaveis": [
+        "pessoa_primeiro_nome",
+        "empresa_nome",
+        "funcao",
+        "periodo",
+        "link_convite"
+      ],
+      "texto": "Oi! Sou {{pessoa_primeiro_nome}}, trabalhei na {{empresa_nome}} como {{funcao}} ({{periodo}}). Estou no Vagas sem Caos e queria pedir uma referência profissional da empresa. É rápido: {{link_convite}}. A referência é pública, com o nome da empresa, e só aparece depois que eu aceitar. Obrigado(a)!"
+    },
+    {
+      "chave": "empresa_avisar_referencia",
+      "de": "empresa",
+      "para": "pessoa",
+      "uso": "wa_me",
+      "quando": "opcional, depois de deixar a referência (a pessoa também recebe e-mail)",
+      "variaveis": [
+        "pessoa_primeiro_nome",
+        "empresa_nome",
+        "link"
+      ],
+      "texto": "Oi, {{pessoa_primeiro_nome}}! A {{empresa_nome}} deixou uma referência profissional para você no Vagas sem Caos. Ela só aparece se você aceitar: {{link}}. É grátis e ninguém pede dinheiro ou documento por isso."
+    }
+  ]
+}
