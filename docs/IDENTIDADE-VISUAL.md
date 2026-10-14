@@ -78,6 +78,25 @@ Fonte: pasta do Drive "Gestão Sem Caos - Identidade Visual" (`LOGO/SVG/LOGO.svg
 - `alt="Gestão sem Caos"` sempre (ou `alt=""` se o mesmo nome já está escrito ao lado).
 - A imagem de compartilhamento `assets/og-mapa-disc.png` (1200×630) usa a versão negativa.
 
+## Logo (Vagas sem Caos)
+
+O Vagas sem Caos (plataforma de vagas, pasta `vagas/`) tem marca própria: o mesmo símbolo e o mesmo desenho do logo da Gestão sem Caos, com "Vagas" no lugar de "Gestão" (Plus Jakarta Sans 700, a fonte do logo, na mesma escala, linha de base e espaçamento; "sem Caos" e o símbolo intactos). Proporção 6,68 : 1 (24 px de altura → 160 px de largura; 28 px → 187; 36 px → 240).
+
+| Arquivo | Versão | Quando usar |
+|---|---|---|
+| `assets/marca/vsc-logo.svg` | horizontal colorida (símbolo laranja, texto azul-escuro `#122940`) | **principal**: topo de todas as telas do Vagas (fundo claro e cabeçalho de vidro), menu lateral da empresa e do operador, termos e privacidade, rodapé das páginas de divulgação |
+| `assets/marca/vsc-logo-negativo.svg` | símbolo laranja e texto claro `#F2F2F2` | fundo azul-escuro: cabeçalho da página da vaga pelo link curto (`/v/<código>`), imagens de compartilhamento |
+| `assets/marca/vsc-logo-preto.svg` | monocromática `#141414` | moldura laranja: entrar e criar conta (pessoa e empresa) |
+| `assets/marca/vsc-logo-email.png` | colorida em PNG, 903×136, fundo branco (mesmo tamanho e estilo de `gsc-logo-email.png`) | topo dos e-mails do Vagas (Edge Function `vagas-conta`, mostrado a 188 px) e prévia do link curto no WhatsApp (o Gmail e o WhatsApp não mostram SVG) |
+
+- O favicon continua o símbolo (`gsc-favicon.svg` e companhia): é o mesmo nas duas marcas.
+- Em HTML: `<img class="logo-gsc topo-logo" src="comum/marca/vsc-logo.svg" alt="Vagas sem Caos" width="160" height="24">` (a classe `.logo-gsc` é a mesma peça de `notus.css`). Sem o nome escrito ao lado: "Vagas sem Caos" já está no logo.
+- Tamanho mínimo, respiro e proibições: os mesmos do logo da Gestão sem Caos (20 px de altura no mínimo; não recolorir, não esticar, não usar a colorida sobre o laranja).
+- **Endosso:** a Gestão sem Caos aparece só como "empresa do grupo": "Uma empresa do grupo" + `gsc-logo.svg` a 20 px (classe `.vg-grupo` em `vagas/assets/vagas.css`; `.vg-div-rodape__grupo` nas páginas de divulgação), no rodapé e nas imagens de compartilhamento. Na lista pública (`cidade.html`, que tem limite de 100 KB na primeira visita) o endosso é só texto: "Uma empresa do grupo Gestão sem Caos". Em frase corrida: "uma empresa do grupo Gestão sem Caos" (nunca "uma ferramenta da Gestão sem Caos"). Nos e-mails, o rodapé é texto ("Vagas sem Caos · uma empresa do grupo Gestão sem Caos").
+- Textos legais (termos, aviso de privacidade, contrato de operador) continuam identificando a Gestão sem Caos como responsável e controladora.
+- O painel da Gestão sem Caos (`admin.html`, inclusive a aba Vagas) continua com o logo da Gestão sem Caos.
+- **Gerador:** `python3 scripts/marca-vagas-logo.py` refaz as três versões SVG a partir de `assets/marca/gsc-logo.svg` e da fonte (`assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2`; o espaçamento entre as letras foi medido no Chromium e está no script). A saída já sai otimizada: origem em 0,0, comandos relativos com as mesmas coordenadas do original (1 casa decimal, sem arredondar nada), letras numa só `<path>` (4,4 KB; 1,75 KB com gzip). Depois: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node scripts/marca-vagas-email.mjs` (o PNG do e-mail, renderizado do SVG no Chromium) e `node scripts/montar-vagas.mjs` (copia tudo para `vagas/comum/marca/`).
+
 ## Documentos (relatórios e manuais)
 
 Variante **editorial** da identidade, só para documentos de leitura que vão para o cliente (hoje: o relatório público do processo seletivo, `relatorio.html` + `assets/relatorio.css` + `js/relatorio-view.js`). Telas do sistema (candidato e painel) continuam com as regras acima, sem exceção.

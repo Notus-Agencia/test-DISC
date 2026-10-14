@@ -3,7 +3,7 @@
  * "node scripts/montar-vagas.mjs" (o npm test confere que está em dia).
  *
  * Acrescenta a VAGAS_TEXTOS (carregue depois de textos.js), para as telas com conta e entrar.html:
- *   anuncio.* (titulo_erro, lei_resumo, campos.*) e referencia.* (vinculos, validacao.*) de avisos.json;
+ *   anuncio.* (titulo_erro, lei_resumo, campos.*), referencia.* (vinculos, validacao.*), mensagem.* e foto.* de avisos.json;
  *   consentimentos.termosVersao e consentimentos.aceites[chave] = {versao, quem, titulo, texto, explicacao, obrigatorio, ...};
  *   moderacao.motivos[chave] = {alvo, acao, titulo, texto_empresa, correcao, lei} (a chave é o p_motivo das RPCs vagas_op_*).
  *   VAGAS_TEXTOS.t('consentimentos.aceites.pessoa_cadastro.texto') também funciona.
@@ -59,6 +59,29 @@
    "publicado": "Texto publicado",
    "nao_publicado": "Texto não publicado"
   }
+ },
+ "mensagem": {
+  "bloqueada_dinheiro": "Mensagem não enviada. Pedir dinheiro, Pix, transferência, boleto ou pagamento de taxa não é permitido aqui. Concorrer é grátis, sempre, e isso vale para os dois lados.",
+  "bloqueada_documento": "Mensagem não enviada. Pedir foto ou cópia de documento (CPF, RG, CNH, comprovante), senha ou código não é permitido antes da contratação. Documentos são conferidos pessoalmente, na admissão.",
+  "bloqueada_link": "Mensagem não enviada. Links encurtados não são permitidos aqui. Escreva o endereço completo ou combine pelo WhatsApp depois do Combinou.",
+  "bloqueada_generica": "Mensagem não enviada. Ela tem um trecho que não é permitido aqui. Reescreva sem pedir pagamento, documento ou link.",
+  "aviso_pessoa": "Esta conversa fica registrada. Se a empresa pedir dinheiro, Pix, documento ou senha, não mande: denuncie.",
+  "aviso_empresa": "Esta conversa fica registrada. Combine entrevista e detalhes da vaga. Documentos só na admissão, pessoalmente.",
+  "recebeu_pedido_suspeito": "Esta mensagem foi bloqueada antes de chegar a você porque pedia pagamento ou documento. Você pode denunciar a empresa.",
+  "conversa_encerrada": "Conversa encerrada. A outra parte não pode mais escrever aqui.",
+  "conversa_encerrada_pessoa": "Você encerrou. A empresa não vê mais o seu contato e não pode escrever aqui."
+ },
+ "foto": {
+  "explicacao": "A empresa só vê sua foto depois que vocês combinarem de conversar. Sem foto não muda nada na sua candidatura.",
+  "opcional": "Foto é opcional. Se quiser, envie uma foto do rosto, simples, sem outras pessoas.",
+  "quem_ve": "Nunca aparece no cartão cego, na busca das empresas nem no seu perfil público. Só a empresa com quem você combinou de conversar vê, enquanto a conversa estiver aberta.",
+  "removida": "Foto removida. O arquivo foi apagado e nenhuma empresa vê mais a sua foto.",
+  "empresa": "A foto da pessoa aparece só depois do Combinou, para esta vaga. Ela é opcional: quem não enviou foto está em igualdade com quem enviou. Não use a foto para decidir.",
+  "limites": "Arquivo JPG, PNG ou WEBP, com até 1 MB.",
+  "denunciar_empresa": "Foto imprópria, de outra pessoa ou com documento? Denuncie: a foto some para você e a equipe apura.",
+  "formato": "A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.",
+  "so_apos_combinou": "A foto só aparece depois do Combinou.",
+  "sem_foto_empresa": "Esta pessoa não pôs foto."
  },
  "consentimentos": {
   "termosVersao": "2026-10-13",

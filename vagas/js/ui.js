@@ -383,13 +383,12 @@
         icone(d[2]), d[1], n > 0 ? el('span', { class: 'vg-nav__n', 'aria-label': n + (n === 1 ? ' novidade' : ' novidades') }, String(n > 9 ? '9+' : n)) : null]);
     }));
   }
-  // Topo da pessoa: logo | "Vagas sem Caos" | pílula da cidade (nome sempre vindo do dado, nunca fixo).
+  // Topo da pessoa: logo do Vagas sem Caos (o nome já está no logo) | pílula da cidade (nome sempre vindo do dado, nunca fixo).
   function topo(op) {
     op = op || {};
     var alvo = porId('vg-topo');
     var interno = el('div', { class: 'topo-interno' }, [
-      el('a', { href: 'index.html', class: 'vg-topo__marca', 'aria-label': 'Vagas sem Caos, início' }, el('img', { class: 'logo-gsc topo-logo', src: 'comum/marca/gsc-logo.svg', alt: 'Gestão sem Caos', width: '171', height: '24' })),
-      el('span', { class: 'topo-nome' }, 'Vagas sem Caos'),
+      el('a', { href: 'index.html', class: 'vg-topo__marca', 'aria-label': 'Vagas sem Caos, início' }, el('img', { class: 'logo-gsc topo-logo', src: 'comum/marca/vsc-logo.svg', alt: 'Vagas sem Caos', width: '160', height: '24' })),
       op.cidade ? el('button', { type: 'button', class: 'vg-cidade', id: 'vg-cidade', 'aria-haspopup': 'dialog', 'aria-label': 'Cidade: ' + op.cidade.nome + '. Trocar a cidade', onclick: op.aoCidade },
         [icone('pin'), el('span', { class: 'vg-cidade__nome' }, op.cidade.nome)]) : null
     ]);

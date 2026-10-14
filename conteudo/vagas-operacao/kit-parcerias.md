@@ -5,7 +5,7 @@
 Regras de toda parceria:
 - Sem exclusividade e sem dinheiro trocando de mão no lançamento (crédito e visibilidade, não pagamento).
 - A entidade nunca recebe dados de pessoas; só números agregados ("60 cadastros, 30 provas").
-- Crédito fixo: "Vagas sem Caos · uma ferramenta da Gestão sem Caos". Nenhum nome de agência.
+- Crédito fixo: "Vagas sem Caos · uma empresa do grupo Gestão sem Caos". Nenhum nome de agência.
 - Toda parceria registrada em 5 linhas: entidade, contato (nome e cargo), o que ganha, o que dá, data e próximo passo.
 - Nada de partido, candidatura ou religião no material, mesmo quando o local é público ou de igreja.
 

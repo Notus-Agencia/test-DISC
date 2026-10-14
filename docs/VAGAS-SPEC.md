@@ -1081,7 +1081,7 @@ Aviso de abertura: e-mail `conteudo/vagas-textos/emails/cidade-abriu.html` (assu
 `…/emprego.html?cidade=<slug>&sair=<token>#sair` / `…/empresas.html?cidade=<slug>&sair=<token>#sair` (§8.1).
 
 Segredos (Supabase → Edge Functions → Secrets): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`
-(`https://vagas.gestaosemcaos.com.br`), `VAGAS_EMAIL_REMETENTE` (sugestão: `Vagas · Gestão sem Caos
+(`https://vagas.gestaosemcaos.com.br`), `VAGAS_EMAIL_REMETENTE` (sugestão: `Vagas sem Caos
 <vagas@gestaosemcaos.com.br>`; sem ele, usa o `EMAIL_REMETENTE` do DISC), `TURNSTILE_SECRET` (opcional). Detalhes em `docs/SUPABASE.md`.
 
 ## 10. Cliente JS para as telas

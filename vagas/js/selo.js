@@ -15,7 +15,7 @@
 
   var TXT = {
     FORMATO: 'O código tem 8 letras e números, como Q8V3N2KD',                                                 // VAGAS-TELAS §2.8
-    EMITIDO: 'Emitido pelo Vagas sem Caos, uma ferramenta da Gestão sem Caos. O selo pertence a uma pessoa cadastrada; o nome dela só aparece para quem ela autorizou.',
+    EMITIDO: 'Emitido pelo Vagas sem Caos, uma empresa do grupo Gestão sem Caos. O selo pertence a uma pessoa cadastrada; o nome dela só aparece para quem ela autorizou.',
     EMPRESA: 'Veja quem já provou o básico da função: o selo mostra teste, data e nota. A decisão de contratar continua sendo sua.'   // padroes §6
   };
 
