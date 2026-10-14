@@ -226,7 +226,9 @@
       });
     });
     j = U.janela({ id: 'vg-confirmar-excluir', titulo: 'Excluir a conta de vez?', alerta: true, foco: '#vg-confirmar-excluir-texto', corpo: [
-      E.lista(['Apaga o seu acesso (e-mail e senha) e o seu lugar na equipe da empresa.', 'As vagas e as conversas são da empresa: ficam com quem continua na equipe.',
+      // Psicologia, revisão C 3.6: cobre quem é a única pessoa da equipe (vagas saem do ar; conversas encerradas com aviso).
+      E.lista(['Apaga o seu acesso (e-mail e senha) e o seu lugar na equipe da empresa.', 'Se outra pessoa continua na equipe, as vagas e as conversas ficam com ela.',
+        'Se você é a única pessoa da equipe, as vagas saem do ar e as conversas abertas são encerradas com um aviso para as pessoas candidatas.',
         'Não dá para desfazer.']),
       el('label', { class: 'campo__rotulo vg-emp-nota', for: 'vg-confirmar-excluir-texto' }, 'Para confirmar, digite EXCLUIR'),
       texto, el('span', { class: 'visualmente-oculto', id: 'vg-confirmar-excluir-ajuda' }, 'O botão Excluir a conta fica liberado quando a palavra estiver certa.'), erro],
@@ -292,7 +294,8 @@
     return caixaEquipe;
   }
   function sairDaEquipe() {
-    U.confirmar({ id: 'vg-confirmar-sair-equipe', titulo: 'Sair da equipe?', texto: 'Você deixa de ver as vagas e as conversas de ' + ctx.empresa.nomeFantasia + '.', sim: 'Sair da equipe', perigo: true })
+    U.confirmar({ id: 'vg-confirmar-sair-equipe', titulo: 'Sair da equipe?', texto: 'Você deixa de ver as vagas e as conversas de ' + ctx.empresa.nomeFantasia + '. Apague do seu celular os contatos de pessoas candidatas que você salvou para esta empresa.',
+      sim: 'Sair da equipe', perigo: true })
       .then(function (sim) {
         if (!sim) return;
         A.sessao().then(function (s) { return A[EQUIPE.remover](ctx.empresa.id, s.usuario.id); }).then(function () {
@@ -320,7 +323,7 @@
       var form = so || !podeConvidar ? null : el('form', { class: 'vg-emp-equipe-form', id: 'vg-equipe-form', novalidate: true }, [
         el('label', { class: 'campo__rotulo', for: 'vg-equipe-email' }, 'Convidar uma pessoa da empresa (e-mail)'),
         el('div', { class: 'vg-link-curto' }, [email, convidar]),
-        el('span', { class: 'campo__ajuda', id: 'vg-equipe-ajuda' }, 'Ela entra como recrutador(a): publica vagas, vê os cartões e conversa.' +
+        el('span', { class: 'campo__ajuda', id: 'vg-equipe-ajuda' }, 'Ela entra como recrutador(a): publica vagas, vê os cartões, conversa e, depois do Combinou, vê o nome e o contato das pessoas. Convide só quem trabalha na contratação.' +
           (lim.validadeHoras ? ' O convite vale ' + lim.validadeHoras + ' horas.' : '') + (lim.membrosMax ? ' Até ' + lim.membrosMax + ' pessoas na equipe.' : ''))]);
       if (form) form.addEventListener('submit', function (ev) {
         ev.preventDefault();
@@ -372,14 +375,15 @@
   }
   function tornarDono(m, corpo) {
     U.confirmar({ id: 'vg-confirmar-dono', titulo: 'Tornar ' + (m.nome || m.email) + ' dono(a) da empresa?',
-      texto: 'Você continua dono(a). Quem é dono(a) convida e remove pessoas da equipe e muda os dados da empresa.', sim: 'Tornar dono(a)' })
+      texto: 'Você continua dono(a). Quem é dono(a) convida e remove pessoas da equipe, inclusive você, e muda os dados da empresa.', sim: 'Tornar dono(a)' })
       .then(function (sim) {
         if (!sim) return;
         A.tornarDono(ctx.empresa.id, m.userId).then(function () { U.avisar('Pronto. ' + (m.nome || m.email) + ' agora é dono(a) da empresa.', { tipo: 'ok' }); carregarEquipe(corpo); }, function (e) { U.tratarErro(e); });
       });
   }
   function remover(m, corpo) {
-    U.confirmar({ id: 'vg-confirmar-remover', titulo: 'Remover ' + (m.nome || m.email) + ' da equipe?', texto: 'A pessoa deixa de ver as vagas e as conversas da empresa. As vagas continuam.', sim: 'Remover', perigo: true })
+    U.confirmar({ id: 'vg-confirmar-remover', titulo: 'Remover ' + (m.nome || m.email) + ' da equipe?', texto: 'A pessoa deixa de ver as vagas, os cartões e as conversas da empresa. As vagas continuam. Os contatos de pessoas candidatas que ela salvou no celular continuam com ela: peça para apagar.',
+      sim: 'Remover', perigo: true })
       .then(function (sim) {
         if (!sim) return;
         A[EQUIPE.remover](ctx.empresa.id, m.userId).then(function () { U.avisar('Pessoa removida da equipe.', { tipo: 'ok' }); carregarEquipe(corpo); }, function (e) { U.tratarErro(e); });
@@ -459,7 +463,7 @@
   function telaBanco(raiz) {
     E.tela(raiz, [E.cabecalho({ sobre: 'Fase 2', titulo: 'Buscar no banco de talentos', idTitulo: 'vg-banco-titulo' }),
       el('div', { class: 'vg-faixa vg-emp-faixa-fase2', id: 'vg-banco-fase2', role: 'status' }, [U.icone('alerta'),
-        el('p', {}, [el('strong', {}, 'Fase 2. '), 'Esta tela abre quando a cidade tiver gente com selo suficiente.'])]),
+        el('p', {}, [el('strong', {}, 'Fase 2. '), 'Esta tela ainda não está aberta.'])]),
       el('p', { class: 't-corpo texto-medio vg-emp-nota' }, 'Até lá, as pessoas chegam pelas suas vagas: publique e compartilhe o link no WhatsApp.'),
       el('div', { class: 'acoes' }, el('a', { class: 'botao botao--principal', href: '#vagas', id: 'vg-banco-vagas' }, 'Minhas vagas'))]);
   }

@@ -110,6 +110,10 @@
     var f = editando ? ER.formDeAnuncio(anuncio) : ER.formVazio();
     var guardado = rasc.ler();
     if (guardado && guardado.dados && guardado.dados.form) f = Object.assign(f, guardado.dados.form);
+    // Vaga nova: o id que o banco deu no 1º salvar fica guardado (aqui e no rascunho do aparelho) e vale para as tentativas seguintes,
+    // senão uma publicação que falha depois do salvar (sem internet, demora) cria outra vaga no 2º clique.
+    var idCriado = !editando && guardado && guardado.dados && typeof guardado.dados.id === 'string' ? guardado.dados.id : null;
+    var enviando = false;
     var hoje = R.hoje(U.fuso());
     var zonas = E.zonas();
     var podeConfidencial = E.verificada();
@@ -119,7 +123,7 @@
     var temTermo = {};
     var campos = {};
 
-    function salvarLocal() { U.mostrarRascunho(info, rasc.gravar({ form: f, id: editando ? anuncio.id : null }).hora); }
+    function salvarLocal() { U.mostrarRascunho(info, rasc.gravar({ form: f, id: editando ? anuncio.id : idCriado }).hora); }
     var salvarDepois = U.aoParar(salvarLocal, 500);
     function mudou() { desenharEtiquetas(); salvarDepois(); }
     function desenharEtiquetas() {
@@ -250,11 +254,13 @@
     U.trocar(blocoInicio, [inicio.no, dataInicio]);
 
     // --- 2. O que a vaga pede
-    var experiencia = E.chips({ id: IDS.experiencia, rotulo: 'Experiência', obrigatorio: true, opcoes: [{ id: 'nao_precisa', rotulo: 'Não precisa' }, { id: 'ate_1', rotulo: 'Até 1 ano' },
-      { id: '1_a_3', rotulo: '1 a 3 anos' }, { id: 'mais_3', rotulo: 'Mais de 3 anos' }], valor: f.experiencia, aoMudar: function (v) { f.experiencia = v; mudou(); } });
+    // Opções da lista do banco, sem as antigas acima de 6 meses (CLT, art. 442-A).
+    var experiencia = E.chips({ id: IDS.experiencia, rotulo: 'Experiência', obrigatorio: true, opcoes: ER.opcoesExperiencia(), valor: f.experiencia,
+      aoMudar: function (v) { f.experiencia = v; mudou(); },
+      ajuda: 'Só peça experiência se a função exige. Bico e trabalho sem carteira contam. A lei não deixa exigir mais de 6 meses na mesma função (CLT, art. 442-A).' });
     campos.experiencia = experiencia.grupo;
     var escolaridade = E.chips({ id: IDS.escolaridade, rotulo: 'Escolaridade mínima', opcoes: R.ESCOLARIDADES_VAGA, valor: f.escolaridade,
-      aoMudar: function (v) { f.escolaridade = v; mudou(); }, ajuda: 'Só marque se a função exige de verdade: cada exigência tira gente boa da lista.' });
+      aoMudar: function (v) { f.escolaridade = v; mudou(); }, ajuda: 'Só marque se a função exige de verdade. Cada exigência afasta gente que sabe fazer o trabalho.' });
     campos.escolaridade = escolaridade.grupo;
     var outro = el('input', { id: IDS.requisitoOutro, class: 'entrada', type: 'text', maxlength: '80', placeholder: 'Qual?', value: f.requisitoOutro || null,
       disabled: f.requisitos.indexOf('outro') < 0, 'aria-label': 'Outro requisito' });
@@ -270,8 +276,9 @@
     }));
     campos.requisitos = requisitos;
     var blocoRequisitos = el('div', { class: 'campo' }, [el('p', { class: 'campo__rotulo', id: IDS.requisitos + '-rotulo' }, 'Requisitos objetivos'), requisitos, outro]);
-    var selo = E.chips({ id: IDS.selo, rotulo: 'Selo de habilidade', opcional: true, opcoes: [{ id: 'nenhum', rotulo: 'Nenhum' }].concat(R.TESTES_SELO), valor: f.selo || 'nenhum',
-      aoMudar: function (v) { f.selo = v; mudou(); }, ajuda: 'Quem não tem o selo ainda pode se candidatar; você vê quem tem. Sem nota mínima.' });
+    var selo = E.chips({ id: IDS.selo, rotulo: 'Selo sugerido', opcional: true, opcoes: [{ id: 'nenhum', rotulo: 'Nenhum' }].concat(R.TESTES_SELO), valor: f.selo || 'nenhum',
+      aoMudar: function (v) { f.selo = v; mudou(); },
+      ajuda: 'Quem não tem o selo também pode se candidatar, e o cartão chega do mesmo jeito. O teste é opcional: sem selo não quer dizer que a pessoa não sabe. Sem nota mínima.' });
     campos.selo = selo.grupo;
 
     // --- 3. O que a vaga oferece
@@ -330,23 +337,31 @@
     var notaTermo = el('p', { class: 't-nota texto-suave', id: 'vg-vaga-termo-nota', hidden: true }, 'Corrija o texto marcado em vermelho para enviar.');
 
     function enviar(publicarDepois) {
+      if (enviando) return;
       erroGeral.hidden = true;
-      var v = ER.validarVaga(f, { hoje: hoje, zonas: zonas, empresaId: editando ? null : ctx.empresa.id, id: editando ? anuncio.id : null });
+      var v = ER.validarVaga(f, { hoje: hoje, zonas: zonas, empresaId: editando || idCriado ? null : ctx.empresa.id, id: editando ? anuncio.id : idCriado });
       if (!v.ok) { erroNoCampo(v.campo, v.erro); if (v.termo) { temTermo[v.campo] = true; atualizarBotoes(); } return; }
       var alvo = publicarDepois ? publicar : (salvar || publicar);
+      enviando = true;
+      botoes.forEach(function (b) { if (b) b.disabled = true; });
       U.ocupado(alvo, true, publicarDepois ? 'Enviando…' : 'Salvando…');
       A.salvarAnuncio(v.dados).then(function (r) {
         var an = r.anuncio;
+        if (!editando && an && an.id) { idCriado = an.id; salvarLocal(); }
         if (!publicarDepois) return { anuncio: an, publicada: false };
         return A.publicarAnuncio(an.id).then(function (p) { return { anuncio: p.anuncio, publicada: true, emRevisao: p.emRevisao }; });
       }).then(function (x) {
+        enviando = false;
         rasc.apagar();
         U.ocupado(alvo, false);
         if (x.publicada) U.avisar(x.emRevisao ? t('avisos.vaga_em_revisao') : 'Vaga publicada.', { tipo: 'ok', ms: 6000 });
         else U.avisar('Salvo', { tipo: 'ok' });
         E.irPara('vaga/' + x.anuncio.id);
       }, function (e) {
+        enviando = false;
         U.ocupado(alvo, false);
+        botoes.forEach(function (b) { if (b) b.disabled = false; });
+        atualizarBotoes();
         if (e.sessaoExpirada || e.confirmar || e.suspensa || e.conexao) { U.tratarErro(e); return; }
         var c = ER.campoDoErro(e.message, f);
         if (c && campos[c]) erroNoCampo(c, e.message);
@@ -517,6 +532,9 @@
       var titulo = total === 0 ? 'Ninguém se candidatou ainda' : total === 1 ? '1 pessoa quer esta vaga' : total + ' pessoas querem esta vaga';
       var cab = E.cabecalho({ sobre: (a.funcao || a.titulo) + (a.confidencial ? ' · Confidencial' : ''), titulo: titulo, idTitulo: 'vg-cartoes-titulo',
         texto: 'Por ordem de chegada. Sem nome, foto, idade ou nacionalidade até vocês combinarem. Quem decide é você.',
+        // Como ler o selo no momento da decisão (psicologia, revisão C 3.2; padroes.md §5.4).
+        extra: el('p', { class: 't-rotulo texto-medio vg-emp-nota', id: 'vg-cartoes-selo' }, 'O selo é informação, não requisito: o teste é opcional e nem toda função tem teste. ' +
+          'Sem selo não quer dizer que a pessoa não sabe. A nota tem margem de cerca de 10 pontos e não serve para ordenar pessoas.'),
         acoes: [el('a', { class: 'botao botao--claro', href: '#vaga/' + a.id, id: 'vg-cartoes-voltar' }, [U.icone('voltar'), 'Voltar para a vaga'])] });
       if (!total) {
         var vazio = el('div', { id: 'vg-cartoes-vazio' });
@@ -585,14 +603,19 @@
       el('label', { class: 'campo__rotulo', for: 'vg-chamar-texto' }, ['Escreva a primeira mensagem ', el('span', { class: 'obrigatorio' }, '(opcional)')]),
       campo, cont, el('p', { class: 't-nota texto-suave', id: 'vg-chamar-nota' }, t('mensagem.aviso_empresa'))],
       acoes: [el('button', { type: 'button', class: 'botao botao--claro', id: 'vg-chamar-cancelar', onclick: function () { j.fechar('cancelar'); } }, 'Cancelar'), enviar] });
+    // Id da mensagem: um por texto. Se o envio "falhou" mas chegou ao servidor (demora, internet caindo), tocar de novo com o
+    // mesmo texto reaproveita o id e o banco não grava a mensagem duas vezes (como o conversa.js faz).
+    var idMsg = null;
+    var textoMsg = null;
     enviar.addEventListener('click', function () {
       var texto = campo.value.trim();
       if (texto) {
         var erro = root.VAGAS_CONVERSA.validarTexto(texto);
         if (erro) { U.erroCampo(campo, erro); campo.focus(); return; }
+        if (texto !== textoMsg) { textoMsg = texto; idMsg = U.novoId(); }
       }
       U.ocupado(enviar, true, 'Enviando…');
-      var p = texto ? A.enviarMensagem(c.candidaturaId, texto, U.novoId()) : A.decidir(c.candidaturaId, 'conversar');
+      var p = texto ? A.enviarMensagem(c.candidaturaId, texto, idMsg) : A.decidir(c.candidaturaId, 'conversar');
       p.then(function () {
         j.fechar('enviado');
         U.avisar('Enviado. A pessoa recebe o convite para conversar.', { tipo: 'ok' });

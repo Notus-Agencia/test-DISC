@@ -207,9 +207,42 @@
   function anuncioDe(cand) { return anuncioDaCandidatura[cand] || null; }
   function irPara(hash) { if (root.location.hash.replace(/^#/, '') === hash) root.dispatchEvent(new root.HashChangeEvent('hashchange')); else root.location.hash = hash; }
 
+  // Token de link (?convite= do convite de equipe, ?t= do pedido de referência): sai da barra de endereço e do histórico assim que é
+  // lido e fica só na memória desta aba (sessionStorage; sem ele, na memória da página) por até 1 hora, para sobreviver à ida ao
+  // entrar.html e ao "Tentar de novo". tokenDoLink(nome, chave, pagina) -> token | '' · esquecerToken(chave).
+  var memoriaAba = {};
+  var UMA_HORA = 3600000;
+  function aba() { try { return root.sessionStorage || null; } catch (e) { return null; } }
+  function tokenDoLink(nome, chave, pagina) {
+    var re = new RegExp('[?&]' + nome + '=([0-9a-fA-F]{64})(?:&|$)');
+    var m = re.exec(String(root.location.search || ''));
+    var s = aba();
+    if (m) {
+      var tk = m[1].toLowerCase();
+      var v = JSON.stringify({ token: tk, em: Date.now() });
+      try { if (s) s.setItem(chave, v); else memoriaAba[chave] = v; } catch (e) { memoriaAba[chave] = v; }
+      try { root.history.replaceState(null, '', pagina + (root.location.hash || '')); } catch (e) { /* segue com o token na barra */ }
+      return tk;
+    }
+    var bruto = null;
+    try { bruto = s ? s.getItem(chave) : null; } catch (e) { bruto = null; }
+    if (bruto == null) bruto = memoriaAba[chave] || null;
+    try {
+      var g = bruto ? JSON.parse(bruto) : null;
+      if (g && /^[0-9a-f]{64}$/.test(g.token) && typeof g.em === 'number' && Date.now() - g.em < UMA_HORA) return g.token;
+    } catch (e) { /* guardado inválido */ }
+    esquecerToken(chave);
+    return '';
+  }
+  function esquecerToken(chave) {
+    delete memoriaAba[chave];
+    var s = aba();
+    try { if (s) s.removeItem(chave); } catch (e) { /* nada */ }
+  }
+
   E.carregar = carregar; E.escolher = escolher; E.zonas = zonas; E.ativa = ativa; E.suspensa = suspensa; E.verificada = verificada; E.dono = dono;
   E.nomeResponsavel = nomeResponsavel; E.lembrarResponsavel = lembrarResponsavel; E.motivo = motivo; E.menu = menu; E.contarConversas = contarConversas;
   E.faixas = faixas; E.cabecalho = cabecalho; E.caixa = caixa; E.chips = chips; E.campo = campo; E.marcar = marcar; E.lista = lista; E.tela = tela;
-  E.irPara = irPara; E.sair = sair; E.lembrarAnuncio = lembrarAnuncio; E.anuncioDe = anuncioDe;
+  E.irPara = irPara; E.sair = sair; E.lembrarAnuncio = lembrarAnuncio; E.anuncioDe = anuncioDe; E.tokenDoLink = tokenDoLink; E.esquecerToken = esquecerToken;
   root.VAGAS_EMPRESA = E;
 })(typeof self !== 'undefined' ? self : this);

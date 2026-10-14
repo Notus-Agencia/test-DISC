@@ -18,8 +18,8 @@ const RAIZ = path.join(__dirname, '..');
 const ler = (rel) => fs.readFileSync(path.join(RAIZ, rel), 'utf8');
 const ARQUIVOS_JS = ['js/empresa-regras.js', 'js/roteiro-entrevista.js', 'js/empresa-base.js', 'js/empresa-vaga.js', 'js/empresa-conversa.js',
   'js/empresa-referencias.js', 'js/empresa.js', 'js/referencia.js'];
-// "DISC" só na tela Contratada (conversa, depois da contratação) e no roteiro ("Não use o DISC… nesta etapa"), que só aparece ali.
-const COM_DISC = ['js/roteiro-entrevista.js', 'js/empresa-conversa.js'];
+// "DISC" só na tela Contratada (conversa, depois da contratação). O roteiro não cita mais o DISC (psicologia, revisão C 3.3).
+const COM_DISC = ['js/empresa-conversa.js'];
 
 function armazem() {
   const m = {};
@@ -217,6 +217,25 @@ test('referência e cadastro: o formulário da tela vira os dados do contrato, c
   assert.equal(ER.lerEmpresaForm(Object.assign({}, emp, { whatsapp: '123' })).campo, 'whatsapp');
 });
 
+test('experiência: nada acima de 6 meses (CLT, art. 442-A); a tela lê a lista do banco e as opções antigas viram "Pelo menos 6 meses" ao editar', () => {
+  const nova = [{ id: 'nao_precisa', rotulo: 'Não precisa de experiência' }, { id: 'ajuda', rotulo: 'Ajuda ter, mas não é obrigatória' },
+    { id: '6_meses', rotulo: 'Pelo menos 6 meses na função' }];
+  assert.deepEqual(ER.opcoesExperiencia(nova).map((x) => x.rotulo), ['Não precisa', 'Ajuda ter, mas não é obrigatória', 'Pelo menos 6 meses na função']);
+  for (const id of ['ate_1', '1_a_3', 'mais_3']) assert.equal(ER.experienciaDaTela(id, nova), '6_meses', id);
+  assert.equal(ER.experienciaDaTela('ajuda', nova), 'ajuda');
+  assert.equal(ER.experienciaDaTela('', nova), 'nao_precisa');
+  // Com a lista do banco de agora (antes ou depois da troca), nenhuma opção acima de 6 meses aparece no formulário.
+  const ids = ER.opcoesExperiencia().map((x) => x.id);
+  for (const id of ER.EXPERIENCIA_LEGADA) assert.ok(!ids.includes(id), id);
+  assert.ok(ids.includes('nao_precisa'));
+  const tem6 = R.EXPERIENCIAS_VAGA.some((x) => x.id === '6_meses');
+  assert.equal(ER.formDeAnuncio({ experiencia: 'mais_3' }).experiencia, tem6 ? '6_meses' : 'mais_3');
+  // Sem lista fixa na tela.
+  const fonte = TELA.semComentarios(ler('vagas/js/empresa-vaga.js'));
+  assert.match(fonte, /opcoes: ER\.opcoesExperiencia\(\)/);
+  assert.ok(!/'ate_1'|'1_a_3'|'mais_3'/.test(fonte));
+});
+
 test('a vaga montada pela tela é aceita pela prévia (mesmo contrato do banco) e volta igual para a edição', async () => {
   const agora = Date.now();
   const api = API.criar({ modo: 'previa', backend: PREVIA.criarBackend({ armazenamento: armazem(), agora: () => agora }) });
@@ -226,7 +245,7 @@ test('a vaga montada pela tela é aceita pela prévia (mesmo contrato do banco) 
   const zonas = cidade.zonas;
   const hoje = R.hoje(cidade.fuso, agora);
   const f = formValido({ zona: zonas.length ? zonas[0].slug : '', comissao: true, beneficios: ['vt'], requisitos: ['outro'], requisitoOutro: 'Saber usar a maquininha',
-    selo: 'caixa', escolaridade: 'medio', experiencia: 'ate_1', fimDeSemana: true, quantidade: '2', salarioAte: '1.900,00' });
+    selo: 'caixa', escolaridade: 'medio', experiencia: 'nao_precisa', fimDeSemana: true, quantidade: '2', salarioAte: '1.900,00' });
   const v = ER.validarVaga(f, { hoje, zonas, empresaId: emp.id });
   assert.equal(v.ok, true, v.erro);
   const r = await api.salvarAnuncio(v.dados);
@@ -312,7 +331,8 @@ test('páginas e scripts da empresa: CSP, ordem dos scripts, nada inline, sem in
   for (const rel of ARQUIVOS_JS) assert.deepEqual(TELA.conferirScript(rel, { permitirDisc: COM_DISC.includes(rel) }), [], rel);
   // "DISC" na conversa: só o cartão "Integração dos 90 dias", que aparece depois de "Contratada".
   const conv = TELA.semComentarios(ler('vagas/js/empresa-conversa.js'));
-  assert.deepEqual([...conv.matchAll(/[^\n]*\bDISC\b[^\n]*/g)].map((m) => /Mapa DISC de integração \(só depois da contratação; nunca na seleção\)/.test(m[0])), [true]);
+  // e diz que é opcional para a pessoa e que não decide a permanência no contrato de experiência (revisão C 3.4).
+  assert.deepEqual([...conv.matchAll(/[^\n]*\bDISC\b[^\n]*/g)].map((m) => /com o Mapa DISC\. É opcional para a pessoa.*não pode ser usado para decidir se ela fica depois do contrato de experiência/.test(m[0])), [true]);
   assert.match(conv, /if \(modo === 'contratada'\) \{[\s\S]*Mapa DISC/);
   // CSS da frente: só tokens (nenhuma cor escrita à mão).
   const css = ler('vagas/assets/vagas-empresa.css');

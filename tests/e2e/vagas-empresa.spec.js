@@ -203,7 +203,7 @@ test('conversa: antes do Combinou sem nome nem contato; depois, contato, roteiro
   await como(page, 'empresa@previa.com', (c) => window.VAGAS_API.decidir(c, 'conversar'), prep.cand);
   await page.goto(BASE + 'empresa.html#conversa/' + prep.cand);
   await expect(page.locator('#vg-conversa-nome')).toHaveText('Pessoa candidata');
-  await expect(page.locator('#vg-contato')).toContainText('O nome e o WhatsApp aparecem quando a pessoa aceitar.');
+  await expect(page.locator('#vg-contato')).toContainText('O nome e o WhatsApp aparecem quando a pessoa tocar em "Combinou".');
   await expect(page.locator('#vg-cartao-chegou')).toBeVisible();
   await expect(page.locator('#vg-roteiro')).toHaveCount(0);
   await expect(page.locator('#vg-marcar-contratada')).toHaveCount(0);
@@ -226,9 +226,9 @@ test('conversa: antes do Combinou sem nome nem contato; depois, contato, roteiro
   await expect(page.locator('#vg-roteiro')).toContainText('Não pergunte (Lei 9.029/1995');
   await expect(page.locator('#vg-integracao')).toHaveCount(0);
   await page.click('#vg-marcar-contratada');
-  await expect(page.locator('#vg-confirmar-contratada')).toContainText('Marcar ' + prep.nome + ' como contratada?');
+  await expect(page.locator('#vg-confirmar-contratada')).toContainText('Marcar a candidatura de ' + prep.nome + ' como contratada?');
   await page.click('#vg-confirmar-contratada-sim');
-  await expect(page.locator('#vg-integracao')).toContainText('Mapa DISC de integração (só depois da contratação; nunca na seleção)');
+  await expect(page.locator('#vg-integracao')).toContainText('É opcional para a pessoa, ela recebe o próprio resultado, e o resultado não pode ser usado para decidir se ela fica depois do contrato de experiência.');
   await expect(page.locator('#vg-marcar-contratada')).toHaveCount(0);
   expect(erros).toEqual([]);
 });
