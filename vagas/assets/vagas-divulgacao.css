@@ -165,6 +165,9 @@ body.vg-div.vg-com-barra { padding-bottom: calc(112px + env(safe-area-inset-bott
 .vg-div-rodape__interno { max-width: 720px; margin: 0 auto; display: grid; justify-items: center; gap: 8px; text-align: center; font-size: var(--t-nota); color: var(--medio); }
 .vg-div-rodape a { color: var(--medio); display: inline-block; padding: 13px 0; }
 .vg-div-rodape__extra { display: grid; justify-items: center; gap: 8px; }
+/* Endosso: "Uma empresa do grupo" + logo da Gestão sem Caos (altura mínima do logo: 20px) */
+.vg-div-rodape__grupo { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.vg-div-rodape__grupo .logo-gsc { height: 20px; }
 .vg-div-rodape .vg-div-sair { text-align: left; }
 
 /* ---------- Barra fixa com a ação principal (sempre à mão; some quando a chamada está na tela) ---------- */
