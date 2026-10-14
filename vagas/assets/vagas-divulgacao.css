@@ -1,0 +1,187 @@
+/*
+ * Vagas sem Caos — páginas de divulgação (emprego.html e empresas.html), por cima de comum/notus.css e assets/vagas.css.
+ * Só tokens e peças da identidade (docs/IDENTIDADE-VISUAL.md); nenhuma cor nova. Dois públicos, a mesma identidade:
+ *   - quem procura trabalho (.vg-div--pessoa): celular primeiro, moldura laranja no topo, ícones com o laranja da marca;
+ *   - quem contrata (.vg-div--empresa): moldura azul-escura no topo, ícones em azul-escuro, grade de cartões no computador.
+ * Um vidro por página (a chamada), um botão laranja à vista por vez (a barra fixa some quando a chamada está na tela).
+ */
+
+/* Ícones da página: um <svg> com <symbol>, usado por <use href="#i-…">. Fora da tela sem display:none (que apaga o desenho). */
+.vg-div-simbolos { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+.vg-div__principal { max-width: 720px; margin: 0 auto; padding: 12px 16px 40px; }
+.vg-div--empresa .vg-div__principal { max-width: 1120px; }
+body.vg-div.vg-com-barra { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+
+/* ---------- Topo (moldura): laranja para quem procura trabalho, azul-escuro para a empresa ---------- */
+.vg-div-hero { border-radius: var(--raio-caixa); padding: 28px 22px 26px; }
+.vg-div-hero__titulo { font-size: var(--t-pagina); line-height: 1.12; }
+.vg-div-hero__texto { margin-top: 10px; font-size: var(--t-titulo); line-height: 1.4; }
+.vg-div-hero__sobre { margin-bottom: 8px; }
+.vg-div--pessoa .vg-div-hero .sobretitulo { color: var(--preto); }
+.vg-div-pilulas { list-style: none; margin: 20px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.vg-div-pilulas li { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border-radius: var(--raio-pilula); background: rgba(255, 255, 255, .62); font-size: var(--t-rotulo); font-weight: 600; }
+.vg-div-pilulas .icone { width: 16px; height: 16px; }
+
+.vg-div--empresa .vg-div-hero { color: var(--branco); }
+.vg-div--empresa .vg-div-hero .sobretitulo { color: var(--ambar); }
+.vg-div--empresa .vg-div-hero__texto { color: rgba(255, 255, 255, .82); font-size: var(--t-corpo); }
+.vg-div-hero__acoes { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+.vg-div-hero__acoes .botao, .vg-div-hero__acoes .vg-div-pendente { width: 100%; }
+.vg-div-fatos { margin: 24px 0 0; display: grid; gap: 10px; }
+.vg-div-fatos > div { padding: 14px 16px; border-radius: 16px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); }
+.vg-div-fatos dt { display: flex; align-items: center; gap: 8px; font-size: var(--t-rotulo); font-weight: 600; color: var(--ambar); }
+.vg-div-fatos dt .icone { width: 16px; height: 16px; }
+.vg-div-fatos dd { margin: 4px 0 0; font-size: var(--t-corpo); color: rgba(255, 255, 255, .86); }
+.vg-div-fatos strong { color: var(--branco); font-weight: 600; }
+
+/* Topo da empresa: "Para empresas" ao lado da marca (some no celular estreito: o título da moldura já diz) */
+.vg-div-topo__para { margin-left: auto; font-size: var(--t-rotulo); font-weight: 600; color: var(--medio); white-space: nowrap; }
+@media (max-width: 519px) { .vg-div-topo__para { display: none; } }
+.vg-div--empresa .topo-interno { max-width: 1120px; }
+
+/* ---------- Seções (uma ideia por seção) ---------- */
+.vg-div-secao { margin-top: 32px; }
+.vg-div-secao__titulo { font-size: var(--t-indicador); margin-bottom: 12px; }
+.vg-div-secao__texto { margin-top: 8px; color: var(--medio); }
+.vg-div-secao__titulo + .vg-div-secao__texto { margin-top: -4px; }
+.vg-div-tipos + .vg-div-secao__texto { margin-top: 12px; }
+
+.vg-div-icone { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(243, 68, 5, .1); color: var(--notus-forte); }
+.vg-div-icone .icone { width: 22px; height: 22px; }
+.vg-div--empresa .vg-div-icone { background: var(--nevoa); color: var(--tinta); }
+
+/* Dúvidas logo no começo: pergunta grande, resposta de uma linha */
+.vg-div-duvidas { list-style: none; margin: 0; padding: 4px 20px; display: grid; }
+.vg-div-duvidas li { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--linha); }
+.vg-div-duvidas li:last-child { border-bottom: 0; }
+.vg-div-duvidas p { color: var(--medio); }
+.vg-div-duvidas strong { display: block; margin-bottom: 2px; font-size: var(--t-titulo); font-weight: 600; color: var(--tinta); }
+.vg-div-golpe { margin-top: 12px; }
+
+/* Passos numerados */
+.vg-div-passos { list-style: none; counter-reset: passo; margin: 0; padding: 0; display: grid; gap: 10px; }
+.vg-div-passos li { counter-increment: passo; position: relative; min-height: 64px; padding: 16px 16px 16px 66px; background: var(--branco); border-radius: 20px; }
+.vg-div-passos li::before { content: counter(passo); position: absolute; left: 16px; top: 14px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: var(--t-titulo); font-weight: 700; background: var(--notus); color: var(--sobre-notus); }
+.vg-div--empresa .vg-div-passos li::before { background: var(--tinta); color: var(--branco); }
+.vg-div-passos__forte { font-weight: 600; }
+.vg-div-passos__apoio { margin-top: 4px; font-size: var(--t-rotulo); color: var(--suave); }
+
+/* Exemplo do cartão sem nome */
+.vg-div-cartao { margin: 14px 0 0; }
+.vg-div-cartao__legenda { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--t-rotulo); color: var(--suave); }
+.vg-div-cartao__linhas { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 12px; }
+.vg-div-cartao__linhas li { display: flex; gap: 10px; align-items: center; }
+.vg-div-cartao__linhas .icone { color: var(--notus-forte); }
+.vg-div-cartao__fora { color: var(--suave); }
+.vg-div-cartao__fora .icone { color: var(--ardosia-clara); }
+
+/* Lista com marca (Você decide; Quem está por trás) */
+.vg-div-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.vg-div-secao > .vg-div-lista { padding: 20px; border-radius: var(--raio-caixa); background: var(--branco); }
+.vg-div-lista li { display: flex; gap: 10px; align-items: flex-start; }
+.vg-div-lista .icone { margin-top: 2px; color: var(--notus-forte); }
+.vg-div--empresa .vg-div-lista .icone { color: var(--tinta); }
+
+/* Tipos de vaga */
+.vg-div-tipos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.vg-div-tipos li { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 14px; border-radius: var(--raio-pilula); background: var(--branco); border: 1px solid var(--linha); font-size: var(--t-rotulo); font-weight: 600; }
+
+/* ---------- Chamada (o único vidro da página): lista de espera ou cadastro, pela situação da cidade ---------- */
+.vg-div-chamada { margin-top: 32px; scroll-margin-top: 16px; }
+.vg-div-chamada__titulo { font-size: var(--t-indicador); }
+.vg-div-chamada__texto { margin-top: 8px; color: var(--medio); }
+.vg-div-chamada .vg-estado { padding: 24px 0 8px; }
+.vg-div-form { margin-top: 18px; }
+.vg-div-form .campo__ajuda { font-size: var(--t-rotulo); }
+.vg-div-ok { margin-top: 18px; font-size: var(--t-corpo); }
+.vg-div-ok .acoes { margin-top: 12px; }
+.vg-div-chamada .acoes { margin-top: 18px; }
+.vg-div-nota { margin-top: 12px; font-size: var(--t-nota); color: var(--suave); }
+.vg-div-nota a { color: var(--medio); }
+/* Link sozinho na linha ("Já tenho conta", outras cidades): alvo de toque de 44 px */
+#vg-ja-tenho-conta, #vg-outras-cidades a { display: inline-flex; align-items: center; min-height: 44px; }
+.vg-div-sair { margin-top: 4px; font-size: var(--t-rotulo); }
+.vg-div-sair summary { display: inline-flex; align-items: center; min-height: 44px; color: var(--medio); text-decoration: underline; cursor: pointer; list-style: none; }
+.vg-div-sair summary::-webkit-details-marker { display: none; }
+.vg-div-sair__form { display: grid; gap: 10px; margin-top: 4px; }
+.vg-div-sair__form .acoes { margin-top: 0; }
+.vg-div-humano { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--linha); display: grid; gap: 10px; }
+.vg-div-humano p { color: var(--medio); }
+/* Pendência do dono (número do WhatsApp): botão desligado + marcador visível na prévia */
+.vg-div-pendente { display: grid; gap: 4px; }
+.vg-div-marcador { font-size: var(--t-nota); font-weight: 600; color: var(--notus-forte); }
+.moldura-noite .vg-div-marcador { color: var(--ambar); }
+
+/* ---------- Perguntas (abre e fecha sem script) ---------- */
+.vg-div-faq { padding: 4px 20px; }
+.vg-div-pergunta { border-bottom: 1px solid var(--linha); }
+.vg-div-pergunta:last-child { border-bottom: 0; }
+.vg-div-pergunta summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 12px 0; font-weight: 600; cursor: pointer; list-style: none; }
+.vg-div-pergunta summary::-webkit-details-marker { display: none; }
+.vg-div-pergunta summary .icone { color: var(--suave); transition: transform .2s var(--curva); }
+.vg-div-pergunta[open] summary .icone { transform: rotate(180deg); }
+.vg-div-pergunta > p { margin: 0 0 12px; color: var(--medio); }
+
+/* ---------- Mandar para um amigo ---------- */
+.vg-div-amigo { margin-top: 32px; }
+.vg-div-amigo .acoes { margin-top: 16px; }
+
+/* ---------- Empresa: cartões de ganho, preço e quem está por trás ---------- */
+.vg-div-grade { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+/* No celular o cartão fica deitado (ícone à esquerda): a página do dono fica mais curta. */
+@media (max-width: 639px) {
+  .vg-div-card { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 14px; align-items: start; padding: 20px; }
+  .vg-div-card > * { grid-column: 2; }
+  .vg-div-card > .vg-div-icone { grid-column: 1; grid-row: 1 / span 4; }
+  .vg-div-card h3 { margin-top: 8px; }
+}
+.vg-div-card h3 { margin: 12px 0 6px; font-size: var(--t-titulo); }
+.vg-div-card p { color: var(--medio); }
+.vg-div-card__nota { margin-top: 8px; font-size: var(--t-rotulo); color: var(--suave); }
+.vg-div-card .vg-div-card__nota { color: var(--suave); }
+.vg-div-duas { display: grid; gap: 12px; margin-top: 32px; }
+.vg-div-duas > .vg-div-secao { margin-top: 0; }
+.vg-div-preco__valor { margin-top: 4px; font-size: var(--t-numero-grande); font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.vg-div-preco__texto { margin-top: 12px; font-size: var(--t-titulo); }
+.vg-div-quem { display: grid; gap: 14px; align-content: start; }
+.vg-div-quem .vg-div-secao__titulo, .vg-div-preco .vg-div-secao__titulo { margin-bottom: 0; }
+.vg-div-quem__texto { font-size: var(--t-titulo); font-weight: 600; }
+
+/* ---------- Rodapé ---------- */
+.vg-div-rodape { padding: 8px 16px 32px; }
+.vg-div-rodape__interno { max-width: 720px; margin: 0 auto; display: grid; justify-items: center; gap: 8px; text-align: center; font-size: var(--t-nota); color: var(--suave); }
+.vg-div-rodape a { color: var(--medio); display: inline-block; padding: 12px 0; }
+
+/* ---------- Barra fixa com a ação principal (sempre à mão; some quando a chamada está na tela) ---------- */
+.vg-div-barra { transition: transform .25s var(--curva), opacity .25s var(--curva); }
+.vg-div-barra--oculta { transform: translateY(110%); opacity: 0; pointer-events: none; }
+.vg-div-barra .botao { gap: 6px; }
+
+/* ---------- Telas maiores ---------- */
+@media (min-width: 480px) {
+  .vg-div-hero__acoes { flex-direction: row; flex-wrap: wrap; }
+  .vg-div-hero__acoes .botao, .vg-div-hero__acoes .vg-div-pendente { width: auto; }
+}
+@media (min-width: 640px) {
+  .vg-div__principal { padding: 20px 24px 56px; }
+  .vg-div-hero { padding: 36px 32px; }
+  .vg-div-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 900px) {
+  .vg-div--empresa .vg-div-hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 40px; align-items: center; padding: 48px; }
+  .vg-div--empresa .vg-div-hero__titulo { font-size: var(--t-numero); }
+  .vg-div--empresa .vg-div-fatos { margin-top: 0; }
+  .vg-div--empresa .vg-div-passos { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .vg-div--empresa .vg-div-duas { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .vg-div--empresa .vg-div-chamada, .vg-div--empresa .vg-div-faq-bloco { max-width: 760px; margin-left: auto; margin-right: auto; }
+  /* No computador há espaço: a ação fica no topo e na chamada, sem barra fixa. */
+  .vg-div--empresa .vg-div-barra { display: none; }
+  body.vg-div--empresa.vg-com-barra { padding-bottom: 0; }
+}
+@media (min-width: 1024px) {
+  .vg-div-grade { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vg-div-barra, .vg-div-pergunta summary .icone { transition: none; }
+}

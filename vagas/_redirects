@@ -11,3 +11,10 @@
 # /v/:codigo  /boa-vista-rr/?vaga=:codigo  302
 
 # Nada de "www": o site é só vagas.gestaosemcaos.com.br (não há CNAME para www.vagas).
+
+# Páginas de divulgação (frente divulgação). O Pages já serve emprego.html em /emprego e empresas.html em /empresas
+# (e manda /emprego.html para /emprego); estas regras só pegam as variações ditas no rádio ou digitadas com barra no fim.
+/emprego/   /emprego   301
+/empregos   /emprego   301
+/empregos/  /emprego   301
+/empresas/  /empresas  301
