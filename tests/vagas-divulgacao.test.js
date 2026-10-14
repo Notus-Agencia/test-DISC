@@ -98,6 +98,23 @@ test('topo diz a situação da cidade (com o nome do dado) e as ações vêm na 
   assert.deepEqual(D.acoesTopo('pessoa', 'sem_cidade', null, {}), [{ rotulo: 'Começar', href: '#vg-chamada' }]);
 });
 
+test('pré-abertura (banco 20261024120004): com o recurso e a cidade em espera; preAbertura:false explícito da cidade fica com a lista', () => {
+  const R1 = { preAberturaEmpresas: true };
+  const espera = { slug: 'nova-xx', nome: 'Cidade Nova', status: 'lista_espera', preAbertura: true, aceitaEmpresas: true };
+  assert.equal(D.preAbertura(espera, R1), true);
+  assert.equal(D.preAbertura(Object.assign({}, espera, { preAbertura: undefined }), R1), true, 'banco que ainda não manda o campo: vale o recurso');
+  assert.equal(D.preAbertura(Object.assign({}, espera, { preAbertura: false }), R1), false);
+  assert.equal(D.preAbertura(espera, {}), false);
+  assert.equal(D.preAbertura({ slug: 'a-xx', nome: 'A', status: 'ativa', preAbertura: false }, R1), false, 'cidade aberta não é pré-abertura');
+  assert.equal(D.preAbertura(null, R1), false);
+  assert.deepEqual(D.acoesTopo('empresa', 'espera', Object.assign({}, espera, { preAbertura: false }), R1).map((a) => a.rotulo), ['Entrar na lista de espera']);
+  // A prévia "ver como: cidade em espera" sobre uma cidade aberta mostra a pré-abertura; "aberta" tira.
+  const aberta = { slug: 'a-xx', nome: 'A', status: 'ativa', preAbertura: false, aceitaEmpresas: true };
+  assert.equal(D.preAbertura(D.aplicarVisao(aberta, 'espera'), R1), true);
+  assert.equal(D.aplicarVisao(espera, 'ativa').preAbertura, false);
+  assert.equal(D.preencher(D.FRASES.preAberturaTexto, { cidade: 'Cidade Nova' }).split('. ')[0], 'Sua vaga entra no ar no dia em que Cidade Nova abrir');
+});
+
 test('lista de espera: confere e-mail e WhatsApp de uma vez; WhatsApp opcional; origem só da lista fechada', () => {
   assert.deepEqual(D.lerEspera({ cidade: 'Nova-XX', email: '  Ana@Exemplo.COM ', perfil: 'pessoa' }),
     { ok: true, dados: { cidade: 'nova-xx', email: 'ana@exemplo.com', perfil: 'pessoa' } }, 'sem WhatsApp: a chave nem vai');
@@ -166,8 +183,13 @@ test('sair da lista pelo link do e-mail (?sair=<token>#sair): token de 64 hexade
   const js = ler('js/divulgacao.js');
   assert.match(js, /history\.replaceState\(/);
   assert.ok(!/(localStorage|sessionStorage)[^;\n]*tokenSair|tokenSair[^;\n]*(localStorage|sessionStorage)/.test(js), 'token fora do armazenamento');
-  assert.match(js, /API\.listaEsperaSairLink\(tokenSair\)/);
-  for (const k of ['saiuTitulo', 'saiuTexto', 'saindoTitulo']) assert.deepEqual(TELA.conferirTexto(D.FRASES[k], k), []);
+  // Um toque antes de sair (robôs de segurança de e-mail abrem links): a chamada ao banco só existe dentro do clique.
+  assert.equal((js.match(/\bAPI\.listaEsperaSairLink\(tokenSair\)/g) || []).length, 1);
+  assert.equal((js.replace(/^\s*(\/\/|\*).*$/gm, '').match(/listaEsperaSairLink\(/g) || []).length, 1, 'nenhuma outra chamada fora do clique');
+  assert.match(js, /function confirmar\(\) \{[\s\S]{0,200}API\.listaEsperaSairLink\(tokenSair\)/);
+  assert.match(js, /botao\.addEventListener\('click', confirmar\)/);
+  assert.equal(D.FRASES.sairConfirmar, 'Sair da lista de espera');
+  for (const k of ['saiuTitulo', 'saiuTexto', 'sairPedirTitulo', 'sairPedirTexto', 'sairConfirmar']) assert.deepEqual(TELA.conferirTexto(D.FRASES[k], k), []);
 });
 
 test('"Mandar no WhatsApp": novidade local curta, com o link (origem indicação) e o aviso anti-golpe', () => {
@@ -269,9 +291,27 @@ test('A1: o teste é opcional e do tamanho real em todo lugar da página de empr
   assert.match(t, /Não é obrigatório para se candidatar\./);
   assert.match(t, /Em qualquer vaga, é só tocar em "Quero": o teste nunca é obrigatório\./);
   assert.match(t, /Se não for bem, a empresa não fica sabendo: ela só vê o selo\./);
-  assert.match(t, /Se parar no meio, conta como tentativa: o próximo teste só em 30 dias\./);
   assert.match(t, /com margem de cerca de 10 pontos/);
   for (const re of [/ganhe o selo/i, /teste rápido/i, /Diária não pede teste/i, /Faça o teste da sua função e/]) assert.doesNotMatch(t, re);
+});
+
+test('fase C (psicologia 1.1–1.4): relógio que não para, cartão completo com o limite do anonimato, denúncia, ajuda sem prometer adaptação', () => {
+  const t = textoTodo(PAGINAS.pessoa);
+  // 1.1: o tempo é do servidor; a página e o aviso das instruções dizem a mesma coisa.
+  assert.match(t, /Faça com calma, quando tiver meia hora livre\. Depois de começar, o relógio não para, nem se a internet cair\. Se cair, entre de novo e continue de onde parou, no tempo que sobrou\. Se encerrar antes do fim, a tentativa conta: este teste só pode ser feito de novo em 30 dias\./);
+  assert.equal(AVISOS.avisos.teste_antes_tempo, 'São {{total}} questões e você tem {{minutos}} minutos. O relógio não para, nem se a internet cair. Se cair, entre de novo e continue de onde parou.');
+  for (const re of [/uns 20 minutos/, /o próximo teste só/, /Se a internet cair, continua de onde parou/, /Se parar no meio/]) assert.doesNotMatch(t, re);
+  // 1.2: tudo o que o cartão cego mostra (pecas-pessoa.js: zona, funções, turnos, CNH, pretensão) e o limite em cidade pequena.
+  assert.match(t, /As funções que você quer, a região da cidade onde mora, turnos, CNH e quanto quer ganhar/);
+  const cartao = fs.readFileSync(path.join(VAGAS, 'js', 'pecas-pessoa.js'), 'utf8');
+  for (const dt of ['Zona', 'Quer trabalhar com', 'Turnos', 'CNH', 'Pretensão', 'Escolaridade', 'Cursos', 'Experiência']) assert.match(cartao, new RegExp("linha\\('" + dt + "'"), dt);
+  assert.match(t, /Em cidade pequena, a função, o tempo de trabalho e a região podem dar pistas de quem é você, inclusive para a empresa onde você trabalha hoje\./);
+  // 1.3: igual aos avisos do produto.
+  assert.match(t, /A denúncia é confidencial: não mostramos a quem foi denunciado quem denunciou\./);
+  assert.doesNotMatch(t, /quem foi denunciado não sabe/);
+  // 1.4: sem promessa de adaptação enquanto a operação não tiver procedimento.
+  assert.match(t, /Precisa de ajuda com o currículo ou com o teste\? Fale com a Gestão sem Caos\./);
+  assert.doesNotMatch(t, /adapta/i);
 });
 
 test('A2: na página de empresas o selo não é "prova" nem peneira; nota sempre com a margem; sem selo ≠ não sabe', () => {
