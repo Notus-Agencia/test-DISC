@@ -143,7 +143,7 @@
   function montarMenu() {
     var c = ctx.cidade();
     var conta = ctx.eu && ctx.eu.conta;
-    var menu = U.menuLateral({ id: 'vg-menu', produto: 'Vagas sem Caos · Operação',
+    var menu = U.menuLateral({ id: 'vg-menu', produto: 'Operação da praça',
       grupos: MENU.map(function (g) {
         return { titulo: g.titulo, itens: g.itens.map(function (i) { return { id: 'vg-op-aba-' + i[0], rotulo: i[1], icone: i[2], href: '#' + i[0], rota: i[0] }; }) };
       }),

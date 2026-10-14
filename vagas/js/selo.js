@@ -15,7 +15,7 @@
 
   var TXT = {
     FORMATO: 'O código tem 8 letras e números, como Q8V3N2KD',                                                 // VAGAS-TELAS §2.8
-    EMITIDO: 'Emitido pelo Vagas sem Caos, uma ferramenta da Gestão sem Caos. O selo pertence a uma pessoa cadastrada; o nome dela só aparece para quem ela autorizou.',
+    EMITIDO: 'Emitido pelo Vagas sem Caos, uma empresa do grupo Gestão sem Caos. O selo pertence a uma pessoa cadastrada; o nome dela só aparece para quem ela autorizou.',
     EMPRESA: 'Veja quem já provou o básico da função: o selo mostra teste, data e nota. A decisão de contratar continua sendo sua.'   // padroes §6
   };
 
@@ -59,6 +59,8 @@
       el('div', { class: 'vg-conferir', id: 'vg-conferir-situacao', data: { situacao: s.tipo } }, [
         el('span', { class: s.tipo === 'valido' ? 'vg-conferir__ok' : 'vg-iniciais' }, U.icone(s.icone)),
         el('h2', { class: 't-titulo seminegrito', id: 'vg-conferir-titulo', tabindex: '-1' }, s.titulo)]),
+      A && A.modo === 'previa' ? el('p', { class: 'aviso', id: 'vg-conferir-demo', role: 'note' }, [el('strong', {}, 'Selo de demonstração.'),
+        ' Este é um selo da prévia, com dados de exemplo: não vale como selo de verdade.']) : null,
       el('div', { id: 'vg-selo' }, P.selo(selo)),
       el('p', { class: 't-nota texto-suave', id: 'vg-conferir-emitido' }, TXT.EMITIDO)
     ]);

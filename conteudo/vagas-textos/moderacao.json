@@ -62,7 +62,7 @@
       "acao": "recusar",
       "titulo": "Pede teste de personalidade ou DISC para concorrer",
       "texto_empresa": "Sua vaga \"{{vaga_titulo}}\" ainda não foi publicada porque pede teste de personalidade, de perfil ou DISC como condição para concorrer. Só psicólogo(a) pode usar esse tipo de teste em seleção.",
-      "correcao": "Tire a exigência. Se quiser, peça o selo do teste da função (conhecimento prático, feito online sem supervisão; mede o que a pessoa sabe hoje do básico da função, não personalidade). O Mapa DISC é oferecido depois da contratação, na integração.",
+      "correcao": "Tire a exigência. Se quiser, sugira o selo do teste da função (conhecimento prático, feito online sem supervisão; mede o que a pessoa sabe hoje do básico da função, não personalidade).",
       "lei": "Lei 4.119/1962, art. 13, §1º; Resolução CFP 31/2022",
       "revisao_psicologia": true
     },

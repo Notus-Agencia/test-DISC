@@ -43,7 +43,7 @@
 .vg-linha__corpo { min-width: 0; }
 button.vg-eu-linha-botao { width: 100%; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .vg-eu-vazio-lista { padding: 24px 16px; text-align: center; color: var(--suave); font-size: var(--t-rotulo); }
-.vg-eu-nota-lista { margin-top: 12px; }
+.vg-eu-nota-lista { margin-top: 12px; color: var(--medio); }   /* sobre o --fundo: o .texto-suave fica abaixo do AA */
 
 /* Convite: o bloco de decidir (abaixo da mensagem da empresa) */
 .vg-eu-decidir { display: grid; gap: 12px; padding: 16px; border-radius: 20px; background: var(--branco); box-shadow: inset 0 0 0 1px rgba(243, 68, 5, .35); }

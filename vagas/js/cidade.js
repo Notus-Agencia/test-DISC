@@ -135,7 +135,7 @@
           contagem, listaEl, mais, notaAreas,
           el('div', { class: 'vg-entrada__golpe' }, P.golpe({ id: 'vg-aviso-golpe' }))
         ]),
-        el('footer', { class: 'rodape' }, el('p', { class: 'rodape-nota' }, ['Vagas sem Caos é uma ferramenta da Gestão sem Caos · ',
+        el('footer', { class: 'rodape' }, el('p', { class: 'rodape-nota' }, ['Uma empresa do grupo Gestão sem Caos · ',
           el('a', { href: 'termos.html' }, 'Termos'), ' · ', el('a', { href: 'privacidade.html' }, 'Privacidade')]))
       ]);
       busca.addEventListener('input', U.aoParar(function () { filtros.busca = R.limparTexto(busca.value, 60); aplicar(); }, 400));

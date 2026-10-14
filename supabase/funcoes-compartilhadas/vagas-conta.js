@@ -47,10 +47,10 @@
 // Segredos: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (do Supabase), RESEND_API_KEY, VAGAS_SITE_URL, VAGAS_EMAIL_REMETENTE?
 // (senão EMAIL_REMETENTE), TURNSTILE_SECRET? (liga o "não sou robô" no cadastrar/reenviar/esqueci), SITE_URL? (o do DISC: o
 // painel do DISC também chama esta função — convite de operador pela aba "Vagas"; sem ele, https://disc.gestaosemcaos.com.br).
-// Textos finais dos e-mails: conteudo/vagas-textos/ (aqui, versões curtas com a marca Vagas sem Caos · Gestão sem Caos).
+// Textos finais dos e-mails: conteudo/vagas-textos/ (aqui, versões curtas com a marca Vagas sem Caos e o endosso da Gestão sem Caos).
 import { erro, MSG_ERRO_INTERNO } from './regras.js';
 import { criarResend } from './asaas.js';
-import { htmlMarca } from './email.js';
+import { htmlMarca, LOGO_EMAIL } from './email.js';
 
 export const NOMES_ENV_VAGAS_CONTA = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'VAGAS_SITE_URL', 'VAGAS_EMAIL_REMETENTE',
   'EMAIL_REMETENTE', 'TURNSTILE_SECRET', 'SITE_URL'];
@@ -71,7 +71,9 @@ export const VAGAS_MSG_CIDADE_FECHADA_AVISO = 'A cidade ainda não está aberta.
 export const VAGAS_BUCKET_FOTOS = 'vagas-fotos';
 export const VAGAS_FOTO_SEGUNDOS = 300;
 const VAGAS_LIMITE_CORPO = 4000;
-const VAGAS_RODAPE = 'Vagas sem Caos · uma ferramenta da Gestão sem Caos. Nunca pague para se candidatar: se alguém pedir em nosso nome, é golpe.';
+// Logo do topo dos e-mails do Vagas: PNG como o da moldura (o Gmail não mostra SVG), 903×136, mostrado a 188 px (scripts/marca-vagas-email.mjs).
+export const VAGAS_LOGO_EMAIL = 'https://disc.gestaosemcaos.com.br/assets/marca/vsc-logo-email.png';
+const VAGAS_RODAPE = 'Vagas sem Caos · uma empresa do grupo Gestão sem Caos. Nunca pague para se candidatar: se alguém pedir em nosso nome, é golpe.';
 
 export function lerEnvVagasConta(get) {
   const env = {};
@@ -102,7 +104,7 @@ export function linkVagas(env, tokenHash, tipo) {
   return siteVagas(env) + '/entrar.html?token_hash=' + encodeURIComponent(tokenHash) + '&type=' + encodeURIComponent(tipo);
 }
 
-/** E-mails com a marca Vagas sem Caos (moldura da Gestão sem Caos).
+/** E-mails com a marca Vagas sem Caos (a moldura comum, com o logo do Vagas no lugar do da Gestão sem Caos).
  *  tipo: confirmar | jaTemConta | senha | assistido | operador | conviteEquipe | conviteEquipeOutraConta | cidadeAbriu
  *  (textos completos para revisão: conteudo/vagas-textos/emails/convite-equipe*.html e cidade-abriu.html).
  *  cidadeAbriu: d.cidade, d.perfil ('pessoa' | 'empresa'), d.url (criar a conta), d.urlSair (sair da lista de espera). */
@@ -155,7 +157,8 @@ export function montarEmailVagas(tipo, d) {
   const extra = tipo === 'cidadeAbriu' && d.urlSair
     ? { antes: 'Deixou também o WhatsApp e não quer o aviso por lá?', texto: 'Sair da lista de espera', url: d.urlSair } : null;
   let html = htmlMarca({ titulo: m.titulo, previa: m.paragrafos[1], paragrafos: m.paragrafos, botao: { texto: m.botao, url: d.url }, nota: m.nota,
-    rodape: VAGAS_RODAPE });
+    rodape: VAGAS_RODAPE }).replace('<img src="' + LOGO_EMAIL + '" width="200" alt="Gestão sem Caos" style="display:block;width:200px;',
+    '<img src="' + VAGAS_LOGO_EMAIL + '" width="188" alt="Vagas sem Caos" style="display:block;width:188px;');
   // Link a mais (sair da lista), logo antes do "Se o botão não funcionar" da moldura — sem mexer na moldura comum do DISC.
   if (extra) {
     const marca = '<p style="margin:0 0 8px;font-size:13px';

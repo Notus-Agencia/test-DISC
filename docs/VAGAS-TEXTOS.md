@@ -1,7 +1,7 @@
 # Vagas sem Caos: textos (termos, privacidade, aceites, avisos, e-mails, WhatsApp, moderação)
 
 Tudo em `conteudo/vagas-textos/`. Português simples, frases curtas, linguagem neutra ("a pessoa", "quem se candidata"),
-marca "Gestão sem Caos" (assinatura "uma ferramenta da Gestão sem Caos"). Nunca: nome de agência, nome de app de namoro,
+marca "Gestão sem Caos" (assinatura "uma empresa do grupo Gestão sem Caos"). Nunca: nome de agência, nome de app de namoro,
 "swipe", promessa ("garante", "perfil ideal", "compatibilidade", "o teste prevê desempenho"), "aprovado/reprovado" em selo,
 "DiSC" (sempre "DISC"), "candidato(a)" como substantivo. O teste `tests/vagas-textos.test.js` confere tudo isso e
 entra no `npm test` (glob `tests/*.test.js`).
@@ -31,7 +31,7 @@ publicado? Crie uma versão nova (data), nunca edite a versão que alguém já a
 
 - `avisos.nunca_pague` = "Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe." (texto exato; aparece no rodapé de toda tela da pessoa e nos e-mails dela).
 - `avisos.cartao_cego`, `avisos.cartao_cego_empresa`, `avisos.empresa_confidencial`, `avisos.combinou_convite`, `avisos.combinou_convite_confidencial`, `avisos.combinou_revelada`, `avisos.combinou_pessoa`, `avisos.combinou_empresa`.
-- `avisos.selo_descricao`, `selo_emitido`, `selo_sem_selo`, `selo_supervisao` ("online, sem supervisão"), `selo_empresa`, `selo_filtro_empresa`.
+- `avisos.selo_descricao`, `selo_emitido`, `selo_sem_selo`, `selo_supervisao` ("online, sem supervisão"), `selo_empresa` (o antigo `selo_filtro_empresa` saiu: descrevia um filtro por selo, proibido pelo veto P3).
 - `avisos.bico_mural`, `bico_contratante`, `bico_diarista`, `bico_valor_obrigatorio`, `bico_para_hoje`.
 - `avisos.cidade_lista_espera`, `cidade_pausada`, `sem_internet`, `erro_generico`, `sessao_expirada`, `confirme_email`, `conta_suspensa`.
 - `botoes.quero` / `pular` / `quero_conversar` / `agora_nao` / `ver_empresa` / `liberar_contato` / `denunciar` / `copiar_boletim`.
@@ -103,7 +103,7 @@ publicado? Crie uma versão nova (data), nunca edite a versão que alguém já a
 
 ## 4. O que o(a) psicólogo(a) precisa validar
 
-- Os trechos marcados `[REVISÃO PSICOLOGIA]`: termos §4.1, §4.2, §6.1, §8.8; `avisos.json → _revisao_psicologia` (chaves `selo_*`, `teste_antes`, `disc_fora`, `anuncio.campos.selo_sugerido`, `anuncio.bloqueios.disc`); `moderacao.json → anuncio_teste_psicologico`; `emails/seu-selo.html`.
+- Os trechos marcados `[REVISÃO PSICOLOGIA]`: termos §4.1, §4.2, §6.1, §8.8; `avisos.json → _revisao_psicologia` (chaves `selo_*`, `teste_antes`, `anuncio.campos.selo_sugerido`, `anuncio.bloqueios.disc`); `moderacao.json → anuncio_teste_psicologico`; `emails/seu-selo.html`.
 - Em particular: a frase "não mede personalidade, inteligência, caráter, potencial nem perfil" e "ele não mede quem você é nem o que você pode vir a aprender" (`selo_sem_selo`); o nome "selo" sem "de habilidade" (o `proposta.md` usa "habilidade testada": decidir se a palavra volta e com que ressalva).
 
 ## 5. Fontes legais citadas

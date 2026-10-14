@@ -18,8 +18,8 @@ const RAIZ = path.join(__dirname, '..');
 const ler = (rel) => fs.readFileSync(path.join(RAIZ, rel), 'utf8');
 const ARQUIVOS_JS = ['js/empresa-regras.js', 'js/roteiro-entrevista.js', 'js/empresa-base.js', 'js/empresa-vaga.js', 'js/empresa-conversa.js',
   'js/empresa-referencias.js', 'js/empresa.js', 'js/referencia.js'];
-// "DISC" só na tela Contratada (conversa, depois da contratação) e no roteiro ("Não use o DISC… nesta etapa"), que só aparece ali.
-const COM_DISC = ['js/roteiro-entrevista.js', 'js/empresa-conversa.js'];
+// "DISC" só na tela Contratada (conversa, depois da contratação). O roteiro não cita mais o DISC (psicologia, revisão C 3.3).
+const COM_DISC = ['js/empresa-conversa.js'];
 
 function armazem() {
   const m = {};
@@ -135,7 +135,7 @@ test('WhatsApp: os textos são os de conteudo/vagas-textos/whatsapp.json, palavr
   const link = ER.linkCurto('k7m2qx', 'https://vagas.gestaosemcaos.com.br/');
   assert.equal(link, 'https://vagas.gestaosemcaos.com.br/v/K7M2QX');
   assert.equal(ER.textoWhatsappVaga({ titulo: 'Operador(a) de caixa', confidencial: true, empresaNome: 'Mercado X', zona: 'Centro', valor: 'R$ 1.620', link }),
-    'Vaga de Operador(a) de caixa · Empresa confidencial · Centro · R$ 1.620. Candidatura grátis pelo celular: https://vagas.gestaosemcaos.com.br/v/K7M2QX (Vagas sem Caos, uma ferramenta da Gestão sem Caos)');
+    'Vaga de Operador(a) de caixa · Empresa confidencial · Centro · R$ 1.620. Candidatura grátis pelo celular: https://vagas.gestaosemcaos.com.br/v/K7M2QX (Vagas sem Caos, uma empresa do grupo Gestão sem Caos)');
   assert.match(ER.textoWhatsappVaga({ titulo: 'Caixa', empresaNome: 'Mercado X', zona: 'Centro', valor: 'R$ 1.620', link }), / · Mercado X · /);
   assert.match(ER.textoWhatsappCombinou({ pessoaNome: 'Ana Clara Ribeiro', responsavelNome: 'Marcos', empresaNome: 'Mercado X', vagaTitulo: 'Caixa' }),
     /^Oi, Ana! Aqui é Marcos, da Mercado X\. Vi a sua candidatura à vaga de Caixa no Vagas sem Caos e deu Combinou\./);
@@ -217,6 +217,25 @@ test('referência e cadastro: o formulário da tela vira os dados do contrato, c
   assert.equal(ER.lerEmpresaForm(Object.assign({}, emp, { whatsapp: '123' })).campo, 'whatsapp');
 });
 
+test('experiência: nada acima de 6 meses (CLT, art. 442-A); a tela lê a lista do banco e as opções antigas viram "Pelo menos 6 meses" ao editar', () => {
+  const nova = [{ id: 'nao_precisa', rotulo: 'Não precisa de experiência' }, { id: 'ajuda', rotulo: 'Ajuda ter, mas não é obrigatória' },
+    { id: '6_meses', rotulo: 'Pelo menos 6 meses na função' }];
+  assert.deepEqual(ER.opcoesExperiencia(nova).map((x) => x.rotulo), ['Não precisa', 'Ajuda ter, mas não é obrigatória', 'Pelo menos 6 meses na função']);
+  for (const id of ['ate_1', '1_a_3', 'mais_3']) assert.equal(ER.experienciaDaTela(id, nova), '6_meses', id);
+  assert.equal(ER.experienciaDaTela('ajuda', nova), 'ajuda');
+  assert.equal(ER.experienciaDaTela('', nova), 'nao_precisa');
+  // Com a lista do banco de agora (antes ou depois da troca), nenhuma opção acima de 6 meses aparece no formulário.
+  const ids = ER.opcoesExperiencia().map((x) => x.id);
+  for (const id of ER.EXPERIENCIA_LEGADA) assert.ok(!ids.includes(id), id);
+  assert.ok(ids.includes('nao_precisa'));
+  const tem6 = R.EXPERIENCIAS_VAGA.some((x) => x.id === '6_meses');
+  assert.equal(ER.formDeAnuncio({ experiencia: 'mais_3' }).experiencia, tem6 ? '6_meses' : 'mais_3');
+  // Sem lista fixa na tela.
+  const fonte = TELA.semComentarios(ler('vagas/js/empresa-vaga.js'));
+  assert.match(fonte, /opcoes: ER\.opcoesExperiencia\(\)/);
+  assert.ok(!/'ate_1'|'1_a_3'|'mais_3'/.test(fonte));
+});
+
 test('a vaga montada pela tela é aceita pela prévia (mesmo contrato do banco) e volta igual para a edição', async () => {
   const agora = Date.now();
   const api = API.criar({ modo: 'previa', backend: PREVIA.criarBackend({ armazenamento: armazem(), agora: () => agora }) });
@@ -226,7 +245,7 @@ test('a vaga montada pela tela é aceita pela prévia (mesmo contrato do banco) 
   const zonas = cidade.zonas;
   const hoje = R.hoje(cidade.fuso, agora);
   const f = formValido({ zona: zonas.length ? zonas[0].slug : '', comissao: true, beneficios: ['vt'], requisitos: ['outro'], requisitoOutro: 'Saber usar a maquininha',
-    selo: 'caixa', escolaridade: 'medio', experiencia: '6_meses', fimDeSemana: true, quantidade: '2', salarioAte: '1.900,00' });
+    selo: 'caixa', escolaridade: 'medio', experiencia: 'nao_precisa', fimDeSemana: true, quantidade: '2', salarioAte: '1.900,00' });
   const v = ER.validarVaga(f, { hoje, zonas, empresaId: emp.id });
   assert.equal(v.ok, true, v.erro);
   const r = await api.salvarAnuncio(v.dados);
@@ -244,13 +263,17 @@ test('a vaga montada pela tela é aceita pela prévia (mesmo contrato do banco) 
 });
 
 test('equipe: os nomes que a tela chama existem na API (§8.4a) e o ciclo convidar → aceitar → listar → remover funciona na prévia', async () => {
-  // A tela lê os nomes do mapa EQUIPE de empresa.js e chama conviteEquipe/aceitarConviteEquipe/conviteDoEndereco no aceite.
+  // A tela lê os nomes do mapa EQUIPE de empresa.js e chama conviteEquipe/aceitarConviteEquipe no aceite. O token do ?convite= é lido
+  // por E.tokenDoLink (empresa-base.js), que o tira da barra de endereço antes da guarda de conta (revisão C, E3/E4).
   const fonte = ler('vagas/js/empresa.js');
   const mapa = /var EQUIPE = \{([^}]+)\}/.exec(fonte)[1];
   const nomes = [...mapa.matchAll(/'(\w+)'/g)].map((m) => m[1]);
   assert.deepEqual(nomes, ['equipeDaEmpresa', 'convidarEquipe', 'cancelarConvite', 'removerMembro']);
   for (const m of ['equipeDaEmpresa', 'cancelarConvite', 'removerMembro', 'conviteEquipe', 'aceitarConviteEquipe']) assert.ok(API.METODOS[m], m + ' em METODOS');
-  for (const m of ['conviteEquipe', 'aceitarConviteEquipe', 'conviteDoEndereco']) assert.match(fonte, new RegExp('A\\.' + m + '\\('), m + ' chamado pela tela');
+  for (const m of ['conviteEquipe', 'aceitarConviteEquipe']) assert.match(fonte, new RegExp('A\\.' + m + '\\('), m + ' chamado pela tela');
+  assert.match(fonte, /var token = E\.tokenDoLink\('convite', CHAVE_CONVITE, 'empresa\.html'\);\s*\n[\s\S]*U\.exigirConta\(/, 'token lido antes da guarda');
+  assert.match(ler('vagas/js/referencia.js'), /E\.tokenDoLink\('t', CHAVE, 'referencia\.html'\)[\s\S]*U\.exigirConta\(/);
+  assert.match(ler('vagas/js/empresa-base.js'), /history\.replaceState\(null, '', pagina \+/);
   assert.equal(R.MSG.CONVITE_INVALIDO, 'Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.');
   for (const [lista, ids] of [[R.PAPEIS_EMPRESA, ['dono', 'recrutador']], [R.STATUS_CONVITE_EQUIPE, ['pendente', 'vencido', 'aceito', 'cancelado']]]) {
     assert.deepEqual(lista.map((x) => x.id), ids);
@@ -312,7 +335,8 @@ test('páginas e scripts da empresa: CSP, ordem dos scripts, nada inline, sem in
   for (const rel of ARQUIVOS_JS) assert.deepEqual(TELA.conferirScript(rel, { permitirDisc: COM_DISC.includes(rel) }), [], rel);
   // "DISC" na conversa: só o cartão "Integração dos 90 dias", que aparece depois de "Contratada".
   const conv = TELA.semComentarios(ler('vagas/js/empresa-conversa.js'));
-  assert.deepEqual([...conv.matchAll(/[^\n]*\bDISC\b[^\n]*/g)].map((m) => /Mapa DISC de integração \(só depois da contratação; nunca na seleção\)/.test(m[0])), [true]);
+  // e diz que é opcional para a pessoa e que não decide a permanência no contrato de experiência (revisão C 3.4).
+  assert.deepEqual([...conv.matchAll(/[^\n]*\bDISC\b[^\n]*/g)].map((m) => /com o Mapa DISC\. É opcional para a pessoa.*não pode ser usado para decidir se ela fica depois do contrato de experiência/.test(m[0])), [true]);
   assert.match(conv, /if \(modo === 'contratada'\) \{[\s\S]*Mapa DISC/);
   // CSS da frente: só tokens (nenhuma cor escrita à mão).
   const css = ler('vagas/assets/vagas-empresa.css');

@@ -12,6 +12,8 @@ const C = require('../vagas/js/conversa.js');
 const E = require('../vagas/js/entrar.js');
 const T = require('../vagas/js/textos.js');
 const TC = require('../vagas/js/textos-conta.js');
+// No navegador textos-conta.js soma as chaves ao VAGAS_TEXTOS (avisos somados); no Node exporta à parte: junta igual.
+Object.keys(TC).forEach((k) => { if (k === 'avisos') Object.assign(T.avisos, TC.avisos); else T[k] = TC[k]; });
 const R = require('../vagas/js/regras.js');
 const TELA = require('./helpers/vagas-tela.js');
 
@@ -145,12 +147,19 @@ test('textos gerados: t() preenche variáveis, chave ausente vira texto vazio, n
 test('textos gerados: só o que as telas usam (sem regra do servidor, sem lista duplicada, sem fase 2)', async () => {
   const M = await import('../scripts/montar-vagas.mjs');
   const basicos = M.textosBasicos();
-  assert.deepEqual(Object.keys(basicos).sort(), ['avisos', 'botoes', 'foto', 'mensagem', 'validacao', 'versao']);
+  assert.deepEqual(Object.keys(basicos).sort(), ['avisos', 'botoes', 'validacao', 'versao'], 'mensagem.* e foto.* só nas telas com conta (peso da lista)');
   assert.equal(basicos.avisos.denuncia_motivos, undefined, 'motivos de denúncia: fonte única em VAGAS_REGRAS');
-  assert.equal(basicos.mensagem.padroes, undefined, 'expressões do filtro ficam no servidor e em regras.js');
-  assert.equal(basicos.foto.em_moderacao, undefined, 'fase 2');
-  assert.equal(basicos.foto.recusada_moderacao, undefined, 'fase 2');
   const conta = M.textosDaConta();
+  assert.equal(conta.mensagem.padroes, undefined, 'expressões do filtro ficam no servidor e em regras.js');
+  assert.ok(conta.mensagem.aviso_empresa && conta.foto.explicacao);
+  // avisos.*: os das telas sem conta (lista, início, selo, testes) em textos.js; o resto em textos-conta.js, sem repetir nenhum.
+  const pub = M.avisosPublicos();
+  for (const k of ['cidade_pausada', 'nunca_pague', 'erro_generico', 'conta_suspensa', 'selo_nota', 'teste_antes', 'selo_empresa']) assert.ok(k in basicos.avisos, k);
+  for (const k of Object.keys(basicos.avisos)) assert.ok(pub.has(k), k);
+  for (const k of Object.keys(conta.avisos)) assert.ok(!(k in basicos.avisos), k);
+  assert.deepEqual(Object.keys({ ...basicos.avisos, ...conta.avisos }).sort(), Object.keys(M.textosDaTela().avisos).sort());
+  assert.equal(conta.foto.em_moderacao, undefined, 'fase 2');
+  assert.equal(conta.foto.recusada_moderacao, undefined, 'fase 2');
   assert.equal(conta.anuncio.termos_proibidos, undefined);
   assert.equal(conta.anuncio.bloqueios, undefined);
   assert.equal(conta.referencia.pontos_fortes, undefined, 'pontos fortes: VAGAS_REGRAS.PONTOS_FORTES');

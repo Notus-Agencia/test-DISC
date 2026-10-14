@@ -136,7 +136,8 @@ test('respostas do banco: {ok:false} vira Error com as marcas; 404/PGRST202 = ba
   ]);
   await assert.rejects(api.anuncio('ABC123'), (e) => e.message === 'Vaga não encontrada ou já encerrada.' && e.naoEncontrada === true &&
     e.resposta.naoEncontrada === true);
-  await assert.rejects(api.listaEspera({}), (e) => e.bancoDesatualizado === true && /20261022120000_vagas/.test(e.message));
+  await assert.rejects(api.listaEspera({}), (e) => e.bancoDesatualizado === true && e.message === 'O Vagas sem Caos está em manutenção. Tente de novo em alguns minutos.' &&
+    /20261022120000_vagas/.test(e.tecnico));
   // Toda marca do contrato (docs/VAGAS-SPEC.md §2) chega em e.<marca>, inclusive linkExpirado, existe e ativa.
   const marcas = ['sessaoExpirada', 'confirmar', 'bloqueado', 'suspensa', 'semConta', 'completar', 'naoConfigurado', 'captcha', 'bancoDesatualizado',
     'naoEncontrada', 'listaEspera', 'pausada', 'verEmpresa', 'semCombinou', 'contatoCortado', 'bloqueada', 'aguardar', 'semFoto', 'linkExpirado', 'existe', 'ativa'];

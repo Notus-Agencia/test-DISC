@@ -9,6 +9,7 @@
  *   proximosDias(hojeIso, n) -> [{data, rotulo}] (diária: hoje até +7)
  *   formDeAnuncio(anuncio) -> estado do formulário · dadosDaVaga(form, {empresaId?, id?}) -> dados de VAGAS_API.salvarAnuncio
  *   unidadesDaModalidade(mod) -> ['mes','hora'] … · unidadePadrao(mod)
+ *   opcoesExperiencia(lista?) -> opções do formulário (sem as antigas acima de 6 meses, CLT art. 442-A) · experienciaDaTela(id, lista?)
  *   validarVaga(form, {hoje, zonas}) -> {ok, dados} | {ok:false, campo, erro} (mesmas mensagens do banco + o campo do erro)
  *   termosProibidos(texto, ctx) -> [{tipo, trecho (como a empresa escreveu)}] · mensagemTermos(lista, {descricao})
  *   campoDoErro(mensagem, form) -> chave do campo (para pôr o erro da RPC no campo certo)
@@ -31,7 +32,7 @@
 
   // whatsapp.json: "vaga_compartilhar" e "empresa_para_pessoa_combinou" (palavra por palavra; tests/vagas-empresa.test.js).
   var WHATSAPP = {
-    vaga_compartilhar: 'Vaga de {{vaga_titulo}} · {{empresa_nome_ou_confidencial}} · {{zona}} · {{valor}}. Candidatura grátis pelo celular: {{link_curto}} (Vagas sem Caos, uma ferramenta da Gestão sem Caos)',
+    vaga_compartilhar: 'Vaga de {{vaga_titulo}} · {{empresa_nome_ou_confidencial}} · {{zona}} · {{valor}}. Candidatura grátis pelo celular: {{link_curto}} (Vagas sem Caos, uma empresa do grupo Gestão sem Caos)',
     empresa_para_pessoa_combinou: 'Oi, {{pessoa_primeiro_nome}}! Aqui é {{responsavel_nome}}, da {{empresa_nome}}. Vi a sua candidatura à vaga de {{vaga_titulo}} no Vagas sem Caos e deu Combinou. Podemos conversar sobre a vaga? Me diz um horário bom para você. (Nunca pedimos dinheiro, Pix ou documento para a vaga: só na admissão, pessoalmente.)'
   };
   var DIA = 86400000;
@@ -112,6 +113,20 @@
     return ['mes', 'hora'];
   }
   function unidadePadrao(mod) { return unidadesDaModalidade(mod)[0]; }
+
+  // Experiência: a lei não deixa exigir mais de 6 meses na mesma função (CLT, art. 442-A). A tela oferece só o que vem de
+  // VAGAS_REGRAS.EXPERIENCIAS_VAGA sem os ids antigos (ate_1, 1_a_3, mais_3), que viram "Pelo menos 6 meses" ao editar.
+  var EXPERIENCIA_LEGADA = ['ate_1', '1_a_3', 'mais_3'];
+  function listaExperiencias(lista) { return lista || (R && R.EXPERIENCIAS_VAGA) || []; }
+  function opcoesExperiencia(lista) {
+    return listaExperiencias(lista).filter(function (x) { return EXPERIENCIA_LEGADA.indexOf(x.id) < 0; })
+      .map(function (x) { return { id: x.id, rotulo: x.id === 'nao_precisa' ? 'Não precisa' : x.rotulo }; });
+  }
+  function experienciaDaTela(id, lista) {
+    var v = texto(id) || 'nao_precisa';
+    if (EXPERIENCIA_LEGADA.indexOf(v) < 0) return v;
+    return listaExperiencias(lista).some(function (x) { return x.id === '6_meses'; }) ? '6_meses' : v;
+  }
   function formVazio() {
     return { area: '', funcao: '', modalidade: '', quantidade: '1', salarioDe: '', salarioAte: '', unidade: '', comissao: false, turno: '',
       fimDeSemana: false, inicio: 'imediato', inicioData: '', zona: '', experiencia: 'nao_precisa', escolaridade: 'nao_exigida', requisitos: [],
@@ -136,7 +151,7 @@
     f.inicio = a.inicio === 'data' && a.modalidade !== 'diaria' ? 'data' : 'imediato';
     f.inicioData = a.inicio === 'data' && a.modalidade !== 'diaria' ? textoDeData(a.inicioData) : '';
     f.zona = (a.zona && a.zona.slug) || '';
-    f.experiencia = texto(a.experiencia) || 'nao_precisa';
+    f.experiencia = experienciaDaTela(a.experiencia);
     f.escolaridade = texto(a.escolaridade) || 'nao_exigida';
     f.requisitos = (a.requisitos || []).slice();
     f.requisitoOutro = texto(a.requisitoOutro);
@@ -430,7 +445,8 @@
   var VAGAS_EMPRESA_REGRAS = {
     WHATSAPP: WHATSAPP, centavosDe: centavosDe, textoDeCentavos: textoDeCentavos, dataDeTexto: dataDeTexto, textoDeData: textoDeData,
     mesDeTexto: mesDeTexto, textoDeMes: textoDeMes, saudacao: saudacao, primeiroNome: primeiroNome, proximosDias: proximosDias,
-    unidadesDaModalidade: unidadesDaModalidade, unidadePadrao: unidadePadrao, formVazio: formVazio, formDeAnuncio: formDeAnuncio,
+    unidadesDaModalidade: unidadesDaModalidade, unidadePadrao: unidadePadrao, EXPERIENCIA_LEGADA: EXPERIENCIA_LEGADA, opcoesExperiencia: opcoesExperiencia, experienciaDaTela: experienciaDaTela,
+    formVazio: formVazio, formDeAnuncio: formDeAnuncio,
     dadosDaVaga: dadosDaVaga, termosProibidos: termosProibidos, trechoOriginal: trechoOriginal, mensagemTermos: mensagemTermos,
     campoDoErro: campoDoErro, validarVaga: validarVaga, etiquetasFiltro: etiquetasFiltro, linkCurto: linkCurto,
     textoWhatsappVaga: textoWhatsappVaga, textoWhatsappCombinou: textoWhatsappCombinou, diasRestantes: diasRestantes, podeRenovar: podeRenovar,
