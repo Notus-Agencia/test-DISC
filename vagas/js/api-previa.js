@@ -995,6 +995,11 @@
     }
     function completo(uid) { return !!(st.pessoas[uid] && st.contatos[uid]); }
     function temFoto(uid) { return !!(st.fotos && st.fotos[uid]); }
+    // O último aceite 'foto_opcional' da pessoa é true? (vagas_interno.foto_aceita, 20261024120005)
+    function fotoAceita(uid) {
+      var u = st.consentimentos.filter(function (x) { return x.userId === uid && x.tipo === 'foto_opcional'; }).pop();
+      return !!u && u.aceito === true;
+    }
     function naoLidas(v, lado) {
       if (!v) return 0;
       var lida = lado === 'pessoa' ? v.lidaPessoaEm : v.lidaEmpresaEm;
@@ -1222,6 +1227,9 @@
         if (!reUuid(id)) return erro('Referência não encontrada.');
         // R4-1 (veto P2, 20261024120005): a resposta é SEMPRE {recebida:true}, sem "duplicado", para qualquer id; grava só
         // quando quem denuncia vê a referência (a própria pessoa, ou visível e de outra empresa) e ainda não denunciou.
+        // R5-1: toda tentativa entra no registro de quem denunciou (é dele que sai a exportação), seja qual for a referência.
+        st.denunciasReferencia = st.denunciasReferencia || [];
+        st.denunciasReferencia.push({ autor: uid, referenciaId: id, motivo: motivo, detalhe: detalhe, em: agora() });
         var r = st.referencias.filter(function (x) { return x.id === id && x.status !== 'removida'; })[0];
         if (r && minhasEmpresasIds().indexOf(r.empresaId) < 0 && (r.pessoaId === uid || referenciaVisivel(r)) &&
             !st.denuncias.some(function (x) { return x.alvo === 'referencia' && x.referenciaId === r.id && x.autor === uid; })) {
@@ -1787,7 +1795,8 @@
       var quemAbriu = st.membros.filter(function (m) { return m.empresaId === e.id && m.userId === st.sessao; })[0];
       st.acessos.push({ candidaturaId: k.id, pessoaId: k.pessoaId, empresaId: e.id, empresaNome: e.nomeFantasia, anuncioTitulo: an.titulo, userId: st.sessao,
         papel: quemAbriu ? quemAbriu.papel : null, em: agora() });
-      return ok({ pessoa: { nome: ct.nome, whatsapp: ct.whatsapp, email: ct.email, sobre: st.pessoas[k.pessoaId].sobre, temFoto: temFoto(k.pessoaId),
+      // R5-3: temFoto só com o aceite 'foto_opcional' em vigor (a mesma regra de fotoUrl).
+      return ok({ pessoa: { nome: ct.nome, whatsapp: ct.whatsapp, email: ct.email, sobre: st.pessoas[k.pessoaId].sobre, temFoto: temFoto(k.pessoaId) && fotoAceita(k.pessoaId),
         cartao: cartao(k.pessoaId, k.empresaId),
         referencias: st.referencias.filter(function (r) { return r.pessoaId === k.pessoaId && referenciaParaEmpresa(r, [k.empresaId]); })
           .sort(function (x, y) { return (y.fim || '9999-99').localeCompare(x.fim || '9999-99') || y.inicio.localeCompare(x.inicio); })
@@ -2493,8 +2502,13 @@
         candidaturas: st.candidaturas.filter(function (k) { return k.pessoaId === uid; }).map(candidaturaPessoa),
         pulos: st.pulos.filter(function (p) { return p.pessoaId === uid; }).map(function (p) { var an = anuncio(p.anuncioId);
           return { anuncio: { codigo: an ? an.codigo : '', titulo: an ? an.titulo : '' }, em: iso(p.em) }; }),
-        denunciasFeitas: st.denuncias.filter(function (d) { return d.autor === uid; }).map(function (d) {
-          return { alvo: d.alvo, motivo: d.motivo, detalhe: d.detalhe || '', status: d.status, em: iso(d.criadoEm) }; }),
+        // R5-1: as de referência vêm do registro de tentativas (iguais para qualquer estado da referência; sem andamento).
+        denunciasFeitas: st.denuncias.filter(function (d) { return d.autor === uid && d.alvo !== 'referencia'; }).map(function (d) {
+          return { alvo: d.alvo, motivo: d.motivo, detalhe: d.detalhe || '', status: d.status, em: d.criadoEm, ordem: 0 }; })
+          .concat((st.denunciasReferencia || []).filter(function (d) { return d.autor === uid; }).map(function (d) {
+            return { alvo: 'referencia', motivo: d.motivo, detalhe: d.detalhe || '', status: null, em: d.em, ordem: 1 }; }))
+          .sort(function (x, y) { return x.em - y.em || x.ordem - y.ordem; })
+          .map(function (d) { return { alvo: d.alvo, motivo: d.motivo, detalhe: d.detalhe, status: d.status, em: iso(d.em) }; }),
         mensagensEnviadas: st.mensagens.filter(function (m) { return m.autorUser === uid; }).map(function (m) { return { em: iso(m.criadoEm), texto: m.texto }; }),
         acessosAoContato: st.acessos.filter(function (x) { return x.pessoaId === uid; }).map(function (x) { return { empresa: x.empresaNome, anuncio: x.anuncioTitulo, em: iso(x.em) }; }),
         empresas: st.membros.filter(function (m) { return m.userId === uid; }).map(function (m) { return Object.assign(empresaJson(empresa(m.empresaId)), { papel: m.papel }); }),
@@ -3166,8 +3180,7 @@
           if (k.contatoCortadoEm != null) return erro('A pessoa deixou de compartilhar o contato com a sua empresa.', { contatoCortado: true });
           if (empresa(k.empresaId).status !== 'ativa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.', { suspensa: true });
           // R4-7 (20261024120005): a empresa só vê a foto com o último aceite 'foto_opcional' = true.
-          var aceite = st.consentimentos.filter(function (x) { return x.userId === k.pessoaId && x.tipo === 'foto_opcional'; }).pop();
-          if (!temFoto(k.pessoaId) || !aceite || aceite.aceito !== true) return erro('Esta pessoa não pôs foto.', { semFoto: true });
+          if (!temFoto(k.pessoaId) || !fotoAceita(k.pessoaId)) return erro('Esta pessoa não pôs foto.', { semFoto: true });
           dono = k.pessoaId;
         } else if (!temFoto(uid)) return erro('Sem foto.', { semFoto: true });
         return ok({ url: st.fotos[dono], expiraEm: iso(agora() + 300000) });

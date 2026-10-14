@@ -3,8 +3,8 @@
 // e esta aplicada duas vezes. Cobre o veto P2 (a empresa nunca sabe o que a pessoa fez com a referência), a experiência da
 // vaga pela CLT (art. 442-A) com as vagas antigas convertidas, os filtros dos cartões, e os pedidos da operação e da pessoa
 // (semDona, alvoNome/quem, reenvio pela operação, consentimento da foto, quem abriu o contato, carteira "prefiro não dizer"
-// e a limpeza das contas assistidas não confirmadas) e as correções da 4ª revisão de segurança (R4-1 a R4-7, reproduzindo
-// as sondas da revisão).
+// e a limpeza das contas assistidas não confirmadas) e as correções da 4ª e da 5ª revisões de segurança (R4-1 a R4-7 e R5-1
+// a R5-3, reproduzindo as sondas das revisões).
 //
 // Rodar: npm run test:supabase
 const test = require('node:test');
@@ -623,4 +623,140 @@ test('R4-7: a empresa só lê a foto com o último aceite foto_opcional = true; 
   ok(await de(p)('vagas_foto_consentimento', false));
   assert.deepEqual(await daEmpresa(), SEM, 'aceite retirado: a mesma resposta de sem foto');
   await rejeita(como('authenticated', p, `select vagas_interno.foto_aceita($1)`, [p]), /permission denied/);
+});
+
+// ------------------------------------------------------------------------------------------------ 5ª revisão de segurança
+
+test('R5-1 e R5-2 (veto P2; sonda da 5ª revisão): quem denuncia a referência não descobre pela leitura nem pela exportação se ela está visível, nem lê o texto', async () => {
+  exigirBanco();
+  const a = await empresaComVaga('888777666021', 'Mercado Sonda Ltda');
+  const p = await contaVagas('pessoa');
+  ok(await de(p)('vagas_pessoa_salvar', pessoaDados({ nome: 'Sonia Sonda Lima' })));
+  const k = ok(await de(p)('vagas_quero', a.an)).candidatura.id;
+  ok(await de(a.dona)('vagas_empresa_decidir', k, 'conversar'));
+  ok(await de(p)('vagas_combinar', k));
+  const SIGILO = 'Texto sigiloso da referencia: problema de saude XYZ.';
+  const ref = ok(await de(a.dona)('vagas_referencia_oferecer', { candidaturaId: k, empresaId: a.emp, funcao: 'Atendente', vinculo: 'clt',
+    inicio: '2024-01', pontosFortes: ['equipe'], declaracao: true, texto: SIGILO })).referencia.id;
+  const den = (uid, id) => de(uid)('vagas_denunciar', { alvo: 'referencia', id, motivo: 'outro', detalhe: 'sonda' });
+  // Leitura direta, como faria GET /rest/v1/vagas_denuncias (a política vale para authenticated).
+  const leitura = async (uid) => (await como('authenticated', uid, `select referencia_id, status, texto_denunciado from public.vagas_denuncias`)).rows;
+  const fila = async () => (await db.query(`select count(*)::int n from public.vagas_denuncias where referencia_id = $1`, [ref])).rows[0].n;
+  // Uma conta nova a cada passo (como na sonda): resposta, leitura e exportação idênticas em qualquer estado.
+  const sonda = async () => {
+    const x = await contaVagas('pessoa');
+    const resposta = await den(x, ref);
+    const exp = ok(await de(x)('vagas_exportar_meus_dados'));
+    assert.ok(!JSON.stringify(exp).includes('sigiloso'), 'o texto da referência nunca volta');
+    return { resposta, linhas: await leitura(x), feitas: exp.denunciasFeitas.map(({ em, ...resto }) => resto) };
+  };
+  const esperado = { resposta: { ok: true, recebida: true }, linhas: [], feitas: [{ alvo: 'referencia', motivo: 'outro', detalhe: 'sonda', status: null }] };
+  const naFila = [];
+  assert.deepEqual(await sonda(), esperado, 'pendente');
+  naFila.push(await fila());
+  ok(await de(p)('vagas_referencia_responder', ref, 'aceitar'));
+  assert.deepEqual(await sonda(), esperado, 'aceita');
+  naFila.push(await fila());
+  ok(await de(p)('vagas_referencia_responder', ref, 'ocultar'));
+  assert.deepEqual(await sonda(), esperado, 'ocultada');
+  naFila.push(await fila());
+  ok(await de(p)('vagas_referencia_responder', ref, 'mostrar'));
+  assert.deepEqual(await sonda(), esperado, 'mostrada');
+  naFila.push(await fila());
+  assert.deepEqual(naFila, [0, 1, 1, 2], 'a fila da moderação só recebe a referência que quem denuncia vê');
+  // R5-2: texto recusado pela moderação. A página pública não o mostra e quem denuncia também não o lê.
+  ok(await de(S.admin)('vagas_op_referencia_decidir', ref, 'recusar_texto', 'dado sensivel'));
+  const t = ok(await de(p)('vagas_referencias_publicar', true)).caminho.split('t=')[1];
+  assert.deepEqual(ok(await anon('vagas_referencias_publicas', t)).referencias.filter((r) => r.id === ref).map((r) => [r.texto, r.textoStatus]),
+    [['', 'nao_publicado']]);
+  assert.deepEqual(await sonda(), esperado, 'texto recusado');
+  // A própria pessoa denuncia: também não lê a fila nem o texto copiado.
+  ok(await den(p, ref));
+  assert.deepEqual(await leitura(p), []);
+  // A operação da cidade e a equipe continuam lendo a fila (com o texto, para moderar).
+  const daEquipe = (await como('authenticated', S.admin, `select texto_denunciado from public.vagas_denuncias where referencia_id = $1`, [ref])).rows;
+  assert.ok(daEquipe.length >= 3 && daEquipe.every((x) => x.texto_denunciado === SIGILO));
+  assert.equal((await como('authenticated', S.op, `select count(*)::int n from public.vagas_denuncias where referencia_id = $1`, [ref])).rows[0].n, daEquipe.length);
+  // Id inexistente: a mesma resposta e o mesmo registro na exportação; id que não é UUID: só o formato, nada registrado.
+  const y = await contaVagas('pessoa');
+  assert.deepEqual(await den(y, crypto.randomUUID()), { ok: true, recebida: true });
+  erro(await den(y, 'abc'), 'Referência não encontrada.');
+  assert.deepEqual(ok(await de(y)('vagas_exportar_meus_dados')).denunciasFeitas.map(({ em, ...resto }) => resto), esperado.feitas);
+  assert.deepEqual(await leitura(y), []);
+  // A denúncia de vaga continua na exportação com o andamento.
+  ok(await de(y)('vagas_denunciar', { alvo: 'anuncio', id: a.an, motivo: 'falsa' }));
+  assert.deepEqual(ok(await de(y)('vagas_exportar_meus_dados')).denunciasFeitas.map((d) => [d.alvo, d.status]), [['referencia', null], ['anuncio', 'aberta']]);
+  // O registro de tentativas é fechado para a API e sai com a conta.
+  await rejeita(como('authenticated', y, `select * from vagas_interno.denuncias_referencia`), /permission denied/);
+  await rejeita(como('anon', null, `select * from vagas_interno.denuncias_referencia`), /permission denied/);
+  await rejeita(como('authenticated', y, `select vagas_interno.denuncias_feitas($1)`, [y]), /permission denied/);
+  await db.query(`delete from auth.users where id = $1`, [y]);
+  assert.equal((await db.query(`select count(*)::int n from vagas_interno.denuncias_referencia where autor = $1`, [y])).rows[0].n, 0);
+});
+
+test('R5-3: temFoto do contato segue o aceite da foto (como a foto): sem aceite em vigor, a empresa não sabe que há foto', async () => {
+  exigirBanco();
+  const a = await empresaComVaga('888777666022', 'Clinica Contato Foto Ltda');
+  const p = await contaVagas('pessoa');
+  ok(await de(p)('vagas_pessoa_salvar', pessoaDados({ nome: 'Talita Foto Reis' })));
+  const k = ok(await de(p)('vagas_quero', a.an)).candidatura.id;
+  ok(await de(a.dona)('vagas_empresa_decidir', k, 'conversar'));
+  ok(await de(p)('vagas_combinar', k));
+  await db.query(`insert into storage.buckets (id, name) values ('vagas-fotos', 'vagas-fotos') on conflict (id) do nothing`);
+  await db.query(`insert into storage.objects (bucket_id, name, owner) values ('vagas-fotos', $1, $2)`, [p + '/foto.jpg', p]);
+  const temFoto = async () => ok(await de(a.dona)('vagas_contato_pessoa', k)).pessoa.temFoto;
+  assert.equal(await temFoto(), false, 'foto sem aceite');
+  ok(await de(p)('vagas_foto_consentimento', true));
+  assert.equal(await temFoto(), true);
+  ok(await de(p)('vagas_foto_consentimento', false));
+  assert.equal(await temFoto(), false, 'aceite retirado');
+  assert.equal(ok(await de(p)('vagas_pessoa_minha')).pessoa.temFoto, true, 'a própria pessoa continua vendo que tem foto');
+});
+
+test('5ª revisão: baixar os dados com conta suspensa (só os próprios); permissões e search_path do que a 0005 recria', async () => {
+  exigirBanco();
+  const p = await contaVagas('pessoa');
+  ok(await de(p)('vagas_pessoa_salvar', pessoaDados({ nome: 'Susana Suspensa Melo' })));
+  await db.query(`update public.vagas_contas set status = 'suspensa' where user_id = $1`, [p]);
+  const susp = ok(await de(p)('vagas_exportar_meus_dados'));
+  assert.deepEqual([susp.conta.status, susp.pessoa.nome], ['suspensa', 'Susana Suspensa Melo']);
+  const pend = crypto.randomUUID();
+  await db.query(`insert into auth.users (id, email, raw_app_meta_data) values ($1, 'pend-r5@x.teste', '{"produto":"vagas"}')`, [pend]);
+  ok(await servico('vagas_conta_registrar', pend, { tipo: 'pessoa', termosVersao: '2026-10' }));
+  assert.equal((await de(pend)('vagas_exportar_meus_dados')).confirmar, true);
+  const semConta = crypto.randomUUID();
+  await db.query(`insert into auth.users (id, email, email_confirmed_at) values ($1, 'disc-r5@x.teste', now())`, [semConta]);
+  assert.equal((await de(semConta)('vagas_exportar_meus_dados')).semConta, true);
+  assert.equal((await de(null)('vagas_exportar_meus_dados')).sessaoExpirada, true);
+  assert.equal((await de(crypto.randomUUID())('vagas_exportar_meus_dados')).ok, false);
+  await rejeita(anon('vagas_exportar_meus_dados'), /permission denied/);
+  // Internas: ninguém da API executa.
+  for (const sql of ['select vagas_interno.cartao(null, null)', 'select vagas_interno.foto_aceita(null)', 'select vagas_interno.denuncias_feitas(null)']) {
+    for (const papel of ['anon', 'authenticated']) await rejeita(como(papel, null, sql), /permission denied/);
+  }
+  // Quem executa o que a 0005 recria.
+  const acl = async (f) => (await db.query(`select p.prosecdef sd, coalesce(array_to_string(p.proconfig, ','), '') cfg,
+      has_function_privilege('anon', p.oid, 'execute') anon, has_function_privilege('authenticated', p.oid, 'execute') aut,
+      has_function_privilege('service_role', p.oid, 'execute') srv from pg_proc p where p.oid = $1::regprocedure`, [f])).rows[0];
+  const esperado = {
+    'public.vagas_denunciar(jsonb)': [true, true, true],
+    'public.vagas_exportar_meus_dados()': [false, true, true],
+    'public.vagas_contato_pessoa(uuid)': [false, true, true],
+    'public.vagas_conta_lista_espera(jsonb, text, text, boolean)': [false, false, true],
+    'public.vagas_conta_aviso_lote(uuid, text, integer)': [false, false, true],
+    'public.vagas_conta_foto(uuid, uuid)': [false, false, true],
+    'vagas_interno.lista_espera_gravar(jsonb, text[], boolean)': [false, false, true],
+    'vagas_interno.foto_aceita(uuid)': [false, false, true],
+    'vagas_interno.denuncias_feitas(uuid)': [false, false, true],
+    'vagas_interno.cartao(uuid, uuid)': [false, false, true],
+    'vagas_interno.referencia_para_empresa(public.vagas_referencias, uuid[])': [false, false, true]
+  };
+  for (const [f, [an, au, sr]] of Object.entries(esperado)) {
+    const r = await acl(f);
+    assert.deepEqual([r.sd, r.cfg, r.anon, r.aut, r.srv], [true, 'search_path=""', an, au, sr], f);
+  }
+  // Nenhuma SECURITY DEFINER do Vagas sem search_path.
+  assert.deepEqual((await db.query(`select p.oid::regprocedure::text f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where (n.nspname = 'vagas_interno' or (n.nspname = 'public' and p.proname like 'vagas%')) and p.prosecdef
+      and not coalesce(array_to_string(p.proconfig, ',') like '%search_path=%', false)`)).rows, []);
 });
