@@ -14,7 +14,7 @@
  *
  * Métodos: um por RPC (tabela METODOS abaixo; contrato em docs/VAGAS-SPEC.md §8), mais os da Edge Function vagas-conta e do
  *   Auth: cadastrar, reenviarConfirmacao, esqueciSenha, cadastroAssistido, convidarOperador, convidarEquipe, avisarListaEspera,
- *   excluirConta, entrar, sair, sessao, linkDoEndereco, conviteDoEndereco, confirmarLink, definirSenha (SPEC §9 e §10).
+ *   excluirConta, entrar, sair, sessao, limparAparelho (tira do aparelho as chaves 'vg.*' da conta), linkDoEndereco, conviteDoEndereco, confirmarLink, definirSenha (SPEC §9 e §10).
  *   RECURSOS ({listaEsperaWhatsapp, preAberturaEmpresas, origemListaEspera}); listaEspera com captcha vai pela vagas-conta.
  * Foto OPCIONAL da pessoa (bucket privado 'vagas-fotos' do Storage): enviarFoto(arquivo File/Blob jpg|png|webp ≤ 1 MB) -> {ok, temFoto},
  *   apagarFoto() -> {ok, temFoto:false}, fotoUrl(candidaturaId?) -> {ok, url, expiraEm} (URL assinada de 5 min pela Edge Function:
@@ -215,6 +215,24 @@
     return { getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },
       setItem: function (k, v) { m[k] = String(v); }, removeItem: function (k) { delete m[k]; } };
   }
+  // Sair por qualquer caminho tira do aparelho as chaves 'vg.*' da conta (revisão C, P1). Ficam a cidade e o que a próxima conta
+  // usa para seguir um link (volta, convites, referência).
+  var FICA_NO_APARELHO = ['vg.cidade', 'vg.entrar.voltar', 'vg.entrar.convite', 'vg.empresa.convite', 'vg.referencia.t'];
+  function limparAparelho(extra) {
+    var n = 0, vistos = [];
+    [extra, 'localStorage', 'sessionStorage'].forEach(function (a) {
+      try {
+        if (typeof a === 'string') a = root[a];
+        if (!a || vistos.indexOf(a) >= 0 || typeof a.key !== 'function') return;
+        vistos.push(a);
+        var ks = [];
+        for (var i = 0; i < a.length; i++) ks.push(a.key(i));
+        ks.forEach(function (k) { if (/^vg\./.test(k) && FICA_NO_APARELHO.indexOf(k) < 0) { a.removeItem(k); n++; } });
+      } catch (e) { /* bloqueado */ }
+    });
+    return n;
+  }
+
   function lerJson(arm, chave) {
     try { var t = arm && arm.getItem(chave); return t ? JSON.parse(t) : null; } catch (e) { return null; }
   }
@@ -236,11 +254,19 @@
     var renovando = null;
 
     function sessaoGuardada() { return lerJson(arm, CHAVE_SESSAO); }
+    // Sessão que sai (sair, excluir, vencida, recusada) ou que vira de outra conta limpa o aparelho; renovar a mesma não.
     function guardarSessao(s) {
-      if (!s) { gravarJson(arm, CHAVE_SESSAO, null); return null; }
+      var antes = sessaoGuardada();
+      var idAntes = (antes && antes.user && antes.user.id) || '';
+      if (!s) {
+        gravarJson(arm, CHAVE_SESSAO, null);
+        if (antes) limparAparelho(arm);
+        return null;
+      }
       var exp = s.expires_at ? Number(s.expires_at) : Math.floor(agora() / 1000) + Number(s.expires_in || 3600);
       var v = { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: exp,
         user: { id: (s.user && s.user.id) || '', email: (s.user && s.user.email) || '' } };
+      if (idAntes && v.user.id && v.user.id !== idAntes) limparAparelho(arm);
       gravarJson(arm, CHAVE_SESSAO, v);
       return v;
     }
@@ -502,9 +528,20 @@
       'confirmarLink', 'definirSenha', 'apagarFoto', 'fotoUrl'].forEach(function (m) {
       api[m] = function () {
         var args = Array.prototype.slice.call(arguments);
-        return backend().then(function (b) { return b.conta[m].apply(null, args); }).then(resultado);
+        return backend().then(function (b) {
+          if (m === 'sessao') return b.conta.sessao();
+          // Como o guardarSessao do Supabase: sessão que sai ou troca de conta limpa o aparelho.
+          return quem(b).then(function (antes) {
+            return Promise.resolve(b.conta[m].apply(null, args)).then(function (r) {
+              return quem(b).then(function (depois) { if (antes && depois !== antes) limparAparelho(op.armazenamento); return r; });
+            });
+          });
+        }).then(resultado);
       };
     });
+    function quem(b) {
+      return Promise.resolve(b.conta.sessao()).then(function (s) { return (s && s.ok && s.usuario && s.usuario.id) || ''; }, function () { return ''; });
+    }
     // Na prévia a foto fica neste navegador (data URL); valida igual ao Storage.
     api.enviarFoto = function (arquivo) {
       if (!arquivo || TIPOS_FOTO.indexOf(arquivo.type) < 0 || !(arquivo.size > 0) || arquivo.size > LIMITE_FOTO) {
@@ -531,10 +568,14 @@
     op = op || {};
     var api = op.modo === 'previa' ? criarPrevia(op) : criarSupabase(op);
     api.aoResponder = aoResponder;
+    api.limparAparelho = function () { return limparAparelho(op.armazenamento); };
+    var sair = api.sair;   // sair limpa sempre, mesmo sem sessão
+    api.sair = function () { limparAparelho(op.armazenamento); return sair.apply(api, arguments); };
     return api;
   }
 
   var exportado = { criar: criar, modoDe: modoDe, METODOS: METODOS, RECURSOS: recursos(), linkDoEndereco: linkDoEndereco, conviteDoEndereco: conviteDoEndereco, CHAVE_SESSAO: CHAVE_SESSAO,
+    limparAparelho: limparAparelho, FICA_NO_APARELHO: FICA_NO_APARELHO,
     MSG: { CONEXAO: MSG_CONEXAO, SESSAO: MSG_SESSAO, BANCO: MSG_BANCO, LOGIN: MSG_LOGIN, CONFIRMAR: MSG_CONFIRMAR, LINK: MSG_LINK, SENHA: MSG_SENHA } };
   if (typeof module !== 'undefined' && module.exports) { module.exports = exportado; return; }
   var cfg = root.VAGAS_CONFIG || {};

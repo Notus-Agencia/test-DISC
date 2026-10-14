@@ -13,7 +13,8 @@
   var doc = root.document;
   var CHAVE_QUERO = 'vg.quero';                 // intenção de "Quero" guardada pela página da vaga (casca): {codigo, id, em}
   var VALIDADE_QUERO = 7 * 86400000;           // a mesma validade da página da vaga
-  var CHAVE_CACHE = 'vg.cache.candidaturas';    // última lista vista (mostrada sem internet), só da mesma conta
+  var CHAVE_CACHE = 'vg.cache.candidaturas';    // última lista vista (mostrada sem internet), só da mesma conta e por 7 dias
+  var VALIDADE_CACHE = 7 * 86400000;
 
   function iniciar() {
     var U = root.VAGAS_UI;
@@ -59,7 +60,7 @@
       },
       candidaturasGuardadas: function () {
         var g = U.armazenamento.ler(CHAVE_CACHE);
-        return g && g.conta === ctx.email && Array.isArray(g.candidaturas) ? g.candidaturas : null;
+        return g && g.conta === ctx.email && Number(g.em) > Date.now() - VALIDADE_CACHE && Array.isArray(g.candidaturas) ? g.candidaturas : null;
       },
       recarregarConta: function () { return A.eu().then(function (r) { ctx.eu = r; ctx.refsPendentes = (r.pessoa && r.pessoa.referenciasPendentes) || 0; return r; }); },
       // Intenção de "Quero" ainda valendo (a página da vaga envia sozinha quando o currículo fica completo).
@@ -67,11 +68,9 @@
         var i = U.armazenamento.ler(CHAVE_QUERO);
         return i && typeof i.codigo === 'string' && /^[A-Z0-9]{4,12}$/.test(i.codigo) && Number(i.em) > Date.now() - VALIDADE_QUERO ? i : null;
       },
-      // Ao sair ou excluir a conta: nada desta pessoa fica no aparelho (o celular costuma ser dividido).
-      limparAparelho: function () {
-        ['vg.rascunho.curriculo', 'vg.rascunho.referencia-pedir', CHAVE_CACHE, CHAVE_QUERO, 'vg.aceite.candidatura'].forEach(function (k) { U.armazenamento.apagar(k); });
-        (ctx.candidaturas || []).forEach(function (k) { U.armazenamento.apagar('vg.rascunho.conversa.' + k.id); });
-      }
+      // Ao sair ou excluir a conta nada desta pessoa fica no aparelho (o celular costuma ser dividido). A limpeza é uma só, no
+      // VAGAS_API (sair, excluir, sessão vencida e troca de conta já chamam); aqui só repete por garantia.
+      limparAparelho: function () { if (typeof A.limparAparelho === 'function') A.limparAparelho(); }
     };
 
     function trocarDeRota() {
@@ -91,13 +90,16 @@
     }
 
     // O que foi digitado e ainda não foi para o rascunho vai antes de a página fechar (celular troca de app, aba some).
-    root.addEventListener('pagehide', function () { if (ctx.gravarRascunhoPendente) ctx.gravarRascunhoPendente(); });    U.topo({});
+    root.addEventListener('pagehide', function () { if (ctx.gravarRascunhoPendente) ctx.gravarRascunhoPendente(); });
+    U.topo({});
     U.carregando(app);
-    // Conta suspensa: exigirConta (casca) põe a faixa "só leitura" e não resolve; aqui o "Carregando…" vira a mensagem.
+    // Conta suspensa: exigirConta (casca) põe a faixa "só leitura" e não resolve; aqui o "Carregando…" vira a tela da conta suspensa,
+    // que mantém "Baixar meus dados" e "Excluir a conta" (LGPD art. 18) — eu-dados.js.
     var vigia = root.MutationObserver ? new root.MutationObserver(function () {
       if (ctx.eu || !doc.body.classList.contains('vg-so-leitura')) return;
       vigia.disconnect();
-      U.vazio(app, { id: 'vg-eu-suspensa', titulo: 'Conta suspensa', h1: true, texto: U.t('avisos.conta_suspensa') });
+      if (typeof TELAS.suspensa === 'function') TELAS.suspensa(ctx);
+      else U.vazio(app, { id: 'vg-eu-suspensa', titulo: 'Conta suspensa', h1: true, texto: U.t('avisos.conta_suspensa') });
       U.focarTitulo(app);
     }) : null;
     if (vigia) vigia.observe(doc.body, { attributes: true, attributeFilter: ['class'] });

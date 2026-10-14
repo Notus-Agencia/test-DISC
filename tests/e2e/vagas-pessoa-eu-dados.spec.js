@@ -29,7 +29,7 @@ test('guarda: sem sessão vai para entrar com ?voltar=; conta de empresa vê "Es
   await expect(page.locator('#vg-nav')).toHaveCount(0);
 });
 
-test('conta suspensa: faixa "só leitura" e a mensagem no lugar do "Carregando…"', async ({ page }) => {
+test('conta suspensa: tela com o caminho da revisão; "Baixar meus dados" e "Excluir a conta" continuam (LGPD art. 18)', async ({ page }) => {
   await page.goto(BASE + 'entrar.html');
   await page.evaluate(async () => {
     await window.VAGAS_API.entrar('pessoa@previa.com', 'previa123');
@@ -41,10 +41,69 @@ test('conta suspensa: faixa "só leitura" e a mensagem no lugar do "Carregando�
     localStorage.setItem(chave, JSON.stringify(s));
   });
   await page.goto(BASE + 'eu.html#candidaturas');
-  await expect(page.locator('#vg-faixa-suspensa')).toContainText('Esta conta está suspensa.');
-  await expect(page.locator('#vg-eu-suspensa h1')).toHaveText('Conta suspensa');
-  await expect(page.locator('#vg-eu-suspensa')).toContainText('Sua conta está suspensa.');
+  await expect(page.locator('#vg-eu-suspensa-titulo')).toHaveText('Conta suspensa');
+  await expect(page.locator('#vg-eu-suspensa-texto')).toHaveText('Sua conta está suspensa. O motivo está no e-mail que enviamos. Se discordar, responda esse e-mail em até 30 dias: ' +
+    'uma pessoa da equipe revisa. Você continua podendo baixar uma cópia dos seus dados ou apagar a conta.');
   await expect(page.locator('.vg-estado .giro')).toHaveCount(0);
+  await expect(page.locator('#vg-nav')).toHaveCount(0);
+  await expect(page.locator('#vg-faixa-suspensa')).toHaveCount(0);
+  // Baixar: o banco ainda recusa exportar com a conta suspensa (pedido ao banco); a tela mostra a recusa e segue. Com o banco
+  // corrigido, o arquivo baixa.
+  const resultado = Promise.race([
+    page.waitForEvent('download').then((d) => 'arquivo:' + d.suggestedFilename()),
+    page.locator('#vg-aviso-geral').waitFor({ state: 'visible' }).then(() => 'aviso')]);
+  await page.click('#vg-dados-baixar');
+  const r = await resultado;
+  if (r === 'aviso') await expect(page.locator('#vg-aviso-geral')).toContainText('suspensa');
+  else expect(r).toBe('arquivo:meus-dados-vagas.json');
+  await expect(page.locator('#vg-eu-suspensa-titulo')).toBeVisible();
+  await expect(page.locator('#vg-dados-baixar')).toBeEnabled();
+  // Excluir a conta funciona mesmo suspensa.
+  await page.click('#vg-dados-excluir');
+  await page.fill('#vg-confirmar-excluir-texto', 'EXCLUIR');
+  await page.click('#vg-confirmar-excluir-sim');
+  await expect(page.locator('#vg-conta-excluida-titulo')).toHaveText('Conta excluída.');
+});
+
+test('sair por outro caminho ("Sair e entrar com outra conta" na entrada) também limpa o aparelho: fica só a cidade lembrada', async ({ page }) => {
+  await entrarComo(page, 'pessoa@previa.com', 'curriculo/4');
+  await page.fill('#vg-cv-pretensao', '2000');
+  await expect(page.locator('#vg-cv-rascunho')).toContainText('Rascunho salvo');
+  await page.goto(BASE + 'eu.html#candidaturas');
+  await expect(page.locator('#vg-cand-lista .vg-linha').first()).toBeVisible();
+  const vg = () => page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('vg.')).sort());
+  expect(await vg()).toEqual(expect.arrayContaining(['vg.cache.candidaturas', 'vg.cidade', 'vg.rascunho.curriculo']));
+  await page.goto(BASE + 'entrar.html');
+  await expect(page.locator('#vg-ja-titulo')).toHaveText('Você já entrou');
+  await page.click('#vg-ja-sair');
+  await expect(page.locator('#vg-entrar-email')).toBeVisible();
+  expect(await vg()).toEqual(['vg.cidade']);
+});
+
+test('aviso de candidatura vale por conta e por versão do texto: outra pessoa no mesmo celular, ou um texto novo, vê o aviso de novo', async ({ page }) => {
+  await entrarComo(page, 'pessoa@previa.com', 'candidaturas');
+  await expect(page.locator('#vg-cand-lista .vg-linha').first()).toBeVisible();
+  const codigo = await page.evaluate(async () => {
+    const minhas = (await window.VAGAS_API.minhasCandidaturas()).candidaturas.map((k) => k.anuncio.codigo);
+    const c = (await window.VAGAS_API.cidades()).cidades.find((x) => x.status === 'ativa');
+    return (await window.VAGAS_API.anuncios({ cidade: c.slug })).anuncios.find((a) => !minhas.includes(a.codigo)).codigo;
+  });
+  await page.goto(BASE + 'vaga.html?vaga=' + codigo);
+  const versao = await page.evaluate(() => window.VAGAS_TEXTOS.consentimentos.aceites.pessoa_candidatura.versao);
+  for (const marca of [{ conta: 'outra.pessoa@previa.com', versao }, { conta: 'pessoa@previa.com', versao: '2000-01-01' }]) {
+    await page.evaluate((m) => localStorage.setItem('vg.aceite.candidatura', JSON.stringify(Object.assign({ em: Date.now() }, m))), marca);
+    await page.goto(BASE + 'vaga.html?vaga=' + codigo);
+    await expect(page.locator('#vg-quero-lembrete')).toHaveCount(0);
+    await page.click('#vg-quero');
+    await expect(page.locator('#vg-janela-candidatura')).toBeVisible();
+    await page.click('#vg-aceite-cancelar');
+  }
+  await page.click('#vg-quero');
+  await page.check('#vg-aceite-candidatura');
+  await page.click('#vg-aceite-enviar');
+  await expect(page.locator('#vg-quero-ok-titulo')).toHaveText('Candidatura enviada');
+  const g = await page.evaluate(() => JSON.parse(localStorage.getItem('vg.aceite.candidatura')));
+  expect([g.conta, g.versao]).toEqual(['pessoa@previa.com', versao]);
 });
 
 test('"Pular para o conteúdo" leva o foco ao conteúdo sem trocar de tela', async ({ page }) => {

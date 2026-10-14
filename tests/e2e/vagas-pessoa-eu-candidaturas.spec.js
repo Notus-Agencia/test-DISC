@@ -139,7 +139,17 @@ test('quem viu meu contato: quem abriu e quando; cortar o acesso (com confirmaç
   await expect(page.locator('#vg-form-mensagem')).toBeHidden();
   await expect(page.locator('#vg-conversa-whatsapp')).toHaveCount(0);
   await page.goto(BASE + 'eu.html#quem-viu');
+  // Voltar a compartilhar pede a mesma confirmação expressa do Combinou (com o nome da empresa); cancelar não libera nada.
+  const empresa = (await page.locator('#vg-quem-viu-lista .vg-item').first().locator('.vg-item__titulo').textContent()).trim();
   await page.locator('#vg-quem-viu-lista [data-acao="voltar"]').click();
+  const janela = page.locator('#vg-confirmar-combinou');
+  await expect(janela).toContainText('Quero conversar com ' + empresa + '. Libero meu nome, meu WhatsApp, meu e-mail');
+  await expect(page.locator('#vg-confirmar-combinou-nao')).toBeFocused();
+  await page.click('#vg-confirmar-combinou-nao');
+  await expect(janela).toHaveCount(0);
+  await expect(page.locator('#vg-quem-viu-lista [data-acao="voltar"]')).toHaveCount(1);
+  await page.locator('#vg-quem-viu-lista [data-acao="voltar"]').click();
+  await page.click('#vg-confirmar-combinou-sim');
   await expect(page.locator('#vg-aviso-geral')).toContainText('Contato liberado de novo');
   await expect(page.locator('#vg-quem-viu-lista [data-acao="cortar"]')).toHaveCount(1);
   expect(erros).toEqual([]);

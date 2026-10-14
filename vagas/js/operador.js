@@ -140,13 +140,21 @@
     return A.opResumo().then(function (r) { ctx.cidades = r.cidades || []; atualizarMenu(); return r; }, function () { /* o menu fica como estava */ });
   };
 
+  function sair(ev) {
+    if (ev && ev.currentTarget) U.ocupado(ev.currentTarget, true, 'Saindo…');
+    function ir() { U._api.navegar('entrar.html'); }
+    A.sair().then(ir, ir);
+  }
   function montarMenu() {
     var c = ctx.cidade();
     var conta = ctx.eu && ctx.eu.conta;
+    var grupos = MENU.map(function (g) {
+      return { titulo: g.titulo, itens: g.itens.map(function (i) { return { id: 'vg-op-aba-' + i[0], rotulo: i[1], icone: i[2], href: '#' + i[0], rota: i[0] }; }) };
+    });
+    // Sair (O2 da revisão C): o cadastro assistido do mutirão costuma ser em aparelho emprestado. VAGAS_API.sair limpa o aparelho.
+    grupos[grupos.length - 1].itens.push({ id: 'vg-op-sair', rotulo: 'Sair', icone: 'sair', aoClicar: sair });
     var menu = U.menuLateral({ id: 'vg-menu', produto: 'Operação da praça',
-      grupos: MENU.map(function (g) {
-        return { titulo: g.titulo, itens: g.itens.map(function (i) { return { id: 'vg-op-aba-' + i[0], rotulo: i[1], icone: i[2], href: '#' + i[0], rota: i[0] }; }) };
-      }),
+      grupos: grupos,
       usuario: { nome: (conta && conta.email) || 'Equipe da Gestão sem Caos', papel: c ? O.rotuloPapel(c.papel) + ' · ' + c.nome : '' } });
     // Selo fixo do menu (VAGAS-TELAS §4): toda ação do operador fica no registro de moderação.
     var produto = menu.querySelector('.menu-lateral__produto');

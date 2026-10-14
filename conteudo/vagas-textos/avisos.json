@@ -60,7 +60,7 @@
     "erro_generico": "Algo deu errado do nosso lado. Tente de novo em instantes. Se continuar, fale com a gente.",
     "sessao_expirada": "Sua sessão venceu. Entre de novo para continuar. Nada do que você fez se perdeu.",
     "confirme_email": "Confirme seu e-mail para continuar. Mandamos um link para {{email}}. Não chegou? Veja o spam ou peça outro.",
-    "conta_suspensa": "Sua conta está suspensa. Veja o motivo no e-mail que enviamos e, se discordar, peça revisão em até 30 dias.",
+    "conta_suspensa": "Sua conta está suspensa. O motivo está no e-mail que enviamos. Se discordar, responda esse e-mail em até 30 dias: uma pessoa da equipe revisa. Você continua podendo baixar uma cópia dos seus dados ou apagar a conta.",
     "conta_pendente_assistida": "Conta iniciada no mutirão. Ela só vale depois que você confirmar pelo link do e-mail.",
     "meus_dados": "Aqui você vê, corrige, exporta e apaga tudo que está na sua conta. Não precisa pedir a ninguém.",
     "excluir_conta": "Apagar a conta é imediato e não tem volta: currículo, candidaturas, conversas e selos somem. Para confirmar, digite EXCLUIR.",

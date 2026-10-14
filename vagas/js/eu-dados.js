@@ -3,7 +3,9 @@
  * pessoa-excluir-confirmar. Lista: currículo, selos, referências, banco de talentos (aceite pessoa_banco_talentos, separado da
  * candidatura), quem viu o contato, cidades. Baixar = JSON de vagas_exportar_meus_dados salvo no aparelho (meus-dados-vagas.json).
  * Excluir = ação "excluir" da Edge Function vagas-conta (na prévia, simulada), só depois de digitar EXCLUIR. Sair e excluir limpam
- * o que esta conta deixou no aparelho (rascunhos, cache, intenção de "Quero").
+ * o que esta conta deixou no aparelho (VAGAS_API.limparAparelho).
+ * Conta suspensa (TELAS.suspensa, chamada pelo eu.js): o resto fica só leitura, mas "Baixar meus dados" e "Excluir a conta"
+ * continuam (LGPD art. 18 e 20; psicologia, revisão C 4.4), com o texto de avisos.conta_suspensa.
  */
 (function (root) {
   'use strict';
@@ -12,7 +14,7 @@
 
   TELAS.dados = function (ctx) {
     var U = root.VAGAS_UI, A = root.VAGAS_API, L = root.VAGAS_EU_LOGICA, R = root.VAGAS_REGRAS, T = root.VAGAS_TEXTOS, el = U.el;
-    var doc = root.document;
+    var acoes = acoesDaConta(ctx);
     var p = ctx.minha && ctx.minha.pessoa;
     var cartao = ctx.minha && ctx.minha.cartao;
     ctx.titulo('Meus dados');
@@ -44,13 +46,8 @@
     U.trocar(ctx.app, [cabeca,
       el('section', { class: 'caixa caixa--compacta', 'aria-label': 'Minha conta' }, el('ul', { class: 'vg-lista-itens', id: 'vg-eu-lista' },
         [curriculo.no, itemSelos.no, refs.no, banco.no, quem.no, cid.no])),
-      el('section', { class: 'caixa caixa--compacta vg-eu-bloco', id: 'vg-meus-dados', 'aria-labelledby': 'vg-meus-dados-titulo' }, [
-        el('h2', { class: 'vg-eu-h2', id: 'vg-meus-dados-titulo' }, 'Meus dados'),
-        el('p', { class: 't-rotulo texto-medio' }, 'Você pode levar uma cópia de tudo ou apagar a conta. Contas paradas por 24 meses são apagadas sozinhas.'),
-        el('div', { class: 'acoes acoes-coluna' }, [
-          el('button', { type: 'button', class: 'botao botao--claro botao--grande', id: 'vg-dados-baixar', onclick: baixar }, [U.icone('baixar'), 'Baixar meus dados (arquivo)']),
-          el('button', { type: 'button', class: 'botao botao--perigo botao--grande', id: 'vg-dados-excluir', onclick: excluir }, [U.icone('lixo'), 'Excluir minha conta'])])]),
-      el('p', { class: 'centro-texto vg-eu-bloco' }, el('button', { type: 'button', class: 'botao botao--link', id: 'vg-sair', onclick: sair }, 'Sair da conta'))
+      acoes.blocoDados(),
+      acoes.botaoSair()
     ]);
     ctx.nav('eu');
 
@@ -112,6 +109,42 @@
       }, function (e) { U.ocupado(b, false); U.tratarErro(e); });
     }
 
+    return null;
+  };
+
+  // Conta suspensa: só "Baixar meus dados" e "Excluir a conta" (e sair). Sem navegação embaixo: o resto não abre.
+  TELAS.suspensa = function (ctx) {
+    var U = root.VAGAS_UI, el = U.el;
+    var acoes = acoesDaConta(ctx, { suspensa: true });
+    ctx.titulo('Conta suspensa');
+    U.fixar(null);
+    U.tirarFaixa('vg-faixa-suspensa');   // a tela já diz tudo (a faixa repetiria só "Fale com a Gestão sem Caos")
+    U.trocar(ctx.app, [
+      el('section', { class: 'caixa', id: 'vg-eu-suspensa', 'aria-labelledby': 'vg-eu-suspensa-titulo' }, [
+        el('h1', { class: 'titulo-pagina', id: 'vg-eu-suspensa-titulo', tabindex: '-1' }, 'Conta suspensa'),
+        el('p', { class: 'subtitulo', id: 'vg-eu-suspensa-texto' }, U.t('avisos.conta_suspensa'))]),
+      acoes.blocoDados(),
+      acoes.botaoSair()
+    ]);
+    return null;
+  };
+
+  // Baixar, excluir e sair: as mesmas ações em "Eu" e na conta suspensa.
+  function acoesDaConta(ctx, op) {
+    op = op || {};
+    var U = root.VAGAS_UI, A = root.VAGAS_API, L = root.VAGAS_EU_LOGICA, el = U.el;
+    var doc = root.document;
+    function blocoDados() {
+      return el('section', { class: 'caixa caixa--compacta vg-eu-bloco', id: 'vg-meus-dados', 'aria-labelledby': 'vg-meus-dados-titulo' }, [
+        el('h2', { class: 'vg-eu-h2', id: 'vg-meus-dados-titulo' }, 'Meus dados'),
+        op.suspensa ? null : el('p', { class: 't-rotulo texto-medio' }, 'Você pode levar uma cópia de tudo ou apagar a conta. Contas paradas por 24 meses são apagadas sozinhas.'),
+        el('div', { class: 'acoes acoes-coluna' }, [
+          el('button', { type: 'button', class: 'botao botao--claro botao--grande', id: 'vg-dados-baixar', onclick: baixar }, [U.icone('baixar'), 'Baixar meus dados (arquivo)']),
+          el('button', { type: 'button', class: 'botao botao--perigo botao--grande', id: 'vg-dados-excluir', onclick: excluir }, [U.icone('lixo'), 'Excluir minha conta'])])]);
+    }
+    function botaoSair() {
+      return el('p', { class: 'centro-texto vg-eu-bloco' }, el('button', { type: 'button', class: 'botao botao--link', id: 'vg-sair', onclick: sair }, 'Sair da conta'));
+    }
     // ----------------------------------------------------------------------------------------------- baixar
     function baixar(ev) {
       var b = ev.currentTarget;
@@ -127,7 +160,12 @@
         a.click();
         setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
         U.avisar('Arquivo salvo no aparelho: ' + ARQUIVO, { tipo: 'ok', ms: 6000 });
-      }, function (e) { U.ocupado(b, false); U.tratarErro(e); });
+      }, function (e) {
+        U.ocupado(b, false);
+        // Com a conta suspensa a recusa vem como "suspensa": a mensagem aparece aqui, sem trocar a tela.
+        if (e.suspensa) { U.avisar(e.message, { tipo: 'erro', ms: 8000 }); return; }
+        U.tratarErro(e);
+      });
     }
 
     // ----------------------------------------------------------------------------------------------- excluir
@@ -162,6 +200,7 @@
     function contaExcluida() {
       ctx.titulo('Conta excluída');
       U.fixar(null);
+      U.tirarFaixa('vg-faixa-suspensa');
       U.topo({});
       U.trocar(ctx.app, el('section', { class: 'caixa centro surgir', id: 'vg-conta-excluida', 'aria-labelledby': 'vg-conta-excluida-titulo' }, [
         el('span', { class: 'vg-ok-icone' }, U.icone('check')),
@@ -177,6 +216,6 @@
       U.ocupado(ev.currentTarget, true, 'Saindo…');
       A.sair().then(function () { ctx.limparAparelho(); U._api.navegar('index.html'); }, function () { ctx.limparAparelho(); U._api.navegar('index.html'); });
     }
-    return null;
-  };
+    return { blocoDados: blocoDados, botaoSair: botaoSair };
+  }
 })(typeof self !== 'undefined' ? self : this);
