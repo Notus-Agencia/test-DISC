@@ -4,7 +4,8 @@
  *   MODO                'previa'   — dados fictícios de Uruaçu (GO) guardados só neste navegador (vagas/js/api-previa.js);
  *                       'supabase' — banco real. Só troque depois de aplicar a migração 20261022120000_vagas.sql e publicar a
  *                                    Edge Function vagas-conta (docs/SUPABASE.md, seção "Vagas sem Caos").
- *                       Na página: ?previa=1 liga a prévia para a aba toda; ?previa=0 desliga.
+ *                       Fora do domínio oficial (localhost, *.pages.dev, artefato): ?previa=1 liga a prévia para a aba toda;
+ *                       ?previa=0 desliga. No domínio oficial (*.gestaosemcaos.com.br) o endereço NUNCA liga a prévia: só o MODO.
  *   SUPABASE_URL        "Project URL" do Supabase (o MESMO projeto do DISC).
  *   SUPABASE_ANON_KEY   Chave PÚBLICA do Supabase (a mesma do DISC: o banco é protegido pela RLS). NUNCA a service_role/secret.
  *   SITE_URL            Endereço do site (links de e-mail e de compartilhar).
@@ -23,10 +24,11 @@
   try {
     var loc = root.location;
     var ss = root.sessionStorage;
+    var oficial = !!loc && /(^|\.)gestaosemcaos\.com\.br$/i.test(loc.hostname || '');
     if (loc && ss) {
-      if (/[?&]previa=0\b/.test(loc.search || '')) ss.removeItem('vagas_previa');
+      if (oficial || /[?&]previa=0\b/.test(loc.search || '')) ss.removeItem('vagas_previa');
       else if (/[?&]previa=(1|sim)\b/.test(loc.search || '')) ss.setItem('vagas_previa', '1');
-      if (ss.getItem('vagas_previa') === '1') CONFIG.MODO = 'previa';
+      if (!oficial && ss.getItem('vagas_previa') === '1') CONFIG.MODO = 'previa';
     }
   } catch (e) { /* sem location/sessionStorage: segue a configuração */ }
   if (typeof module !== 'undefined' && module.exports) module.exports = CONFIG;

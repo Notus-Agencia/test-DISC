@@ -265,7 +265,7 @@
     }
     function visivel() { return !root.document || root.document.visibilityState !== 'hidden'; }
     function aoMudarVisibilidade() { if (visivel()) atualizar(); }
-    U.aoVoltarInternet(function () { if (vivo) { reenviarPendentes(); atualizar(); } });
+    var tirarOuvinteInternet = U.aoVoltarInternet(function () { if (vivo) { reenviarPendentes(); atualizar(); } });
     if (root.document) root.document.addEventListener('visibilitychange', aoMudarVisibilidade);
     temporizador = setInterval(function () { if (vivo && visivel()) atualizar(); }, op.intervaloMs || 20000);
 
@@ -277,6 +277,7 @@
       parar: function () {
         vivo = false;
         clearInterval(temporizador);
+        tirarOuvinteInternet();
         if (root.document) root.document.removeEventListener('visibilitychange', aoMudarVisibilidade);
       },
       estado: function () { return est; },

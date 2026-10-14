@@ -59,6 +59,8 @@
       el('div', { class: 'vg-conferir', id: 'vg-conferir-situacao', data: { situacao: s.tipo } }, [
         el('span', { class: s.tipo === 'valido' ? 'vg-conferir__ok' : 'vg-iniciais' }, U.icone(s.icone)),
         el('h2', { class: 't-titulo seminegrito', id: 'vg-conferir-titulo', tabindex: '-1' }, s.titulo)]),
+      A && A.modo === 'previa' ? el('p', { class: 'aviso', id: 'vg-conferir-demo', role: 'note' }, [el('strong', {}, 'Selo de demonstração.'),
+        ' Este é um selo da prévia, com dados de exemplo: não vale como selo de verdade.']) : null,
       el('div', { id: 'vg-selo' }, P.selo(selo)),
       el('p', { class: 't-nota texto-suave', id: 'vg-conferir-emitido' }, TXT.EMITIDO)
     ]);

@@ -241,7 +241,7 @@ export function markdownParaHtml(md) {
   return saida.join('\n');
 }
 
-export const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'";
+export const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://tevpqngqzxcswmticjnr.supabase.co; font-src 'self'; connect-src 'self' https://tevpqngqzxcswmticjnr.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'";
 
 export function paginaDocumento({ titulo, descricao, md }) {
   const minuta = /MINUTA/.test(md.split('\n').slice(0, 5).join('\n'));
