@@ -79,7 +79,8 @@ function preparar(op) {
       lote.forEach((l) => { l.avisado = true; l.token = (l.id.replace(/[^0-9a-f]/g, '') + 'ab'.repeat(32)).slice(0, 64); });
       usadosAviso.n += lote.length;
       return { ok: true, cidade: { slug: cidade, nome: 'Uruaçu' }, lote: lote.map((l) => ({ id: l.id, email: l.email, perfil: l.perfil, sairToken: l.token })),
-        contagens: contagensAviso(cidade), teto: { porDia: teto, usados24h: usadosAviso.n, disponivel: Math.max(teto - usadosAviso.n, 0) + lote.length } };
+        // Como o banco: o "disponivel" devolvido já desconta este lote.
+        contagens: contagensAviso(cidade), teto: { porDia: teto, usados24h: usadosAviso.n, disponivel: Math.max(teto - usadosAviso.n, 0) } };
     },
     async listaEspera(dados, cf, xff, humano) {
       listas.push({ dados, cf, xff, humano });
@@ -732,6 +733,12 @@ test('avisar_lista_espera (3ª revisão): e-mail com caractere invisível não t
   assert.deepEqual((await pt()).json, RESP(1, 0, 2, 0, { tetoAtingido: true }));
   assert.deepEqual((await pt()).json, RESP(0, 0, 2, 0, { tetoAtingido: true }));
   assert.equal(t.enviados.length, 3);
+  // R4-6: o "disponivel" do banco já desconta o lote; a Function não desconta de novo (teto 6, lote 4: ainda cabem 2).
+  const t6 = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' }, teto: 6,
+    lista: [1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ id: ID(i), email: 'q' + i + '@exemplo.com' })) });
+  const p6 = () => chamar(t6.base, { acao: 'avisar_lista_espera', cidade: 'uruacu-go', limite: 4 }, { jwt: 'jwt-adm' });
+  assert.deepEqual((await p6()).json, RESP(4, 0, 4, 0));
+  assert.deepEqual((await p6()).json, RESP(2, 0, 2, 0, { tetoAtingido: true }));
 });
 
 test('lista_espera (Turnstile): sem login; só os campos da lista vão ao banco; captcha conferido só com TURNSTILE_SECRET; resposta do banco', async () => {

@@ -3,7 +3,8 @@
 // e esta aplicada duas vezes. Cobre o veto P2 (a empresa nunca sabe o que a pessoa fez com a referência), a experiência da
 // vaga pela CLT (art. 442-A) com as vagas antigas convertidas, os filtros dos cartões, e os pedidos da operação e da pessoa
 // (semDona, alvoNome/quem, reenvio pela operação, consentimento da foto, quem abriu o contato, carteira "prefiro não dizer"
-// e a limpeza das contas assistidas não confirmadas).
+// e a limpeza das contas assistidas não confirmadas) e as correções da 4ª revisão de segurança (R4-1 a R4-7, reproduzindo
+// as sondas da revisão).
 //
 // Rodar: npm run test:supabase
 const test = require('node:test');
@@ -457,4 +458,169 @@ test('limpeza: conta do cadastro assistido nunca confirmada some 7 dias depois; 
   ok(await servico('vagas_conta_limite', 'assistido', '203.0.113.61', '', 'mais-uma-fc@limpa.teste', S.op));
   assert.deepEqual(await restam([outra]), []);
   await rejeita(como('authenticated', S.admin, `select vagas_interno.contas_assistidas_limpar()`), /permission denied/);
+});
+
+// ------------------------------------------------------------------------------------------------ 4ª revisão de segurança
+
+test('R4-1 e R4-5 (veto P2): denunciar a referência por outra conta e olhar pela outra empresa da mesma dona não revelam o aceite', async () => {
+  exigirBanco();
+  const a = await empresaComVaga('888777666011', 'Mercado Autor Ltda');
+  // A mesma dona tem uma segunda empresa (B), com vaga.
+  const empB = ok(await de(a.dona)('vagas_empresa_cadastrar', { cnpj: cnpjCom('888777666012'), razaoSocial: 'Mercado Irmao Ltda', cidade: 'fc-go', zona: 'centro' })).empresa.id;
+  ok(await de(S.admin)('vagas_op_empresa_decidir', empB, 'aprovar', 'CNPJ conferido'));
+  const anB = ok(await de(a.dona)('vagas_anuncio_salvar', anuncioDados(empB, { funcao: 'Repositor de mercado' }))).anuncio.id;
+  await publicar(a.dona, anB);
+  const p = await contaVagas('pessoa');
+  ok(await de(p)('vagas_pessoa_salvar', pessoaDados({ nome: 'Rita Referencia Lima' })));
+  const k = ok(await de(p)('vagas_quero', a.an)).candidatura.id;
+  ok(await de(a.dona)('vagas_empresa_decidir', k, 'conversar'));
+  ok(await de(p)('vagas_combinar', k));
+  const kB = ok(await de(p)('vagas_quero', anB)).candidatura.id;
+  ok(await de(a.dona)('vagas_empresa_decidir', kB, 'conversar'));
+  ok(await de(p)('vagas_combinar', kB));
+  const ref = ok(await de(a.dona)('vagas_referencia_oferecer', { candidaturaId: k, empresaId: a.emp, funcao: 'Atendente', vinculo: 'clt',
+    inicio: '2024-01', pontosFortes: ['equipe'], declaracao: true })).referencia.id;
+  // A empresa pega o id da referência e denuncia com OUTRA conta (sonda da 4ª revisão); e olha pela empresa B.
+  const outra = await contaVagas('pessoa');
+  const terceira = await contaVagas('empresa');
+  const denuncia = (uid, id) => de(uid)('vagas_denunciar', { alvo: 'referencia', id, motivo: 'outro' });
+  const linhas = async () => (await db.query(`select count(*)::int n from public.vagas_denuncias where referencia_id = $1`, [ref])).rows[0].n;
+  const visao = async () => ({
+    denuncia: await denuncia(outra, ref),
+    deNovo: await denuncia(outra, ref),
+    deOutraEmpresa: await denuncia(terceira, ref),
+    inexistente: await denuncia(outra, crypto.randomUUID()),
+    daAutora: await denuncia(a.dona, ref),
+    cartaoB: ok(await de(a.dona)('vagas_cartoes', anB, {})).cartoes.filter((c) => c.candidaturaId === kB).map((c) => c.cartao.temReferencia),
+    contatoB: ok(await de(a.dona)('vagas_contato_pessoa', kB)).pessoa.referencias.length
+  });
+  const antes = await visao();
+  assert.deepEqual(antes.denuncia, { ok: true, recebida: true });
+  for (const x of [antes.deNovo, antes.deOutraEmpresa, antes.inexistente, antes.daAutora]) assert.deepEqual(x, { ok: true, recebida: true });
+  assert.deepEqual([antes.cartaoB, antes.contatoB], [[false], 0]);
+  assert.equal(await linhas(), 0, 'pendente: ninguém além da pessoa vê, nada é gravado');
+  ok(await de(p)('vagas_referencia_responder', ref, 'aceitar'));
+  assert.deepEqual(await visao(), antes, 'o aceite não muda nenhuma resposta');
+  assert.equal(await linhas(), 2, 'aceita e visível: a denúncia de quem vê é gravada uma vez por conta (a da autora, nunca)');
+  ok(await de(p)('vagas_referencia_responder', ref, 'ocultar'));
+  assert.deepEqual(await visao(), antes);
+  assert.equal(await linhas(), 2);
+  // A própria pessoa denuncia a referência que recebeu (mesma resposta; gravada).
+  assert.deepEqual(await denuncia(p, ref), { ok: true, recebida: true });
+  assert.equal(await linhas(), 3);
+  // Outra empresa (sem ligação com a autora) continua vendo "tem referência" quando a pessoa mostra.
+  ok(await de(p)('vagas_referencia_responder', ref, 'mostrar'));
+  const c = await empresaComVaga('888777666013', 'Loja Terceira Ltda');
+  const kC = ok(await de(p)('vagas_quero', c.an)).candidatura.id;
+  assert.deepEqual(ok(await de(c.dona)('vagas_cartoes', c.an, {})).cartoes.filter((x) => x.candidaturaId === kC).map((x) => x.cartao.temReferencia), [true]);
+});
+
+test('R4-2 e R4-3: o teto da lista de espera conta só pedido válido, por cidade; com lista_espera_captcha = sim o banco exige o Turnstile', async () => {
+  exigirBanco();
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: 'r4a-go', nome: 'Teto A', uf: 'GO', status: 'lista_espera', porte: 'pequena' }));
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: 'r4b-go', nome: 'Teto B', uf: 'GO', status: 'lista_espera', porte: 'pequena' }));
+  const ids = (await db.query(`select slug, id from public.vagas_cidades where slug in ('r4a-go', 'r4b-go')`)).rows
+    .reduce((o, x) => Object.assign(o, { [x.slug]: x.id }), {});
+  const teto = async () => (await db.query(`select count(*)::int n from public.vagas_limites where tipo = 'lista_total'`)).rows[0].n;
+  const t0 = await teto();
+  // Pedido inválido e isca (de vários IPs) não gastam o teto de ninguém.
+  for (let i = 0; i < 8; i++) {
+    erro(await anonIp(150 + i)('vagas_lista_espera_entrar', { cidade: 'r4a-go', email: 'nao-e-email' }), 'E-mail inválido.');
+    ok(await anonIp(150 + i)('vagas_lista_espera_entrar', { cidade: 'r4a-go', email: 'robo' + i + '@exemplo.com', site: 'http://spam.example' }));
+  }
+  assert.equal(await teto(), t0);
+  ok(await anonIp(160)('vagas_lista_espera_entrar', { cidade: 'r4a-go', email: 'valida-r4@exemplo.com' }));
+  assert.equal(await teto(), t0 + 1);
+  assert.equal((await db.query(`select chave from public.vagas_limites where tipo = 'lista_total' order by id desc limit 1`)).rows[0].chave, ids['r4a-go']);
+  // Teto esgotado numa cidade não bloqueia a outra.
+  await db.query(`insert into public.vagas_limites (tipo, chave) select 'lista_total', $1 from generate_series(1, 1000)`, [ids['r4a-go']]);
+  erro(await anonIp(161)('vagas_lista_espera_entrar', { cidade: 'r4a-go', email: 'bloqueada-r4@exemplo.com' }), 'Muitas tentativas. Tente de novo mais tarde.');
+  ok(await anonIp(162)('vagas_lista_espera_entrar', { cidade: 'r4b-go', email: 'outra-cidade-r4@exemplo.com' }));
+  // Com o Turnstile conferido (Function), o teto geral não vale.
+  ok(await servico('vagas_conta_lista_espera', { cidade: 'r4a-go', email: 'humana-r4@exemplo.com' }, '203.0.113.70', '', true));
+  // R4-3: com o ajuste ligado, a Function sem o secret (humano = false) também recebe o erro do captcha; nada é gravado.
+  await db.query(`insert into vagas_interno.ajustes (chave, valor) values ('lista_espera_captcha', 'sim') on conflict (chave) do update set valor = excluded.valor`);
+  try {
+    const r = await servico('vagas_conta_lista_espera', { cidade: 'r4b-go', email: 'sem-captcha-r4@exemplo.com' }, '203.0.113.71', '', false);
+    assert.deepEqual(r, { ok: false, erro: 'Confirme que você não é um robô e tente de novo.', captcha: true });
+    erro(await anonIp(163)('vagas_lista_espera_entrar', { cidade: 'r4b-go', email: 'sem-captcha-r4@exemplo.com' }), 'Confirme que você não é um robô e tente de novo.');
+    assert.equal((await db.query(`select count(*)::int n from public.vagas_lista_espera where email = 'sem-captcha-r4@exemplo.com'`)).rows[0].n, 0);
+    ok(await servico('vagas_conta_lista_espera', { cidade: 'r4b-go', email: 'com-captcha-r4@exemplo.com' }, '203.0.113.71', '', true));
+  } finally {
+    await db.query(`delete from vagas_interno.ajustes where chave = 'lista_espera_captcha'`);
+  }
+});
+
+test('R4-4: a marca de pré-abertura é só da 1ª publicação; pausar e retomar com a cidade pausada não fazem a vaga voltar ao topo', async () => {
+  exigirBanco();
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: 'r4pre-go', nome: 'Reabre', uf: 'GO', status: 'lista_espera', porte: 'pequena' }));
+  ok(await de(S.admin)('vagas_adm_zona_salvar', { cidade: 'r4pre-go', slug: 'centro', nome: 'Centro', bairros: ['Centro'] }));
+  const dona = await contaVagas('empresa');
+  const emp = ok(await de(dona)('vagas_empresa_cadastrar', { cnpj: cnpjCom('888777666014'), razaoSocial: 'Padaria Reabre Ltda', cidade: 'r4pre-go', zona: 'centro' })).empresa.id;
+  ok(await de(S.admin)('vagas_op_empresa_decidir', emp, 'aprovar', 'CNPJ conferido'));
+  const an = ok(await de(dona)('vagas_anuncio_salvar', anuncioDados(emp, { cidade: 'r4pre-go' }))).anuncio.id;
+  await publicar(dona, an);
+  const vaga = async () => (await db.query(`select publicado_em, expira_em, pre_abertura from public.vagas_anuncios where id = $1`, [an])).rows[0];
+  assert.equal((await vaga()).pre_abertura, true, '1ª publicação com a cidade fechada');
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: 'r4pre-go', status: 'ativa' }));
+  const aberta = await vaga();
+  assert.equal(aberta.pre_abertura, false);
+  // A cidade pausa; a empresa pausa e retoma; a cidade reabre: nada muda na data (a sonda via a vaga subir de novo).
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: 'r4pre-go', status: 'pausada' }));
+  ok(await de(dona)('vagas_anuncio_acao', an, 'pausar'));
+  ok(await de(dona)('vagas_anuncio_acao', an, 'retomar'));
+  assert.equal((await vaga()).pre_abertura, false, 'retomar não é a 1ª publicação');
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: 'r4pre-go', status: 'ativa' }));
+  const depois = await vaga();
+  assert.deepEqual([+depois.publicado_em, +depois.expira_em, depois.pre_abertura], [+aberta.publicado_em, +aberta.expira_em, false]);
+});
+
+test('R4-6: dois lotes do aviso ao mesmo tempo não passam do teto de 24 h (um lote por vez)', async () => {
+  exigirBanco();
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: 'r4aviso-go', nome: 'Aviso', uf: 'GO', status: 'lista_espera', porte: 'pequena' }));
+  for (let i = 1; i <= 6; i++) ok(await anonIp(170 + i)('vagas_lista_espera_entrar', { cidade: 'r4aviso-go', email: 'aviso' + i + '-r4@exemplo.com' }));
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: 'r4aviso-go', status: 'ativa' }));
+  await db.query(`delete from public.vagas_limites where tipo = 'aviso_email'`);
+  await db.query(`insert into vagas_interno.ajustes (chave, valor) values ('aviso_teto_diario', '3') on conflict (chave) do update set valor = excluded.valor`);
+  const outro = pg.getPgClient();
+  await outro.connect();
+  try {
+    await db.query('begin');
+    const r1 = (await db.query(`select public.vagas_conta_aviso_lote($1, 'r4aviso-go', 3) r`, [S.admin])).rows[0].r;
+    assert.equal(r1.lote.length, 3);
+    // O 2º lote espera o 1º terminar (antes, os dois reservavam: 3 + 3 com teto de 3).
+    let terminou = false;
+    const p2 = outro.query(`select public.vagas_conta_aviso_lote($1, 'r4aviso-go', 3) r`, [S.admin]).then((x) => { terminou = true; return x.rows[0].r; });
+    await new Promise((res) => setTimeout(res, 300));
+    assert.equal(terminou, false, 'o 2º lote está esperando a trava');
+    await db.query('commit');
+    const r2 = await p2;
+    assert.deepEqual([r2.lote.length, r2.teto.disponivel], [0, 0]);
+    assert.equal(r1.teto.disponivel, 0, 'o disponível devolvido já desconta o lote (a Function não desconta de novo)');
+  } finally {
+    try { await db.query('rollback'); } catch (e) { /* já foi */ }
+    await outro.end();
+    await db.query(`delete from vagas_interno.ajustes where chave = 'aviso_teto_diario'`);
+  }
+});
+
+test('R4-7: a empresa só lê a foto com o último aceite foto_opcional = true; a própria pessoa sempre vê a dela', async () => {
+  exigirBanco();
+  const a = await empresaComVaga('888777666015', 'Clinica Foto Ltda');
+  const p = await contaVagas('pessoa');
+  ok(await de(p)('vagas_pessoa_salvar', pessoaDados({ nome: 'Paula Foto Mendes' })));
+  const k = ok(await de(p)('vagas_quero', a.an)).candidatura.id;
+  ok(await de(a.dona)('vagas_empresa_decidir', k, 'conversar'));
+  ok(await de(p)('vagas_combinar', k));
+  await db.query(`insert into storage.buckets (id, name) values ('vagas-fotos', 'vagas-fotos') on conflict (id) do nothing`);
+  await db.query(`insert into storage.objects (bucket_id, name, owner) values ('vagas-fotos', $1, $2)`, [p + '/foto.jpg', p]);
+  const daEmpresa = () => servico('vagas_conta_foto', a.dona, k);
+  const SEM = { ok: false, erro: 'Esta pessoa não pôs foto.', semFoto: true };
+  assert.deepEqual(await daEmpresa(), SEM, 'foto sem aceite gravado (enviada direto ao Storage)');
+  assert.deepEqual(await servico('vagas_conta_foto', p, null), { ok: true, caminho: p + '/foto.jpg' }, 'a pessoa vê a própria');
+  ok(await de(p)('vagas_foto_consentimento', true));
+  assert.deepEqual(await daEmpresa(), { ok: true, caminho: p + '/foto.jpg' });
+  ok(await de(p)('vagas_foto_consentimento', false));
+  assert.deepEqual(await daEmpresa(), SEM, 'aceite retirado: a mesma resposta de sem foto');
+  await rejeita(como('authenticated', p, `select vagas_interno.foto_aceita($1)`, [p]), /permission denied/);
 });

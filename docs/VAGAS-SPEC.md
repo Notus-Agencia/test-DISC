@@ -145,7 +145,9 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
   por um convite novo para o mesmo e-mail ou porque quem convidou saiu da equipe). Rótulos em `VAGAS_REGRAS.STATUS_CONVITE_EQUIPE`.
 - **Referência** (visão da pessoa) `pendente → aceita ⇄ ocultada`, `pendente → recusada`, qualquer → `removida`.
   Visão da EMPRESA AUTORA e da operação (veto P2, 20261024120005): só `enviada | removida` — `removida` só quando foi a
-  moderação. Nada do que a pessoa faz (aceitar, recusar, ocultar, mostrar, remover, publicar) muda o que a empresa vê.
+  moderação. Nada do que a pessoa faz (aceitar, recusar, ocultar, mostrar, remover, publicar) muda o que a empresa vê — nem
+  por outra empresa da mesma pessoa dona (cartão e contato excluem as referências de TODAS as empresas de quem vê; R4-5) nem
+  por outra conta (a denúncia de referência responde sempre igual; R4-1).
   Texto livre: `sem_texto | pendente | publicado | nao_publicado` (aparece para terceiros só `publicado`; rótulos em
   `VAGAS_REGRAS.TEXTO_STATUS`). Nenhuma RPC devolve a palavra "aprovado": o texto é publicado ou não.
 - **Denúncia** `aberta → procedente | improcedente`.
@@ -349,7 +351,8 @@ Na cidade em **lista de espera** a empresa já entra antes de a cidade abrir, pa
 4. A validade não corre antes da abertura: a vaga publicada com a cidade fechada fica marcada (`vagas_anuncios.pre_abertura`).
    Quando a cidade passa a `ativa`, na mesma transação, cada vaga marcada (publicada ou pausada) ganha `publicado_em` = abertura e
    `expira_em` = abertura + a validade normal (`dias_no_ar`; diária: `prazo_horas`), e a marca sai. Abrir de novo (ou salvar
-   `ativa` outra vez) não estende nada.
+   `ativa` outra vez) não estende nada. A marca vem só da 1ª publicação (`publicado_em` ainda vazio; R4-4, 20261024120005):
+   pausar e retomar, renovar ou a moderação devolver ao ar com a cidade pausada não fazem a vaga voltar ao topo na reabertura.
 5. Para as telas: a cidade traz `preAbertura:true` (lista de espera) e `aceitaEmpresas:true` (ativa ou lista de espera) em
    `vagas_cidades_publicas`; `VAGAS_API.RECURSOS.preAberturaEmpresas` diz que o banco já aceita.
 
@@ -498,12 +501,15 @@ e do `VAGAS_REGRAS.normalizarEmail`; espaço sem quebra, BOM, U+2028, espaço id
 origem gravada para o e-mail fica. Não se guarda URL, IP nem navegador. **Isca (honeypot):** o campo `site` fica escondido na
 tela; preenchido, a resposta é igual à de sucesso e nada é gravado (nem o e-mail é conferido).
 **Limites (20261024120004):** 30 por hora por origem (IP); 5 por hora por e-mail e 5 por hora por WhatsApp (chaves só com o
-hash com sal), exista ou não na lista — a resposta não revela quem está; sem o Turnstile, 1000 por hora no total.
+hash com sal), exista ou não na lista — a resposta não revela quem está; sem o Turnstile, 1000 por hora POR CIDADE, contando
+só pedido válido e fora da isca (R4-2, 20261024120005: pedido inválido não esgota o teto de ninguém).
 **Turnstile:** com `TURNSTILE_SITE_KEY` no site, a tela manda `captcha` e o `VAGAS_API.listaEspera` vai pela `vagas-conta`
 (ação `lista_espera`, §9), que confere o captcha (com `TURNSTILE_SECRET`) e grava com o limite de 300 por hora por origem
 (mutirão, escola, Wi-Fi da praça) e sem o teto total. Depois de o site mandar o captcha, ligue no SQL Editor
 `insert into vagas_interno.ajustes (chave, valor) values ('lista_espera_captcha', 'sim') on conflict (chave) do update set valor = excluded.valor, atualizado_em = now();`
-e a RPC pública passa a recusar com `Confirme que você não é um robô e tente de novo.` (`captcha`).
+e a RPC pública passa a recusar com `Confirme que você não é um robô e tente de novo.` (`captcha`). Desde a 20261024120005
+(R4-3), com o ajuste ligado o caminho da Function também só grava com o Turnstile conferido (Function sem `TURNSTILE_SECRET`
+= o mesmo erro do captcha): ligue o ajuste só com o secret publicado.
 Erros: `Cidade não encontrada.` · `Esta cidade já está aberta: faça o seu cadastro.` (`ativa`) · `E-mail inválido.` ·
 `WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).` ·
 `Muitas tentativas. Tente de novo mais tarde.` (`bloqueado`) · `Confirme que você não é um robô e tente de novo.` (`captcha`; só
@@ -522,12 +528,14 @@ O link "sair da lista de espera" do e-mail do aviso de abertura (§6.7): `…/em
 `{"ok":true,"removido":true}` (token certo, errado, já usado ou vazio; maiúsculas e minúsculas tanto faz). Sem erros.
 
 #### `vagas_denunciar(p_dados)` — `VAGAS_API.denunciar({alvo, id, motivo, detalhe?})`
-`{"ok":true,"recebida":true}` (repetida pela mesma conta: `+ "duplicado":true`).
+`{"ok":true,"recebida":true}` (repetida pela mesma conta: `+ "duplicado":true`, menos referência). Referência (R4-1,
+20261024120005, veto P2): SEMPRE `{"ok":true,"recebida":true}`, sem `duplicado`, para qualquer id (UUID); só é gravada quando
+quem denuncia vê a referência (a própria pessoa, ou visível e de outra empresa que não as dele) e ainda não a denunciou.
 Erros: `Escolha o motivo da denúncia.` · `Muitas denúncias em pouco tempo. Tente de novo amanhã.` (`bloqueado`; 20/dia por
 conta, 5/dia por origem sem login) · `Vaga não encontrada ou já encerrada.` · `Entre na sua conta para denunciar uma
 mensagem.` (`sessaoExpirada`) · `Mensagem não encontrada.` (só quem participa da conversa denuncia mensagem do outro lado) ·
-`Entre na sua conta para denunciar uma referência.` (`sessaoExpirada`) · `Referência não encontrada.` (só a própria pessoa ou
-quem vê a referência; a empresa autora nunca) · `Denúncia inválida.`
+`Entre na sua conta para denunciar uma referência.` (`sessaoExpirada`) · `Referência não encontrada.` (só id que não é UUID) ·
+`Denúncia inválida.`
 
 #### `vagas_referencias_publicas(p_token)` — `VAGAS_API.referenciasPublicas(token)`
 ```json
@@ -1034,7 +1042,8 @@ a foto? sem candidatura = a própria; com candidatura = membro ativo da empresa 
 `{ok, caminho:'<pessoa>/foto.jpg'}`; erros `Sessão expirada. Entre de novo.` · `Candidatura não encontrada.` · `A foto só
 aparece depois do Combinou.` (`semCombinou`) · `A pessoa deixou de compartilhar o contato com a sua empresa.`
 (`contatoCortado`) · `Esta empresa está suspensa. Fale com a Gestão sem Caos.` (`suspensa`) · `Esta pessoa não pôs foto.` /
-`Sem foto.` (`semFoto`)).
+`Sem foto.` (`semFoto`); desde a 20261024120005 (R4-7), a empresa só recebe a foto quando o último aceite `foto_opcional` da
+pessoa é `true` — senão, a mesma resposta `Esta pessoa não pôs foto.`; a própria pessoa sempre vê a dela).
 `vagas_conta_convite_equipe(p_user, p_empresa, p_email, p_cf, p_xff)` (20261024; confere por dentro que quem chama não é
 anon/authenticated): decide tudo do convite de equipe e devolve à Function `{ok, convite, token, destino, empresaNome,
 cidadeNome, convidadoPor}`, com `destino` = `nova` (e-mail sem conta: a Function cria a conta de empresa pendente) |
@@ -1051,7 +1060,9 @@ equipe.`
 `vagas_conta_aviso_lote(p_user, p_cidade, p_limite)` (20261024120002; ação `avisar_lista_espera`): só `public.admins`; cidade
 `ativa`; reserva até `p_limite` (1 a 50, e no máximo o que cabe no teto de 24 h — 20261024120003) pessoas da fila
 (menos tentativas primeiro), grava `avisado_em` na hora e gera o token de saída de cada uma →
-`{ok, cidade:{slug, nome}, lote:[{id, email, perfil, sairToken}], contagens, teto}` (o WhatsApp nunca vem). Erros: `Sem permissão.` ·
+`{ok, cidade:{slug, nome}, lote:[{id, email, perfil, sairToken}], contagens, teto}` (o WhatsApp nunca vem). Um lote por vez
+(`pg_advisory_xact_lock`; R4-6, 20261024120005), e o `teto.disponivel` devolvido já desconta este lote (a Function não desconta
+de novo). Erros: `Sem permissão.` ·
 `Sessão expirada. Entre de novo.` · `Cidade não encontrada.` · `A cidade ainda não está aberta. Abra a cidade antes de avisar a
 lista de espera.` `vagas_conta_aviso_marcar(p_user, p_cidade, p_enviados, p_falhas, p_invalidos)` (20261024120003; a versão
 de 4 parâmetros continua, para a Function antiga): `p_enviados` ganham `aviso_enviado_em` (quem não espera o WhatsApp sai
@@ -1059,7 +1070,8 @@ da lista); `p_falhas` voltam para o fim da fila (até a 3ª); `p_invalidos` não
 → `{ok, enviados, falhas, invalidos, contagens}`. Marcar de novo não conta duas vezes.
 `vagas_conta_lista_espera(p_dados, p_cf, p_xff, p_humano)` (20261024120004; ação `lista_espera`): as mesmas regras e respostas
 de `vagas_lista_espera_entrar`, com a origem vinda dos cabeçalhos do pedido original; `p_humano` (Turnstile conferido) sobe
-o limite por origem para 300 por hora e tira o teto total; ignora o ajuste `lista_espera_captcha`. Registros `aviso_email_lote` e
+o limite por origem para 300 por hora e tira o teto total; com o ajuste `lista_espera_captcha` = 'sim', recusa `p_humano` falso
+com o erro do captcha (R4-3, 20261024120005). Registros `aviso_email_lote` e
 `aviso_email` (só números).
 
 ## 9. Edge Function `vagas-conta`

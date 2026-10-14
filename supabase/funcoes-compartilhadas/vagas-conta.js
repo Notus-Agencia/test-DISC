@@ -486,7 +486,8 @@ export async function acaoVagasAvisarListaEspera(base, corpo, origem, quem) {
   }
   const n = (k) => (typeof contagens[k] === 'number' ? contagens[k] : 0);
   const restantes = n('aAvisarEmail');
-  const disponivel = r.teto && typeof r.teto.disponivel === 'number' ? r.teto.disponivel - lote.length : 1;
+  // O teto que o banco devolve já desconta este lote (R4-6, 20261024120005: antes a Function descontava de novo).
+  const disponivel = r.teto && typeof r.teto.disponivel === 'number' ? r.teto.disponivel : 1;
   // travado: o lote não avisou ninguém e só teve falhas (a tela para de repetir); tetoAtingido: acabou a cota de 24 h.
   return { ok: true, cidade: { slug: cidade, nome }, enviados: enviados.length, falhas: falhas.length, invalidos: invalidos.length,
     restantes, aAvisarWhatsapp: n('aAvisarWhatsapp'), terminou: restantes === 0,
