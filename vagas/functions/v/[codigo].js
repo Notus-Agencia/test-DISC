@@ -211,7 +211,8 @@ export function montarPaginaVaga(anuncio, origem) {
   if (a.quantidade > 1) linhas.push(['Vagas', String(a.quantidade)]);
   if (dataCurta(a.validoAte)) linhas.push(['Vaga aberta até', dataCurta(a.validoAte)]);
   const destino = a.cidadeSlug ? '/' + a.cidadeSlug + '/' : '/';
-  const linkApp = destino + (a.codigo ? '?vaga=' + a.codigo : '');
+  // Direto para a tela da vaga: o 302 de /<cidade>/ para cidade.html não garante que a query do código chegue até lá.
+  const linkApp = a.codigo ? '/vaga.html?vaga=' + encodeURIComponent(a.codigo) : destino;
   const expirada = a.status && !['publicado', 'ativo', 'ativa', 'aberta'].includes(a.status);
   const expiradaMeta = expirada ? '<meta name="robots" content="noindex">\n' : '';
   return cabecalhoHtml(tituloJanela, descricao, urlPagina, base, expiradaMeta) +
@@ -224,7 +225,7 @@ export function montarPaginaVaga(anuncio, origem) {
     (a.requisitos ? '<h2 style="font-size:1rem;margin:0 0 6px">O que a empresa pede</h2>\n<p class="texto">' + esc(a.requisitos) + '</p>\n' : '') +
     (expirada
       ? '<a class="botao" href="' + esc(destino) + '">Ver outras vagas</a>\n'
-      : '<a class="botao" href="' + esc(linkApp) + '">Quero essa vaga</a>\n<p class="aviso">Para se candidatar você cria uma conta grátis com e-mail e senha. A empresa só vê seu nome e contato depois que vocês dois combinarem.</p>\n') +
+      : '<a class="botao" href="' + esc(linkApp) + '">Quero esta vaga</a>\n<p class="aviso">Para se candidatar você cria uma conta grátis com o seu e-mail. A empresa só vê seu nome e contato depois que vocês dois combinarem.</p>\n') +
     '</article>\n</main>\n' + RODAPE;
 }
 

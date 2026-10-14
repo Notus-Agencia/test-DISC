@@ -246,6 +246,25 @@ test('entrar: destino (voltar validado, currículo incompleto, empresa, operaç�
   for (const k of ['pessoa_cadastro', 'pessoa_cadastro_assistido', 'empresa_cadastro', 'operador_contrato']) assert.ok(TC.consentimentos.aceites[k], k);
 });
 
+test('entrar: convite de equipe (?convite=<64 hex>) leva para o aceite da empresa e sobrevive à limpeza do token_hash', () => {
+  const tk = 'ab'.repeat(32);
+  assert.equal(E.conviteValido(tk.toUpperCase()), tk);
+  for (const ruim of ['', 'abc', 'g'.repeat(64), tk + '0', null, 42, tk + '"><b>']) assert.equal(E.conviteValido(ruim), '', String(ruim));
+  assert.equal(E.conviteDaUrl({ search: '?convite=' + tk }), tk);
+  assert.equal(E.conviteDaUrl({ search: '?token_hash=abcdefgh12&type=invite&convite=' + tk.toUpperCase() }), tk);
+  assert.equal(E.conviteDaUrl({ search: '?convite=' + tk + 'x' }), '');
+  assert.equal(E.conviteDaUrl({ search: '?convite=' + tk }, { conviteDoEndereco: () => 'zz' }), '', 'o da API também passa pela validação');
+  assert.equal(E.conviteDaUrl({ search: '' }, { conviteDoEndereco: () => tk }), tk, 'usa VAGAS_API.conviteDoEndereco quando existe');
+  const empresa = { conta: { tipo: 'empresa', termosVersao: 'x' } };
+  assert.equal(E.destinoDe(empresa, '', '', tk), 'empresa.html?convite=' + tk);
+  assert.equal(E.destinoDe(empresa, 'vaga.html?vaga=K7M2QX', '', tk), 'empresa.html?convite=' + tk, 'o convite vale sobre o voltar');
+  assert.equal(E.destinoDe(empresa, '', '', 'nao-e-token'), 'empresa.html#inicio');
+  assert.equal(E.destinoDe({ conta: null, admin: true }, '', '', tk), 'operador.html#fila');
+  assert.equal(E.enderecoLimpo({ empresa: true, voltar: 'vaga.html?vaga=K7M2QX', convite: tk }), 'entrar.html?tipo=empresa&voltar=vaga.html%3Fvaga%3DK7M2QX&convite=' + tk);
+  assert.equal(E.enderecoLimpo({ convite: tk }), 'entrar.html?convite=' + tk);
+  assert.equal(E.enderecoLimpo({ convite: 'x' }), 'entrar.html');
+});
+
 test('entrar: validação de criar conta, cadastro da empresa e senha nova (mensagens da tela)', () => {
   assert.deepEqual(E.validarCriar({ nome: 'Ana', email: 'ana@exemplo.com', termos: true }), {});
   assert.deepEqual(E.validarCriar({ nome: 'A', email: 'ana@exemplo', termos: false }),
