@@ -7,10 +7,11 @@
 --     "cidadePequena" de conteudo/vagas-operacao/indicadores.json), status 'lista_espera' (antes do lançamento ela capta
 --     interessados; quem abre é a equipe, pelo painel: vagas_adm_cidade_salvar {slug:'uruacu-go', status:'ativa'}), ordem 1.
 --     Se ela já existir (criada pelo painel), nada dela muda aqui.
---   * Zonas: a lista proposta pela operação (bloco "operacao — Uruaçu" da mesa da equipe). GANCHO para trocar a lista: edite
---     o "values" abaixo e rode este arquivo de novo — zona nova entra; zona com o mesmo slug recebe o nome, os bairros e a
---     ordem daqui (cuidado: isso desfaz o que o operador mudou nela pelo painel). Para tirar de vez uma zona que saiu da
---     lista, desative pelo painel (vagas_adm_zona_salvar {ativa:false}); este arquivo não apaga nem desativa zona nenhuma.
+--   * Zonas: a lista proposta pela operação (bloco "operacao — Uruaçu" da mesa da equipe). Rodar de novo só acrescenta zona
+--     nova: zona que já existe (mesmo slug) fica como o painel deixou (revisão de segurança: a semente não desfaz o trabalho
+--     do operador). Mudar nome, bairros ou ordem é pelo painel (vagas_adm_zona_salvar); para tirar uma zona, desative pelo
+--     painel com {cidade, slug, nome, ativa:false} (a função da fundação pede o nome também). Este arquivo não apaga nem
+--     desativa zona nenhuma.
 --   * As cidades de Roraima da semente da fundação (dado fictício de exemplo) passam a 'rascunho' — só o status muda; zonas,
 --     praça e qualquer dado ligado a elas ficam. Isso acontece UMA vez (marca 'piloto_definido' no registro de moderação):
 --     rodar de novo não desfaz uma reativação feita depois pelo painel.
@@ -36,7 +37,7 @@ select c.id, z.slug, z.nome, z.bairros, z.ordem
     ('zona-rural', 'Zona rural e lago', array['Zona rural', 'Geriaçu', 'Beira do Lago de Serra da Mesa'], 6)
   ) as z(slug, nome, bairros, ordem) on true
  where c.slug = 'uruacu-go'
-on conflict (cidade_id, slug) do update set nome = excluded.nome, bairros = excluded.bairros, ordem = excluded.ordem;
+on conflict (cidade_id, slug) do nothing;
 
 -- A semente de exemplo da fundação sai do ar (uma vez só).
 do $$

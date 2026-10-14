@@ -27,7 +27,7 @@
  *   indicadores(cidade) = opIndicadores(cidade) (painel da praça: só números agregados; migração 20261024),
  *   opAssistidos(filtro) (cadastros assistidos pendentes, e-mail mascarado; 20261024);
  *   equipe da empresa (20261024) — equipeDaEmpresa(empresaId), cancelarConvite(conviteId), removerMembro(empresaId, userId),
- *   conviteEquipe(token), aceitarConviteEquipe(token);
+ *   tornarDono(empresaId, userId), conviteEquipe(token), aceitarConviteEquipe(token); operação: opEmpresaDono(empresaId, email, motivo);
  *   equipe da Gestão sem Caos — admCidadeSalvar(dados), admZonaSalvar(dados), admOperadorSalvar(dados), admCidades(),
  *   admOperadores(filtro) (as duas da 20261024).
  * Conta e sessão: cadastrar({email, tipo, nome?, termosVersao?, captcha?}), reenviarConfirmacao(email, captcha?),
@@ -151,6 +151,8 @@
     equipeDaEmpresa: { rpc: 'vagas_equipe_empresa', p: ['p_empresa'] },
     cancelarConvite: { rpc: 'vagas_equipe_convite_cancelar', p: ['p_convite'] },
     removerMembro: { rpc: 'vagas_equipe_remover', p: ['p_empresa', 'p_membro'] },
+    tornarDono: { rpc: 'vagas_equipe_tornar_dono', p: ['p_empresa', 'p_membro'] },
+    opEmpresaDono: { rpc: 'vagas_op_empresa_dono', p: ['p_empresa', 'p_email', 'p_motivo'] },
     conviteEquipe: { rpc: 'vagas_equipe_convite', p: ['p_token'] },
     aceitarConviteEquipe: { rpc: 'vagas_equipe_convite_aceitar', p: ['p_token'] },
     admCidadeSalvar: { rpc: 'vagas_adm_cidade_salvar', p: ['p_dados'] },

@@ -62,6 +62,9 @@ function preparar(op) {
     async conviteEquipe(userId, empresaId, email, cf, xff) {
       convites.push({ userId, empresaId, email, cf, xff });
       return op.convite ? op.convite(userId, empresaId, email) : { ok: false, erro: 'Empresa não encontrada.' };
+    },
+    async exclusaoConferir(userId) {
+      return op.exclusao ? op.exclusao(userId) : { ok: true };
     }
   };
   const storage = {
@@ -299,6 +302,12 @@ test('excluir: só com JWT e "EXCLUIR"; conta que também é do painel DISC não
   assert.deepEqual((await chamar(q.base, { acao: 'excluir', confirmar: 'EXCLUIR' }, { jwt: 'jwt-p' })).json,
     { ok: false, erro: 'Erro interno no servidor. Tente novamente em instantes.' });
   assert.deepEqual(q.excluidos, [], 'conta intacta quando a foto não pôde ser apagada');
+  // Revisão de segurança (I2): a última pessoa dona de empresa com equipe não sai (o banco confere antes de apagar qualquer coisa).
+  const DONA = 'Você é a única pessoa dona de uma empresa que tem equipe. Antes de excluir a conta, torne outra pessoa da equipe dona (aba Equipe da empresa) ou remova a equipe.';
+  const d = preparar({ usuarios: [{ id: 'd', email: 'd@x.com', confirmada: true, app: { produto: 'vagas' }, conta: { tipo: 'empresa' } }],
+    jwts: { 'jwt-d': 'd' }, exclusao: (uid) => (uid === 'd' ? { ok: false, erro: DONA } : { ok: true }) });
+  assert.deepEqual((await chamar(d.base, { acao: 'excluir', confirmar: 'EXCLUIR' }, { jwt: 'jwt-d' })).json, { ok: false, erro: DONA });
+  assert.deepEqual([d.excluidos, d.removidos], [[], []], 'nem a foto nem a conta saem');
 });
 
 test('foto: só com JWT; o banco decide (vagas_conta_foto); URL assinada de 5 minutos só quando ele deixa', async () => {
@@ -475,8 +484,11 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
   assert.equal(await b.storage.assinar('vagas-fotos', 'u1/foto.jpg', 300), 'https://u');
   await b.storage.remover('vagas-fotos', ['u1/foto.jpg']);
   await b.db.conviteEquipe('u1', EMPRESA, 'a@b.com', '1.2.3.4', '');
+  await b.db.exclusaoConferir('u1');
   assert.deepEqual(chamadas.map((c) => c[0] === 'rpc' ? c[1] : c[0]), ['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar',
-    'vagas_conta_quem', 'createUser', 'generateLink', 'deleteUser', 'vagas_conta_foto', 'assinar', 'remover', 'vagas_conta_convite_equipe']);
+    'vagas_conta_quem', 'createUser', 'generateLink', 'deleteUser', 'vagas_conta_foto', 'assinar', 'remover', 'vagas_conta_convite_equipe',
+    'vagas_conta_exclusao_conferir']);
+  assert.deepEqual(chamadas[11][2], { p_user: 'u1' });
   assert.deepEqual(chamadas[10][2], { p_user: 'u1', p_empresa: EMPRESA, p_email: 'a@b.com', p_cf: '1.2.3.4', p_xff: '' });
   assert.deepEqual(chamadas[7][2], { p_user: 'u1', p_candidatura: null });
   assert.deepEqual(chamadas[8], ['assinar', 'vagas-fotos', 'u1/foto.jpg', 300]);
