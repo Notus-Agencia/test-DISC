@@ -5,6 +5,17 @@
 # Endereço amigável da cidade (/<slug>/) e o botão "Quero essa vaga" da página do link curto (/<slug>/?vaga=<código>) vão para a
 # tela da lista. É redirecionamento (302), não reescrita: a tela usa caminhos relativos (js/, assets/, comum/), que só funcionam
 # com a página na raiz do site.
+#
+# Páginas de divulgação (frente divulgação): com a barra no fim (/emprego/, /empresas/), como a pessoa digita o que ouviu
+# no rádio, vão para o endereço divulgado. Regras estáticas ANTES da dinâmica: o Pages usa a primeira que casar, e /:cidade/
+# também casaria com elas. /emprego e /empresas (sem barra) o Pages já serve direto de emprego.html e empresas.html.
+# /empresa (singular) é a área da empresa (empresa.html): não redirecionar.
+/emprego/   /emprego   301
+/empresas/  /empresas  301
+# Conferência pública do selo: o aviso selo_conferir divulga vagas.gestaosemcaos.com.br/selo/<código>. Redireciona (não
+# reescreve) para selo.html, pelo mesmo motivo da cidade; /selo/ com a barra no fim volta para /selo (selo.html).
+/selo/          /selo                        301
+/selo/:codigo   /selo.html?codigo=:codigo    302
 /:cidade/  /cidade.html?cidade=:cidade  302
 
 # Links curtos da vaga (/v/K7M2QX) são servidos pela Pages Function vagas/functions/v/[codigo].js.

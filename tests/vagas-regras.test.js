@@ -9,7 +9,8 @@ const path = require('node:path');
 const R = require('../vagas/js/regras.js');
 
 // A 20261024 (onda 2) acrescenta e redefine RPCs (painel da praça, equipe da empresa, lista de espera com WhatsApp).
-const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql']
+const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql', '20261024120003_vagas_aviso_reforco.sql',
+  '20261024120004_vagas_pre_abertura.sql']
   .map((f) => fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', f), 'utf8')).join('\n');
 const FONTE = fs.readFileSync(path.join(__dirname, '..', 'vagas', 'js', 'regras.js'), 'utf8');
 const AGORA = Date.parse('2026-10-13T15:00:00Z');

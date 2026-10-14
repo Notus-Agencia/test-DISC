@@ -1,0 +1,61 @@
+/*
+ * Vagas sem Caos — área da pessoa (eu.html), celular primeiro (390 px). Só o que é próprio destas telas: espaçamentos que nos
+ * mockups estavam em style="" (a CSP bloqueia), a linha que vira botão, o bloco de cada trabalho e a prévia do cartão no passo 5.
+ * Só tokens de comum/notus.css; as peças comuns (cartão cego, selo, referência, conversa, pílulas, linhas, itens) são da casca
+ * em vagas.css.
+ */
+
+/* Cabeçalho das telas (voltar, sobretítulo, título, subtítulo) e blocos empilhados */
+.vg-eu-cabecalho { margin-bottom: 16px; }
+.vg-eu-cabecalho .vg-voltar { margin-bottom: 4px; }
+.vg-eu-bloco { margin-top: 16px; }
+.vg-eu-aviso { margin-top: 12px; }
+.vg-eu-h2 { font-size: var(--t-titulo); font-weight: 600; }
+.vg-eu-secao { margin-top: 8px; display: grid; gap: 4px; }
+.centro-texto { text-align: center; }
+.vg-eu-largura-toda { flex-basis: 100%; }
+.vg-eu-link-esquerda { justify-self: start; padding-left: 0; }
+.vg-eu-link-inline { padding: 0; min-height: 0; font-size: inherit; }
+
+/* Currículo */
+.vg-eu-cv__titulo { margin-top: 16px; }
+.vg-eu-exps { display: grid; gap: 12px; }
+.vg-eu-exp { display: grid; gap: 14px; padding: 16px; border-radius: 20px; background: var(--nevoa); min-width: 0; }
+.vg-eu-exp .entrada { background: var(--branco); }
+.vg-eu-exp .vg-chip { background: var(--branco); }
+.vg-eu-exp .vg-chip[aria-pressed="true"] { background: color-mix(in srgb, var(--notus) 6%, var(--branco)); }
+.vg-eu-exp__cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.vg-eu-exp__cab .botao--link { min-height: 44px; }
+.vg-eu-exp__datas { display: grid; gap: 14px; }
+.vg-eu-exp__datas[hidden] { display: none; }
+.vg-eu-exp-botoes { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.vg-eu-linha-dupla { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.vg-eu-cursos { list-style: none; padding: 0; margin: 8px 0 0; }
+.vg-eu-cursos .vg-chip .icone { width: 14px; height: 14px; }
+/* Prévia do cartão no passo 5: uma coluna (a grade da casca pede 320 px, mais largo que o cartão dentro da caixa no celular) */
+.vg-eu-previa { display: grid; gap: 6px; }
+.vg-eu-previa .vg-cartoes { grid-template-columns: minmax(0, 1fr); }
+.vg-eu-previa .vg-cartao { background: var(--nevoa); box-shadow: none; }
+.vg-eu-nota { display: flex; gap: 8px; align-items: flex-start; }
+.vg-eu-nota .icone { margin-top: 2px; color: var(--medio); }
+
+/* Candidaturas: a linha da casca (.vg-linha) também como botão (enviada e fechadas abrem a folha) */
+.vg-linha__corpo { min-width: 0; }
+button.vg-eu-linha-botao { width: 100%; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.vg-eu-vazio-lista { padding: 24px 16px; text-align: center; color: var(--suave); font-size: var(--t-rotulo); }
+.vg-eu-nota-lista { margin-top: 12px; }
+
+/* Convite: o bloco de decidir (abaixo da mensagem da empresa) */
+.vg-eu-decidir { display: grid; gap: 12px; padding: 16px; border-radius: 20px; background: var(--branco); box-shadow: inset 0 0 0 1px rgba(243, 68, 5, .35); }
+.vg-eu-decidir .acoes { margin-top: 4px; }
+
+/* Itens com ação (meus dados, quem viu, pedidos enviados) */
+.vg-eu-item-acao { flex: none; }
+.vg-item .botao { flex: none; }
+#vg-eu-lista .vg-item, #vg-quem-viu-lista .vg-item, #vg-ref-convites .vg-item { min-height: 64px; }
+
+/* Referências */
+.vg-eu-link { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--t-rotulo); background: var(--branco); }
+.vg-eu-sem-recuo { margin-left: 0; }
+#vg-ref-novo-pedido { gap: 8px; }
+.vg-ref__acoes .vg-status { align-self: center; }

@@ -231,7 +231,11 @@ test('_redirects: a raiz fica com o index.html (escolha da cidade); /<cidade>/ v
   const txt = fs.readFileSync(path.join(RAIZ, '_redirects'), 'utf8');
   const regras = txt.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')).map((l) => l.split(/\s+/));
   assert.ok(!regras.some((r) => r[0] === '/'), 'sem cidade fixa na raiz');
-  assert.deepEqual(regras[0], ['/:cidade/', '/cidade.html?cidade=:cidade', '302']);
+  // A regra dinâmica da cidade fica por último; antes dela, as estáticas das páginas de divulgação (/emprego/, /empresas/) e
+  // do selo (/selo/), e o endereço curto da conferência do selo (/selo/<código>).
+  assert.deepEqual(regras[regras.length - 1], ['/:cidade/', '/cidade.html?cidade=:cidade', '302']);
+  assert.deepEqual(regras.slice(0, -1), [['/emprego/', '/emprego', '301'], ['/empresas/', '/empresas', '301'],
+    ['/selo/', '/selo', '301'], ['/selo/:codigo', '/selo.html?codigo=:codigo', '302']]);
   assert.ok(!regras.some((r) => r[0].startsWith('/v/')), 'uma regra /v/ ignoraria a Function (o Pages não aplica _redirects a rota de Function)');
   for (const r of regras) {
     assert.ok(r.length === 2 || r.length === 3, 'origem destino [código]');

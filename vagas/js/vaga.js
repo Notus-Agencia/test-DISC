@@ -138,7 +138,7 @@
       var bloco = el('div', { class: 'vg-selo vg-selo--mini', id: 'vg-vaga-selo' }, [
         el('div', { class: 'vg-selo__topo' }, [el('span', { class: 'vg-selo__icone' }, U.icone('selo')), el('div', {}, [el('p', { class: 'vg-selo__rotulo' }, pessoa() ? 'Seu selo' : 'Selo pedido'),
           el('p', { class: 'vg-selo__nome', id: 'vg-vaga-selo-texto' }, pessoa() ? 'Você ainda não tem o selo de ' + nome : 'Esta vaga pede o selo de ' + nome + '. Quem não tem o selo também pode se candidatar.')])]),
-        el('a', { class: 'botao botao--contorno', id: 'vg-vaga-fazer-teste', href: 'testes.html#teste/' + encodeURIComponent(a.selo) }, 'Fazer o teste agora (15 min)')]);
+        el('a', { class: 'botao botao--contorno', id: 'vg-vaga-fazer-teste', href: 'testes.html#teste/' + encodeURIComponent(a.selo) }, 'Fazer o teste agora (de 20 a 25 minutos)')]);
       if (pessoa() && pessoa().pessoa && pessoa().pessoa.completo) {
         A.minhaPessoa().then(function (r) {
           meu = ((r.cartao && r.cartao.selos) || []).filter(function (s) { return s.teste === a.selo; })[0];
