@@ -12,6 +12,10 @@
 # /empresa (singular) é a área da empresa (empresa.html): não redirecionar.
 /emprego/   /emprego   301
 /empresas/  /empresas  301
+# Conferência pública do selo: o aviso selo_conferir divulga vagas.gestaosemcaos.com.br/selo/<código>. Redireciona (não
+# reescreve) para selo.html, pelo mesmo motivo da cidade; /selo/ com a barra no fim volta para /selo (selo.html).
+/selo/          /selo                        301
+/selo/:codigo   /selo.html?codigo=:codigo    302
 /:cidade/  /cidade.html?cidade=:cidade  302
 
 # Links curtos da vaga (/v/K7M2QX) são servidos pela Pages Function vagas/functions/v/[codigo].js.
