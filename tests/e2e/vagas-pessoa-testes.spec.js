@@ -7,6 +7,17 @@ const { test, expect } = require('@playwright/test');
 
 const BASE = '/vagas/';
 
+// O "banco" da prévia fica no localStorage ('vagas_previa_v<N>'): os testes leem a versão mais nova, sem fixar o número.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__estadoPrevia = function () {
+      const chaves = Object.keys(localStorage).filter((k) => /^vagas_previa_v\d+$/.test(k))
+        .sort((a, b) => Number(b.split('_v').pop()) - Number(a.split('_v').pop()));
+      return chaves.length ? JSON.parse(localStorage.getItem(chaves[0])) : null;
+    };
+  });
+});
+
 function coletarErros(page) {
   const erros = [];
   page.on('pageerror', (e) => erros.push('pageerror: ' + e.message));
@@ -27,7 +38,7 @@ async function contaNova(page) {
 // Posição MOSTRADA da alternativa certa (ou de uma errada) na questão atual, lida do "banco" da prévia neste navegador.
 async function posicao(page, certo) {
   return page.evaluate((certo) => {
-    const st = JSON.parse(localStorage.getItem('vagas_previa_v2'));
+    const st = window.__estadoPrevia();
     const tt = st.provaDemo.tentativas.filter((t) => t.status === 'aberta').pop();
     const item = tt.itens[tt.respondidas];
     const q = VAGAS_PREVIA.TESTES_DEMONSTRACAO.flatMap((t) => t.questoes).find((x) => x.id === item.id);
@@ -57,7 +68,7 @@ async function ganharSelo(page, slug) {
     await VAGAS_API.proximaQuestao(id);
     const banco = VAGAS_PREVIA.TESTES_DEMONSTRACAO.flatMap((t) => t.questoes);
     for (let n = 1; n <= 15; n++) {
-      const tt = JSON.parse(localStorage.getItem('vagas_previa_v2')).provaDemo.tentativas.find((t) => t.id === id);
+      const tt = window.__estadoPrevia().provaDemo.tentativas.find((t) => t.id === id);
       const item = tt.itens[tt.respondidas];
       await VAGAS_API.responder(id, n, item.alt.indexOf(banco.find((x) => x.id === item.id).correta));
     }
@@ -217,7 +228,7 @@ test('internet cai ao responder: "Reconectando…", a resposta fica guardada e v
   await expect(page.locator('#vg-prova-opcoes button[data-opcao="' + pos + '"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#vg-prova-responder')).toBeEnabled();
   // Recarregar não é "sair da tela": nenhum sinal registrado.
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('vagas_previa_v2')).provaDemo.tentativas.find((t) => t.status === 'aberta').sinais))
+  expect(await page.evaluate(() => window.__estadoPrevia().provaDemo.tentativas.find((t) => t.status === 'aberta').sinais))
     .toEqual({ trocasAba: 0, copias: 0 });
   // Voltar no navegador não volta questão: começar de novo retoma a mesma tentativa, na mesma questão.
   await page.goto(BASE + 'testes.html#teste/atendimento');
@@ -271,7 +282,7 @@ test('sinais: sair da tela e copiar texto viram só registro na tentativa (a pro
     document.dispatchEvent(new Event('copy'));
   });
   await expect.poll(() => page.evaluate(() => {
-    const tt = JSON.parse(localStorage.getItem('vagas_previa_v2')).provaDemo.tentativas.find((t) => t.status === 'aberta');
+    const tt = window.__estadoPrevia().provaDemo.tentativas.find((t) => t.status === 'aberta');
     return [tt.sinais.trocasAba, tt.sinais.copias];
   })).toEqual([1, 1]);
   await expect(page.locator('#vg-prova')).toHaveAttribute('data-questao', '1');
@@ -300,7 +311,7 @@ test('vagas que pedem o selo: só as vagas da cidade com o selo do teste (o selo
     await expect(page.locator('#vg-testes-vagas > li')).toHaveCount(esperado.codigos.length);
     const codigos = await page.locator('#vg-testes-vagas a.vg-vaga').evaluateAll((as) => as.map((a) => a.getAttribute('data-codigo')).sort());
     expect(codigos).toEqual(esperado.codigos);
-    await expect(page.locator('#vg-testes-vagas > li').first()).toContainText('Pede selo');
+    await expect(page.locator('#vg-testes-vagas > li').first()).toContainText('Pede selo: Caixa e matemática prática');
     await page.goto(BASE + 'testes.html?cidade=2#catalogo');
     await expect(page.locator('#vg-teste-caixa-info')).toContainText('pedido em ' + esperado.codigos.length + (esperado.codigos.length === 1 ? ' vaga' : ' vagas'));
   } else {

@@ -132,6 +132,31 @@ test('banco de DEMONSTRAÇÃO: cada questão passa no validador das questões re
   assert.equal(TELA.TXT.DEMONSTRACAO, 'Questões de demonstração (a prova real usa outro banco)');
 });
 
+test('rótulos dos selos: a vaga ("Pede selo: …"), o cartão e a conferência usam os nomes do catálogo dos testes', () => {
+  const R = require('../vagas/js/regras.js');
+  assert.deepEqual(R.TESTES_SELO.map((x) => [x.id, x.rotulo]), BANCO.map((t) => [t.slug, t.nome]));
+  // O selo fictício da semente também (a conferência pública e o cartão mostram o nome do selo).
+  const x = novo();
+  for (const lista of Object.values(x.b.estado().selos)) for (const s of lista) assert.equal(s.nome, BANCO.find((t) => t.slug === s.teste).nome, s.codigo);
+});
+
+test('datas da prova no fuso da cidade da pessoa (reserva America/Sao_Paulo), nunca um fuso fixo', async () => {
+  const x = novo();
+  await entrarNova(x);   // conta nova, sem currículo: sem cidade, vale a reserva (horário de Brasília)
+  // Prova terminada às 02:30 UTC de 14/10 = 23:30 de 13/10 em Brasília: o selo é de 13/10.
+  x.relogio.t = Date.parse('2026-10-14T02:30:00Z');
+  const ini = await x.rpc('vagas_iniciar_tentativa', { p_teste: 'caixa' });
+  await x.rpc('vagas_proxima_questao', { p_tentativa: ini.tentativa.id });
+  for (let n = 1; n <= 15; n++) {
+    await x.rpc('vagas_responder', { p_tentativa: ini.tentativa.id, p_questao: n, p_alternativa: posicao(x, ini.tentativa.id, true) });
+  }
+  const r = (await x.rpc('vagas_finalizar', { p_tentativa: ini.tentativa.id })).resultado;
+  assert.deepEqual([r.selo.data, r.selo.validoAte], ['2026-10-13', '2027-10-13']);
+  const fonte = fs.readFileSync(path.join(RAIZ, 'vagas', 'js', 'api-previa.js'), 'utf8');
+  const bloco = fonte.slice(fonte.indexOf('PROVA DE DEMONSTRAÇÃO'), fonte.indexOf('function criarBackend'));
+  assert.ok(!/America\/(?!Sao_Paulo)[A-Z]/.test(bloco), 'nenhum fuso de cidade fixo no motor da prova');
+});
+
 test('mensagens da prova de demonstração = as da migração 20261023 e as de VAGAS_TESTES.MENSAGENS', () => {
   for (const [codigo, msg] of Object.entries(PREVIA.MSG_PROVA)) {
     assert.ok(SQL_TESTES.includes(msg), 'mensagem fora da migração: ' + msg);
