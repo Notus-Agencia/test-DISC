@@ -11,9 +11,11 @@ const API = require('../vagas/js/api.js');
 const R = require('../vagas/js/regras.js');
 
 const RAIZ = path.join(__dirname, '..');
-const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql']
+const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql', '20261024120003_vagas_aviso_reforco.sql',
+  '20261024120004_vagas_pre_abertura.sql', '20261024120005_vagas_fase_c.sql']
   .map((f) => fs.readFileSync(path.join(RAIZ, 'supabase', 'migrations', f), 'utf8')).join('\n');
 const AGORA = Date.parse('2026-10-13T15:00:00Z');
+const DIA_MS = 86400000;
 
 function memoria() {
   const m = {};
@@ -66,7 +68,7 @@ test('a prévia tem TODAS as RPCs públicas da migração (e as do contrato de v
   const doBanco = [...SQL.matchAll(/create or replace function public\.(vagas_[a-z_0-9]+)/g)].map((m) => m[1])
     .filter((f) => !['vagas_ids_minhas_empresas', 'vagas_ids_minhas_cidades', 'vagas_sou_pessoa', 'vagas_conta_limite', 'vagas_conta_consultar',
       'vagas_conta_registrar', 'vagas_conta_quem', 'vagas_conta_foto', 'vagas_conta_convite_equipe', 'vagas_conta_exclusao_conferir',
-      'vagas_conta_aviso_lote', 'vagas_conta_aviso_marcar', 'vagas_iniciar_tentativa'].includes(f));
+      'vagas_conta_aviso_lote', 'vagas_conta_aviso_marcar', 'vagas_conta_lista_espera', 'vagas_iniciar_tentativa'].includes(f));
   for (const f of doBanco) assert.ok(b.RPCS.includes(f), 'falta na prévia: ' + f);
   for (const def of Object.values(API.METODOS)) assert.ok(b.RPCS.includes(def.rpc), 'falta na prévia (api.js): ' + def.rpc);
   // Mensagens: cada erro da prévia existe igual no banco, na Edge Function ou no cliente (exceto o do selo, que é da 20261023).
@@ -172,11 +174,12 @@ test('referência — veto P2: ocultar e remover não mudam nada do que a empres
   };
   await entrar(b, 'pessoa@previa.com');
   const antes = await foto();
-  assert.equal(antes.dadas.referencias[0].status, 'aceita');
-  assert.ok(antes.dadas.referencias[0].aceitaEm);
-  assert.ok(!('respondidaEm' in antes.dadas.referencias[0]));
-  assert.equal(antes.cartoes.cartoes[0].cartao.temReferencia, true);
-  assert.equal(antes.contato.pessoa.referencias.length, 1);
+  // Veto P2 (20261024120005): a empresa vê só "enviada" — nem aceita, nem quando aceitou — e não vê a própria referência no
+  // perfil da pessoa (aparecer só depois do aceite contaria que a pessoa aceitou).
+  assert.equal(antes.dadas.referencias[0].status, 'enviada');
+  assert.ok(!('aceitaEm' in antes.dadas.referencias[0]) && !('respondidaEm' in antes.dadas.referencias[0]));
+  assert.equal(antes.cartoes.cartoes[0].cartao.temReferencia, false);
+  assert.equal(antes.contato.pessoa.referencias.length, 0);
   assert.equal(antes.oferta.erro, 'Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.');
   assert.equal(antes.denuncia.erro, 'Referência não encontrada.');
   for (const acao of ['ocultar', 'mostrar', 'ocultar', 'remover']) {
@@ -481,7 +484,8 @@ test('painel da praça na prévia: 15 indicadores e 5 gatilhos do arquivo, só a
   const n = await ok(b.rpc('vagas_op_indicadores', { p_cidade: 'niquelandia-go' }));
   assert.equal(n.cidade.porte, null);
   assert.ok(n.indicadores.every((i) => i.alvo === null && i.cor === null));
-  assert.deepEqual(n.indicadores.find((i) => i.chave === 'lista_espera').detalhe, { pessoa: 1, empresa: 0, comWhatsapp: 1 });
+  assert.deepEqual(n.indicadores.find((i) => i.chave === 'lista_espera').detalhe, { pessoa: 1, empresa: 0, comWhatsapp: 1,
+    porOrigem: { radio: null, cartaz: null, grupo: null, canal: null, escola: null, mutirao: null, indicacao: null, outro: null, naoInformada: null } });
   assert.ok(n.gatilhos.filter((g) => g.chave !== 'trocar_parceiro' && g.chave !== 'pessoa_nao_paga').every((g) => g.aplica === false && g.atingido === null && g.partes.length === 0));
   await erro(b.rpc('vagas_op_indicadores', { p_cidade: 'nao-existe-go' }), 'Cidade não encontrada.');
 });
@@ -574,7 +578,7 @@ test('equipe da empresa na prévia: só a dona convida; resposta neutra; convite
 
 test('adaptador da prévia: convidarEquipe e os métodos de equipe e do painel passam pelo mesmo contrato', async () => {
   const api = API.criar({ modo: 'previa', backend: novo() });
-  assert.deepEqual(api.RECURSOS, { listaEsperaWhatsapp: true });
+  assert.deepEqual(api.RECURSOS, { listaEsperaWhatsapp: true, preAberturaEmpresas: true, origemListaEspera: true });
   for (const m of ['indicadores', 'equipeDaEmpresa', 'cancelarConvite', 'removerMembro', 'conviteEquipe', 'aceitarConviteEquipe', 'convidarEquipe', 'conviteDoEndereco']) {
     assert.equal(typeof api[m], 'function', m);
   }
@@ -689,7 +693,8 @@ test('aviso de abertura (20261024120002): só a equipe; e-mail em lotes só com 
   await entrar(b, 'admin@previa.com');
   const r0 = await ok(b.rpc('vagas_adm_aviso_resumo', { p_cidade: cid }));
   assert.deepEqual(r0, { ok: true, cidade: { slug: cid, nome: 'Niquelândia', status: 'lista_espera', abertaEm: '', listaAte: '' },
-    contagens: { naLista: 4, aAvisarEmail: 4, avisadosEmail: 0, aAvisarWhatsapp: 2 } });
+    contagens: { naLista: 4, aAvisarEmail: 4, avisadosEmail: 0, emEnvio: 0, semEmail: 0, aAvisarWhatsapp: 2 },
+    teto: { porDia: 60, usados24h: 0, disponivel: 60, diasPrevistos: 1 } });
   await erro(b.conta.avisarListaEspera(cid), FECHADA);
   await erro(b.rpc('vagas_adm_aviso_whatsapp', { p_cidade: cid }), FECHADA);
   await erro(b.conta.avisarListaEspera('nao-existe-go'), 'Cidade não encontrada.');
@@ -699,10 +704,12 @@ test('aviso de abertura (20261024120002): só a equipe; e-mail em lotes só com 
   assert.ok(r1.cidade.abertaEm && Date.parse(r1.cidade.listaAte) - Date.parse(r1.cidade.abertaEm) === 30 * 86400000);
   // E-mail em lotes: a tela recebe só contagens.
   const l1 = await ok(b.conta.avisarListaEspera(cid, 3));
-  assert.deepEqual(l1, { ok: true, cidade: { slug: cid, nome: 'Niquelândia' }, enviados: 3, falhas: 0, restantes: 1, aAvisarWhatsapp: 2, terminou: false });
+  const resp = (enviados, restantes, extra) => Object.assign({ ok: true, cidade: { slug: cid, nome: 'Niquelândia' }, enviados, falhas: 0, invalidos: 0,
+    restantes, aAvisarWhatsapp: 2, terminou: restantes === 0, travado: false, tetoAtingido: false }, extra || {});
+  assert.deepEqual(l1, resp(3, 1));
   assert.ok(!JSON.stringify(l1).includes('@'));
-  assert.deepEqual(await ok(b.conta.avisarListaEspera(cid, 3)), { ok: true, cidade: { slug: cid, nome: 'Niquelândia' }, enviados: 1, falhas: 0, restantes: 0,
-    aAvisarWhatsapp: 2, terminou: true });
+  assert.deepEqual(await ok(b.conta.avisarListaEspera(cid, 3)), resp(1, 0));
+  assert.deepEqual((await ok(b.rpc('vagas_adm_aviso_resumo', { p_cidade: cid }))).teto, { porDia: 60, usados24h: 4, disponivel: 56, diasPrevistos: 0 });
   assert.equal((await ok(b.conta.avisarListaEspera(cid))).enviados, 0, 'rodar de novo não avisa ninguém duas vezes');
   // Quem deixou só o e-mail já saiu; quem deixou o WhatsApp fica até a equipe avisar por lá.
   const daCidade = () => st.listaEspera.filter((l) => l.cidade === cid);
@@ -721,10 +728,10 @@ test('aviso de abertura (20261024120002): só a equipe; e-mail em lotes só com 
   const texto = W.replace('{{cidade}}', 'Niquelândia').replace('{{link_cidade}}', 'https://vagas.gestaosemcaos.com.br/cidade.html?cidade=' + cid);
   assert.deepEqual(fila.contato, { id: fila.contato.id, whatsapp: '5562988887777', perfil: 'pessoa', texto,
     link: 'https://wa.me/5562988887777?text=' + encodeURIComponent(texto) });
-  assert.deepEqual(fila.contagens, { naLista: 1, aAvisarEmail: 0, avisadosEmail: 1, aAvisarWhatsapp: 1 });
+  assert.deepEqual(fila.contagens, { naLista: 1, aAvisarEmail: 0, avisadosEmail: 1, emEnvio: 0, semEmail: 0, aAvisarWhatsapp: 1 });
   assert.ok(st.moderacao.some((m) => m.acao === 'aviso_whatsapp_ver'));
   assert.deepEqual(await ok(b.rpc('vagas_adm_aviso_whatsapp_feito', { p_id: fila.contato.id })), { ok: true, duplicado: false,
-    contagens: { naLista: 0, aAvisarEmail: 0, avisadosEmail: 0, aAvisarWhatsapp: 0 } });
+    contagens: { naLista: 0, aAvisarEmail: 0, avisadosEmail: 0, emEnvio: 0, semEmail: 0, aAvisarWhatsapp: 0 } });
   await erro(b.rpc('vagas_adm_aviso_whatsapp_feito', { p_id: fila.contato.id }), 'Contato não encontrado.');
   assert.equal((await ok(b.rpc('vagas_adm_aviso_whatsapp', { p_cidade: cid }))).contato, null);
   assert.deepEqual(daCidade(), [], 'avisada pelo que pediu, a linha some');
@@ -735,8 +742,30 @@ test('aviso de abertura (20261024120002): só a equipe; e-mail em lotes só com 
   assert.deepEqual(daCidade(), []);
   // O cliente (modo prévia) tem o método; cidade aberta sem lista: nada a avisar.
   const api = API.criar({ modo: 'previa', backend: b });
-  assert.deepEqual(await api.avisarListaEspera('uruacu-go'), { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 0, falhas: 0, restantes: 0,
-    aAvisarWhatsapp: 0, terminou: true });
+  assert.deepEqual(await api.avisarListaEspera('uruacu-go'), { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 0, falhas: 0, invalidos: 0,
+    restantes: 0, aAvisarWhatsapp: 0, terminou: true, travado: false, tetoAtingido: false });
+});
+
+test('reforço do aviso na prévia (20261024120003): e-mail só ASCII visível; teto de 60 em 24 h com a previsão de dias', async () => {
+  let t = AGORA;
+  const b = PREVIA.criarBackend({ armazenamento: memoria(), agora: () => t });
+  const st = b.estado();
+  const cid = 'niquelandia-go';
+  for (const e of ['a\u00a0b@ex.com', 'a\ufeffb@ex.com', 'a\u2028b@ex.com', 'a\u3000b@ex.com', 'joão@ex.com']) {
+    await erro(b.rpc('vagas_lista_espera_entrar', { p_dados: { cidade: cid, email: e } }), 'E-mail inválido.');
+  }
+  for (let i = 0; i < 70; i++) st.listaEspera.push({ cidade: cid, email: 'p' + i + '@exemplo.com', perfil: 'pessoa', whatsapp: '', whatsappEm: null, criadoEm: AGORA - DIA_MS });
+  await entrar(b, 'admin@previa.com');
+  await ok(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: cid, status: 'ativa' } }));
+  assert.deepEqual((await ok(b.rpc('vagas_adm_aviso_resumo', { p_cidade: cid }))).teto, { porDia: 60, usados24h: 0, disponivel: 60, diasPrevistos: 2 });
+  for (let i = 0; i < 2; i++) await ok(b.conta.avisarListaEspera(cid, 50));
+  const fim = await ok(b.conta.avisarListaEspera(cid, 50));
+  assert.deepEqual([fim.enviados, fim.restantes, fim.tetoAtingido, fim.terminou], [0, 11, true, false]);
+  assert.deepEqual((await ok(b.rpc('vagas_adm_aviso_resumo', { p_cidade: cid }))).teto, { porDia: 60, usados24h: 60, disponivel: 0, diasPrevistos: 1 },
+    'hoje não cabe mais nenhum: termina amanhã');
+  t += DIA_MS + 1000;
+  const amanha = await ok(b.conta.avisarListaEspera(cid, 50));
+  assert.deepEqual([amanha.enviados, amanha.restantes, amanha.terminou, amanha.tetoAtingido], [11, 0, true, false]);
 });
 
 test('2ª revisão de segurança na prévia: N2 (quem saiu não ganha WhatsApp novo por 24 h) e N1 (dona só com conta válida)', async () => {
@@ -774,4 +803,100 @@ test('2ª revisão de segurança na prévia: N2 (quem saiu não ganha WhatsApp n
   rita.confirmada = true;
   await ok(b.rpc('vagas_op_empresa_dono', { p_empresa: merc, p_email: 'recrutador@previa.com', p_motivo: 'pedido' }));
   assert.equal(st.membros.find((m) => m.userId === rita.id).papel, 'dono');
+});
+
+function cnpjCom(base12) {
+  const dv = (t, pesos) => { const r = t.split('').reduce((a, c, i) => a + (c.charCodeAt(0) - 48) * pesos[i], 0) % 11; return r < 2 ? 0 : 11 - r; };
+  const d1 = dv(base12, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return base12 + d1 + dv(base12 + d1, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+}
+test('pré-abertura, canal e origem na prévia (20261024120004): as três ligadas; vaga pronta e invisível até a cidade abrir', async () => {
+  let t = AGORA;
+  const b = PREVIA.criarBackend({ armazenamento: memoria(), agora: () => (t += 1000) });
+  const st = b.estado();
+  const api = API.criar({ modo: 'previa', backend: b });
+  assert.deepEqual(api.RECURSOS, { listaEsperaWhatsapp: true, preAberturaEmpresas: true, origemListaEspera: true });
+  const cidades = (await ok(b.rpc('vagas_cidades_publicas', {}))).cidades;
+  const niq = cidades.find((c) => c.slug === 'niquelandia-go');
+  const uru = cidades.find((c) => c.slug === 'uruacu-go');
+  assert.deepEqual([niq.preAbertura, niq.aceitaEmpresas, niq.canalWhatsapp], [true, true, null]);
+  assert.deepEqual([uru.preAbertura, uru.aceitaEmpresas, uru.canalWhatsapp], [false, true, null], 'Uruaçu sem canal na prévia');
+  // P1: a empresa se cadastra em Niquelândia (lista de espera), a equipe aprova, a vaga passa pela revisão e fica pronta.
+  await entrar(b, 'empresa@previa.com');
+  const emp = (await ok(b.rpc('vagas_empresa_cadastrar', { p_dados: { cnpj: cnpjCom('PVPREAB00001'), razaoSocial: 'Padaria Antecipada (prévia)', cidade: 'niquelandia-go' } }))).empresa;
+  await ok(b.conta.sair());
+  await entrar(b, 'admin@previa.com');
+  await ok(b.rpc('vagas_op_empresa_decidir', { p_empresa: emp.id, p_acao: 'aprovar', p_motivo: 'CNPJ conferido' }));
+  await ok(b.conta.sair());
+  await entrar(b, 'empresa@previa.com');
+  const dados = { empresaId: emp.id, area: 'atendimento', funcao: 'Atendente de padaria', modalidade: 'clt',
+    descricao: 'Atendimento no balcão, organização das vitrines e apoio no caixa. Escala 6x1 com folga no domingo.',
+    turno: 'comercial', experiencia: 'nao_precisa', escolaridade: 'medio', quantidade: 1, salarioDe: 162100, cidade: 'niquelandia-go' };
+  const an = (await ok(b.rpc('vagas_anuncio_salvar', { p_dados: dados }))).anuncio;
+  assert.equal((await ok(b.rpc('vagas_anuncio_publicar', { p_anuncio: an.id }))).emRevisao, true);
+  await ok(b.conta.sair());
+  await entrar(b, 'admin@previa.com');
+  await ok(b.rpc('vagas_op_anuncio_decidir', { p_anuncio: an.id, p_acao: 'publicar', p_motivo: '' }));
+  await ok(b.conta.sair());
+  await entrar(b, 'empresa@previa.com');
+  const minha = () => ok(b.rpc('vagas_anuncios_empresa', { p_empresa: emp.id })).then((r) => r.anuncios.find((x) => x.id === an.id));
+  const m1 = await minha();
+  assert.deepEqual([m1.status, m1.noAr, m1.aguardaAbertura, m1.avisoAbertura], ['publicado', false, true, 'Sua vaga entra no ar no dia em que Niquelândia abrir.']);
+  await erro(b.rpc('vagas_anuncio_publico', { p_codigo: m1.codigo }), 'Vaga não encontrada ou já encerrada.');
+  await erro(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'niquelandia-go' } }), R.MSG.CIDADE_FECHADA);
+  // A cidade abre: a vaga entra no ar com a validade contada da abertura.
+  st.anuncios.find((x) => x.id === an.id).expiraEm = t - 1;
+  await ok(b.conta.sair());
+  await entrar(b, 'admin@previa.com');
+  await ok(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: 'niquelandia-go', status: 'ativa' } }));
+  const aberta = st.cidades.find((c) => c.slug === 'niquelandia-go').abertaEm;
+  const crua = st.anuncios.find((x) => x.id === an.id);
+  assert.deepEqual([crua.publicadoEm, crua.expiraEm - aberta, crua.preAbertura], [aberta, crua.diasNoAr * 86400000, false]);
+  await ok(b.rpc('vagas_anuncio_publico', { p_codigo: m1.codigo }));
+  // P2: canal de WhatsApp pela equipe.
+  const CANAL = 'https://whatsapp.com/channel/0029VaTesteFicticio12345';
+  await erro(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: 'uruacu-go', canalWhatsapp: 'https://chat.whatsapp.com/AbCdEf1234567890' } }),
+    'Link do canal de WhatsApp inválido. Use o link do canal (https://whatsapp.com/channel/...).');
+  assert.equal((await ok(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: 'uruacu-go', canalWhatsapp: CANAL + '/' } }))).cidade.canalWhatsapp, CANAL);
+  assert.equal((await ok(b.rpc('vagas_adm_cidades', {}))).cidades.find((c) => c.slug === 'uruacu-go').canalWhatsapp, CANAL);
+  assert.equal((await ok(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: 'uruacu-go', canalWhatsapp: '' } }))).cidade.canalWhatsapp, null);
+  // P3: origem (a primeira fica; o resto vira null) e a isca.
+  await ok(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: 'nova-go', nome: 'Nova', uf: 'GO', status: 'lista_espera' } }));
+  const entra = (d) => ok(b.rpc('vagas_lista_espera_entrar', { p_dados: Object.assign({ cidade: 'nova-go' }, d) }));
+  const normal = await entra({ email: 'o1@exemplo.com', origem: 'RADIO' });
+  await entra({ email: 'o1@exemplo.com', origem: 'cartaz' });
+  await entra({ email: 'o2@exemplo.com', origem: 'facebook' });
+  const linha = (e) => st.listaEspera.find((l) => l.email === e);
+  assert.deepEqual([linha('o1@exemplo.com').origem, linha('o2@exemplo.com').origem], ['radio', null]);
+  const antes = st.listaEspera.length;
+  assert.deepEqual(await entra({ email: 'robo@exemplo.com', site: 'http://spam.example' }), normal);
+  assert.equal(st.listaEspera.length, antes);
+});
+
+test('fase C na prévia (20261024120005): experiência pela CLT, cartões sem filtro de escolaridade e experiência, envio por e-mail no limite', async () => {
+  const b = novo();
+  const st = b.estado();
+  const ids = R.EXPERIENCIAS_VAGA.map((x) => x.id);
+  assert.ok(st.anuncios.every((a) => ids.includes(a.experiencia)), 'a semente usa só os ids novos');
+  await entrar(b, 'empresa@previa.com');
+  const merc = st.empresas.find((e) => e.nomeFantasia === 'Mercadinho Sol do Norte');
+  const comQuero = st.anuncios.find((a) => a.empresaId === merc.id && st.candidaturas.some((k) => k.anuncioId === a.id && k.status !== 'retirada'));
+  const total = async (f) => (await ok(b.rpc('vagas_cartoes', { p_anuncio: comQuero.id, p_filtro: f }))).total;
+  assert.equal(await total({ escolaridadeMin: 'superior', experienciaMinMeses: 600, temSelo: true }), await total({}));
+  const an = (await ok(b.rpc('vagas_anuncio_salvar', { p_dados: { empresaId: merc.id, area: 'atendimento', funcao: 'Atendente', modalidade: 'clt',
+    descricao: 'Atendimento no balcão, organização de prateleiras e apoio no caixa. Escala 6x1 com folga no domingo.',
+    turno: 'comercial', experiencia: 'mais_3', escolaridade: 'medio', quantidade: 1, salarioDe: 162100 } }))).anuncio;
+  assert.equal(an.experiencia, '6_meses', 'id antigo convertido');
+  await ok(b.conta.sair());
+  // Envio por e-mail: conta no limite com ou sem conta; a lista da empresa não mostra o que foi por e-mail.
+  await entrar(b, 'empresa6@previa.com');
+  const rest = st.empresas.find((e) => e.nomeFantasia === 'Restaurante Sabor da Terra');
+  const lista = () => ok(b.rpc('vagas_referencias_empresa', { p_empresa: rest.id }));
+  const antes = await lista();
+  const base = { empresaId: rest.id, funcao: 'Cozinheira', vinculo: 'clt', inicio: '2024-01', pontosFortes: ['equipe'], declaracao: true };
+  assert.deepEqual(await ok(b.rpc('vagas_referencia_oferecer', { p_dados: Object.assign({ email: 'ninguem@nao-existe.teste' }, base) })), { ok: true, enviada: true });
+  assert.deepEqual(await ok(b.rpc('vagas_referencia_oferecer', { p_dados: Object.assign({ email: 'pessoa@previa.com' }, base) })), { ok: true, enviada: true });
+  const depois = await lista();
+  assert.deepEqual([depois.referencias.length, depois.restantes30Dias], [antes.referencias.length, antes.restantes30Dias - 2]);
+  assert.ok(depois.referencias.every((r) => ['enviada', 'removida'].includes(r.status)));
 });

@@ -49,8 +49,9 @@
     ['tecnologia', 'Tecnologia e informática'], ['domesticos', 'Serviços domésticos e cuidado de pessoas'], ['outros', 'Outros comércios e serviços']]);
   var TURNOS_VAGA = lista([['manha', 'Manhã'], ['tarde', 'Tarde'], ['noite', 'Noite'], ['comercial', 'Horário comercial'], ['escala', 'Escala'],
     ['a_combinar', 'A combinar']]);
-  var EXPERIENCIAS_VAGA = lista([['nao_precisa', 'Não precisa de experiência'], ['ate_1', 'Até 1 ano'], ['1_a_3', 'De 1 a 3 anos'],
-    ['mais_3', 'Mais de 3 anos']]);
+  // CLT art. 442-A: no máximo 6 meses na função (os ids antigos ate_1, 1_a_3 e mais_3 viram 6_meses no lerAnuncio).
+  var EXPERIENCIAS_VAGA = lista([['nao_precisa', 'Não precisa de experiência'], ['ajuda', 'Ajuda ter, mas não é obrigatória'],
+    ['6_meses', 'Pelo menos 6 meses na função']]);
   var ESCOLARIDADES_VAGA = lista([['nao_exigida', 'Não exigida'], ['fundamental', 'Fundamental'], ['medio', 'Médio'], ['tecnico', 'Técnico'],
     ['superior', 'Superior']]);
   var REQUISITOS_VAGA = lista([['cnh_a', 'CNH categoria A'], ['cnh_b', 'CNH categoria B'], ['cnh_d', 'CNH categoria D'],
@@ -87,8 +88,8 @@
   var STATUS_REFERENCIA = lista([['pendente', 'Esperando o seu aceite'], ['aceita', 'Aparece no seu perfil'], ['ocultada', 'Oculta'],
     ['recusada', 'Recusada'], ['removida', 'Removida']]);
   // Para a EMPRESA ("Referências dadas"): o banco nunca devolve "ocultada" para ela (veto P2 da psicologia).
-  var STATUS_REFERENCIA_EMPRESA = lista([['pendente', 'Esperando a pessoa aceitar'], ['aceita', 'Aceita'], ['recusada', 'Não aceita'],
-    ['removida', 'Removida pela moderação']]);
+  // Veto P2: a empresa nunca sabe o que a pessoa fez com a referência (20261024120005).
+  var STATUS_REFERENCIA_EMPRESA = lista([['enviada', 'Enviada'], ['removida', 'Removida pela moderação']]);
   // Equipe da empresa (convite feito por quem é dono(a); migração 20261024120000_vagas_onda2). "vencido" = aberto e fora do prazo.
   var PAPEIS_EMPRESA = lista([['dono', 'Dono(a)'], ['recrutador', 'Recrutador(a)']]);
   var STATUS_CONVITE_EQUIPE = lista([['pendente', 'Esperando o aceite'], ['vencido', 'Venceu'], ['aceito', 'Aceito'], ['cancelado', 'Cancelado']]);
@@ -285,7 +286,7 @@
 
   function normalizarEmail(p) {
     var e = String(p == null ? '' : p).replace(/^\s+|\s+$/g, '').toLowerCase();
-    return e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : '';
+    return e.length <= 254 && /^[!-?A-~]+@[!-?A-~]+\.[!-?A-~]+$/.test(e) ? e : '';   // só ASCII visível, igual ao banco
   }
 
   // Igual a disc_interno.nome_valido: pelo menos 2 palavras com letra e no mínimo 5 letras.
@@ -523,6 +524,7 @@
     var turno = texto(d.turno);
     if (ids(TURNOS_VAGA).indexOf(turno) < 0) return falha('Escolha o turno da vaga.');
     var exp = texto(d.experiencia);
+    if (/^(ate_1|1_a_3|mais_3)$/.test(exp)) exp = '6_meses';
     if (ids(EXPERIENCIAS_VAGA).indexOf(exp) < 0) return falha('Escolha a experiência que a vaga pede.');
     var esc = texto(d.escolaridade).trim() || 'nao_exigida';
     if (ids(ESCOLARIDADES_VAGA).indexOf(esc) < 0) return falha('Escolaridade mínima inválida.');
