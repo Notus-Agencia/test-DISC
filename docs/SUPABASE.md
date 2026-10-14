@@ -393,6 +393,16 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
    `insert into vagas_interno.ajustes (chave, valor) values ('aviso_teto_diario', '200') on conflict (chave) do update set valor = excluded.valor, atualizado_em = now();`
    A tabela `vagas_interno.ajustes` guarda também um sal secreto gerado na migração (`sal_privado`): não apague nem copie
    essa linha (sem ela, as marcas de "saiu da lista" e os limites por e-mail recomeçam do zero).
+1e. **Pré-abertura, canal e lista de espera nova:**
+   [`20261024120004_vagas_pre_abertura.sql`](../supabase/migrations/20261024120004_vagas_pre_abertura.sql), depois da
+   20261024120003 (idempotente). Confira: `versao_banco()` com `versao: 20261024120004`. **Publique de novo a função
+   `vagas-conta`** (ação nova `lista_espera`). O que muda: na cidade em lista de espera a empresa já se cadastra e anuncia
+   (a vaga fica pronta e invisível e entra no ar no dia da abertura, com a validade contada dali); cada cidade pode ter o
+   canal de WhatsApp (só o link do canal); a lista de espera guarda de onde a pessoa veio (lista fechada), tem limites
+   separados para entrar e sair, por e-mail e por WhatsApp, e a isca `site`. Turnstile na lista: com a chave pública no site
+   e o `TURNSTILE_SECRET` na função, ligue no SQL Editor
+   `insert into vagas_interno.ajustes (chave, valor) values ('lista_espera_captcha', 'sim') on conflict (chave) do update set valor = excluded.valor, atualizado_em = now();`
+   (desligar: `delete from vagas_interno.ajustes where chave = 'lista_espera_captcha';`).
 2. **Função `vagas-conta`:** crie como no passo 8 (arquivo `dist/funcoes/vagas-conta/index.ts`) com **Verify JWT
    desligado** (o cadastro é feito por quem ainda não tem login; as ações que exigem login conferem o token sozinhas).
 3. **Segredos** (passo 9): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`, e os opcionais `VAGAS_EMAIL_REMETENTE` e
@@ -422,6 +432,7 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
 | Painel da praça, equipe da empresa ou WhatsApp da lista de espera: "O banco de dados ainda não tem o Vagas sem Caos…" | 20261024120000 não aplicada | item 1b |
 | Convite de equipe: "Ação desconhecida." | `vagas-conta` publicada antes da onda 2 | item 1b (publicar a função de novo) |
 | "Avisar por e-mail" (lista de espera): "Ação desconhecida." ou "O banco de dados ainda não tem…" | `vagas-conta` antiga ou 20261024120002 não aplicada | item 1c |
+| Lista de espera: "Confirme que você não é um robô…" para todo mundo | ajuste `lista_espera_captcha` ligado sem o site mandar o captcha | item 1e (desligar o ajuste ou pôr a chave do Turnstile no site) |
 | "Avisar por e-mail" para no meio com `tetoAtingido` | acabou a cota de 24 h do aviso (padrão 60) | continue no dia seguinte, ou aumente o ajuste `aviso_teto_diario` (item 1d) |
 | "O envio de e-mail ainda não está configurado…" | falta `RESEND_API_KEY` | item 3 |
 | Link do e-mail abre o DISC ou dá "link expirou" | Redirect URL ou `VAGAS_SITE_URL` faltando | itens 3 e 4; peça um link novo |

@@ -277,9 +277,10 @@
     { nome: '20261024120000_vagas_onda2', descricao: 'Vagas sem Caos: painel da praça (indicadores), equipe da empresa (convite por e-mail), WhatsApp na lista de espera e fuso da cidade' },
     { nome: '20261024120001_vagas_piloto_uruacu', descricao: 'Vagas sem Caos: praça piloto Uruaçu (GO) em lista de espera, com as zonas da operação' },
     { nome: '20261024120002_vagas_aviso_abertura', descricao: 'Vagas sem Caos: aviso de abertura da cidade para a lista de espera (e-mail em lotes, fila do WhatsApp para a equipe, retenção de 30 dias)' },
-    { nome: '20261024120003_vagas_aviso_reforco', descricao: 'Vagas sem Caos: reforço do aviso de abertura (e-mail só ASCII visível, fila que não trava, teto diário de e-mails, lote interrompido e marca com sal)' }
+    { nome: '20261024120003_vagas_aviso_reforco', descricao: 'Vagas sem Caos: reforço do aviso de abertura (e-mail só ASCII visível, fila que não trava, teto diário de e-mails, lote interrompido e marca com sal)' },
+    { nome: '20261024120004_vagas_pre_abertura', descricao: 'Vagas sem Caos: pré-abertura para empresas, canal de WhatsApp da cidade, origem e limites da lista de espera' }
   ];
-  var VERSAO_ATUAL = 20261024120003;
+  var VERSAO_ATUAL = 20261024120004;
   var MSG_PRIMEIRO_ACESSO = 'Com o Supabase não há chave de primeiro acesso: crie o seu usuário no painel do Supabase ' +
     '(Authentication > Users > Add user) e entre com esse e-mail e senha. O primeiro login vira administrador.';
   var MSG_REDEFINIR = 'Com o Supabase cada pessoa cria a própria senha nova pelo "Esqueci minha senha", na tela de entrada.';

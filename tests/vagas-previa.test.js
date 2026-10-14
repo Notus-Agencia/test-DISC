@@ -11,7 +11,8 @@ const API = require('../vagas/js/api.js');
 const R = require('../vagas/js/regras.js');
 
 const RAIZ = path.join(__dirname, '..');
-const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql', '20261024120003_vagas_aviso_reforco.sql']
+const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql', '20261024120003_vagas_aviso_reforco.sql',
+  '20261024120004_vagas_pre_abertura.sql']
   .map((f) => fs.readFileSync(path.join(RAIZ, 'supabase', 'migrations', f), 'utf8')).join('\n');
 const AGORA = Date.parse('2026-10-13T15:00:00Z');
 const DIA_MS = 86400000;
@@ -67,7 +68,7 @@ test('a prévia tem TODAS as RPCs públicas da migração (e as do contrato de v
   const doBanco = [...SQL.matchAll(/create or replace function public\.(vagas_[a-z_0-9]+)/g)].map((m) => m[1])
     .filter((f) => !['vagas_ids_minhas_empresas', 'vagas_ids_minhas_cidades', 'vagas_sou_pessoa', 'vagas_conta_limite', 'vagas_conta_consultar',
       'vagas_conta_registrar', 'vagas_conta_quem', 'vagas_conta_foto', 'vagas_conta_convite_equipe', 'vagas_conta_exclusao_conferir',
-      'vagas_conta_aviso_lote', 'vagas_conta_aviso_marcar', 'vagas_iniciar_tentativa'].includes(f));
+      'vagas_conta_aviso_lote', 'vagas_conta_aviso_marcar', 'vagas_conta_lista_espera', 'vagas_iniciar_tentativa'].includes(f));
   for (const f of doBanco) assert.ok(b.RPCS.includes(f), 'falta na prévia: ' + f);
   for (const def of Object.values(API.METODOS)) assert.ok(b.RPCS.includes(def.rpc), 'falta na prévia (api.js): ' + def.rpc);
   // Mensagens: cada erro da prévia existe igual no banco, na Edge Function ou no cliente (exceto o do selo, que é da 20261023).
@@ -482,7 +483,8 @@ test('painel da praça na prévia: 15 indicadores e 5 gatilhos do arquivo, só a
   const n = await ok(b.rpc('vagas_op_indicadores', { p_cidade: 'niquelandia-go' }));
   assert.equal(n.cidade.porte, null);
   assert.ok(n.indicadores.every((i) => i.alvo === null && i.cor === null));
-  assert.deepEqual(n.indicadores.find((i) => i.chave === 'lista_espera').detalhe, { pessoa: 1, empresa: 0, comWhatsapp: 1 });
+  assert.deepEqual(n.indicadores.find((i) => i.chave === 'lista_espera').detalhe, { pessoa: 1, empresa: 0, comWhatsapp: 1,
+    porOrigem: { radio: null, cartaz: null, grupo: null, canal: null, escola: null, mutirao: null, indicacao: null, outro: null, naoInformada: null } });
   assert.ok(n.gatilhos.filter((g) => g.chave !== 'trocar_parceiro' && g.chave !== 'pessoa_nao_paga').every((g) => g.aplica === false && g.atingido === null && g.partes.length === 0));
   await erro(b.rpc('vagas_op_indicadores', { p_cidade: 'nao-existe-go' }), 'Cidade não encontrada.');
 });
@@ -575,7 +577,7 @@ test('equipe da empresa na prévia: só a dona convida; resposta neutra; convite
 
 test('adaptador da prévia: convidarEquipe e os métodos de equipe e do painel passam pelo mesmo contrato', async () => {
   const api = API.criar({ modo: 'previa', backend: novo() });
-  assert.deepEqual(api.RECURSOS, { listaEsperaWhatsapp: true });
+  assert.deepEqual(api.RECURSOS, { listaEsperaWhatsapp: true, preAberturaEmpresas: true, origemListaEspera: true });
   for (const m of ['indicadores', 'equipeDaEmpresa', 'cancelarConvite', 'removerMembro', 'conviteEquipe', 'aceitarConviteEquipe', 'convidarEquipe', 'conviteDoEndereco']) {
     assert.equal(typeof api[m], 'function', m);
   }
@@ -800,4 +802,72 @@ test('2ª revisão de segurança na prévia: N2 (quem saiu não ganha WhatsApp n
   rita.confirmada = true;
   await ok(b.rpc('vagas_op_empresa_dono', { p_empresa: merc, p_email: 'recrutador@previa.com', p_motivo: 'pedido' }));
   assert.equal(st.membros.find((m) => m.userId === rita.id).papel, 'dono');
+});
+
+function cnpjCom(base12) {
+  const dv = (t, pesos) => { const r = t.split('').reduce((a, c, i) => a + (c.charCodeAt(0) - 48) * pesos[i], 0) % 11; return r < 2 ? 0 : 11 - r; };
+  const d1 = dv(base12, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return base12 + d1 + dv(base12 + d1, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+}
+test('pré-abertura, canal e origem na prévia (20261024120004): as três ligadas; vaga pronta e invisível até a cidade abrir', async () => {
+  let t = AGORA;
+  const b = PREVIA.criarBackend({ armazenamento: memoria(), agora: () => (t += 1000) });
+  const st = b.estado();
+  const api = API.criar({ modo: 'previa', backend: b });
+  assert.deepEqual(api.RECURSOS, { listaEsperaWhatsapp: true, preAberturaEmpresas: true, origemListaEspera: true });
+  const cidades = (await ok(b.rpc('vagas_cidades_publicas', {}))).cidades;
+  const niq = cidades.find((c) => c.slug === 'niquelandia-go');
+  const uru = cidades.find((c) => c.slug === 'uruacu-go');
+  assert.deepEqual([niq.preAbertura, niq.aceitaEmpresas, niq.canalWhatsapp], [true, true, null]);
+  assert.deepEqual([uru.preAbertura, uru.aceitaEmpresas, uru.canalWhatsapp], [false, true, null], 'Uruaçu sem canal na prévia');
+  // P1: a empresa se cadastra em Niquelândia (lista de espera), a equipe aprova, a vaga passa pela revisão e fica pronta.
+  await entrar(b, 'empresa@previa.com');
+  const emp = (await ok(b.rpc('vagas_empresa_cadastrar', { p_dados: { cnpj: cnpjCom('PVPREAB00001'), razaoSocial: 'Padaria Antecipada (prévia)', cidade: 'niquelandia-go' } }))).empresa;
+  await ok(b.conta.sair());
+  await entrar(b, 'admin@previa.com');
+  await ok(b.rpc('vagas_op_empresa_decidir', { p_empresa: emp.id, p_acao: 'aprovar', p_motivo: 'CNPJ conferido' }));
+  await ok(b.conta.sair());
+  await entrar(b, 'empresa@previa.com');
+  const dados = { empresaId: emp.id, area: 'atendimento', funcao: 'Atendente de padaria', modalidade: 'clt',
+    descricao: 'Atendimento no balcão, organização das vitrines e apoio no caixa. Escala 6x1 com folga no domingo.',
+    turno: 'comercial', experiencia: 'nao_precisa', escolaridade: 'medio', quantidade: 1, salarioDe: 162100, cidade: 'niquelandia-go' };
+  const an = (await ok(b.rpc('vagas_anuncio_salvar', { p_dados: dados }))).anuncio;
+  assert.equal((await ok(b.rpc('vagas_anuncio_publicar', { p_anuncio: an.id }))).emRevisao, true);
+  await ok(b.conta.sair());
+  await entrar(b, 'admin@previa.com');
+  await ok(b.rpc('vagas_op_anuncio_decidir', { p_anuncio: an.id, p_acao: 'publicar', p_motivo: '' }));
+  await ok(b.conta.sair());
+  await entrar(b, 'empresa@previa.com');
+  const minha = () => ok(b.rpc('vagas_anuncios_empresa', { p_empresa: emp.id })).then((r) => r.anuncios.find((x) => x.id === an.id));
+  const m1 = await minha();
+  assert.deepEqual([m1.status, m1.noAr, m1.aguardaAbertura, m1.avisoAbertura], ['publicado', false, true, 'Sua vaga entra no ar no dia em que Niquelândia abrir.']);
+  await erro(b.rpc('vagas_anuncio_publico', { p_codigo: m1.codigo }), 'Vaga não encontrada ou já encerrada.');
+  await erro(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'niquelandia-go' } }), R.MSG.CIDADE_FECHADA);
+  // A cidade abre: a vaga entra no ar com a validade contada da abertura.
+  st.anuncios.find((x) => x.id === an.id).expiraEm = t - 1;
+  await ok(b.conta.sair());
+  await entrar(b, 'admin@previa.com');
+  await ok(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: 'niquelandia-go', status: 'ativa' } }));
+  const aberta = st.cidades.find((c) => c.slug === 'niquelandia-go').abertaEm;
+  const crua = st.anuncios.find((x) => x.id === an.id);
+  assert.deepEqual([crua.publicadoEm, crua.expiraEm - aberta, crua.preAbertura], [aberta, crua.diasNoAr * 86400000, false]);
+  await ok(b.rpc('vagas_anuncio_publico', { p_codigo: m1.codigo }));
+  // P2: canal de WhatsApp pela equipe.
+  const CANAL = 'https://whatsapp.com/channel/0029VaTesteFicticio12345';
+  await erro(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: 'uruacu-go', canalWhatsapp: 'https://chat.whatsapp.com/AbCdEf1234567890' } }),
+    'Link do canal de WhatsApp inválido. Use o link do canal (https://whatsapp.com/channel/...).');
+  assert.equal((await ok(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: 'uruacu-go', canalWhatsapp: CANAL + '/' } }))).cidade.canalWhatsapp, CANAL);
+  assert.equal((await ok(b.rpc('vagas_adm_cidades', {}))).cidades.find((c) => c.slug === 'uruacu-go').canalWhatsapp, CANAL);
+  assert.equal((await ok(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: 'uruacu-go', canalWhatsapp: '' } }))).cidade.canalWhatsapp, null);
+  // P3: origem (a primeira fica; o resto vira null) e a isca.
+  await ok(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: 'nova-go', nome: 'Nova', uf: 'GO', status: 'lista_espera' } }));
+  const entra = (d) => ok(b.rpc('vagas_lista_espera_entrar', { p_dados: Object.assign({ cidade: 'nova-go' }, d) }));
+  const normal = await entra({ email: 'o1@exemplo.com', origem: 'RADIO' });
+  await entra({ email: 'o1@exemplo.com', origem: 'cartaz' });
+  await entra({ email: 'o2@exemplo.com', origem: 'facebook' });
+  const linha = (e) => st.listaEspera.find((l) => l.email === e);
+  assert.deepEqual([linha('o1@exemplo.com').origem, linha('o2@exemplo.com').origem], ['radio', null]);
+  const antes = st.listaEspera.length;
+  assert.deepEqual(await entra({ email: 'robo@exemplo.com', site: 'http://spam.example' }), normal);
+  assert.equal(st.listaEspera.length, antes);
 });

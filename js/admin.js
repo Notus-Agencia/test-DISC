@@ -1848,7 +1848,8 @@
     vagas_onda2: 'Vagas sem Caos: painel da praça e equipe da empresa (nada do DISC deixa de funcionar)',
     vagas_piloto_uruacu: 'Vagas sem Caos: praça piloto Uruaçu (nada do DISC deixa de funcionar)',
     vagas_aviso_abertura: 'Vagas sem Caos: aviso de abertura para a lista de espera (nada do DISC deixa de funcionar)',
-    vagas_aviso_reforco: 'Vagas sem Caos: reforço do aviso de abertura da lista de espera (nada do DISC deixa de funcionar)'
+    vagas_aviso_reforco: 'Vagas sem Caos: reforço do aviso de abertura da lista de espera (nada do DISC deixa de funcionar)',
+    vagas_pre_abertura: 'Vagas sem Caos: pré-abertura para empresas e lista de espera com origem e limites novos (nada do DISC deixa de funcionar)'
   };
   function impactoBanco(resp) {
     var falt = resp && Array.isArray(resp.faltando) ? resp.faltando.map(String) : [];

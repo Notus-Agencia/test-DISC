@@ -36,6 +36,10 @@
 //       só contagens {enviados, falhas, invalidos, restantes, aAvisarWhatsapp, terminou, travado, tetoAtingido}; nenhum
 //       e-mail da lista sai daqui. A tela chama de novo enquanto terminou, travado e tetoAtingido forem false.
 //       Migrações 20261024120002_vagas_aviso_abertura e 20261024120003_vagas_aviso_reforco.
+//   lista_espera (sem login) {cidade, email, perfil?, whatsapp?, origem?, site?, captcha} -> a lista de espera pelo Turnstile:
+//       a tela usa este caminho quando tem o "não sou robô" (TURNSTILE_SITE_KEY no site). Com TURNSTILE_SECRET, o captcha é
+//       conferido aqui e o banco grava com o limite maior por origem (mutirão, escola, Wi-Fi da praça); sem o segredo, vale o
+//       limite comum. Mesmas respostas da RPC pública vagas_lista_espera_entrar (20261024120004).
 // Link do e-mail: <VAGAS_SITE_URL>/entrar.html?token_hash=<hash>&type=invite|recovery (gerado com auth.admin.generateLink,
 // no domínio do site; o antivírus que "abre" o link antes da pessoa não o gasta, porque a tela só confere no clique). No convite
 // de equipe o link leva também &convite=<token> (ou só ?convite=<token> para quem já tem conta de empresa).
@@ -477,6 +481,21 @@ export async function acaoVagasAvisarListaEspera(base, corpo, origem, quem) {
     travado: enviados.length === 0 && falhas.length > 0, tetoAtingido: restantes > 0 && disponivel <= 0 };
 }
 
+/** Lista de espera com o Turnstile: confere o captcha (só com TURNSTILE_SECRET) e grava pelo banco
+ *  (vagas_conta_lista_espera), que aplica as mesmas regras da RPC pública com o limite maior por origem quando o captcha
+ *  foi conferido. Só os campos da lista seguem para o banco. */
+export async function acaoVagasListaEspera(base, corpo, origem) {
+  const dados = {};
+  ['cidade', 'email', 'perfil', 'whatsapp', 'origem', 'site'].forEach((k) => {
+    if (typeof corpo[k] === 'string') dados[k] = corpo[k].slice(0, 300);
+  });
+  const humano = !!String((base.env && base.env.TURNSTILE_SECRET) || '').trim();
+  if (humano && !(await conferirCaptchaVagas(base, corpo.captcha, origem.cf))) return erro(VAGAS_MSG_CAPTCHA, { captcha: true });
+  const r = await base.db.listaEspera(dados, origem.cf, origem.xff, humano);
+  if (!r || typeof r.ok !== 'boolean') return erro(MSG_ERRO_INTERNO);
+  return r;
+}
+
 /** URL assinada curta da foto: o banco decide se pode (vagas_conta_foto); aqui só se assina o caminho que ele devolver. */
 export async function acaoVagasFoto(base, corpo, origem, quem) {
   if (!quem) return erro('Sessão expirada. Entre de novo.', { sessaoExpirada: true });
@@ -513,7 +532,9 @@ export function criarBaseVagasConta(createClient, getEnv, extras) {
       exclusaoConferir: (userId) => rpc('vagas_conta_exclusao_conferir', { p_user: userId }),
       avisoLote: (userId, cidade, limite) => rpc('vagas_conta_aviso_lote', { p_user: userId, p_cidade: cidade, p_limite: limite }),
       avisoMarcar: (userId, cidade, enviados, falhas, invalidos) => rpc('vagas_conta_aviso_marcar', { p_user: userId, p_cidade: cidade,
-        p_enviados: enviados || [], p_falhas: falhas || [], p_invalidos: invalidos || [] })
+        p_enviados: enviados || [], p_falhas: falhas || [], p_invalidos: invalidos || [] }),
+      listaEspera: (dados, cf, xff, humano) => rpc('vagas_conta_lista_espera', { p_dados: dados || {}, p_cf: cf || '', p_xff: xff || '',
+        p_humano: !!humano })
     },
     storage: {
       async assinar(bucket, caminho, segundos) {
@@ -608,6 +629,7 @@ export async function atenderVagasConta(req, base) {
     else if (corpo.acao === 'foto') r = await acaoVagasFoto(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'convite_equipe') r = await acaoVagasConviteEquipe(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'avisar_lista_espera') r = await acaoVagasAvisarListaEspera(base, corpo, origem, await quemChamaVagas(base, req));
+    else if (corpo.acao === 'lista_espera') r = await acaoVagasListaEspera(base, corpo, origem);
     else r = erro('Ação desconhecida.');
     return vagasResponder(r, 200, cors);
   } catch (err) {

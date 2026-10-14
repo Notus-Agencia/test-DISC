@@ -328,11 +328,30 @@ pessoa, e a lista de espera é contato. Nenhuma tela recebe a lista de e-mails.
    envio é confirmado. Quem deixou também o WhatsApp sai quando a equipe marca "feito". Em todo caso, a lista inteira da
    cidade some 30 dias depois da abertura, avisada ou não (§7.1).
 
+### 6.8 Pré-abertura para empresas (20261024120004)
+
+Na cidade em **lista de espera** a empresa já entra antes de a cidade abrir, para que no dia da abertura haja vagas no ar:
+
+1. A empresa se cadastra (`cadastrarEmpresa`, ou a operação por ela: `opEmpresaCadastrar`); a operação confere o CNPJ
+   (`opEmpresaDecidir`) como em cidade aberta. Pessoa continua sem cadastro em cidade fechada.
+2. A empresa cria e publica vagas (`salvarAnuncio`, `publicarAnuncio`); as primeiras passam pela revisão da moderação
+   (`opAnuncioDecidir`), como sempre.
+3. A vaga aprovada fica **pronta e invisível**: nenhuma leitura pública a mostra (mural, feed, vaga pelo código, `/v/<código>`,
+   vista, contagens do painel), porque todas exigem cidade ativa (`vagas_interno.no_ar`), e ninguém se candidata (o Quero também
+   exige). A empresa vê a vaga com `aguardaAbertura:true` e o texto `avisoAbertura`: "Sua vaga entra no ar no dia em que
+   {cidade} abrir." (e `expirado:false`, mesmo que a data de validade antiga tenha passado).
+4. A validade não corre antes da abertura: a vaga publicada com a cidade fechada fica marcada (`vagas_anuncios.pre_abertura`).
+   Quando a cidade passa a `ativa`, na mesma transação, cada vaga marcada (publicada ou pausada) ganha `publicado_em` = abertura e
+   `expira_em` = abertura + a validade normal (`dias_no_ar`; diária: `prazo_horas`), e a marca sai. Abrir de novo (ou salvar
+   `ativa` outra vez) não estende nada.
+5. Para as telas: a cidade traz `preAbertura:true` (lista de espera) e `aceitaEmpresas:true` (ativa ou lista de espera) em
+   `vagas_cidades_publicas`; `VAGAS_API.RECURSOS.preAberturaEmpresas` diz que o banco já aceita.
+
 ## 7. Tabelas (resumo; detalhes e restrições na migração)
 
 | Tabela | Principais colunas |
 |---|---|
-| `vagas_cidades` | slug, nome, uf, ibge, fuso (padrão `America/Sao_Paulo`), status, porte `pequena|grande|null`, praca_id, meta_lista_espera, ordem, aberta_em (gatilho: quando passou a `ativa`; 20261024120002) |
+| `vagas_cidades` | slug, nome, uf, ibge, fuso (padrão `America/Sao_Paulo`), status, porte `pequena|grande|null`, praca_id, meta_lista_espera, ordem, aberta_em (gatilho: quando passou a `ativa`; 20261024120002), canal_whatsapp (só `https://whatsapp.com/channel/<id>`; 20261024120004) |
 | `vagas_zonas` | cidade_id, slug, nome, bairros[], ordem, ativa |
 | `vagas_areas` | slug, nome, ordem, ativa (24 áreas; leitura pública) |
 | `vagas_contas` | user_id (PK → auth.users), tipo `pessoa|empresa|operador`, status, termos_versao, termos_aceitos_em, assistida_por, assistida_cidade_id, codigo_evento, confirmada_em, ultimo_acesso_em |
@@ -342,14 +361,14 @@ pessoa, e a lista de espera é contato. Nenhuma tela recebe a lista de e-mails.
 | `vagas_experiencias` | user_id, funcao, empregador, inicio, fim, informal, ordem |
 | `vagas_empresas` | cnpj (14, alfanumérico), mei, razao_social, nome_fantasia, setor, descricao, whatsapp, email, cidade_id, zona_id, status, cnpj_conferido_em |
 | `vagas_empresa_membros` | empresa_id, user_id, papel `dono|recrutador`, ativo |
-| `vagas_anuncios` | codigo, empresa_id, cidade_id, zona_id, area, funcao, titulo (= funcao, gerada), modalidade, descricao (40–1500), turno, fim_de_semana, comissao, inicio + inicio_data, experiencia, escolaridade, requisitos[] + requisito_outro, selo, beneficios[], horas_dia (estágio), prazo_horas (diária), quantidade, valor_min/max_centavos, valor_unidade `mes|hora|dia|servico`, data_trabalho, hora_inicio/fim, dias_no_ar, confidencial, status, publicado_em, expira_em |
+| `vagas_anuncios` | codigo, empresa_id, cidade_id, zona_id, area, funcao, titulo (= funcao, gerada), modalidade, descricao (40–1500), turno, fim_de_semana, comissao, inicio + inicio_data, experiencia, escolaridade, requisitos[] + requisito_outro, selo, beneficios[], horas_dia (estágio), prazo_horas (diária), quantidade, valor_min/max_centavos, valor_unidade `mes|hora|dia|servico`, data_trabalho, hora_inicio/fim, dias_no_ar, confidencial, status, publicado_em, expira_em, pre_abertura (publicada com a cidade ainda fechada; 20261024120004) |
 | `vagas_anuncio_vistas` | anuncio_id, dia, total (só o número) |
 | `vagas_pulos` | pessoa_id, anuncio_id |
 | `vagas_candidaturas` | anuncio_id, pessoa_id, empresa_id, status, criado_em, empresa_decidiu_em, empresa_revelada_em, combinou_em, contratada_em, pessoa_decidiu_em, contato_cortado_em |
 | `vagas_conversas` / `vagas_mensagens` | uma conversa por candidatura; mensagens com autor `empresa|pessoa|sistema` (id gerado no aparelho) |
 | `vagas_denuncias` / `vagas_moderacao` | denúncias (alvo anuncio/mensagem/referencia) e registro de moderação (só inclusão; papel `empresa` para as ações de equipe) |
 | `vagas_operadores` | user_id, cidade_id, papel `operador|moderador`, ativo, repasse_percentual, contrato_versao |
-| `vagas_lista_espera` | cidade_id, email, perfil, whatsapp (`''` ou celular `55DD9XXXXXXXX`), whatsapp_em (quando foi dado); aviso de abertura (20261024120002): avisado_em (reserva do e-mail), whatsapp_avisado_em, sair_token_hash (sha256 do token do link "sair" do e-mail); reforço (20261024120003): aviso_enviado_em (envio confirmado), aviso_tentativas (falhas; 3 = desiste do e-mail; 99 = e-mail recusado), aviso_devolvido (o lote interrompido já voltou uma vez) |
+| `vagas_lista_espera` | cidade_id, email, perfil, whatsapp (`''` ou celular `55DD9XXXXXXXX`), whatsapp_em (quando foi dado); aviso de abertura (20261024120002): avisado_em (reserva do e-mail), whatsapp_avisado_em, sair_token_hash (sha256 do token do link "sair" do e-mail); reforço (20261024120003): aviso_enviado_em (envio confirmado), aviso_tentativas (falhas; 3 = desiste do e-mail; 99 = e-mail recusado), aviso_devolvido (o lote interrompido já voltou uma vez); origem (lista fechada ou null; 20261024120004) |
 | `vagas_equipe_convites` | empresa_id, email, papel `recrutador`, token_hash (sha256 do token; o token nunca fica no banco), status `aberto|aceito|cancelado`, criado_por, criado_em, expira_em (72 h), usado_por, usado_em, encerrado_em (sem acesso direto: só pelas RPCs) |
 | `vagas_acessos_contato` | candidatura, pessoa, empresa (nome guardado), anúncio (título guardado), quem abriu, quando |
 | `vagas_referencias` / `vagas_referencia_convites` / `vagas_referencia_historico` | referência profissional (§6.5) |
@@ -396,9 +415,12 @@ exemplo · erros (texto exato). Os erros de conta da §2 não são repetidos.
 ```json
 {"ok":true,"cidades":[{"id":"…","slug":"uruacu-go","nome":"Uruaçu","uf":"GO","status":"ativa","fuso":"America/Sao_Paulo",
   "praca":null,"zonas":[{"id":"…","slug":"centro","nome":"Centro","bairros":["Centro","Setor Central","…"]}],
-  "interessados":null,"metaListaEspera":null},
- {"slug":"outra-cidade-go","status":"lista_espera","praca":null,"zonas":[…],"interessados":10,"metaListaEspera":null}]}
+  "interessados":null,"metaListaEspera":null,"preAbertura":false,"aceitaEmpresas":true,"canalWhatsapp":null},
+ {"slug":"outra-cidade-go","status":"lista_espera","praca":null,"zonas":[…],"interessados":10,"metaListaEspera":null,
+  "preAbertura":true,"aceitaEmpresas":true,"canalWhatsapp":"https://whatsapp.com/channel/0029Va…"}]}
 ```
+`preAbertura`/`aceitaEmpresas` (20261024120004, §6.8): a empresa já se cadastra e anuncia na cidade em lista de espera.
+`canalWhatsapp` (20261024120004): o canal de WhatsApp da cidade (só `https://whatsapp.com/channel/<id>`) ou `null`.
 Sem erros. `interessados` é APROXIMADO: quem entrou até o dia anterior, arredondado para baixo em dezenas (0 nos primeiros
 dias) — a tela mostra "mais de 10 pessoas" ou esconde quando 0; nunca "N pessoas" exato.
 
@@ -450,7 +472,7 @@ A TELA chama quando uma pessoa abre a vaga (não chamar na prévia de link do Wh
 anúncio por dia; membro da própria empresa não conta. `{"ok":true,"contada":true}` · erro `Vaga não encontrada ou já
 encerrada.` (`naoEncontrada`).
 
-#### `vagas_lista_espera_entrar(p_dados)` — `VAGAS_API.listaEspera({cidade, email, perfil:'pessoa'|'empresa', whatsapp?})`
+#### `vagas_lista_espera_entrar(p_dados)` — `VAGAS_API.listaEspera({cidade, email, perfil:'pessoa'|'empresa', whatsapp?, origem?, site?, captcha?})`
 `{"ok":true,"cidade":"uruacu-go","interessados":10}` (repetir o e-mail não duplica; `interessados` aproximado como em
 `vagas_cidades_publicas` — a resposta não revela se o e-mail já estava na lista, nem se veio WhatsApp).
 `whatsapp` (20261024) é OPCIONAL: celular com DDD (`(62) 98888-1111`, `62988881111` ou `5562988881111`; guardado como
@@ -462,12 +484,25 @@ número dela. A marca da saída guarda só um hash do e-mail com o sal secreto d
 de limites. **E-mail aceito (20261024120003, A1):** só caracteres ASCII visíveis (`!` a `~`), o mesmo do `emailVagas` da Function
 e do `VAGAS_REGRAS.normalizarEmail`; espaço sem quebra, BOM, U+2028, espaço ideográfico, letra acentuada etc. dão `E-mail inválido.` A tela explica no campo para que serve
 ("só para avisar quando abrir"). Validação igual na tela: `VAGAS_REGRAS.lerListaEspera(d)`.
+**Origem (20261024120004, `RECURSOS.origemListaEspera`):** `origem` opcional, lista fechada: `radio`, `cartaz`, `grupo`, `canal`,
+`escola`, `mutirao`, `indicacao`, `outro` (a tela mostra os rótulos). Qualquer outra coisa vira `null`, nunca erro; a primeira
+origem gravada para o e-mail fica. Não se guarda URL, IP nem navegador. **Isca (honeypot):** o campo `site` fica escondido na
+tela; preenchido, a resposta é igual à de sucesso e nada é gravado (nem o e-mail é conferido).
+**Limites (20261024120004):** 30 por hora por origem (IP); 5 por hora por e-mail e 5 por hora por WhatsApp (chaves só com o
+hash com sal), exista ou não na lista — a resposta não revela quem está; sem o Turnstile, 1000 por hora no total.
+**Turnstile:** com `TURNSTILE_SITE_KEY` no site, a tela manda `captcha` e o `VAGAS_API.listaEspera` vai pela `vagas-conta`
+(ação `lista_espera`, §9), que confere o captcha (com `TURNSTILE_SECRET`) e grava com o limite de 300 por hora por origem
+(mutirão, escola, Wi-Fi da praça) e sem o teto total. Depois de o site mandar o captcha, ligue no SQL Editor
+`insert into vagas_interno.ajustes (chave, valor) values ('lista_espera_captcha', 'sim') on conflict (chave) do update set valor = excluded.valor, atualizado_em = now();`
+e a RPC pública passa a recusar com `Confirme que você não é um robô e tente de novo.` (`captcha`).
 Erros: `Cidade não encontrada.` · `Esta cidade já está aberta: faça o seu cadastro.` (`ativa`) · `E-mail inválido.` ·
 `WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).` ·
-`Muitas tentativas. Tente de novo mais tarde.` (`bloqueado`; 10 por hora por origem).
+`Muitas tentativas. Tente de novo mais tarde.` (`bloqueado`) · `Confirme que você não é um robô e tente de novo.` (`captcha`; só
+com o ajuste ligado).
 
 #### `vagas_lista_espera_sair(p_dados)` — `VAGAS_API.listaEsperaSair({cidade, email?, whatsapp?})`
-Sair da lista (LGPD; link "não quero mais receber" do aviso). Com `email`: apaga a linha (com o WhatsApp dela). Só com
+Sair da lista (LGPD; link "não quero mais receber" do aviso). Limite próprio, separado do entrar (20261024120004): 10 por hora
+por origem. Com `email`: apaga a linha (com o WhatsApp dela). Só com
 `whatsapp`: tira esse número de todas as linhas da cidade (o e-mail continua na lista). `{"ok":true,"cidade":"uruacu-go","removido":true}`
 sempre, exista ou não na lista. Erros: `Cidade não encontrada.` · `E-mail inválido.` (e-mail inválido, ou nem e-mail nem
 WhatsApp) · `WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).` · `Muitas tentativas…` (`bloqueado`).
@@ -619,6 +654,7 @@ Erros: `Candidatura não encontrada.` · `Seu contato não foi liberado para est
 
 #### `vagas_empresa_cadastrar(p_dados)` — `VAGAS_API.cadastrarEmpresa({cnpj, razaoSocial, nomeFantasia?, mei?, setor?, descricao?, whatsapp?, email?, cidade, zona?})`
 Nasce `em_analise`; quem cadastrou vira `dono`. CNPJ numérico ou alfanumérico (14), com dígitos verificadores; MEI é CNPJ.
+Cidade `ativa` ou em `lista_espera` (pré-abertura, §6.8; 20261024120004).
 `{"ok":true,"empresa":{"id","cnpj","cnpjFormatado","mei","razaoSocial","nomeFantasia","setor","descricao","whatsapp","email",
 "status":"em_analise","statusMotivo":"","cnpjConferidoEm":"","cidade":{…},"zona":{…}|null,"criadoEm","papel":"dono"}}`.
 Erros: `Esta conta já cadastrou o máximo de empresas. Fale com a Gestão sem Caos.` · `CNPJ inválido. Confira os números.` ·
@@ -684,7 +720,9 @@ idade, sexo, estado civil, filhos, religião, cor, nacionalidade, deficiência, 
 art. 373-A).`; mensagens completas em `VAGAS_REGRAS.mensagemTexto`) · `Dados inválidos. Confira os campos.`
 
 #### `vagas_anuncio_publicar(p_anuncio)` — `VAGAS_API.publicarAnuncio(id)`
-`{"ok":true,"anuncio":…,"emRevisao":true|false}` (já publicada/em revisão: `duplicado:true`).
+`{"ok":true,"anuncio":…,"emRevisao":true|false}` (já publicada/em revisão: `duplicado:true`). Cidade em lista de espera
+(20261024120004, §6.8): publica do mesmo jeito; a vaga fica com `aguardaAbertura:true`, `avisoAbertura:"Sua vaga entra no ar
+no dia em que {cidade} abrir."` e não está no ar até a abertura. Todo anúncio visto pela empresa traz esses dois campos.
 Erros: `Vaga não encontrada.` · `Esta vaga está fora do ar pela moderação.` · `Esta vaga já foi publicada. Use "Retomar" ou
 "Renovar".` · `Esta empresa está suspensa. Fale com a Gestão sem Caos.` · `Ainda não chegamos a esta cidade. Entre na lista
 de espera.` · `A data da diária já passou. Escolha outra data.`
@@ -939,7 +977,8 @@ alvoLancamentoPorTeste}; `vagas_3_interessados_72h` {base, comTres, janelaHoras}
 pequena); `vagas_combinou_7d` {base, comCombinou}; `primeira_resposta_empresa_dias` (mediana em dias; candidatura sem resposta
 há 7+ dias conta a espera) {base, semRespostaEm7DiasPct}; `contratacoes` (acumulado) {mes}; `denuncia_tempo_decisao_h` (mediana
 das últimas 30 decididas) {base, abertasMais24h}; `fila_moderacao` (parados há mais de 24 h) {anuncios, empresas, referencias};
-`lista_espera` {pessoa, empresa, comWhatsapp}; `cadastros_assistidos_confirmados` (no mês) {porMutirao:[{codigoEvento, criadas,
+`lista_espera` {pessoa, empresa, comWhatsapp, porOrigem:{radio, cartaz, grupo, canal, escola, mutirao, indicacao, outro,
+naoInformada}} (20261024120004; na cidade protegida, origem com menos de 3 sai `null` e o indicador traz `poucos:true`); `cadastros_assistidos_confirmados` (no mês) {porMutirao:[{codigoEvento, criadas,
 confirmadas, cor}]} (90 dias, até 20). `semBase:true` = sem vaga/candidatura no período (valor `null`). Gatilho: `aplica:false`
 quando a cidade não tem porte com alvo; `atingido` = `false` se alguma parte é `false`, `null` se falta conferir alguma
 (`manual:true` = decisão do dono/operação; `semDado:true`), `true` só com todas `true`.
@@ -950,9 +989,9 @@ para quem não é da equipe) · `Cidade não encontrada.` (só para a equipe).
 
 | RPC | Entrada | Resposta / erros |
 |---|---|---|
-| `vagas_adm_cidade_salvar(p_dados)` (`admCidadeSalvar`) | `{slug:'nova-cidade-uf', nome, uf, ibge, fuso?, status?, porte?, praca?, metaListaEspera?, ordem?}` (cria ou altera só o que vier; cidade nova sem `fuso` fica `America/Sao_Paulo`; `porte`: `pequena`, `grande` ou `''`/`null` para tirar — 20261024) | `{cidade}` (+ `porte`) · `Sem permissão.` · `Endereço da cidade inválido (ex.: nome-da-cidade-uf).` · `Status da cidade inválido.` · `Porte da cidade inválido (grande ou pequena).` · `Cidade-polo não encontrada.` · `Fuso horário inválido.` · `Dados da cidade inválidos. Confira nome, UF e IBGE.` |
+| `vagas_adm_cidade_salvar(p_dados)` (`admCidadeSalvar`) | `{slug:'nova-cidade-uf', nome, uf, ibge, fuso?, status?, porte?, praca?, metaListaEspera?, ordem?, canalWhatsapp?}` (cria ou altera só o que vier; cidade nova sem `fuso` fica `America/Sao_Paulo`; `porte`: `pequena`, `grande` ou `''`/`null` para tirar — 20261024; `canalWhatsapp`: `https://whatsapp.com/channel/<id>` ou `''`/`null` para tirar — 20261024120004; passar a `ativa` põe no ar as vagas da pré-abertura, §6.8) | `{cidade}` (+ `porte`) · `Sem permissão.` · `Endereço da cidade inválido (ex.: nome-da-cidade-uf).` · `Status da cidade inválido.` · `Porte da cidade inválido (grande ou pequena).` · `Cidade-polo não encontrada.` · `Fuso horário inválido.` · `Dados da cidade inválidos. Confira nome, UF e IBGE.` · `Link do canal de WhatsApp inválido. Use o link do canal (https://whatsapp.com/channel/...).` |
 | `vagas_adm_zona_salvar(p_dados)` (`admZonaSalvar`) | `{cidade, slug, nome, bairros[], ordem?, ativa?}` | `{zona:{id, slug, nome, bairros, ordem, ativa}}` · `Cidade não encontrada.` · `Sem permissão.` · `Endereço da zona inválido (ex.: zona-oeste).` · `Dados da zona inválidos. Confira o nome.` |
-| `vagas_adm_cidades()` (`admCidades`; 20261024) | — | `{cidades:[{id, slug, nome, uf, ibge, fuso, status, porte, praca, metaListaEspera, ordem, zonas:[{id, slug, nome, bairros, ordem, ativa}], operadoresAtivos}]}` — TODAS as cidades (inclusive `rascunho` e `pausada`) e todas as zonas (inclusive desligadas) · `Sem permissão.` |
+| `vagas_adm_cidades()` (`admCidades`; 20261024) | — | `{cidades:[{id, slug, nome, uf, ibge, fuso, status, porte, praca, metaListaEspera, ordem, canalWhatsapp, abertaEm (20261024120004), zonas:[{id, slug, nome, bairros, ordem, ativa}], operadoresAtivos}]}` — TODAS as cidades (inclusive `rascunho` e `pausada`) e todas as zonas (inclusive desligadas) · `Sem permissão.` |
 | `vagas_adm_operadores(p_filtro)` (`admOperadores`; 20261024) | `{cidade?}` | `{operadores:[{email, cidade:{slug, nome}, papel, ativo, repassePercentual, contratoVersao, contaStatus:'pendente'|'ativa'|'suspensa', contratoAceitoEm, criadoEm, ultimoAto:{acao, em}|null}]}` (`pendente` = ainda não confirmou o e-mail do convite; `contratoAceitoEm` = aceite do 1º acesso da conta de operação; `ultimoAto` = último registro dela na moderação daquela cidade) · `Sem permissão.` · `Cidade não encontrada.` |
 | `vagas_adm_aviso_resumo(p_cidade)` (`admAvisoResumo`; 20261024120002 e 20261024120003) | slug da cidade | `{cidade:{slug, nome, status, abertaEm, listaAte}, contagens:{naLista, aAvisarEmail, avisadosEmail, emEnvio, semEmail, aAvisarWhatsapp}, teto:{porDia, usados24h, disponivel, diasPrevistos}}` (`abertaEm`/`listaAte` `''` enquanto não abriu) · `Sem permissão.` · `Cidade não encontrada.` |
 | `vagas_adm_aviso_whatsapp(p_cidade)` (`admAvisoWhatsapp`; 20261024120002) | slug da cidade ATIVA | o próximo contato a avisar pelo WhatsApp, UM por vez (o mesmo até marcar): `{cidade:{slug, nome}, contato:{id, whatsapp:'5562988881111', perfil, texto, link:'https://wa.me/5562988881111?text=…'}|null, contagens}` · registro `aviso_whatsapp_ver` (sem o número) · `Sem permissão.` · `Cidade não encontrada.` · `A cidade ainda não está aberta. Abra a cidade antes de avisar a lista de espera.` |
@@ -990,7 +1029,10 @@ equipe.`
 lista de espera.` `vagas_conta_aviso_marcar(p_user, p_cidade, p_enviados, p_falhas, p_invalidos)` (20261024120003; a versão
 de 4 parâmetros continua, para a Function antiga): `p_enviados` ganham `aviso_enviado_em` (quem não espera o WhatsApp sai
 da lista); `p_falhas` voltam para o fim da fila (até a 3ª); `p_invalidos` não voltam (sem WhatsApp a avisar, a linha sai)
-→ `{ok, enviados, falhas, invalidos, contagens}`. Marcar de novo não conta duas vezes. Registros `aviso_email_lote` e
+→ `{ok, enviados, falhas, invalidos, contagens}`. Marcar de novo não conta duas vezes.
+`vagas_conta_lista_espera(p_dados, p_cf, p_xff, p_humano)` (20261024120004; ação `lista_espera`): as mesmas regras e respostas
+de `vagas_lista_espera_entrar`, com a origem vinda dos cabeçalhos do pedido original; `p_humano` (Turnstile conferido) sobe
+o limite por origem para 300 por hora e tira o teto total; ignora o ajuste `lista_espera_captcha`. Registros `aviso_email_lote` e
 `aviso_email` (só números).
 
 ## 9. Edge Function `vagas-conta`
@@ -1010,6 +1052,7 @@ operador pela aba "Vagas") e localhost. CORS não é a proteção: as ações co
 | `excluir` (`excluirConta()`, JWT) | `{confirmar:'EXCLUIR'}` | `{ok:true, excluida:true}` (apaga também a foto) · `Para excluir, digite EXCLUIR.` · `Esta conta também acessa o painel DISC. Fale com a Gestão sem Caos para excluir.` · `Conta não encontrada.` · `Você é a única pessoa dona de uma empresa que tem equipe. Antes de excluir a conta, torne outra pessoa da equipe dona (aba Equipe da empresa) ou remova a equipe.` (nada é apagado) |
 | `foto` (`fotoUrl(candidaturaId?)`, JWT) | `{candidatura?}` | `{ok:true, url:'<URL assinada de 5 min>', expiraEm}` · erros de `vagas_conta_foto` (§8.9) |
 | `avisar_lista_espera` (`avisarListaEspera(cidade, limite?)`, JWT da equipe; 20261024120002 e 20261024120003) | `{acao:'avisar_lista_espera', cidade, limite?}` (padrão 25, de 1 a 50) | um lote do aviso de abertura (§6.7): `{ok:true, cidade:{slug, nome}, enviados, falhas, invalidos, restantes, aAvisarWhatsapp, terminou, travado, tetoAtingido}` — só números, nunca um e-mail; a tela repete só enquanto `terminou`, `travado` e `tetoAtingido` forem `false` · `Sem permissão.` (operação e contas comuns) · `Cidade não encontrada.` · erros de `vagas_conta_aviso_lote` (§8.9) · `naoConfigurado` (sem `RESEND_API_KEY`, ninguém é reservado) |
+| `lista_espera` (`listaEspera({…, captcha})`, sem login; 20261024120004) | `{acao:'lista_espera', cidade, email, perfil?, whatsapp?, origem?, site?, captcha}` (só esses campos seguem para o banco, texto até 300) | a resposta de `vagas_lista_espera_entrar` (§8.1) · `Confirme que você não é um robô e tente de novo.` (`captcha`; só com `TURNSTILE_SECRET`) |
 | `convite_equipe` (`convidarEquipe(empresaId, email)`, JWT de quem é dono(a); 20261024) | `{acao:'convite_equipe', empresaId, email}` | sempre a MESMA resposta para qualquer e-mail (tenha conta ou não, de qualquer tipo): `{ok:true, enviado:true, mensagem:'Pronto. Se este e-mail puder entrar na equipe, a pessoa recebe o convite em instantes. O convite vale por 3 dias.', email:'n***@e***.com', convite:{id, email, papel, status:'pendente', criadoEm, expiraEm}}` · erros de `vagas_conta_convite_equipe` (§8.9; só `erro` e as marcas) · `Empresa não encontrada.` (id inválido) |
 
 Erros comuns: `E-mail inválido.` · `Escolha se a conta é para procurar emprego ou para uma empresa.` · `Para criar a conta,
@@ -1068,8 +1111,11 @@ VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
   `hoje(fuso?, agora?)` (sem fuso: `America/Sao_Paulo`), `somarDias`, `meses`). Onda 2: `lerListaEspera(d)`, `corIndicador(valor,
   alvo, direcao)`, `INDICADORES`, `GATILHOS`, `PORTES`, `CORES_INDICADOR`, `PAPEIS_EMPRESA`, `STATUS_CONVITE_EQUIPE`,
   `MSG.WHATSAPP_INVALIDO`, `MSG.CONVITE_INVALIDO`.
-- `VAGAS_API.RECURSOS` = `{listaEsperaWhatsapp: true}` (20261024): a lista da cidade liga o campo opcional de WhatsApp por
-  aqui. No modo supabase, publique o site só depois de aplicar a 20261024 (antes dela o banco ignoraria o número).
+- `VAGAS_API.RECURSOS` = `{listaEsperaWhatsapp: true, preAberturaEmpresas: true, origemListaEspera: true}`: a lista da cidade
+  liga o campo opcional de WhatsApp (20261024) e o campo de origem (20261024120004); as telas da empresa aceitam cidade em
+  lista de espera (pré-abertura, §6.8). No modo supabase, publique o site só depois de aplicar a migração de cada recurso
+  (antes dela o banco ignoraria o campo). Na prévia os três estão ligados; nenhuma cidade da prévia tem canal de WhatsApp
+  (`canalWhatsapp: null`).
 - Prévia: logins `pessoa@previa.com` (Ana Clara Ribeiro: currículo completo, conversa numa vaga confidencial, um Combinou,
   uma referência aceita e uma pendente, selo fictício `Q8V3-N2KD`), `empresa@previa.com` (Mercadinho Sol do Norte),
   `empresa6@previa.com` (Restaurante Sabor da Terra, que deu a referência), `recrutador@previa.com` (Rita Moraes,
@@ -1134,7 +1180,9 @@ VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
     pela fila da equipe (um por vez, link `wa.me`). Nenhuma RPC devolve a lista de e-mails para uma tela; a operação continua
     vendo só contagens (`opResumo.listaEspera` e o indicador `lista_espera.detalhe.comWhatsapp`). As páginas de divulgação
     (`emprego.html`, `empresas.html`) precisam tratar `?sair=<token>#sair` (chamar `listaEsperaSairLink(token)` e confirmar) e
-    `#sair` sem token (formulário com o e-mail, `listaEsperaSair`). Os textos `cidade-abriu.html` e
+    `#sair` sem token (formulário com o e-mail, `listaEsperaSair`); no cadastro, o campo `origem` (lista fechada, §8.1), a isca
+    `site` escondida e, com `TURNSTILE_SITE_KEY`, o `captcha`. As telas da empresa mostram `avisoAbertura` na vaga que aguarda a
+    abertura; a lista da cidade mostra `canalWhatsapp` quando houver. Os textos `cidade-abriu.html` e
     `lista_espera_cidade_abriu` (whatsapp.json) estão marcados para revisão da psicologia/jurídico.
   - **Indicadores aproximados:** "primeira resposta" usa `empresa_decidiu_em` (a ÚLTIMA decisão da empresa) ou a abertura da
     conversa, o que vier antes; vaga renovada conta pela `publicado_em` atual; pessoas com selo contam por `vagas_pessoas.cidade_id`
@@ -1179,6 +1227,9 @@ VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
    `vagas-conta` (ação `avisar_lista_espera`) e agendar no `pg_cron` `select vagas_interno.lista_espera_limpar();` uma vez por dia.
 7c. ANTES do primeiro aviso real: aplicar `20261024120003_vagas_aviso_reforco.sql` e publicar de novo a `vagas-conta`
    (e-mail só ASCII visível, `invalidos`, `travado`, `tetoAtingido`). Teto do aviso: 60 por dia (ajuste `aviso_teto_diario`).
+7d. Aplicar `20261024120004_vagas_pre_abertura.sql` (depois da 20261024120003; idempotente) e publicar de novo a `vagas-conta`
+   (ação `lista_espera`). Canal de WhatsApp de Uruaçu, quando existir: `admCidadeSalvar({slug:'uruacu-go', canalWhatsapp:'https://whatsapp.com/channel/…'})`.
+   Turnstile na lista de espera: chave no site, `TURNSTILE_SECRET` na função e o ajuste `lista_espera_captcha` (§8.1).
 8. Abrir a praça piloto quando for a hora: `admCidadeSalvar({slug:'uruacu-go', status:'ativa'})` (nasce em `lista_espera`).
    Depois, avisar a lista de espera (§6.7): "Avisar por e-mail" até terminar e a fila do WhatsApp, em até 30 dias.
    Bairros das zonas `regiao-leste` e `regiao-oeste` com a operação (`admZonaSalvar`).

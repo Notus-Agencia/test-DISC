@@ -80,6 +80,10 @@ function preparar(op) {
       return { ok: true, cidade: { slug: cidade, nome: 'Uruaçu' }, lote: lote.map((l) => ({ id: l.id, email: l.email, perfil: l.perfil, sairToken: l.token })),
         contagens: contagensAviso(cidade), teto: { porDia: teto, usados24h: usadosAviso.n, disponivel: Math.max(teto - usadosAviso.n, 0) + lote.length } };
     },
+    async listaEspera(dados, cf, xff, humano) {
+      listas.push({ dados, cf, xff, humano });
+      return op.listaEspera ? op.listaEspera(dados) : { ok: true, cidade: dados.cidade, interessados: 10 };
+    },
     async avisoMarcar(userId, cidade, enviadosIds, falhasIds, invalidosIds) {
       avisos.push({ marcar: [userId, cidade, enviadosIds, falhasIds, invalidosIds] });
       if (op.avisoMarcarFalha) return { ok: false, erro: 'Sem permissão.' };
@@ -90,6 +94,7 @@ function preparar(op) {
   };
   const lista = (op.lista || []).map((l) => Object.assign({ cidade: 'uruacu-go', perfil: 'pessoa' }, l));
   const avisos = [];
+  const listas = [];
   const usadosAviso = { n: 0 };
   function contagensAviso(cidade) {
     const ls = lista.filter((l) => l.cidade === cidade);
@@ -139,7 +144,7 @@ function preparar(op) {
   const pausas = [];
   const base = { env, fetch, db, auth, storage, aleatorio: () => 'senha-aleatoria-' + (n + 1), esperar: async (ms) => { pausas.push(ms); } };
   return { base, usuarios, contas, operadores, links, enviados, captchas, chamadasLimite, excluidos, fotosPedidas, assinadas, removidos, apps, convites,
-    lista, avisos, pausas };
+    lista, avisos, pausas, listas };
 }
 
 async function chamar(base, corpo, op) {
@@ -518,9 +523,11 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
   await b.db.exclusaoConferir('u1');
   await b.db.avisoLote('u1', 'uruacu-go', 25);
   await b.db.avisoMarcar('u1', 'uruacu-go', [EMPRESA], [], [ID(9)]);
+  await b.db.listaEspera({ cidade: 'uruacu-go', email: 'a@b.com' }, '1.2.3.4', '', true);
   assert.deepEqual(chamadas.map((c) => c[0] === 'rpc' ? c[1] : c[0]), ['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar',
     'vagas_conta_quem', 'createUser', 'generateLink', 'deleteUser', 'vagas_conta_foto', 'assinar', 'remover', 'vagas_conta_convite_equipe',
-    'vagas_conta_exclusao_conferir', 'vagas_conta_aviso_lote', 'vagas_conta_aviso_marcar']);
+    'vagas_conta_exclusao_conferir', 'vagas_conta_aviso_lote', 'vagas_conta_aviso_marcar', 'vagas_conta_lista_espera']);
+  assert.deepEqual(chamadas[14][2], { p_dados: { cidade: 'uruacu-go', email: 'a@b.com' }, p_cf: '1.2.3.4', p_xff: '', p_humano: true });
   assert.deepEqual(chamadas[12][2], { p_user: 'u1', p_cidade: 'uruacu-go', p_limite: 25 });
   assert.deepEqual(chamadas[13][2], { p_user: 'u1', p_cidade: 'uruacu-go', p_enviados: [EMPRESA], p_falhas: [], p_invalidos: [ID(9)] });
   assert.deepEqual(chamadas[11][2], { p_user: 'u1' });
@@ -689,3 +696,30 @@ test('avisar_lista_espera (3ª revisão): e-mail com caractere invisível não t
   assert.deepEqual((await pt()).json, RESP(0, 0, 2, 0, { tetoAtingido: true }));
   assert.equal(t.enviados.length, 3);
 });
+
+test('lista_espera (Turnstile): sem login; só os campos da lista vão ao banco; captcha conferido só com TURNSTILE_SECRET; resposta do banco', async () => {
+  const corpo = { acao: 'lista_espera', cidade: 'niquelandia-go', email: 'ana@exemplo.com', perfil: 'pessoa', whatsapp: '62 99999-0000',
+    origem: 'radio', site: '', captcha: 'captcha-bom', extra: 'x', userId: 'outro', email2: 'b@b.com' };
+  // Sem TURNSTILE_SECRET: grava com o limite comum (humano false), sem chamar o Cloudflare.
+  const w = preparar();
+  assert.deepEqual((await chamar(w.base, corpo)).json, { ok: true, cidade: 'niquelandia-go', interessados: 10 });
+  assert.deepEqual(w.listas, [{ dados: { cidade: 'niquelandia-go', email: 'ana@exemplo.com', perfil: 'pessoa', whatsapp: '62 99999-0000', origem: 'radio', site: '' },
+    cf: '', xff: '203.0.113.9, 10.0.0.1', humano: false }]);
+  assert.equal(w.captchas.length, 0);
+  // Campo que não é texto não vai; texto longo vai cortado.
+  await chamar(w.base, { acao: 'lista_espera', cidade: 'x', email: { $gt: '' }, origem: 'a'.repeat(1000), site: 1 });
+  assert.deepEqual(w.listas[1].dados, { cidade: 'x', origem: 'a'.repeat(300) });
+  // Com o segredo: captcha errado não chega ao banco; certo grava com o limite maior.
+  const t = preparar({ env: { TURNSTILE_SECRET: 'segredo' } });
+  assert.deepEqual((await chamar(t.base, Object.assign({}, corpo, { captcha: 'ruim' }))).json, { ok: false, erro: VAGAS_MSG_CAPTCHA, captcha: true });
+  assert.deepEqual((await chamar(t.base, Object.assign({}, corpo, { captcha: undefined }))).json, { ok: false, erro: VAGAS_MSG_CAPTCHA, captcha: true });
+  assert.equal(t.listas.length, 0);
+  ok(await chamar(t.base, corpo).then((r) => r.json));
+  assert.equal(t.listas[0].humano, true);
+  // A resposta do banco volta como veio (erro com as marcas); nada do banco: erro genérico.
+  const e = preparar({ listaEspera: () => ({ ok: false, erro: 'Muitas tentativas. Tente de novo mais tarde.', bloqueado: true }) });
+  assert.deepEqual((await chamar(e.base, corpo)).json, { ok: false, erro: 'Muitas tentativas. Tente de novo mais tarde.', bloqueado: true });
+  const n = preparar({ listaEspera: () => null });
+  assert.deepEqual((await chamar(n.base, corpo)).json, { ok: false, erro: 'Erro interno no servidor. Tente novamente em instantes.' });
+});
+function ok(r) { assert.equal(r.ok, true, r && r.erro); return r; }
