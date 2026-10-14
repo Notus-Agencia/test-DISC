@@ -1,0 +1,46 @@
+/*
+ * Vagas sem Caos — ajustes das telas de testes (testes.html) e da conferência do selo (selo.html). Só espaçamento e disposição
+ * por cima das peças da casca (vagas.css, seção 17 "Prova e testes"); nenhuma cor, fonte ou componente novo: só tokens do
+ * notus.css. Os mockups aprovados usavam style="margin-top:…" nos mesmos lugares (a CSP bloqueia o atributo style).
+ */
+
+/* Avisos e textos depois de listas e peças: o respiro dos mockups */
+#vg-testes-aviso, #vg-testes-entrar-aviso, #vg-instrucoes-sozinho, #vg-instrucoes-aguardar, #vg-instrucoes-erro,
+#vg-resultado-limites, #vg-conferir-aviso { margin-top: 16px; }
+#vg-testes-entrar-aviso .acoes { margin-top: 10px; }
+/* "O teste é opcional…" (diretriz da psicologia): em toda tela de testes */
+#vg-testes-opcional, #vg-testes-vagas-opcional { margin-top: 12px; }
+#vg-instrucoes-opcional, #vg-resultado-opcional { margin-top: 10px; }
+#vg-prova-opcional { margin-top: 12px; text-align: center; }
+#vg-conferir-empresa, #vg-conferir-emitido, #vg-selo-conferir { margin-top: 10px; }
+
+/* Instruções: as linhas com ícone, sem as divisórias da lista de itens */
+#vg-instrucoes-lista { margin-top: 12px; }
+#vg-instrucoes-lista .vg-item { align-items: flex-start; border-top: 0; padding: 6px 0; color: var(--medio); }
+#vg-instrucoes-lista .vg-item .icone { margin-top: 3px; color: var(--tinta); }
+
+/* Prova: "Encerrar o teste" discreto, embaixo das alternativas */
+#vg-prova .acoes { margin-top: 12px; justify-content: center; }
+#vg-prova-encerrar { color: var(--suave); }
+.barra-vazio { display: block; }
+
+/* Resultado: selo, nota e as barras de cada parte */
+.vg-resultado__selo { margin-top: 20px; }
+#vg-resultado-nota { margin-top: 16px; display: grid; gap: 4px; }
+#vg-resultado-refazer { margin-top: 6px; }
+.vg-resultado__partes-titulo { margin: 20px 0 10px; }
+#vg-resultado-partes { gap: 12px; }
+#vg-resultado-partes .vg-prova__barra { margin-top: 4px; }
+#vg-resultado-estudar { margin-top: 12px; color: var(--tinta); }
+
+/* Catálogo: botão do item sem quebrar o nome em telas estreitas */
+.vg-teste__acao.botao { white-space: nowrap; }
+.vg-teste__nome .vg-etiqueta { vertical-align: 2px; }
+
+/* Vagas que pedem o selo */
+#vg-testes-vagas { margin-top: 16px; }
+
+/* Conferência do selo */
+#vg-conferir-resultado { margin-top: 20px; display: grid; gap: 12px; }
+#vg-conferir-resultado:empty { display: none; }
+#vg-conferir-codigo { letter-spacing: .08em; text-transform: uppercase; }

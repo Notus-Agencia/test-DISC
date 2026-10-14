@@ -10,7 +10,8 @@
  *   avisar(texto, {tipo:'ok'|'erro', acao:{rotulo, aoClicar}, ms:4000})  -> #vg-aviso-geral        anunciar(texto) -> #aviso
  *   carregando(raiz, texto?) · esqueletos(raiz, n) · vazio(raiz, {titulo?, texto, botao?:{rotulo, href|aoClicar, id}, botao2?})
  *   erroCarregar(raiz, {texto?, aoTentar}) · faixa({id, texto, forte?, tipo?:'offline', acao?}) · tirarFaixa(id)
- *   faixaOffline(ligar, {texto?, aoTentar?}) · aoVoltarInternet(fn) · somenteLeitura(mensagem)
+ *   faixaOffline(ligar, {texto?, aoTentar?}) (sai sozinha quando a internet volta ou o servidor responde) ·
+ *   aoVoltarInternet(fn) -> tirar() (tira o ouvinte) · somenteLeitura(mensagem) · faixaPrevia() (no modo prévia, uma faixa por tela)
  *   tratarErro(e, {raiz?, aoTentar?}) -> 'sessao'|'confirmar'|'suspensa'|'banco'|'conexao'|'erro' (o padrão do contrato)
  *   irParaEntrar({motivo?, voltar?}) · linkEntrar(voltar, extra?) · paginaAtual() · voltarValido(v, padrao) · parametro(nome)
  *   focarTitulo(raiz) · folha({id, titulo, corpo, barra?, acaoCabecalho?, aoFechar}) · janela({id, titulo, corpo, acoes, aoFechar})
@@ -207,7 +208,19 @@
     if (!ligar) { tirarFaixa('vg-faixa-offline'); return null; }
     return faixa({ id: 'vg-faixa-offline', tipo: 'offline', forte: MSG.OFFLINE, texto: op.texto || MSG.OFFLINE_TEXTO, acao: op.aoTentar ? { rotulo: MSG.TENTAR, aoClicar: op.aoTentar, id: 'vg-offline-tentar' } : null });
   }
-  function aoVoltarInternet(fn) { if (root.addEventListener) root.addEventListener('online', fn); }
+  function aoVoltarInternet(fn) {
+    if (!root.addEventListener) return function () {};
+    root.addEventListener('online', fn);
+    return function () { root.removeEventListener('online', fn); };
+  }
+  // Prévia (dados de mentira): uma faixa no alto de toda tela; a dos testes (#vg-faixa-demo) entra dentro dela.
+  function faixaPrevia() {
+    var A = root.VAGAS_API;
+    if (!doc || !doc.body || !A || A.modo !== 'previa' || porId('vg-faixa-previa')) return null;
+    var pular = doc.querySelector('.pular');
+    return doc.body.insertBefore(el('div', { class: 'faixa-demo', id: 'vg-faixa-previa', role: 'note' }, [el('strong', {}, 'Prévia:'),
+      ' dados de exemplo, nada aqui é real. Não use sua senha de verdade.']), pular ? pular.nextSibling : doc.body.firstChild);
+  }
 
   // ------------------------------------------------------------------------------------------------- navegação e ?voltar=
   var RE_VOLTAR = /^[a-z0-9-]+\.html([?#][^\s]*)?$/;
@@ -383,13 +396,12 @@
         icone(d[2]), d[1], n > 0 ? el('span', { class: 'vg-nav__n', 'aria-label': n + (n === 1 ? ' novidade' : ' novidades') }, String(n > 9 ? '9+' : n)) : null]);
     }));
   }
-  // Topo da pessoa: logo | "Vagas sem Caos" | pílula da cidade (nome sempre vindo do dado, nunca fixo).
+  // Topo da pessoa: logo do Vagas sem Caos (o nome já está no logo) | pílula da cidade (nome sempre vindo do dado, nunca fixo).
   function topo(op) {
     op = op || {};
     var alvo = porId('vg-topo');
     var interno = el('div', { class: 'topo-interno' }, [
-      el('a', { href: 'index.html', class: 'vg-topo__marca', 'aria-label': 'Vagas sem Caos, início' }, el('img', { class: 'logo-gsc topo-logo', src: 'comum/marca/gsc-logo.svg', alt: 'Gestão sem Caos', width: '171', height: '24' })),
-      el('span', { class: 'topo-nome' }, 'Vagas sem Caos'),
+      el('a', { href: 'index.html', class: 'vg-topo__marca', 'aria-label': 'Vagas sem Caos, início' }, el('img', { class: 'logo-gsc topo-logo', src: 'comum/marca/vsc-logo.svg', alt: 'Vagas sem Caos', width: '160', height: '24' })),
       op.cidade ? el('button', { type: 'button', class: 'vg-cidade', id: 'vg-cidade', 'aria-haspopup': 'dialog', 'aria-label': 'Cidade: ' + op.cidade.nome + '. Trocar a cidade', onclick: op.aoCidade },
         [icone('pin'), el('span', { class: 'vg-cidade__nome' }, op.cidade.nome)]) : null
     ]);
@@ -555,7 +567,7 @@
   var VAGAS_UI = {
     el: el, icone: icone, limpar: limpar, trocar: trocar, acrescentar: acrescentar, t: t,
     avisar: avisar, anunciar: anunciar, carregando: carregando, esqueletos: esqueletos, vazio: vazio, erroCarregar: erroCarregar,
-    faixa: faixa, tirarFaixa: tirarFaixa, faixaOffline: faixaOffline, aoVoltarInternet: aoVoltarInternet, somenteLeitura: somenteLeitura,
+    faixa: faixa, tirarFaixa: tirarFaixa, faixaOffline: faixaOffline, aoVoltarInternet: aoVoltarInternet, somenteLeitura: somenteLeitura, faixaPrevia: faixaPrevia,
     tratarErro: tratarErro, irParaEntrar: irParaEntrar, linkEntrar: linkEntrar, paginaAtual: paginaAtual, voltarValido: voltarValido, parametro: parametro,
     focarTitulo: focarTitulo, folha: folha, janela: janela, confirmar: confirmar,
     barra: barra, fixar: fixar, navPessoa: navPessoa, topo: topo,
@@ -566,6 +578,11 @@
     MSG: MSG, FUSO_RESERVA: FUSO_RESERVA, RE_VOLTAR: RE_VOLTAR,
     _api: api   // testes trocam _api.navegar para não sair da página
   };
-  if (typeof module !== 'undefined' && module.exports) module.exports = VAGAS_UI;
-  else root.VAGAS_UI = VAGAS_UI;
+  if (typeof module !== 'undefined' && module.exports) { module.exports = VAGAS_UI; return; }
+  root.VAGAS_UI = VAGAS_UI;
+  // A faixa "Sem internet" sai sozinha quando a conexão volta ou quando o servidor responde de novo.
+  var semFaixaOffline = function () { tirarFaixa('vg-faixa-offline'); };
+  aoVoltarInternet(semFaixaOffline);
+  if (root.VAGAS_API && root.VAGAS_API.aoResponder) root.VAGAS_API.aoResponder(semFaixaOffline);
+  faixaPrevia();
 })(typeof self !== 'undefined' ? self : this);

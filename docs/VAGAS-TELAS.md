@@ -8,8 +8,13 @@ referência profissional) e `docs/IDENTIDADE-VISUAL.md`. Mockups estáticos (HTM
 
 Regras que valem para TODAS as telas (não repetidas em cada uma):
 
-- **Marca:** "Vagas sem Caos" por inteiro; rodapé "uma ferramenta da Gestão sem Caos". Logo oficial `assets/marca/gsc-logo.svg`
-  (claro), `gsc-logo-preto.svg` (moldura laranja), `gsc-logo-negativo.svg` (azul-escuro). Nunca "Notus", nunca a estrela.
+- **Marca:** o Vagas sem Caos tem marca própria. **Topo** de toda tela: só o logo do Vagas sem Caos (`vsc-logo.svg` no claro,
+  `vsc-logo-preto.svg` na moldura laranja, `vsc-logo-negativo.svg` no azul-escuro; `alt="Vagas sem Caos"`, 24 px no topo, nunca
+  abaixo de 20 px), sem o nome escrito ao lado (o nome já está no logo). A Gestão sem Caos aparece só como **endosso**, no rodapé:
+  "Uma empresa do grupo" + `gsc-logo.svg` a 20 px (`.vg-grupo`); na lista pública (`cidade.html`, limite de peso) o endosso é só
+  texto, "Uma empresa do grupo Gestão sem Caos". Em frase: "uma empresa do grupo Gestão sem Caos" (nunca "uma ferramenta da
+  Gestão sem Caos"). Textos legais continuam com a Gestão sem Caos como responsável e controladora. Regras e arquivos:
+  `docs/IDENTIDADE-VISUAL.md`, "Logo (Vagas sem Caos)". Nunca "Notus", nunca a estrela.
 - **Palavras proibidas em tela:** "Tinder", "swipe", "match", "aprovado/reprovado" (no selo e na prova), "perfil ideal",
   "compatibilidade", "o teste prevê", "currículo verificado", "ranking", "DISC" (fora da tela "contratada" da empresa).
   O nome público do interesse mútuo é **Combinou**. A pessoa usa **Quero** / **Pular**; a empresa **Quero conversar** / **Agora não**.
@@ -31,8 +36,10 @@ Regras que valem para TODAS as telas (não repetidas em cada uma):
   `max-width: 720px`. Barra fixa inferior (`.barra-nav`, do teste) para a ação principal e `.vg-nav` (4 destinos) quando a pessoa
   está logada; nunca as duas na mesma tela.
 - **Computador (empresa, operador, painel):** 1280 px de referência, menu lateral igual ao de `admin.html` (`.menu-lateral`,
-  `.aba`, grupos), cabeçalho `.cabecalho` + `.resumo`, tabelas `.vg-tabela`. Abaixo de 900 px o menu some e vira o botão "Menu"
-  (gaveta, como no painel): precisa funcionar para a empresa pequena no celular, sem prioridade.
+  `.aba`, grupos; no alto, o logo do Vagas sem Caos a 22 px + o nome da área, "Painel da empresa" ou "Operação da praça"),
+  cabeçalho `.cabecalho` + `.resumo`, tabelas `.vg-tabela`. Abaixo de 900 px o menu some e vira o botão "Menu" ao lado do logo
+  no topo (gaveta, como no painel): precisa funcionar para a empresa pequena no celular, sem prioridade. O painel da Gestão sem
+  Caos (`admin.html`, inclusive a aba Vagas) continua com o logo da Gestão sem Caos.
 - **Estados padrão (todas as telas com dado remoto):** `carregando` (`.giro` + "Carregando…"), `vazio` (`.vazio` com uma frase
   e um botão), `erro` (`.aviso--erro` com "Não deu para carregar. Tentar de novo."), `offline` (`.vg-faixa--offline` + último
   conteúdo em cache do aparelho), `sessaoExpirada` (flag das RPCs → volta para `entrar.html` com `?voltar=`), `confirmar`
@@ -77,7 +84,7 @@ Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `v
 ### 2.1 Início da cidade (`cidade.html`) — mockup `pessoa-inicio.png`
 - **Objetivo:** ver as vagas de hoje da cidade e filtrar em 1 toque; entender que é grátis e seguro.
 - **Quem/estado:** anônimo ou logado (logado ganha `.vg-nav`). Cidade lembrada em `localStorage` (`vg.cidade`), sem GPS.
-- **Elementos:** `topo` (logo, "Vagas sem Caos", `#vg-cidade` → janela `#vg-janela-cidade` com a lista de `vagas_cidades_publicas()`:
+- **Elementos:** `topo` (logo do Vagas sem Caos, `#vg-cidade` → janela `#vg-janela-cidade` com a lista de `vagas_cidades_publicas()`:
   ativas clicáveis, lista de espera com "Avise-me", pausadas com etiqueta); `.sobretitulo` com o nome da cidade vindo do banco (e "e região" só se houver entorno); `h1#vg-titulo`
   "Vagas de hoje"; subtítulo "Empresas daqui, conferidas uma a uma. Candidatar-se é grátis, sempre."; busca `#vg-busca`
   (`type="search"`, placeholder "Buscar por função (ex.: caixa, vendedor)", envia ao parar de digitar 400 ms; busca no título da
@@ -86,7 +93,8 @@ Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `v
   2.1a) + `#vg-filtros-ativos` (chips roláveis do que está ativo, cada um com "✕" e `data-filtro`/`data-valor` para tirar em 1 toque:
   "Vendas em loja ✕", "Caixa ✕", "Comercial ✕", "a partir de R$ 1.600 ✕"); `#vg-contagem` ("12 vagas nas suas áreas" ou "37 vagas em
   <cidade>" + `#vg-limpar-filtros`); `ul#vg-lista` de `.vg-vaga` (com o nome da área na linha de meta); `#vg-mais` "Ver mais N vagas";
-  nota "Você recebe aviso por e-mail quando entra vaga nova em <áreas> · Mudar minhas áreas"; `#vg-aviso-golpe`; rodapé.
+  nota "Você recebe aviso por e-mail quando entra vaga nova em <áreas> · Mudar minhas áreas"; `#vg-aviso-golpe`; rodapé ("Uma empresa
+  do grupo Gestão sem Caos", só texto, · Termos · Privacidade).
 - **Padrão ao abrir:** pessoa logada com áreas no currículo → a lista já abre filtrada nas suas áreas (até 3) e o aviso de vaga nova
   por e-mail segue as mesmas áreas; anônimo → sem filtro, cidade lembrada. Filtros ficam salvos no aparelho (`vg.filtros.<cidade>`) e na
   URL (`?areas=vendas-loja,caixa&turno=comercial&salarioMin=160000`) para compartilhar e voltar.
@@ -150,7 +158,7 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   (faixa salarial ou "R$ 120 por dia"), `dl#vg-vaga-dados` (Onde, Horário, Começa, Publicada/fica no ar até; diária: Data,
   Horário, Valor do dia, "Pagamento combinado direto com a empresa"), "O que a pessoa vai fazer" `#vg-vaga-descricao`,
   "O que precisa" `#vg-vaga-requisitos`, bloco do selo pedido (`.vg-selo--mini`: "Você já tem o selo de …" com nota e data, ou
-  "Você ainda não tem o selo de …" + `#vg-vaga-fazer-teste` "Fazer o teste agora (15 min)"; quem não tem o selo **pode**
+  "Você ainda não tem o selo de …" + `#vg-vaga-fazer-teste` "Fazer o teste agora (de 20 a 25 minutos)"; quem não tem o selo **pode**
   se candidatar), `#vg-aviso-golpe`, links "Denunciar esta vaga" (janela `#vg-janela-denuncia`: motivo em pílulas geradas de
   `VAGAS_REGRAS.MOTIVOS_DENUNCIA` (lista `{chave, texto}`: `golpe`, `documento`/`cobranca`, `discriminacao`, `falsa`, `ofensa`,
   `contato`, `outro` — a tela usa as chaves e textos de `regras.js`, nunca uma lista própria) + `#vg-denuncia-detalhe` ≤ 300 +
@@ -170,7 +178,7 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   "Sem internet. Vamos enviar assim que voltar.").
 
 ### 2.5 Entrar, criar conta, esqueci, confirmação (`entrar.html`) — `pessoa-entrar.png`, `pessoa-esqueci.png`
-- **Moldura:** card `moldura-laranja` com `gsc-logo-preto.svg`, "Vagas sem Caos" e "Vagas da sua cidade com habilidade testada.
+- **Moldura:** card `moldura-laranja` com `vsc-logo-preto.svg` (36 px) e "Vagas da sua cidade com habilidade testada.
   Grátis para quem procura emprego." (no computador, metade laranja / metade azul-escura como o login do painel).
 - **Segmento `#vg-aba-entrar` / `#vg-aba-criar`.** Criar (`form#vg-form-criar`): `#vg-criar-nome` ("Como quer ser chamada(o)",
   obrigatório, 2–60 caracteres; erro "Escreva o seu nome"), `#vg-criar-email` (obrigatório; erro "Esse e-mail parece incompleto.
@@ -244,32 +252,36 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   nacionalidade, saúde, antecedentes, CPF/RG.
 
 ### 2.7 Testes de habilidade (`testes.html`) — `pessoa-testes.png`, `pessoa-prova-instrucoes.png`, `pessoa-prova.png`, `pessoa-resultado.png`
-- **Catálogo (`#vg-testes-lista`):** 5 itens `.vg-teste` (`#vg-teste-<slug>`): nome, linha de info ("18 questões · 15 min · pedido por
-  9 vagas" / "Selo válido até … · nota 82" / "pode refazer em 18 dias"), ação ("Começar" principal; etiqueta "Selo"; ou
-  "Em 18 dias" sem botão). Subtítulo: "Grátis. Cerca de 15 minutos cada, no celular. O selo mostra o teste, a nota e a data, e
-  vale 12 meses. Pode refazer depois de 30 dias." Aviso: "Os testes são de conhecimento prático da função … Não medem inteligência,
-  personalidade nem 'perfil'. Nenhuma vaga pode cobrar por eles. [REVISÃO PSICOLOGIA]". Número de questões, tempo e nota mínima
-  do selo vêm de `docs/VAGAS-TESTES.md` (agente testes: 15 questões, 20 min, caixa 25; a tela lê do catálogo, não fixa número).
-- **Instruções (`#vg-instrucoes`):** 5 linhas com ícone (questões/uma por tela/não volta; tempo por questão; internet cai e a
-  prova espera; nota e selo no fim; 1 tentativa a cada 30 dias), aviso "É um teste online, sem supervisão: o selo diz isso para a
-  empresa. Faça sozinha(o): é assim que ele vale.", `#vg-prova-comecar` (laranja) e `#vg-prova-depois`. Caixa/matemática:
-  acrescenta "Pode usar papel e caneta. Calculadora não." Português/redação: "Colar texto fica bloqueado na redação."
-- **Prova (`#vg-prova`, `data-questao`):** topo `.vg-prova__topo` com "7 de 18" e `#vg-prova-tempo` (`role="timer"`,
-  `#vg-prova-segundos` "0:42"; `--pouco` com ≤ 10 s; sem som); `.vg-prova__barra` (feito azul-escuro, trilho liso);
-  `h1#vg-prova-enunciado` (18 px); apoio opcional `.vg-prova__apoio` (tabela de preços, texto base, em `--nevoa`); opções
-  `ul#vg-prova-opcoes` (`role="radiogroup"`, botões `.retrato.vg-opcao` ≥ 56 px, letra A–D em bolinha, `aria-pressed`;
-  ordem embaralhada pelo servidor); redação: `textarea#vg-prova-texto` com contador e `onpaste` bloqueado; barra fixa
-  `#vg-barra-prova` com dica "Depois de responder não dá para voltar." e `#vg-prova-responder` (principal; desabilitado até
-  escolher). Tempo zerado → envia o que estiver marcado (ou "sem resposta") e vai à próxima, com aviso "Tempo esgotado nesta
-  questão" no `#aviso`. Queda de internet: `#vg-prova-reconectando` ("Reconectando… sua resposta está guardada."), resposta
-  fica em `localStorage` `vg.prova.<tentativa>` e é reenviada (id gerado no aparelho; o servidor tolera ~10 s). Sair da tela:
-  `beforeunload` só avisa; a tentativa continua no servidor (trocar de aba vira sinal, não anula).
-- **Resultado (`#vg-resultado`):** "Você ganhou o selo" (ou, abaixo da nota mínima: "Prova concluída" + "Desta vez não saiu o selo.
-  Você pode refazer em 30 dias; até lá, continue se candidatando." — nunca "reprovado"); componente `#vg-selo` com
-  `#vg-selo-codigo`; "Como você foi em cada parte" (`#vg-resultado-partes`, barras por competência "5 de 6"; redação: "A sua
-  redação vai para a empresa como você escreveu, sem nota."); aviso "O selo não diz 'aprovado' nem 'reprovado': mostra a sua nota e
-  quem decide é a empresa, na conversa. Pode refazer de graça depois de 30 dias."; `#vg-resultado-vagas` "Ver 9 vagas que pedem
-  este selo" (laranja) e `#vg-resultado-compartilhar` (`navigator.share` com o link `selo.html?codigo=`).
+- **Em toda tela de testes (diretriz da psicologia, onda 2):** "O teste é opcional: você pode se candidatar sem ele. Se não for
+  bem, a empresa não fica sabendo; ela só vê o selo, se você ganhar." (`#vg-testes-opcional`, `#vg-instrucoes-opcional`,
+  `#vg-prova-opcional`, `#vg-resultado-opcional`, `#vg-testes-vagas-opcional`). Na prévia, faixa `#vg-faixa-demo` "Questões de
+  demonstração (a prova real usa outro banco)".
+- **Catálogo (`#vg-testes-lista`):** 5 itens `.vg-teste` (`#vg-teste-<slug>`, `data-acao`): nome (+ etiqueta "Selo"), linha de info
+  `#vg-teste-<slug>-info` ("15 questões · 20 min · pedido em 9 vagas"; caixa "15 questões · 25 min · pode usar papel e caneta";
+  "Selo válido até … · nota 82 (±10) · pode refazer a partir de …"; "Você começou este teste · faltam N questões"), ação
+  `#vg-teste-<slug>-acao` ("Fazer o teste" / "Refazer o teste" / "Continuar"; ou "Em 18 dias" sem botão). Subtítulos: padroes.md §6
+  "Mostre o que você sabe fazer: faça o teste da função no celular e ganhe o selo de habilidade testada." e "Grátis, no celular,
+  de 20 a 25 minutos cada. O selo mostra o teste, a nota e a data, e vale 12 meses. Pode refazer depois de 30 dias." (minutos,
+  validade e intervalo lidos do catálogo; nunca fixos). Aviso: `avisos.selo_nao_e_psicologico` + "Nenhuma vaga pode cobrar por eles."
+  Sem login, o catálogo e as instruções abrem (o catálogo é público) com "Entrar para começar".
+- **Instruções (`#vg-instrucoes`):** linhas com ícone do contrato (`VAGAS_TESTES.instrucoes`: 15 questões uma por vez sem voltar;
+  20 min, caixa 25, pelo relógio do servidor; internet cai e a prova espera; encerrar antes conta; o que a prova registra (LGPD);
+  nota e selo), caixa: "Pode usar papel e caneta para as contas. Não use calculadora."; texto fixo de padroes.md §5.7
+  (`avisos.teste_antes`, `#vg-instrucoes-sozinho`); `#vg-prova-comecar` (laranja: "Começar" / "Continuar o teste") e `#vg-prova-depois`.
+- **Prova (`#vg-prova`, `data-questao`):** topo `.vg-prova__topo` com "7 de 15" e `#vg-prova-tempo` (`role="timer"`,
+  `#vg-prova-segundos` "12:05": o tempo TOTAL que falta, do servidor; `--pouco` no último minuto; leitor de tela ouve 5 min e 1 min;
+  sem som); `.vg-prova__barra`; `.vg-prova__apoio` (texto base); `h1#vg-prova-enunciado`; opções `ul#vg-prova-opcoes`
+  (`role="radiogroup"`, `.retrato.vg-opcao` ≥ 56 px, letra A–D, `aria-pressed`; ordem embaralhada pelo servidor); barra fixa
+  `#vg-barra-prova` com "Depois de responder não dá para voltar." e `#vg-prova-responder` (desabilitado até escolher);
+  `#vg-prova-encerrar` (link discreto, confirmação na página: conta como tentativa). Tempo zerado → envia o que estiver marcado
+  (tolerância de 10 s) ou fecha pelo servidor ("tempo esgotado"). Queda de internet: `#vg-prova-reconectando` ("Reconectando… sua
+  resposta está guardada."), escolha em `vg.prova.<tentativa>` e reenvio sozinho. Sair da tela: `beforeunload` só avisa; trocar de
+  aba e copiar texto viram sinal, não anulam.
+- **Resultado (`#vg-resultado`):** "Você ganhou o selo" (componente `#vg-selo` com `#vg-selo-codigo`) ou "Prova concluída" + o texto
+  fixo de padroes.md §5.3 ("Ainda sem selo neste teste. Você pode refazer em 30 dias, de graça.") e "Onde você acertou menos: …";
+  nota com margem ("Nota 53 (±10)"); "Como você foi em cada parte" (`#vg-resultado-partes`, "5 de 6"); padroes.md §6 sobre limites;
+  `#vg-resultado-vagas` "Ver 9 vagas que pedem este selo" (laranja; `#vagas/<slug>`) e `#vg-resultado-compartilhar`
+  (`navigator.share` com `selo.html?codigo=`). As palavras "aprovado"/"reprovado" não aparecem nem para negar.
 - **Não aparece:** gabarito, ranking, comparação com outras pessoas, "aprovado", percentil.
 
 ### 2.8 Conferência pública do selo (`selo.html`) — `pessoa-selo-conferir.png`
@@ -358,7 +370,7 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
 ## 3. Telas da empresa (computador, 1280 px; funciona no celular)
 
 ### 3.1 Cadastro CNPJ/MEI e entrar (`entrar.html?tipo=empresa`) — `empresa-cadastro.png`
-- Metade laranja: logo preto, frase "Vagas da sua cidade com quem fez o teste da função.", apoio, 3 passos (cadastre o CNPJ ou
+- Metade laranja: logo preto do Vagas sem Caos (`vsc-logo-preto.svg`, 36 px), frase "Vagas da sua cidade com quem fez o teste da função.", apoio, 3 passos (cadastre o CNPJ ou
   MEI; publique com salário; chame para conversar), "Já é cliente da consultoria? A gente cadastra para você."
 - Metade azul-escura (`form#vg-emp-form-cadastro`): `#vg-emp-cnpj` (máscara 00.000.000/0001-00; validação de dígitos de
   `regras.js`; erro "CNPJ inválido. Confira os 14 números."; MEI é CNPJ normal), `#vg-emp-nome` (nome como aparece; 2–60),
@@ -506,7 +518,7 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
 
 ## 4. Telas do operador da praça (`operador.html`, computador)
 
-Cabeçalho do menu: "Vagas sem Caos · Operação" + cidade(s) do operador (`minhas_cidades()`); selo fixo "Cada ato fica registrado".
+Cabeçalho do menu: logo do Vagas sem Caos + "Operação da praça" + cidade(s) do operador (`minhas_cidades()`); selo fixo "Cada ato fica registrado".
 O operador **nunca** vê currículo, selos, candidaturas, conversas nem contato de pessoas: nas telas só aparecem e-mail de cadastro
 (assistido), conteúdo denunciado, vagas e empresas.
 
@@ -646,7 +658,7 @@ Grupo "Vagas" no menu lateral (entre Empresas e Vendas): **Cidades e praças** (
 
 CSS completo proposto (só tokens do `notus.css`) está em `scratchpad/vagas/telas-src/casca.mjs` (`VAGAS_CSS`) e
 `telas-referencia.mjs` (`REF_CSS`); o agente das telas copia para `vagas/assets/vagas.css` e ajusta. Peças do teste reaproveitadas
-sem mudar: `.topo/.topo-interno/.topo-nome`, `.conteudo`, `.acoes`, `.progresso-*`, `.barra-nav/.barra-dica/.barra-botoes`,
+sem mudar: `.topo/.topo-interno`, `.conteudo`, `.acoes`, `.progresso-*`, `.barra-nav/.barra-dica/.barra-botoes`,
 `.retrato/.escolha-marca`, `.codigo`, `.rodape`; do painel: `.menu-lateral/.aba/.menu-grupo`, `.cabecalho`, `.resumo`, `.filtros/.escolha`,
 `.segmento`, `.vazio`, `.confirmar/.janela__caixa`, `.form-grade`, `.login*`.
 

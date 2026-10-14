@@ -203,7 +203,7 @@ Segredos são senhas que **só as funções** enxergam; nunca vão para o site.
 | `ANTHROPIC_API_KEY` | a chave da Anthropic (`sk-ant-…`) | Opcional — sem ela, o botão "Melhorar textos com IA" não aparece |
 | `CLICKUP_WEBHOOK_SECRET` | o `secret` devolvido pelo ClickUp no passo 13 | Só depois do passo 13 |
 | `VAGAS_SITE_URL` | `https://vagas.gestaosemcaos.com.br` (sem barra no fim) | Para o Vagas sem Caos: endereço dos links dos e-mails e única origem liberada para chamar a `vagas-conta` |
-| `VAGAS_EMAIL_REMETENTE` | `Vagas · Gestão sem Caos <vagas@gestaosemcaos.com.br>` | Opcional — sem ele, a `vagas-conta` usa o `EMAIL_REMETENTE` do DISC |
+| `VAGAS_EMAIL_REMETENTE` | `Vagas sem Caos <vagas@gestaosemcaos.com.br>` | Opcional — sem ele, a `vagas-conta` usa o `EMAIL_REMETENTE` do DISC |
 | `TURNSTILE_SECRET` | a chave secreta do widget Turnstile da Cloudflare | Opcional — liga o "não sou robô" no cadastro, reenviar e "Esqueci minha senha" do Vagas (a chave pública vai em `vagas/js/config.js`, `TURNSTILE_SITE_KEY`) |
 
 - Pesquisa de clima com identificação: o código por e-mail usa os mesmos `RESEND_API_KEY` e `EMAIL_REMETENTE` (docs/EMAILS.md). `WHATSAPP_PROVEDOR` fica **sem criar** até existir um provedor de WhatsApp contratado (sem ele, a opção "Código por WhatsApp" não aparece).
@@ -383,6 +383,26 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
    (tira da lista quem já foi avisado e, 30 dias depois da abertura, a lista inteira da cidade). Como avisar, passo a passo:
    [VAGAS-SPEC.md §6.7](VAGAS-SPEC.md). Ela traz também as correções da 2ª revisão de segurança (N1, N2) por cima de funções da
    20261024120000: se alguém rodar a 20261024120000 de novo, rode a 20261024120002 em seguida. **Aplique antes do primeiro aviso.**
+1d. **Reforço do aviso (aplique ANTES do primeiro aviso real):**
+   [`20261024120003_vagas_aviso_reforco.sql`](../supabase/migrations/20261024120003_vagas_aviso_reforco.sql), depois da
+   20261024120002 (idempotente). Confira: `versao_banco()` com `versao: 20261024120003`. **Publique de novo a função
+   `vagas-conta`.** O que muda: o e-mail da lista passa a aceitar só caracteres ASCII visíveis (linhas antigas que não
+   passariam saem); a fila do aviso não trava (e-mail recusado não volta; falha vai para o fim, até 3 vezes); teto de
+   60 e-mails de aviso em 24 h (sobra cota do Resend para confirmação, senha e convites). Para mudar o teto (por exemplo,
+   no plano pago do Resend), no SQL Editor:
+   `insert into vagas_interno.ajustes (chave, valor) values ('aviso_teto_diario', '200') on conflict (chave) do update set valor = excluded.valor, atualizado_em = now();`
+   A tabela `vagas_interno.ajustes` guarda também um sal secreto gerado na migração (`sal_privado`): não apague nem copie
+   essa linha (sem ela, as marcas de "saiu da lista" e os limites por e-mail recomeçam do zero).
+1e. **Pré-abertura, canal e lista de espera nova:**
+   [`20261024120004_vagas_pre_abertura.sql`](../supabase/migrations/20261024120004_vagas_pre_abertura.sql), depois da
+   20261024120003 (idempotente). Confira: `versao_banco()` com `versao: 20261024120004`. **Publique de novo a função
+   `vagas-conta`** (ação nova `lista_espera`). O que muda: na cidade em lista de espera a empresa já se cadastra e anuncia
+   (a vaga fica pronta e invisível e entra no ar no dia da abertura, com a validade contada dali); cada cidade pode ter o
+   canal de WhatsApp (só o link do canal); a lista de espera guarda de onde a pessoa veio (lista fechada), tem limites
+   separados para entrar e sair, por e-mail e por WhatsApp, e a isca `site`. Turnstile na lista: com a chave pública no site
+   e o `TURNSTILE_SECRET` na função, ligue no SQL Editor
+   `insert into vagas_interno.ajustes (chave, valor) values ('lista_espera_captcha', 'sim') on conflict (chave) do update set valor = excluded.valor, atualizado_em = now();`
+   (desligar: `delete from vagas_interno.ajustes where chave = 'lista_espera_captcha';`).
 2. **Função `vagas-conta`:** crie como no passo 8 (arquivo `dist/funcoes/vagas-conta/index.ts`) com **Verify JWT
    desligado** (o cadastro é feito por quem ainda não tem login; as ações que exigem login conferem o token sozinhas).
 3. **Segredos** (passo 9): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`, e os opcionais `VAGAS_EMAIL_REMETENTE` e
@@ -412,6 +432,8 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
 | Painel da praça, equipe da empresa ou WhatsApp da lista de espera: "O banco de dados ainda não tem o Vagas sem Caos…" | 20261024120000 não aplicada | item 1b |
 | Convite de equipe: "Ação desconhecida." | `vagas-conta` publicada antes da onda 2 | item 1b (publicar a função de novo) |
 | "Avisar por e-mail" (lista de espera): "Ação desconhecida." ou "O banco de dados ainda não tem…" | `vagas-conta` antiga ou 20261024120002 não aplicada | item 1c |
+| Lista de espera: "Confirme que você não é um robô…" para todo mundo | ajuste `lista_espera_captcha` ligado sem o site mandar o captcha | item 1e (desligar o ajuste ou pôr a chave do Turnstile no site) |
+| "Avisar por e-mail" para no meio com `tetoAtingido` | acabou a cota de 24 h do aviso (padrão 60) | continue no dia seguinte, ou aumente o ajuste `aviso_teto_diario` (item 1d) |
 | "O envio de e-mail ainda não está configurado…" | falta `RESEND_API_KEY` | item 3 |
 | Link do e-mail abre o DISC ou dá "link expirou" | Redirect URL ou `VAGAS_SITE_URL` faltando | itens 3 e 4; peça um link novo |
 

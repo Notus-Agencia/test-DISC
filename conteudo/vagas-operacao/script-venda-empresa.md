@@ -22,7 +22,7 @@
 Dores comuns em cidade pequena (use a que aparecer): "só vem indicado de alguém e nem sempre dá certo"; "ponho no grupo de WhatsApp e chegam 80 mensagens"; "site grande manda gente de outro estado"; "não tenho tempo de entrevistar"; "aqui todo mundo se conhece, não quero que saibam que estou contratando".
 
 **Minuto 3 · O que é e o que é grátis**
-> "Funciona assim: você me diz a vaga e eu cadastro agora, com você. A vaga aparece para quem é de Uruaçu. A pessoa faz um teste de 15 questões no celular, uns 15 minutos: atendimento, caixa, vendas, administrativo ou português. Quem vai bem ganha o selo de habilidade testada, com a nota e a data."
+> "Funciona assim: você me diz a vaga e eu cadastro agora, com você. A vaga aparece para quem é de Uruaçu. A pessoa faz um teste de 15 questões no celular, de 20 a 25 minutos: atendimento, caixa, vendas, administrativo ou português. Quem vai bem ganha o selo de habilidade testada, com a nota e a data."
 >
 > "Você recebe os cartões por ordem de chegada. Sem nome e sem foto: só bairro, experiência, escolaridade, turno, CNH, pretensão e o selo. Você marca 'Quero conversar' em quem interessa. Se a pessoa também quiser, aparece o nome e o botão do WhatsApp. O selo mostra quem já sabe o básico; a entrevista e a experiência fazem o resto. A decisão de contratar continua sendo sua."
 >

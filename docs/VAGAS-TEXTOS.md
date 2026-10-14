@@ -1,7 +1,7 @@
 # Vagas sem Caos: textos (termos, privacidade, aceites, avisos, e-mails, WhatsApp, moderação)
 
 Tudo em `conteudo/vagas-textos/`. Português simples, frases curtas, linguagem neutra ("a pessoa", "quem se candidata"),
-marca "Gestão sem Caos" (assinatura "uma ferramenta da Gestão sem Caos"). Nunca: nome de agência, nome de app de namoro,
+marca "Gestão sem Caos" (assinatura "uma empresa do grupo Gestão sem Caos"). Nunca: nome de agência, nome de app de namoro,
 "swipe", promessa ("garante", "perfil ideal", "compatibilidade", "o teste prevê desempenho"), "aprovado/reprovado" em selo,
 "DiSC" (sempre "DISC"), "candidato(a)" como substantivo. O teste `tests/vagas-textos.test.js` confere tudo isso e
 entra no `npm test` (glob `tests/*.test.js`).

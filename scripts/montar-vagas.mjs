@@ -3,8 +3,8 @@
 //
 //   1. vagas/comum/  — cópia das peças da marca (assets/notus.css, a fonte Plus Jakarta Sans + licença OFL e todo assets/marca/).
 //   2. vagas/js/textos.js e vagas/js/textos-conta.js — os textos fixos das telas (VAGAS_TEXTOS), GERADOS de conteudo/vagas-textos/.
-//      textos.js (todas as telas): avisos, botões, validação, mensagem e foto de avisos.json. textos-conta.js (telas com conta e
-//      entrar.html): anúncio e referência de avisos.json, consentimentos.json e moderacao.json. Só o que as telas usam: sai o que é
+//      textos.js (todas as telas): avisos, botões e validação de avisos.json. textos-conta.js (telas com conta e entrar.html):
+//      anúncio, referência, mensagem e foto de avisos.json, consentimentos.json e moderacao.json. Só o que as telas usam: sai o que é
 //      regra do servidor (expressões de filtro), lista que já tem fonte única em vagas/js/regras.js (pontos fortes, motivos de
 //      denúncia) e o que é da fase 2. Dois arquivos para a lista pública caber nos 100 KB da primeira visita.
 //   3. vagas/termos.html e vagas/privacidade.html — gerados dos .md de conteudo/vagas-textos/ (com a faixa "Minuta, em revisão
@@ -107,7 +107,8 @@ export function textosDaTela(raiz = RAIZ) {
   const foto = Object.fromEntries(Object.entries(semMeta(a.foto)).filter(([k]) => !fase2.has(k)));
   return { versao: a.versao, avisos, botoes: semMeta(a.botoes), validacao: semMeta(a.validacao), mensagem, foto, anuncio, referencia };
 }
-const SO_DA_CONTA = ['anuncio', 'referencia'];
+// Só as telas com conta usam (eu.html e empresa.html carregam textos-conta.js): fora da lista pública, que tem limite de peso.
+const SO_DA_CONTA = ['anuncio', 'referencia', 'mensagem', 'foto'];
 export function textosBasicos(raiz = RAIZ) {
   const t = textosDaTela(raiz);
   for (const k of SO_DA_CONTA) delete t[k];
@@ -124,7 +125,7 @@ export function textosDaConta(raiz = RAIZ) {
   for (const x of c.aceites || []) aceites[x.chave] = Object.fromEntries(CAMPOS_ACEITE.filter((k) => x[k] !== undefined).map((k) => [k, x[k]]));
   const motivos = {};
   for (const x of m.motivos || []) motivos[x.chave] = Object.fromEntries(CAMPOS_MOTIVO.filter((k) => x[k] !== undefined).map((k) => [k, x[k]]));
-  return { anuncio: tela.anuncio, referencia: tela.referencia, consentimentos: { termosVersao: c.termos_versao, aceites }, moderacao: { versao: m.versao, motivos } };
+  return { ...Object.fromEntries(SO_DA_CONTA.map((k) => [k, tela[k]])), consentimentos: { termosVersao: c.termos_versao, aceites }, moderacao: { versao: m.versao, motivos } };
 }
 
 const AVISO_GERADO = (origem) => '/*\n * GERADO por scripts/montar-vagas.mjs a partir de ' + origem + '. NÃO EDITE AQUI: edite a origem e rode\n' +
@@ -134,9 +135,10 @@ function js(dados) { return JSON.stringify(dados, null, 1).replace(/\u2028/g, '\
 
 export function gerarTextosJs(raiz = RAIZ) {
   return AVISO_GERADO('conteudo/vagas-textos/avisos.json') +
-    ' *\n * VAGAS_TEXTOS: textos fixos das telas, por chave estável (avisos.*, botoes.*, validacao.*, mensagem.*, foto.*).\n' +
+    ' *\n * VAGAS_TEXTOS: textos fixos das telas, por chave estável (avisos.*, botoes.*, validacao.*).\n' +
     ' *   VAGAS_TEXTOS.t(\'avisos.cidade_pausada\', {cidade: \'…\'}) -> texto com {{variáveis}} preenchidas (\'\' se a chave não existe).\n' +
-    ' * anuncio.*, referencia.*, consentimentos.* e moderacao.* ficam em textos-conta.js (carregue depois deste nas telas que usam).\n */\n' +
+    ' * anuncio.*, referencia.*, mensagem.*, foto.*, consentimentos.* e moderacao.* ficam em textos-conta.js (carregue depois deste\n' +
+    ' * nas telas que usam).\n */\n' +
     '(function (root) {\n  \'use strict\';\n  var DADOS = ' + js(textosBasicos(raiz)) + ';\n' +
     '  function buscar(caminho) {\n' +
     '    var atual = DADOS;\n' +
@@ -162,7 +164,7 @@ export function gerarTextosJs(raiz = RAIZ) {
 export function gerarContaJs(raiz = RAIZ) {
   return AVISO_GERADO('conteudo/vagas-textos/avisos.json, consentimentos.json e moderacao.json') +
     ' *\n * Acrescenta a VAGAS_TEXTOS (carregue depois de textos.js), para as telas com conta e entrar.html:\n' +
-    ' *   anuncio.* (titulo_erro, lei_resumo, campos.*) e referencia.* (vinculos, validacao.*) de avisos.json;\n' +
+    ' *   anuncio.* (titulo_erro, lei_resumo, campos.*), referencia.* (vinculos, validacao.*), mensagem.* e foto.* de avisos.json;\n' +
     ' *   consentimentos.termosVersao e consentimentos.aceites[chave] = {versao, quem, titulo, texto, explicacao, obrigatorio, ...};\n' +
     ' *   moderacao.motivos[chave] = {alvo, acao, titulo, texto_empresa, correcao, lei} (a chave é o p_motivo das RPCs vagas_op_*).\n' +
     ' *   VAGAS_TEXTOS.t(\'consentimentos.aceites.pessoa_cadastro.texto\') também funciona.\n */\n' +
@@ -239,7 +241,7 @@ export function markdownParaHtml(md) {
   return saida.join('\n');
 }
 
-export const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'";
+export const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://tevpqngqzxcswmticjnr.supabase.co; font-src 'self'; connect-src 'self' https://tevpqngqzxcswmticjnr.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'";
 
 export function paginaDocumento({ titulo, descricao, md }) {
   const minuta = /MINUTA/.test(md.split('\n').slice(0, 5).join('\n'));
@@ -260,10 +262,11 @@ export function paginaDocumento({ titulo, descricao, md }) {
     '  <link rel="stylesheet" href="comum/notus.css">\n  <link rel="stylesheet" href="assets/vagas.css">\n</head>\n<body>\n' +
     '  <a class="pular" href="#app">Pular para o conteúdo</a>\n' +
     '  <header class="topo vidro-cabecalho" id="vg-topo"><div class="topo-interno"><a href="index.html" class="vg-topo__marca" aria-label="Vagas sem Caos, início">' +
-    '<img class="logo-gsc topo-logo" src="comum/marca/gsc-logo.svg" alt="Gestão sem Caos" width="171" height="24"></a><span class="topo-nome">Vagas sem Caos</span></div></header>\n' +
+    '<img class="logo-gsc topo-logo" src="comum/marca/vsc-logo.svg" alt="Vagas sem Caos" width="160" height="24"></a></div></header>\n' +
     (minuta ? '  <div class="vg-faixa" id="vg-faixa-minuta" role="note"><p><strong>Minuta, em revisão jurídica.</strong> Este texto ainda pode mudar antes de o site abrir.</p></div>\n' : '') +
     '  <main id="app" class="conteudo" tabindex="-1">\n    <article class="caixa vg-doc">\n' + corpo.split('\n').map((x) => '      ' + x).join('\n') + '\n    </article>\n' +
-    '    <footer class="rodape"><p class="rodape-nota">Vagas sem Caos · uma ferramenta da Gestão sem Caos · <a href="termos.html">Termos de uso</a> · <a href="privacidade.html">Aviso de privacidade</a></p></footer>\n' +
+    '    <footer class="rodape"><p class="rodape-nota vg-grupo">Uma empresa do grupo <img class="logo-gsc" src="comum/marca/gsc-logo.svg" alt="Gestão sem Caos" width="142" height="20"></p>' +
+    '<p class="rodape-nota"><a href="termos.html">Termos de uso</a> · <a href="privacidade.html">Aviso de privacidade</a></p></footer>\n' +
     '  </main>\n</body>\n</html>\n';
 }
 
@@ -273,8 +276,8 @@ export function gerados(raiz = RAIZ) {
   return {
     'vagas/js/textos.js': gerarTextosJs(raiz),
     'vagas/js/textos-conta.js': gerarContaJs(raiz),
-    'vagas/termos.html': paginaDocumento({ titulo: 'Termos de uso', descricao: 'Termos de uso do Vagas sem Caos, uma ferramenta da Gestão sem Caos.', md: md('termos-de-uso.md') }),
-    'vagas/privacidade.html': paginaDocumento({ titulo: 'Aviso de privacidade', descricao: 'Aviso de privacidade do Vagas sem Caos, uma ferramenta da Gestão sem Caos.', md: md('aviso-de-privacidade.md') })
+    'vagas/termos.html': paginaDocumento({ titulo: 'Termos de uso', descricao: 'Termos de uso do Vagas sem Caos, uma empresa do grupo Gestão sem Caos.', md: md('termos-de-uso.md') }),
+    'vagas/privacidade.html': paginaDocumento({ titulo: 'Aviso de privacidade', descricao: 'Aviso de privacidade do Vagas sem Caos, uma empresa do grupo Gestão sem Caos.', md: md('aviso-de-privacidade.md') })
   };
 }
 
@@ -303,7 +306,7 @@ export function pesoDaLista(raiz = RAIZ, pagina = 'cidade.html') {
   const icone = /<link[^>]*rel="icon"[^>]*type="image\/svg\+xml"[^>]*href="([^"]+)"/.exec(texto);
   if (icone) arquivos.add(icone[1]);
   for (const m of texto.matchAll(/<img[^>]*\ssrc="([^"]+)"/g)) arquivos.add(m[1]);
-  arquivos.add('comum/marca/gsc-logo.svg');   // o topo montado pelo VAGAS_UI.topo
+  arquivos.add('comum/marca/vsc-logo.svg');   // o topo montado pelo VAGAS_UI.topo
   const itens = [];
   for (const rel of arquivos) {
     const c = join(pasta, rel.replace(/[?#].*$/, ''));

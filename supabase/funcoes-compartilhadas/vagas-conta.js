@@ -31,9 +31,15 @@
 //       (vagas_equipe_convite_aceitar, com o login dela).
 //   avisar_lista_espera (JWT da equipe) {cidade, limite?} -> um LOTE (padrão 25, até 50) do aviso "a cidade abriu" por e-mail
 //       para a lista de espera de uma cidade ATIVA. O banco (vagas_conta_aviso_lote) reserva quem ainda não foi avisado e
-//       marca na hora (rodar de novo não manda duas vezes); quem falhar volta para a fila (vagas_conta_aviso_marcar). Resposta:
-//       só contagens {enviados, falhas, restantes, aAvisarWhatsapp, terminou}; nenhum e-mail da lista sai daqui. A tela chama
-//       de novo até terminou:true. Migração 20261024120002_vagas_aviso_abertura.
+//       marca na hora (rodar de novo não manda duas vezes); quem falhar volta para o FIM da fila, até 3 vezes, e e-mail
+//       recusado aqui não volta (vagas_conta_aviso_marcar, 20261024120003). Teto de 24 h no banco (padrão 60). Resposta:
+//       só contagens {enviados, falhas, invalidos, restantes, aAvisarWhatsapp, terminou, travado, tetoAtingido}; nenhum
+//       e-mail da lista sai daqui. A tela chama de novo enquanto terminou, travado e tetoAtingido forem false.
+//       Migrações 20261024120002_vagas_aviso_abertura e 20261024120003_vagas_aviso_reforco.
+//   lista_espera (sem login) {cidade, email, perfil?, whatsapp?, origem?, site?, captcha} -> a lista de espera pelo Turnstile:
+//       a tela usa este caminho quando tem o "não sou robô" (TURNSTILE_SITE_KEY no site). Com TURNSTILE_SECRET, o captcha é
+//       conferido aqui e o banco grava com o limite maior por origem (mutirão, escola, Wi-Fi da praça); sem o segredo, vale o
+//       limite comum. Mesmas respostas da RPC pública vagas_lista_espera_entrar (20261024120004).
 // Link do e-mail: <VAGAS_SITE_URL>/entrar.html?token_hash=<hash>&type=invite|recovery (gerado com auth.admin.generateLink,
 // no domínio do site; o antivírus que "abre" o link antes da pessoa não o gasta, porque a tela só confere no clique). No convite
 // de equipe o link leva também &convite=<token> (ou só ?convite=<token> para quem já tem conta de empresa).
@@ -41,10 +47,10 @@
 // Segredos: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (do Supabase), RESEND_API_KEY, VAGAS_SITE_URL, VAGAS_EMAIL_REMETENTE?
 // (senão EMAIL_REMETENTE), TURNSTILE_SECRET? (liga o "não sou robô" no cadastrar/reenviar/esqueci), SITE_URL? (o do DISC: o
 // painel do DISC também chama esta função — convite de operador pela aba "Vagas"; sem ele, https://disc.gestaosemcaos.com.br).
-// Textos finais dos e-mails: conteudo/vagas-textos/ (aqui, versões curtas com a marca Vagas sem Caos · Gestão sem Caos).
+// Textos finais dos e-mails: conteudo/vagas-textos/ (aqui, versões curtas com a marca Vagas sem Caos e o endosso da Gestão sem Caos).
 import { erro, MSG_ERRO_INTERNO } from './regras.js';
 import { criarResend } from './asaas.js';
-import { htmlMarca } from './email.js';
+import { htmlMarca, LOGO_EMAIL } from './email.js';
 
 export const NOMES_ENV_VAGAS_CONTA = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'VAGAS_SITE_URL', 'VAGAS_EMAIL_REMETENTE',
   'EMAIL_REMETENTE', 'TURNSTILE_SECRET', 'SITE_URL'];
@@ -65,7 +71,9 @@ export const VAGAS_MSG_CIDADE_FECHADA_AVISO = 'A cidade ainda não está aberta.
 export const VAGAS_BUCKET_FOTOS = 'vagas-fotos';
 export const VAGAS_FOTO_SEGUNDOS = 300;
 const VAGAS_LIMITE_CORPO = 4000;
-const VAGAS_RODAPE = 'Vagas sem Caos · uma ferramenta da Gestão sem Caos. Nunca pague para se candidatar: se alguém pedir em nosso nome, é golpe.';
+// Logo do topo dos e-mails do Vagas: PNG como o da moldura (o Gmail não mostra SVG), 903×136, mostrado a 188 px (scripts/marca-vagas-email.mjs).
+export const VAGAS_LOGO_EMAIL = 'https://disc.gestaosemcaos.com.br/assets/marca/vsc-logo-email.png';
+const VAGAS_RODAPE = 'Vagas sem Caos · uma empresa do grupo Gestão sem Caos. Nunca pague para se candidatar: se alguém pedir em nosso nome, é golpe.';
 
 export function lerEnvVagasConta(get) {
   const env = {};
@@ -77,9 +85,11 @@ export function siteVagas(env) {
   try { return new URL(String((env && env.VAGAS_SITE_URL) || VAGAS_SITE_PADRAO).trim()).origin; } catch (err) { return VAGAS_SITE_PADRAO; }
 }
 
+// Só ASCII visível (! a ~), igual a vagas_interno.email (20261024120003) e a VAGAS_REGRAS.normalizarEmail: o que o banco
+// aceita a Function também aceita (senão a fila do aviso de abertura travava num e-mail com caractere invisível).
 export function emailVagas(v) {
   const e = String(v == null ? '' : v).trim().toLowerCase();
-  return e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : '';
+  return e.length <= 254 && /^[!-?A-~]+@[!-?A-~]+\.[!-?A-~]+$/.test(e) ? e : '';
 }
 
 /** "ana.souza@empresa.com.br" -> "a***@e***.com.br" */
@@ -94,7 +104,7 @@ export function linkVagas(env, tokenHash, tipo) {
   return siteVagas(env) + '/entrar.html?token_hash=' + encodeURIComponent(tokenHash) + '&type=' + encodeURIComponent(tipo);
 }
 
-/** E-mails com a marca Vagas sem Caos (moldura da Gestão sem Caos).
+/** E-mails com a marca Vagas sem Caos (a moldura comum, com o logo do Vagas no lugar do da Gestão sem Caos).
  *  tipo: confirmar | jaTemConta | senha | assistido | operador | conviteEquipe | conviteEquipeOutraConta | cidadeAbriu
  *  (textos completos para revisão: conteudo/vagas-textos/emails/convite-equipe*.html e cidade-abriu.html).
  *  cidadeAbriu: d.cidade, d.perfil ('pessoa' | 'empresa'), d.url (criar a conta), d.urlSair (sair da lista de espera). */
@@ -147,7 +157,8 @@ export function montarEmailVagas(tipo, d) {
   const extra = tipo === 'cidadeAbriu' && d.urlSair
     ? { antes: 'Deixou também o WhatsApp e não quer o aviso por lá?', texto: 'Sair da lista de espera', url: d.urlSair } : null;
   let html = htmlMarca({ titulo: m.titulo, previa: m.paragrafos[1], paragrafos: m.paragrafos, botao: { texto: m.botao, url: d.url }, nota: m.nota,
-    rodape: VAGAS_RODAPE });
+    rodape: VAGAS_RODAPE }).replace('<img src="' + LOGO_EMAIL + '" width="200" alt="Gestão sem Caos" style="display:block;width:200px;',
+    '<img src="' + VAGAS_LOGO_EMAIL + '" width="188" alt="Vagas sem Caos" style="display:block;width:188px;');
   // Link a mais (sair da lista), logo antes do "Se o botão não funcionar" da moldura — sem mexer na moldura comum do DISC.
   if (extra) {
     const marca = '<p style="margin:0 0 8px;font-size:13px';
@@ -443,11 +454,12 @@ export async function acaoVagasAvisarListaEspera(base, corpo, origem, quem) {
   const esperar = typeof base.esperar === 'function' ? base.esperar : (ms) => new Promise((res) => setTimeout(res, ms));
   const enviados = [];
   const falhas = [];
+  const invalidos = [];
   for (let i = 0; i < lote.length; i++) {
     const c = lote[i] || {};
     const email = emailVagas(c.email);
     if (!UUID_VAGAS.test(String(c.id || ''))) continue;
-    if (!email) { falhas.push(c.id); continue; }
+    if (!email) { invalidos.push(c.id); continue; }
     if (i > 0) await esperar(VAGAS_AVISO_INTERVALO_MS);
     const l = linksAvisoAbertura(base.env, cidade, c.perfil, c.sairToken);
     try {
@@ -458,14 +470,33 @@ export async function acaoVagasAvisarListaEspera(base, corpo, origem, quem) {
     }
   }
   let contagens = r.contagens || {};
-  if (enviados.length || falhas.length) {
-    const m = await base.db.avisoMarcar(quem.id, cidade, enviados, falhas);
+  if (enviados.length || falhas.length || invalidos.length) {
+    const m = await base.db.avisoMarcar(quem.id, cidade, enviados, falhas, invalidos);
     if (!m || m.ok !== true) throw new Error('aviso: marcar o lote falhou');
     contagens = m.contagens || contagens;
   }
   const n = (k) => (typeof contagens[k] === 'number' ? contagens[k] : 0);
-  return { ok: true, cidade: { slug: cidade, nome }, enviados: enviados.length, falhas: falhas.length,
-    restantes: n('aAvisarEmail'), aAvisarWhatsapp: n('aAvisarWhatsapp'), terminou: n('aAvisarEmail') === 0 };
+  const restantes = n('aAvisarEmail');
+  const disponivel = r.teto && typeof r.teto.disponivel === 'number' ? r.teto.disponivel - lote.length : 1;
+  // travado: o lote não avisou ninguém e só teve falhas (a tela para de repetir); tetoAtingido: acabou a cota de 24 h.
+  return { ok: true, cidade: { slug: cidade, nome }, enviados: enviados.length, falhas: falhas.length, invalidos: invalidos.length,
+    restantes, aAvisarWhatsapp: n('aAvisarWhatsapp'), terminou: restantes === 0,
+    travado: enviados.length === 0 && falhas.length > 0, tetoAtingido: restantes > 0 && disponivel <= 0 };
+}
+
+/** Lista de espera com o Turnstile: confere o captcha (só com TURNSTILE_SECRET) e grava pelo banco
+ *  (vagas_conta_lista_espera), que aplica as mesmas regras da RPC pública com o limite maior por origem quando o captcha
+ *  foi conferido. Só os campos da lista seguem para o banco. */
+export async function acaoVagasListaEspera(base, corpo, origem) {
+  const dados = {};
+  ['cidade', 'email', 'perfil', 'whatsapp', 'origem', 'site'].forEach((k) => {
+    if (typeof corpo[k] === 'string') dados[k] = corpo[k].slice(0, 300);
+  });
+  const humano = !!String((base.env && base.env.TURNSTILE_SECRET) || '').trim();
+  if (humano && !(await conferirCaptchaVagas(base, corpo.captcha, origem.cf))) return erro(VAGAS_MSG_CAPTCHA, { captcha: true });
+  const r = await base.db.listaEspera(dados, origem.cf, origem.xff, humano);
+  if (!r || typeof r.ok !== 'boolean') return erro(MSG_ERRO_INTERNO);
+  return r;
 }
 
 /** URL assinada curta da foto: o banco decide se pode (vagas_conta_foto); aqui só se assina o caminho que ele devolver. */
@@ -503,8 +534,10 @@ export function criarBaseVagasConta(createClient, getEnv, extras) {
         p_email: email, p_cf: cf || '', p_xff: xff || '' }),
       exclusaoConferir: (userId) => rpc('vagas_conta_exclusao_conferir', { p_user: userId }),
       avisoLote: (userId, cidade, limite) => rpc('vagas_conta_aviso_lote', { p_user: userId, p_cidade: cidade, p_limite: limite }),
-      avisoMarcar: (userId, cidade, enviados, falhas) => rpc('vagas_conta_aviso_marcar', { p_user: userId, p_cidade: cidade,
-        p_enviados: enviados || [], p_falhas: falhas || [] })
+      avisoMarcar: (userId, cidade, enviados, falhas, invalidos) => rpc('vagas_conta_aviso_marcar', { p_user: userId, p_cidade: cidade,
+        p_enviados: enviados || [], p_falhas: falhas || [], p_invalidos: invalidos || [] }),
+      listaEspera: (dados, cf, xff, humano) => rpc('vagas_conta_lista_espera', { p_dados: dados || {}, p_cf: cf || '', p_xff: xff || '',
+        p_humano: !!humano })
     },
     storage: {
       async assinar(bucket, caminho, segundos) {
@@ -599,6 +632,7 @@ export async function atenderVagasConta(req, base) {
     else if (corpo.acao === 'foto') r = await acaoVagasFoto(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'convite_equipe') r = await acaoVagasConviteEquipe(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'avisar_lista_espera') r = await acaoVagasAvisarListaEspera(base, corpo, origem, await quemChamaVagas(base, req));
+    else if (corpo.acao === 'lista_espera') r = await acaoVagasListaEspera(base, corpo, origem);
     else r = erro('Ação desconhecida.');
     return vagasResponder(r, 200, cors);
   } catch (err) {

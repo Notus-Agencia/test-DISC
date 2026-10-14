@@ -145,12 +145,13 @@ test('textos gerados: t() preenche variáveis, chave ausente vira texto vazio, n
 test('textos gerados: só o que as telas usam (sem regra do servidor, sem lista duplicada, sem fase 2)', async () => {
   const M = await import('../scripts/montar-vagas.mjs');
   const basicos = M.textosBasicos();
-  assert.deepEqual(Object.keys(basicos).sort(), ['avisos', 'botoes', 'foto', 'mensagem', 'validacao', 'versao']);
+  assert.deepEqual(Object.keys(basicos).sort(), ['avisos', 'botoes', 'validacao', 'versao'], 'mensagem.* e foto.* só nas telas com conta (peso da lista)');
   assert.equal(basicos.avisos.denuncia_motivos, undefined, 'motivos de denúncia: fonte única em VAGAS_REGRAS');
-  assert.equal(basicos.mensagem.padroes, undefined, 'expressões do filtro ficam no servidor e em regras.js');
-  assert.equal(basicos.foto.em_moderacao, undefined, 'fase 2');
-  assert.equal(basicos.foto.recusada_moderacao, undefined, 'fase 2');
   const conta = M.textosDaConta();
+  assert.equal(conta.mensagem.padroes, undefined, 'expressões do filtro ficam no servidor e em regras.js');
+  assert.ok(conta.mensagem.aviso_empresa && conta.foto.explicacao);
+  assert.equal(conta.foto.em_moderacao, undefined, 'fase 2');
+  assert.equal(conta.foto.recusada_moderacao, undefined, 'fase 2');
   assert.equal(conta.anuncio.termos_proibidos, undefined);
   assert.equal(conta.anuncio.bloqueios, undefined);
   assert.equal(conta.referencia.pontos_fortes, undefined, 'pontos fortes: VAGAS_REGRAS.PONTOS_FORTES');

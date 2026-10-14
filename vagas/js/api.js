@@ -36,12 +36,16 @@
  *   convidarOperador({email, cidade, papel, cidadeNome?}), convidarEquipe(empresaId, email) (só dono(a); resposta neutra),
  *   excluirConta(), entrar(email, senha) -> resposta de eu(),
  *   sair(), sessao() -> {ok, usuario:{id, email}}, linkDoEndereco(location) -> {tokenHash, tipo} | null,
- *   conviteDoEndereco(location) -> token do convite de equipe (?convite=…) | '', RECURSOS ({listaEsperaWhatsapp:true}),
+ *   conviteDoEndereco(location) -> token do convite de equipe (?convite=…) | '', RECURSOS ({listaEsperaWhatsapp, preAberturaEmpresas,
+ *   origemListaEspera}); listaEspera({…, origem?, site?, captcha?}): com captcha vai pela vagas-conta (Turnstile).
  *   confirmarLink({tokenHash, tipo}) -> {ok, tipo, precisaSenha:true}, definirSenha(senha) -> {ok}.
  * Foto OPCIONAL da pessoa (bucket privado 'vagas-fotos' do Storage): enviarFoto(arquivo File/Blob jpg|png|webp ≤ 1 MB) -> {ok, temFoto},
  *   apagarFoto() -> {ok, temFoto:false}, fotoUrl(candidaturaId?) -> {ok, url, expiraEm} (URL assinada de 5 min pela Edge Function:
  *   sem candidatura = a própria; com candidatura = só a empresa daquela candidatura, depois do Combinou). contatoPessoa(candId)
  *   já devolve pessoa.fotoUrl ('' quando não há foto ou não deu para assinar).
+ * Testes de habilidade (docs/VAGAS-TESTES.md): testesCatalogo() (público), iniciarTentativa(teste), proximaQuestao(tentativa),
+ *   responder(tentativa, numero 1..total, posição mostrada 0..3), registrarSinal(tentativa, 'troca_aba'|'copiar'),
+ *   finalizar(tentativa), meusSelos(); a conferência pública é seloPublico(codigo). Na prévia, a prova usa questões de DEMONSTRAÇÃO.
  *
  * No Node (testes): require('./vagas/js/api.js').criar({modo:'supabase', url, chave, fetch, armazenamento, agora}) ou
  *   criar({modo:'previa', backend: require('./vagas/js/api-previa.js').criarBackend({...})}).
@@ -55,7 +59,10 @@
   var MSG_DEMORA = 'O servidor demorou demais para responder. Verifique sua conexão e tente novamente.';
   var MSG_SESSAO = 'Sessão expirada. Entre de novo.';
   var MSG_RECUSA = 'O servidor recusou a solicitação.';
-  var MSG_BANCO = 'O banco de dados ainda não tem o Vagas sem Caos. Peça para aplicar a migração 20261022120000_vagas (docs/SUPABASE.md).';
+  // Banco sem a função (migração não aplicada): a tela pública mostra só a frase neutra; o detalhe técnico vai para o console
+  // (erro.tecnico) e o painel da equipe (admin-vagas.js) tem a sua própria mensagem.
+  var MSG_BANCO = 'O Vagas sem Caos está em manutenção. Tente de novo em alguns minutos.';
+  var MSG_BANCO_TECNICO = 'O banco de dados ainda não tem o Vagas sem Caos. Peça para aplicar a migração 20261022120000_vagas (docs/SUPABASE.md).';
   var MSG_LOGIN = 'E-mail ou senha não conferem.';
   var MSG_CONFIRMAR = 'Confirme seu e-mail pelo link que enviamos antes de continuar.';
   var MSG_LINK = 'O link expirou ou já foi usado. Peça outro na tela de entrada.';
@@ -76,6 +83,15 @@
     anuncio: { rpc: 'vagas_anuncio_publico', p: ['p_codigo'], publico: true },
     anuncioVista: { rpc: 'vagas_anuncio_vista', p: ['p_codigo'], publico: true },
     seloPublico: { rpc: 'vagas_selo_publico', p: ['p_codigo'], publico: true },
+    // Testes de habilidade (migração 20261023120000_vagas_testes.sql; contrato em docs/VAGAS-TESTES.md). O catálogo é público
+    // (com login traz "minha" em cada teste); o resto é da pessoa logada. Erro de regra vem com {codigo, fim?, podeIniciarEm?}.
+    testesCatalogo: { rpc: 'vagas_testes_catalogo', p: [], publico: true },
+    iniciarTentativa: { rpc: 'vagas_iniciar_tentativa', p: ['p_teste'] },
+    proximaQuestao: { rpc: 'vagas_proxima_questao', p: ['p_tentativa'] },
+    responder: { rpc: 'vagas_responder', p: ['p_tentativa', 'p_questao', 'p_alternativa'] },
+    registrarSinal: { rpc: 'vagas_registrar_sinal', p: ['p_tentativa', 'p_tipo'] },
+    finalizar: { rpc: 'vagas_finalizar', p: ['p_tentativa'] },
+    meusSelos: { rpc: 'vagas_meus_selos', p: [] },
     listaEspera: { rpc: 'vagas_lista_espera_entrar', p: ['p_dados'], publico: true },
     listaEsperaSair: { rpc: 'vagas_lista_espera_sair', p: ['p_dados'], publico: true },
     listaEsperaSairLink: { rpc: 'vagas_lista_espera_sair_link', p: ['p_token'], publico: true },
@@ -157,7 +173,11 @@
   // O que este cliente (e o banco que ele espera) já sabe fazer, para a tela ligar o campo novo só quando existir.
   // listaEsperaWhatsapp: listaEspera/listaEsperaSair aceitam "whatsapp" (migração 20261024; no modo supabase, publicar o site
   // só depois de aplicá-la — antes dela o banco ignoraria o número).
-  function recursos() { return { listaEsperaWhatsapp: true }; }
+  function recursos() { return { listaEsperaWhatsapp: true, preAberturaEmpresas: true, origemListaEspera: true }; }
+  // Quem quer saber que o servidor respondeu (a faixa "Sem internet" sai sozinha): VAGAS_API.aoResponder(fn).
+  var ouvintesResposta = [];
+  function aoResponder(fn) { ouvintesResposta.push(fn); }
+  function respondeu() { ouvintesResposta.forEach(function (fn) { try { fn(); } catch (e) { /* segue */ } }); }
 
   function erroDe(json, extra) {
     var e = new Error((json && json.erro) ? String(json.erro) : MSG_RECUSA);
@@ -259,6 +279,7 @@
       });
       return Promise.race([buscar(url + caminho, o), tempo]).then(function (resp) {
         clearTimeout(timer);
+        respondeu();
         return resp.text().then(function (texto) {
           var json = null;
           try { json = texto ? JSON.parse(texto) : null; } catch (e) { json = null; }
@@ -328,7 +349,10 @@
               throw erroDe({ ok: false, erro: MSG_SESSAO, sessaoExpirada: true });
             }
             if (r.status === 401) { guardarSessao(null); throw erroDe({ ok: false, erro: MSG_SESSAO, sessaoExpirada: true }); }
-            if (r.status === 404 || (j && j.code === 'PGRST202')) throw erroDe({ ok: false, erro: MSG_BANCO, bancoDesatualizado: true });
+            if (r.status === 404 || (j && j.code === 'PGRST202')) {
+              if (root.console) root.console.warn('[Vagas sem Caos] ' + nome + ': ' + MSG_BANCO_TECNICO);
+              throw erroDe({ ok: false, erro: MSG_BANCO, bancoDesatualizado: true }, { tecnico: MSG_BANCO_TECNICO });
+            }
             if (r.status < 200 || r.status >= 300 || !j) throw erroDe({ ok: false, erro: MSG_RECUSA });
             if (j.ok !== true) {
               if (j.sessaoExpirada) guardarSessao(null);
@@ -368,6 +392,8 @@
     api.convidarOperador = function (d) { return funcao(Object.assign({ acao: 'operador' }, d || {}), true); };
     api.convidarEquipe = function (empresaId, email) { return funcao({ acao: 'convite_equipe', empresaId: empresaId || '', email: email || '' }, true); };
     api.avisarListaEspera = function (cidade, limite) { return funcao({ acao: 'avisar_lista_espera', cidade: cidade || '', limite: limite || 25 }, true); };
+    var listaRpc = api.listaEspera;
+    api.listaEspera = function (d) { return d && d.captcha ? funcao(Object.assign({ acao: 'lista_espera' }, d), false) : listaRpc(d); };
     api.excluirConta = function () {
       return funcao({ acao: 'excluir', confirmar: 'EXCLUIR' }, true).then(function (r) { guardarSessao(null); return r; });
     };
@@ -475,7 +501,7 @@
           doc.head.appendChild(s);
         });
       }
-      return pronto;
+      return pronto.then(function (b) { respondeu(); return b; });
     }
     function resultado(j) {
       if (!j || j.ok !== true) throw erroDe(j);
@@ -516,18 +542,21 @@
     return api;
   }
 
+  function modoDe(cfg) { return cfg && cfg.MODO === 'previa' ? 'previa' : 'supabase'; }
+  // Falha fechada: só MODO 'previa' EXATO liga o banco de mentira; qualquer outra coisa é o banco de verdade.
   function criar(op) {
     op = op || {};
-    if (op.modo === 'previa') return criarPrevia(op);
-    return criarSupabase(op);
+    var api = op.modo === 'previa' ? criarPrevia(op) : criarSupabase(op);
+    api.aoResponder = aoResponder;
+    return api;
   }
 
-  var exportado = { criar: criar, METODOS: METODOS, RECURSOS: recursos(), linkDoEndereco: linkDoEndereco, conviteDoEndereco: conviteDoEndereco, CHAVE_SESSAO: CHAVE_SESSAO,
+  var exportado = { criar: criar, modoDe: modoDe, METODOS: METODOS, RECURSOS: recursos(), linkDoEndereco: linkDoEndereco, conviteDoEndereco: conviteDoEndereco, CHAVE_SESSAO: CHAVE_SESSAO,
     MSG: { CONEXAO: MSG_CONEXAO, SESSAO: MSG_SESSAO, BANCO: MSG_BANCO, LOGIN: MSG_LOGIN, CONFIRMAR: MSG_CONFIRMAR, LINK: MSG_LINK, SENHA: MSG_SENHA } };
   if (typeof module !== 'undefined' && module.exports) { module.exports = exportado; return; }
   var cfg = root.VAGAS_CONFIG || {};
   var atual = (root.document && root.document.currentScript && root.document.currentScript.src) || '';
-  root.VAGAS_API = criar({ modo: cfg.MODO === 'supabase' ? 'supabase' : 'previa', url: cfg.SUPABASE_URL, chave: cfg.SUPABASE_ANON_KEY,
+  root.VAGAS_API = criar({ modo: modoDe(cfg), url: cfg.SUPABASE_URL, chave: cfg.SUPABASE_ANON_KEY,
     versaoTermos: cfg.VERSAO_TERMOS, caminhoPrevia: atual ? atual.replace(/api\.js(\?.*)?$/, 'api-previa.js') : 'js/api-previa.js' });
   root.VAGAS_API.criar = criar;
   root.VAGAS_API.METODOS = METODOS;

@@ -17,7 +17,7 @@ const PALAVRAS_PROIBIDAS = [/\btinder\b/i, /\bswipe\b/i, /\bmatch\b/i, /\baprova
 const DISC = /\bDISC\b/;
 // Nenhum nome de cidade, estado ou fuso fixo nas telas (a cidade do piloto vem do banco; integrador, 13/10).
 const CIDADE_FIXA = [/Boa Vista/i, /Roraima/i, /Mucaja[ií]/i, /\bCant[aá]\b/, /Rorain[oó]polis/i, /Caracara[ií]/i, /America\/Boa_Vista/];
-const CSP_MINIMA = ["default-src 'self'", "object-src 'none'", "base-uri 'self'", "connect-src 'self' https://*.supabase.co"];
+const CSP_MINIMA = ["default-src 'self'", "object-src 'none'", "base-uri 'self'", "connect-src 'self' https://tevpqngqzxcswmticjnr.supabase.co"];
 
 function semComentarios(texto) {
   return String(texto)

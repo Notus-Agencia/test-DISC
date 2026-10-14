@@ -2,7 +2,7 @@
 
 # Termos de uso · Vagas sem Caos
 
-Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
+Versão 1.0 · minuta de 13/10/2026 · uma empresa do grupo Gestão sem Caos [REVISÃO JURÍDICA: confirmar a estrutura societária de "empresa do grupo"]
 
 ## Resumo em 10 linhas (aparece na tela antes do texto completo)
 
@@ -103,7 +103,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 ## 7. Mensagens pela plataforma
 
-7.1. Depois do Combinou, pessoa e empresa podem conversar dentro da plataforma, sem trocar número. O botão de WhatsApp é opcional e só aparece para os dois quando os dois quiserem.
+7.1. [REVISÃO JURÍDICA] Antes do Combinou, pessoa e empresa conversam só pela plataforma, sem número de telefone. Quando a pessoa toca em Combinou, a empresa passa a ver o nome, o WhatsApp e o e-mail da pessoa (e a foto, se ela enviou) e a pessoa passa a ver o nome, o WhatsApp e o e-mail da empresa. Depois, a pessoa pode cortar o acesso a qualquer hora, em "Quem viu meu contato": a empresa deixa de ver o contato e a conversa é encerrada.
 
 7.2. **É bloqueado** na conversa: pedir dinheiro, Pix, transferência, boleto, pagamento de "taxa" ou "material"; pedir foto ou cópia de documento (CPF, RG, CNH, comprovante), senha ou código de confirmação; enviar link encurtado. A mensagem não é entregue e o sistema avisa quem escreveu.
 
@@ -141,7 +141,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
 
 ## 10. Moderação, denúncia e suspensão
 
-10.1. Qualquer pessoa pode denunciar uma vaga, uma empresa ou uma mensagem em um toque, mesmo sem conta. A denúncia é confidencial: quem foi denunciado não sabe quem denunciou.
+10.1. Qualquer pessoa pode denunciar uma vaga, uma empresa ou uma mensagem em um toque, mesmo sem conta. A denúncia é confidencial: não mostramos a quem foi denunciado quem denunciou, salvo por ordem judicial.
 
 10.2. Uma vaga com 3 denúncias de contas diferentes sai do ar automaticamente até a revisão.
 

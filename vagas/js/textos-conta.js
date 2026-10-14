@@ -3,7 +3,7 @@
  * "node scripts/montar-vagas.mjs" (o npm test confere que está em dia).
  *
  * Acrescenta a VAGAS_TEXTOS (carregue depois de textos.js), para as telas com conta e entrar.html:
- *   anuncio.* (titulo_erro, lei_resumo, campos.*) e referencia.* (vinculos, validacao.*) de avisos.json;
+ *   anuncio.* (titulo_erro, lei_resumo, campos.*), referencia.* (vinculos, validacao.*), mensagem.* e foto.* de avisos.json;
  *   consentimentos.termosVersao e consentimentos.aceites[chave] = {versao, quem, titulo, texto, explicacao, obrigatorio, ...};
  *   moderacao.motivos[chave] = {alvo, acao, titulo, texto_empresa, correcao, lei} (a chave é o p_motivo das RPCs vagas_op_*).
  *   VAGAS_TEXTOS.t('consentimentos.aceites.pessoa_cadastro.texto') também funciona.
@@ -60,6 +60,29 @@
    "nao_publicado": "Texto não publicado"
   }
  },
+ "mensagem": {
+  "bloqueada_dinheiro": "Mensagem não enviada. Pedir dinheiro, Pix, transferência, boleto ou pagamento de taxa não é permitido aqui. Concorrer é grátis, sempre, e isso vale para os dois lados.",
+  "bloqueada_documento": "Mensagem não enviada. Pedir foto ou cópia de documento (CPF, RG, CNH, comprovante), senha ou código não é permitido antes da contratação. Documentos são conferidos pessoalmente, na admissão.",
+  "bloqueada_link": "Mensagem não enviada. Links encurtados não são permitidos aqui. Escreva o endereço completo ou combine pelo WhatsApp depois do Combinou.",
+  "bloqueada_generica": "Mensagem não enviada. Ela tem um trecho que não é permitido aqui. Reescreva sem pedir pagamento, documento ou link.",
+  "aviso_pessoa": "Esta conversa fica registrada. Se a empresa pedir dinheiro, Pix, documento ou senha, não mande: denuncie.",
+  "aviso_empresa": "Esta conversa fica registrada. Combine entrevista e detalhes da vaga. Documentos só na admissão, pessoalmente.",
+  "recebeu_pedido_suspeito": "Esta mensagem foi bloqueada antes de chegar a você porque pedia pagamento ou documento. Você pode denunciar a empresa.",
+  "conversa_encerrada": "Conversa encerrada. A outra parte não pode mais escrever aqui.",
+  "conversa_encerrada_pessoa": "Você encerrou. A empresa não vê mais o seu contato e não pode escrever aqui."
+ },
+ "foto": {
+  "explicacao": "A empresa só vê sua foto depois que vocês combinarem de conversar. Sem foto não muda nada na sua candidatura.",
+  "opcional": "Foto é opcional. Se quiser, envie uma foto do rosto, simples, sem outras pessoas.",
+  "quem_ve": "Nunca aparece no cartão cego, na busca das empresas nem no seu perfil público. Só a empresa com quem você combinou de conversar vê, enquanto a conversa estiver aberta.",
+  "removida": "Foto removida. O arquivo foi apagado e nenhuma empresa vê mais a sua foto.",
+  "empresa": "A foto da pessoa aparece só depois do Combinou, para esta vaga. Ela é opcional: quem não enviou foto está em igualdade com quem enviou. Não use a foto para decidir.",
+  "limites": "Arquivo JPG, PNG ou WEBP, com até 1 MB.",
+  "denunciar_empresa": "Foto imprópria, de outra pessoa ou com documento? Denuncie: a foto some para você e a equipe apura.",
+  "formato": "A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.",
+  "so_apos_combinou": "A foto só aparece depois do Combinou.",
+  "sem_foto_empresa": "Esta pessoa não pôs foto."
+ },
  "consentimentos": {
   "termosVersao": "2026-10-13",
   "aceites": {
@@ -101,8 +124,8 @@
     "versao": "2026-10-13",
     "quem": "pessoa",
     "titulo": "Liberar meu contato para esta empresa",
-    "texto": "Quero conversar com {{empresa_nome}}. Libero meu nome, meu currículo completo e meu WhatsApp só para esta empresa, só para esta vaga.",
-    "explicacao": "A empresa aparece agora com o nome dela: se for uma vaga confidencial, é a primeira vez que você vê quem é. Se não quiser, toque em \"Agora não\" e nada é liberado. Depois do Combinou você pode encerrar a conversa e pedir que a empresa não entre mais em contato. Você vê em \"Quem viu meu contato\" quando ela abriu os seus dados. Nunca pague nada: se a empresa pedir dinheiro, Pix ou documento, denuncie.",
+    "texto": "Quero conversar com {{empresa_nome}}. Libero meu nome, meu WhatsApp, meu e-mail, meu currículo completo e a minha foto (se eu enviei) só para esta empresa, só para esta vaga.",
+    "explicacao": "A empresa aparece agora com o nome dela: se for uma vaga confidencial, é a primeira vez que você vê quem é. Você passa a ver o WhatsApp e o e-mail dela. Se não quiser, toque em \"Agora não\" e nada é liberado. Depois do Combinou, em \"Quem viu meu contato\", você vê quando ela abriu os seus dados e pode cortar o acesso. Nunca pague nada para se candidatar. Documento, só na contratação, depois de conhecer a empresa. Nunca passe código que chegou por SMS.",
     "obrigatorio": true,
     "variaveis": [
      "empresa_nome"
@@ -382,7 +405,7 @@
     "alvo": "denuncia",
     "acao": "acatar",
     "titulo": "Denúncia revisada e acatada",
-    "texto_empresa": "Revisamos a denúncia sobre \"{{alvo_descricao}}\" e tomamos uma providência ({{detalhe}}). Quem foi denunciado não sabe quem denunciou. Obrigado.",
+    "texto_empresa": "Revisamos a denúncia sobre \"{{alvo_descricao}}\" e tomamos uma providência ({{detalhe}}). Não mostramos a quem foi denunciado quem denunciou. Obrigado.",
     "correcao": "",
     "lei": ""
    },
@@ -454,7 +477,7 @@
     "alvo": "denuncia",
     "acao": "acatar",
     "titulo": "Golpe confirmado: resposta a quem denunciou",
-    "texto_empresa": "Obrigado por denunciar. Confirmamos o problema: a vaga saiu do ar e a empresa foi suspensa. Se você mandou dinheiro ou documento, registre um boletim de ocorrência (pode ser online) e, se quiser, fale com a gente para orientação. Quem foi denunciado não sabe quem denunciou.",
+    "texto_empresa": "Obrigado por denunciar. Confirmamos o problema: a vaga saiu do ar e a empresa foi suspensa. Se você mandou dinheiro ou documento, registre um boletim de ocorrência (pode ser online) e, se quiser, fale com a gente para orientação. Não mostramos a quem foi denunciado quem denunciou.",
     "correcao": "",
     "lei": "termos de uso, seção 10.5; protocolo de golpe em docs/VAGAS-OPERACAO.md"
    },

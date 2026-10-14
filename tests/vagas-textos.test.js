@@ -229,7 +229,8 @@ test('e-mails: moldura da marca, sem endereço comprido, anti-golpe para quem se
   for (const a of EMAILS) {
     const t = ler('emails/' + a);
     assert.ok(porArquivo[a], a + ' no índice');
-    assert.match(t, /assets\/marca\/gsc-logo-email\.png/, a + ' logo');
+    assert.match(t, /assets\/marca\/vsc-logo-email\.png" width="188" alt="Vagas sem Caos"/, a + ' logo do Vagas sem Caos');
+    assert.match(t, /uma empresa do grupo Gestão sem Caos/, a + ' endosso no rodapé');
     assert.match(t, /#F34405/, a + ' botão laranja');
     assert.match(t, /Gestão sem Caos/, a);
     assert.match(t, /<table role="presentation"/, a + ' tabela');
