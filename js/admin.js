@@ -209,7 +209,7 @@
   // vendas: true quando o servidor tem a API de vendas (DISC_API.listarPedidos) — a aba Vendas vem depois de Relatórios.
   // conexoes: true quando o servidor tem a aba Conexões (DISC_API.diagnosticoConexoes) — sempre a última aba.
   // vagas: true quando o grupo "Vagas" (js/admin-vagas.js) está disponível — as 4 abas vêm depois de Relatórios.
-  var ABAS_VAGAS = ['vg-cidades', 'vg-operadores', 'vg-moderacao', 'vg-numeros'];
+  var ABAS_VAGAS = ['vg-cidades', 'vg-aviso', 'vg-operadores', 'vg-moderacao', 'vg-numeros'];
   function abasDoPapel(papel, modoApi, vendas, conexoes, vagas) {
     if (!modoApi) return ['lista', 'comparativo', 'importar'];
     if (papel === 'admin') return ['lista', 'processos', 'empresas', 'relatorios'].concat(vagas ? ABAS_VAGAS : []).concat(vendas ? ['vendas'] : []).concat(['usuarios', 'comparativo', 'importar']).concat(conexoes ? ['conexoes'] : []);
@@ -2251,7 +2251,7 @@
   // Telas: '' (Participantes), participante/<id>, processos, processos/novo, processo/<id>, processo/<id>/editar,
   // processo/<id>/relatorio/<token>, empresas, empresa/<id>[/<subaba>], relatorio/<id> (relatório de modelo salvo),
   // relatorios[/gerados|/gerar[/<chave>]|/exemplo/<chave>], vendas[/<subaba>], vendas/pedido/<id>, usuarios,
-  // comparativo, importar, conexoes, vg-cidades|vg-operadores|vg-moderacao|vg-numeros (grupo Vagas). Âncoras do Supabase Auth
+  // comparativo, importar, conexoes, vg-cidades|vg-aviso|vg-operadores|vg-moderacao|vg-numeros (grupo Vagas). Âncoras do Supabase Auth
   // (#access_token=…, #error=…) não são rotas.
   var ABAS_ROTA = ['comparativo', 'importar', 'usuarios', 'conexoes'];
   var SUBABAS_ROTA_EMPRESA = ['colaboradores', 'andamento', 'organograma', 'compatibilidade', 'relatorios', 'clima', 'feedback360', 'historico'];
@@ -9555,7 +9555,8 @@
   function ctxVagas() {
     return { avisar: avisar, confirmar: confirmar, abrirJanela: abrirJanela, criarEscolha: criarEscolha, simulada: SIMULADA, supabase: SUPABASE,
       config: CONFIG, discApi: root.DISC_API, sessaoExpirou: sessaoExpirou,
-      contarPendencias: function (n) { var b = $('aba-n-vg-moderacao'); if (b) b.textContent = n > 0 ? String(n) : ''; } };
+      contarPendencias: function (n) { var b = $('aba-n-vg-moderacao'); if (b) b.textContent = n > 0 ? String(n) : ''; },
+      irPara: function (aba) { if (ABAS_VAGAS.indexOf(aba) !== -1) mostrarAba(aba); } };
   }
 
   // Item "Página de venda" do menu (data-aba="divulgar") é um atalho para a subaba Divulgar de Vendas.

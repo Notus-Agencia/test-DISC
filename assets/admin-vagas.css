@@ -50,6 +50,22 @@
 .vg-adm-gatilhos { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
 .vg-adm-partes { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; color: var(--medio); }
 
+/* Aviso de abertura: resumo (só contagens), e-mail em lotes e um contato do WhatsApp por vez */
+.vg-adm-aviso-resumo { display: grid; gap: 12px; margin-bottom: 16px; }
+.vg-adm-aviso-numeros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.vg-adm-aviso-numero { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: var(--raio-campo); background: var(--fundo); }
+.vg-adm-aviso-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.vg-adm-aviso-secao { display: flex; flex-direction: column; gap: 12px; }
+.vg-adm-aviso-confirmar { display: grid; gap: 10px; padding: 12px 14px; border-radius: var(--raio-campo); background: var(--fundo); box-shadow: inset 3px 0 0 var(--notus); }
+.vg-adm-aviso-lote { font-size: var(--t-rotulo); }
+.vg-adm-aviso-lote--falhas { color: var(--medio); }
+.vg-adm-aviso-contato { display: grid; gap: 10px; }
+.vg-adm-aviso-numero-wa { font-size: var(--t-numero); font-weight: 700; letter-spacing: -0.01em; }
+.vg-adm-aviso-texto { white-space: pre-wrap; font-size: var(--t-rotulo); color: var(--medio); padding: 12px 14px; border-radius: var(--raio-campo); background: var(--fundo); }
+.vg-adm-aviso-wa-vazio { color: var(--medio); }
+
 @media (max-width: 1100px) {
   .vg-adm-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vg-adm-aviso-numeros { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vg-adm-aviso-grade { grid-template-columns: minmax(0, 1fr); }
 }

@@ -68,9 +68,9 @@ test('quando o grupo aparece: Supabase só com a migração do Vagas (versaoBanc
   assert.equal(V.bancoTemVagas(null), false);
 });
 
-test('ganchos no painel: abasDoPapel com o 5º argumento põe as 4 abas depois de Relatórios; sem ele, nada muda; rotas de ida e volta', () => {
+test('ganchos no painel: abasDoPapel com o 5º argumento põe as 5 abas depois de Relatórios; sem ele, nada muda; rotas de ida e volta', () => {
   assert.deepEqual(AD.abasDoPapel('admin', true, true, true, true),
-    ['lista', 'processos', 'empresas', 'relatorios', 'vg-cidades', 'vg-operadores', 'vg-moderacao', 'vg-numeros', 'vendas', 'usuarios', 'comparativo', 'importar', 'conexoes']);
+    ['lista', 'processos', 'empresas', 'relatorios', 'vg-cidades', 'vg-aviso', 'vg-operadores', 'vg-moderacao', 'vg-numeros', 'vendas', 'usuarios', 'comparativo', 'importar', 'conexoes']);
   assert.deepEqual(AD.abasDoPapel('admin', true, true, true), ['lista', 'processos', 'empresas', 'relatorios', 'vendas', 'usuarios', 'comparativo', 'importar', 'conexoes']);
   assert.deepEqual(AD.abasDoPapel('gestor', true, true, true, true), []);
   assert.deepEqual(AD.abasDoPapel('', false, true, true, true), ['lista', 'comparativo', 'importar'], 'sem servidor não há Vagas');
@@ -151,8 +151,11 @@ test('prévia do painel: dados fictícios em memória, nada de pessoa; cidade, z
   const r = await f.rpc('vagas_op_resumo', {});
   assert.ok(r.ok && r.cidades.length >= 2);
   assert.ok(r.cidades.some((c) => c.status === 'ativa') && r.cidades.some((c) => c.status === 'lista_espera') && r.cidades.some((c) => c.status === 'rascunho'));
-  const tudo = JSON.stringify(f.estado());
+  const tudo = JSON.stringify(Object.assign({}, f.estado(), { lista: [] }));
   assert.doesNotMatch(tudo, /whatsapp"|cpf|curriculo|"pessoa"\s*:\s*\{|telefone/i, 'nenhum dado de pessoa na prévia do painel');
+  // A lista de espera do aviso de abertura: sem e-mail nenhum e só números fictícios (556298000NNNN).
+  assert.ok(f.estado().lista.length > 0);
+  assert.ok(f.estado().lista.every((l) => !('email' in l) && /^(|556298000\d{4})$/.test(l.whatsapp)));
   const ativa = r.cidades.filter((c) => c.status === 'ativa')[0];
   const ind = await f.rpc('vagas_op_indicadores', { p_cidade: ativa.slug });
   assert.deepEqual(ind.indicadores.map((i) => i.chave), V.INDICADORES.map((i) => i.chave));
@@ -181,6 +184,57 @@ test('prévia do painel: dados fictícios em memória, nada de pessoa; cidade, z
   await assert.rejects(f.rpc('vagas_funcao_que_nao_existe', {}), (e) => e.bancoDesatualizado === true);
 });
 
+test('aviso de abertura (prévia do painel = contrato da 20261024120002): só contagens; e-mail em lotes de 25 com falha que volta; WhatsApp um por vez', async () => {
+  const f = V.criarSimulada({ agora: () => AGORA });
+  const cids = (await f.rpc('vagas_op_resumo', {})).cidades;
+  const espera = cids.filter((c) => c.status === 'lista_espera')[0];
+  const res0 = await f.rpc('vagas_adm_aviso_resumo', { p_cidade: espera.slug });
+  assert.deepEqual([res0.cidade.status, res0.cidade.abertaEm, res0.cidade.listaAte], ['lista_espera', '', '']);
+  assert.equal(res0.contagens.naLista, espera.contagens.listaEspera, 'a contagem do resumo é a da lista');
+  await assert.rejects(f.conta('avisar_lista_espera', { cidade: espera.slug }), /A cidade ainda não está aberta/);
+  await assert.rejects(f.rpc('vagas_adm_aviso_whatsapp', { p_cidade: espera.slug }), /A cidade ainda não está aberta/);
+  assert.match(V.linhaAviso(res0), /^A cidade ainda não abriu: \d+ inscrições esperam o aviso\.$/);
+  await assert.rejects(f.rpc('vagas_adm_aviso_resumo', { p_cidade: 'nao-existe-go' }), /Cidade não encontrada/);
+
+  const aberta = cids.filter((c) => c.status === 'ativa' && (c.contagens.listaEspera || 0) > 0)[0];
+  let res = await f.rpc('vagas_adm_aviso_resumo', { p_cidade: aberta.slug });
+  assert.equal(Date.parse(res.cidade.listaAte) - Date.parse(res.cidade.abertaEm), 30 * 864e5, 'a lista some 30 dias depois da abertura');
+  const k0 = res.contagens;
+  assert.equal(k0.naLista, k0.aAvisarEmail + k0.avisadosEmail);
+  // E-mail: lotes de até 25; a resposta tem só números; quem falhou volta para a fila e sai no lote seguinte.
+  const l1 = await f.conta('avisar_lista_espera', { cidade: aberta.slug, limite: V.LOTE_AVISO });
+  assert.deepEqual(Object.keys(l1).sort(), ['aAvisarWhatsapp', 'cidade', 'enviados', 'falhas', 'ok', 'restantes', 'terminou']);
+  assert.equal(l1.enviados + l1.falhas, Math.min(V.LOTE_AVISO, k0.aAvisarEmail));
+  assert.equal(l1.falhas, 1);
+  assert.equal(l1.restantes, k0.aAvisarEmail - l1.enviados);
+  assert.doesNotMatch(JSON.stringify(l1), /@/, 'nenhum e-mail na resposta');
+  let l = l1;
+  while (!l.terminou) l = await f.conta('avisar_lista_espera', { cidade: aberta.slug });
+  res = await f.rpc('vagas_adm_aviso_resumo', { p_cidade: aberta.slug });
+  assert.equal(res.contagens.aAvisarEmail, 0);
+  assert.equal(res.contagens.naLista, res.contagens.aAvisarWhatsapp, 'quem só deixou o e-mail sai da lista depois do envio');
+  // WhatsApp: um contato por vez (o mesmo até marcar), texto de whatsapp.json e link wa.me pronto; Feito tira da lista.
+  const w1 = await f.rpc('vagas_adm_aviso_whatsapp', { p_cidade: aberta.slug });
+  const w1b = await f.rpc('vagas_adm_aviso_whatsapp', { p_cidade: aberta.slug });
+  assert.equal(w1.contato.id, w1b.contato.id, 'o mesmo contato até marcar');
+  assert.equal(w1.contato.texto, V.textoAvisoWhatsapp({ nome: w1.cidade.nome, slug: aberta.slug }));
+  assert.equal(w1.contato.link, 'https://wa.me/' + w1.contato.whatsapp + '?text=' + encodeURIComponent(w1.contato.texto));
+  assert.ok(!('contatos' in w1) && !Array.isArray(w1.contato), 'nunca uma lista de números');
+  const feito = await f.rpc('vagas_adm_aviso_whatsapp_feito', { p_id: w1.contato.id });
+  assert.deepEqual([feito.duplicado, feito.contagens.aAvisarWhatsapp, feito.contagens.naLista], [false, res.contagens.aAvisarWhatsapp - 1, res.contagens.naLista - 1]);
+  await assert.rejects(f.rpc('vagas_adm_aviso_whatsapp_feito', { p_id: w1.contato.id }), /Contato não encontrado/, 'já saiu da lista');
+  const w2 = await f.rpc('vagas_adm_aviso_whatsapp', { p_cidade: aberta.slug });
+  assert.notEqual(w2.contato.id, w1.contato.id);
+  const atos = (await f.rpc('vagas_op_moderacao', { p_filtro: { limite: 200 } })).registros.map((m) => m.acao);
+  for (const a of ['aviso_email_lote', 'aviso_whatsapp_ver', 'aviso_whatsapp']) assert.ok(atos.includes(a), a + ' no registro');
+  assert.doesNotMatch(JSON.stringify(await f.rpc('vagas_op_moderacao', { p_filtro: { limite: 200 } })), /556298000/, 'o registro não guarda o número');
+  // Texto do WhatsApp = conteudo/vagas-textos/whatsapp.json (lista_espera_cidade_abriu).
+  const modelo = lerJson('conteudo/vagas-textos/whatsapp.json').mensagens.filter((m) => m.chave === 'lista_espera_cidade_abriu')[0];
+  assert.equal(V.TEXTO_AVISO_WHATSAPP, modelo.texto);
+  assert.deepEqual(['5562988881111', '556233334444', '123'].map(V.formatarWhatsapp), ['+55 62 98888-1111', '+55 62 3333-4444', '123']);
+  assert.equal(V.linhaAviso({ cidade: { status: 'ativa' }, contagens: { naLista: 3, aAvisarEmail: 1, aAvisarWhatsapp: 2 } }), 'Falta avisar 1 por e-mail e 2 pelo WhatsApp.');
+});
+
 test('Supabase: RPC por fetch no endereço do projeto com a chave pública e o token da sessão do painel; erros com as marcas', async () => {
   const chamadas = [];
   let resposta = { status: 200, corpo: { ok: true, cidades: [] } };
@@ -198,6 +252,13 @@ test('Supabase: RPC por fetch no endereço do projeto com a chave pública e o t
   assert.deepEqual(JSON.parse(chamadas[2].op.body), { acao: 'operador', email: 'a@b.co', cidade: 'a-go', papel: 'operador' });
   await assert.rejects(f.rpc('vagas_pessoa_minha', {}), /Função não permitida/, 'o painel só chama RPCs de operação e equipe');
   assert.equal(chamadas.length, 3);
+  // Aviso de abertura: lote pela Edge Function e a fila pelas RPCs da equipe.
+  await f.conta('avisar_lista_espera', { cidade: 'a-go', limite: V.LOTE_AVISO });
+  assert.deepEqual(JSON.parse(chamadas[3].op.body), { acao: 'avisar_lista_espera', cidade: 'a-go', limite: 25 });
+  await f.rpc('vagas_adm_aviso_whatsapp', { p_cidade: 'a-go' });
+  await f.rpc('vagas_adm_aviso_whatsapp_feito', { p_id: 'x' });
+  assert.deepEqual(chamadas.slice(4).map((c) => c.url.split('/rpc/')[1]), ['vagas_adm_aviso_whatsapp', 'vagas_adm_aviso_whatsapp_feito']);
+  chamadas.length = 3;
   resposta = { status: 404, corpo: { code: 'PGRST202', message: 'Could not find the function' } };
   await assert.rejects(f.rpc('vagas_op_indicadores', { p_cidade: 'a-go' }), (e) => e.bancoDesatualizado === true);
   resposta = { status: 401, corpo: { message: 'JWT expired' } };

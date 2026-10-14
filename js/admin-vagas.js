@@ -1,7 +1,9 @@
 /*
  * Painel (computador): grupo "Vagas" do Vagas sem Caos dentro do painel da Gestão sem Caos. UMD: window.DISC_ADMIN_VAGAS /
- * module.exports. Só para a equipe (e_admin() no banco). Quatro abas (docs/VAGAS-TELAS.md §5):
+ * module.exports. Só para a equipe (e_admin() no banco). Cinco abas (docs/VAGAS-TELAS.md §5):
  *   vg-cidades    cidades e praças: situação, zonas, metas, nova cidade (rascunho), pausar/reativar/abrir lista/ativar
+ *   vg-aviso      aviso de abertura para a lista de espera (SPEC §6.7): resumo por cidade (só contagens), e-mail em lotes de 25
+ *                 (Edge Function, ação avisar_lista_espera) e fila do WhatsApp com UM contato por vez (abrir no WhatsApp, Feito)
  *   vg-operadores quem opera cada cidade: convidar, editar (papel, repasse, contrato), desligar
  *   vg-moderacao  registro de todos os atos (todas as cidades) com pendências no topo; "Reverter" onde há volta
  *   vg-numeros    os 15 indicadores da praça (vagas_op_indicadores) com alvo e cor; sem a RPC, as 8 contagens do resumo
@@ -17,16 +19,17 @@
  *   - Prévia do painel (API simulada): dados FICTÍCIOS só desta página, em memória (criarSimulada). Para não mudar a
  *     demonstração do DISC, o grupo só aparece na prévia com ?vagas=1 (lembrado na aba) ou CONFIG.VAGAS_PAINEL = true.
  * Privacidade: nenhuma tela aqui mostra dado de pessoa (as RPCs de operação nunca devolvem); só cidades, empresas, vagas,
- * atos de moderação e contagens.
+ * atos de moderação e contagens. A única exceção é a fila do WhatsApp do aviso de abertura: UM número por vez, o que a própria
+ * pessoa deixou para ser avisada (o banco registra cada número aberto, sem o número); nunca uma lista de e-mails ou números.
  *
- * Ganchos em js/admin.js: abasDoPapel(…, vagas) põe as 4 abas; mostrarAba chama mostrar(aba, vista, ctx); verificarBanco chama
+ * Ganchos em js/admin.js: abasDoPapel(…, vagas) põe as 5 abas; mostrarAba chama mostrar(aba, vista, ctx); verificarBanco chama
  * bancoConferido(resp); limparSessao chama esquecer(). ctx = {avisar, falhou, confirmar, abrirJanela, criarEscolha, simulada,
- * supabase, config, discApi, sessaoExpirou, contarPendencias(n)}.
+ * supabase, config, discApi, sessaoExpirou, contarPendencias(n), irPara(aba)}.
  */
 (function (root) {
   'use strict';
 
-  var ABAS = ['vg-cidades', 'vg-operadores', 'vg-moderacao', 'vg-numeros'];
+  var ABAS = ['vg-cidades', 'vg-aviso', 'vg-operadores', 'vg-moderacao', 'vg-numeros'];
   var MIGRACAO = '20261022120000_vagas';
   var SITE_VAGAS = 'https://vagas.gestaosemcaos.com.br';
   var CHAVE_PREVIA = 'disc_vagas_previa';
@@ -97,6 +100,32 @@
 
   var STATUS_CIDADE = { rascunho: 'Rascunho', lista_espera: 'Lista de espera', ativa: 'Ativa', pausada: 'Pausada' };
   var PAPEIS = { operador: 'Operação', moderador: 'Moderação', admin: 'Equipe', sistema: 'Sistema', empresa: 'Empresa' };
+  // Aviso de abertura (SPEC §6.7). Texto do WhatsApp = conteudo/vagas-textos/whatsapp.json, "lista_espera_cidade_abriu" (o banco
+  // devolve preenchido; aqui só a prévia do painel usa; o teste compara com o arquivo).
+  var LOTE_AVISO = 25;
+  var MSG_AVISO_FECHADA = 'A cidade ainda não está aberta. Abra a cidade antes de avisar a lista de espera.';
+  var TEXTO_AVISO_WHATSAPP = 'Oi! Aqui é a equipe do Vagas sem Caos, da Gestão sem Caos. Você pediu para ser avisado(a) quando abríssemos em {{cidade}}: ' +
+    'abrimos! As vagas da cidade já estão no site: {{link_cidade}}\n\nEsta é a única mensagem sobre a lista de espera: depois dela, o seu número sai da lista.\n\n' +
+    'Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.';
+  function textoAvisoWhatsapp(c) {
+    return TEXTO_AVISO_WHATSAPP.replace('{{cidade}}', c.nome).replace('{{link_cidade}}', SITE_VAGAS + '/cidade.html?cidade=' + c.slug);
+  }
+  // '5562988881111' -> '+55 62 98888-1111' (celular) · '556233334444' -> '+55 62 3333-4444'; outro formato fica como veio.
+  function formatarWhatsapp(n) {
+    var d = texto(n).replace(/\D/g, '');
+    var m = /^55(\d{2})(\d{4,5})(\d{4})$/.exec(d);
+    return m ? '+55 ' + m[1] + ' ' + m[2] + '-' + m[3] : texto(n);
+  }
+  // Situação do aviso de uma cidade, em uma linha (resumo de vagas_adm_aviso_resumo; datas no fuso do navegador).
+  function linhaAviso(r) {
+    var c = (r && r.cidade) || {};
+    var k = (r && r.contagens) || {};
+    if (c.status !== 'ativa') {
+      return 'A cidade ainda não abriu' + (k.naLista ? ': ' + numeroBr(k.naLista) + (k.naLista === 1 ? ' inscrição espera' : ' inscrições esperam') + ' o aviso.' : '.');
+    }
+    if (!k.naLista) return 'Ninguém mais na lista de espera: todos foram avisados ou a lista já foi apagada.';
+    return 'Falta avisar ' + numeroBr(k.aAvisarEmail || 0) + ' por e-mail e ' + numeroBr(k.aAvisarWhatsapp || 0) + ' pelo WhatsApp.';
+  }
   // vagas_adm_operadores.contaStatus (a conta de operação, não o acesso à cidade): 'ativa' não precisa de rótulo.
   var SITUACAO_CONTA = { pendente: 'aguardando confirmar o e-mail do convite', suspensa: 'conta suspensa' };
   var ATOS = {
@@ -111,7 +140,9 @@
     empresa_dono: 'Nomeou a pessoa dona da empresa', dono_automatico: 'A pessoa mais antiga da equipe virou dona',
     equipe_tornar_dono: 'A empresa tornou outra pessoa dona', equipe_convidar: 'A empresa convidou alguém para a equipe',
     equipe_convite_cancelar: 'A empresa cancelou um convite', equipe_aceitar: 'Uma pessoa entrou na equipe da empresa',
-    equipe_remover: 'A empresa tirou alguém da equipe', equipe_sair: 'Uma pessoa saiu da equipe da empresa'
+    equipe_remover: 'A empresa tirou alguém da equipe', equipe_sair: 'Uma pessoa saiu da equipe da empresa',
+    aviso_email_lote: 'Avisou a lista de espera por e-mail (lote)', aviso_email: 'Avisou a lista de espera por e-mail',
+    aviso_whatsapp_ver: 'Abriu um contato da fila do WhatsApp', aviso_whatsapp: 'Avisou um contato pelo WhatsApp'
   };
   var ALVOS = { anuncio: 'Vaga', empresa: 'Empresa', denuncia: 'Denúncia', referencia: 'Referência', conta: 'Conta', cidade: 'Cidade',
     zona: 'Zona', operador: 'Operador' };
@@ -489,17 +520,43 @@
       ].map(function (x, i) {
         return { id: i + 1, em: iso(t0 - x[0]), papel: x[1], acao: x[2], alvo: x[3], alvoId: x[4], motivo: x[5], dados: {}, cidade: i === 6 ? 'niquelandia-go' : 'uruacu-go', alvoNome: x[6] };
       }),
+      // Lista de espera (aviso de abertura, SPEC §6.7): e-mails e números FICTÍCIOS que só existem aqui. A praça piloto abriu há
+      // 2 dias: 30 ainda sem o e-mail (10 com WhatsApp; um falha no 1º envio e volta para a fila) e 4 já avisados por e-mail que
+      // esperam o WhatsApp. A cidade em lista de espera tem 64 (20 com WhatsApp).
+      lista: [],
       seq: 100
     };
+    st.cidades[0].abertaEm = t0 - 2 * D;
+    (function semearLista() {
+      var n = 0;
+      function linha(slug, dias, comWhats, avisado, perfil) {
+        n += 1;
+        st.lista.push({ id: 'le-' + n, cidade: slug, perfil: perfil || 'pessoa', whatsapp: comWhats ? '556298000' + ('000' + n).slice(-4) : '',
+          criadoEm: t0 - dias * D, avisadoEm: avisado ? t0 - D : null, whatsappAvisadoEm: null, falhaUmaVez: false });
+      }
+      for (var i = 0; i < 4; i++) linha('uruacu-go', 60 - i, true, true);
+      for (i = 0; i < 30; i++) linha('uruacu-go', 50 - i, i % 3 === 0, false, i % 7 === 3 ? 'empresa' : 'pessoa');
+      st.lista[6].falhaUmaVez = true;
+      for (i = 0; i < 64; i++) linha('niquelandia-go', 40 - i / 2, i % 16 < 5, false, i % 9 === 4 ? 'empresa' : 'pessoa');
+    })();
     function ok(o) { return Promise.resolve(Object.assign({ ok: true }, JSON.parse(JSON.stringify(o)))); }
-    function erro(msg) { return Promise.reject(erroDe({ erro: msg })); }
+    function erro(msg, extra) { return Promise.reject(erroDe(Object.assign({ erro: msg }, extra || {}))); }
     function cidade(slug) { return st.cidades.filter(function (c) { return c.slug === slug; })[0] || null; }
     function registrar(cid, acao, alvo, alvoId, motivo, nome) {
       st.moderacao.unshift({ id: ++st.seq, em: iso(agora()), papel: 'admin', acao: acao, alvo: alvo, alvoId: alvoId, motivo: motivo || '', dados: {}, cidade: cid, alvoNome: nome || '' });
     }
+    function listaDe(slug) { return st.lista.filter(function (l) { return l.cidade === slug; }); }
+    // As contagens do resumo com a lista de espera de verdade desta prévia.
+    function contagensDe(c) { return Object.assign({}, c.contagens, { listaEspera: listaDe(c.slug).length }); }
+    function avisoContagens(slug) {
+      var l = listaDe(slug);
+      return { naLista: l.length, aAvisarEmail: l.filter(function (x) { return x.avisadoEm == null; }).length,
+        avisadosEmail: l.filter(function (x) { return x.avisadoEm != null; }).length,
+        aAvisarWhatsapp: l.filter(function (x) { return x.whatsapp && x.whatsappAvisadoEm == null; }).length };
+    }
     function indicadores(c) {
       var porte = c.porte;
-      var k = c.contagens;
+      var k = contagensDe(c);
       var aberta = c.status === 'ativa';
       var valores = {
         vagas_ativas: [k.anunciosNoAr, 'ok', { porTeste: { atendimento: 3, vendas: 2, administrativo: 1, caixa: 2, portugues: 0 },
@@ -579,18 +636,20 @@
     }
     var H_ = {
       vagas_op_resumo: function () {
-        return ok({ cidades: st.cidades.map(function (c) { return { id: c.id, slug: c.slug, nome: c.nome, status: c.status, papel: 'admin', contagens: c.contagens }; }) });
+        return ok({ cidades: st.cidades.map(function (c) { return { id: c.id, slug: c.slug, nome: c.nome, status: c.status, papel: 'admin', contagens: contagensDe(c) }; }) });
       },
       vagas_cidades_publicas: function () {
         return ok({ cidades: st.cidades.filter(function (c) { return c.status === 'ativa' || c.status === 'lista_espera'; }).map(function (c) {
           return { id: c.id, slug: c.slug, nome: c.nome, uf: c.uf, status: c.status, fuso: c.fuso, praca: c.praca,
             zonas: c.zonas.filter(function (z) { return z.ativa; }).map(function (z) { return { slug: z.slug, nome: z.nome, bairros: z.bairros }; }),
-            interessados: c.status === 'lista_espera' ? Math.floor(c.contagens.listaEspera / 10) * 10 : null, metaListaEspera: c.metaListaEspera };
+            interessados: c.status === 'lista_espera' ? Math.floor(contagensDe(c).listaEspera / 10) * 10 : null, metaListaEspera: c.metaListaEspera };
         }) });
       },
       vagas_adm_cidades: function () {
         return ok({ cidades: st.cidades.map(function (c) {
-          return Object.assign({}, c, { operadoresAtivos: st.operadores.filter(function (o) { return o.cidade === c.slug && o.ativo; }).length });
+          var x = Object.assign({}, c, { contagens: contagensDe(c), operadoresAtivos: st.operadores.filter(function (o) { return o.cidade === c.slug && o.ativo; }).length });
+          delete x.abertaEm;
+          return x;
         }) });
       },
       vagas_adm_cidade_salvar: function (a) {
@@ -603,6 +662,7 @@
           st.cidades.push(c);
         }
         if (d.praca && !cidade(d.praca)) return erro('Cidade-polo não encontrada.');
+        if (d.status === 'ativa' && c.status !== 'ativa') c.abertaEm = agora();   // como o gatilho aberta_em do banco
         ['nome', 'uf', 'ibge', 'status', 'porte', 'praca', 'metaListaEspera'].forEach(function (k) { if (Object.prototype.hasOwnProperty.call(d, k)) c[k] = d[k]; });
         registrar(c.slug, 'cidade_salvar', 'cidade', c.id, '', c.nome);
         return ok({ cidade: c });
@@ -654,8 +714,59 @@
         var r = st.moderacao.filter(function (m) { return m.alvoId === a.p_anuncio; })[0];
         registrar(r ? r.cidade : '', 'anuncio_publicar', 'anuncio', a.p_anuncio, a.p_motivo, r ? r.alvoNome : '');
         return ok({ anuncio: { id: a.p_anuncio, status: 'publicado' } });
+      },
+      // Aviso de abertura (iguais às RPCs da 20261024120002).
+      vagas_adm_aviso_resumo: function (a) {
+        var c = cidade(texto(a.p_cidade));
+        if (!c) return erro('Cidade não encontrada.');
+        var aberta = c.status === 'ativa' && c.abertaEm != null;
+        return ok({ cidade: { slug: c.slug, nome: c.nome, status: c.status, abertaEm: c.abertaEm != null ? iso(c.abertaEm) : '',
+          listaAte: aberta ? iso(c.abertaEm + 30 * D) : '' }, contagens: avisoContagens(c.slug) });
+      },
+      vagas_adm_aviso_whatsapp: function (a) {
+        var c = cidade(texto(a.p_cidade));
+        if (!c) return erro('Cidade não encontrada.');
+        if (c.status !== 'ativa') return erro(MSG_AVISO_FECHADA);
+        var l = listaDe(c.slug).filter(function (x) { return x.whatsapp && x.whatsappAvisadoEm == null; })
+          .sort(function (p, q) { return p.criadoEm - q.criadoEm; })[0];
+        var contato = null;
+        if (l) {
+          var txt = textoAvisoWhatsapp(c);
+          contato = { id: l.id, whatsapp: l.whatsapp, perfil: l.perfil, texto: txt, link: 'https://wa.me/' + l.whatsapp + '?text=' + encodeURIComponent(txt) };
+          registrar(c.slug, 'aviso_whatsapp_ver', 'cidade', c.id, '', c.nome);
+        }
+        return ok({ cidade: { slug: c.slug, nome: c.nome }, contato: contato, contagens: avisoContagens(c.slug) });
+      },
+      vagas_adm_aviso_whatsapp_feito: function (a) {
+        var l = st.lista.filter(function (x) { return x.id === a.p_id; })[0];
+        if (!l || !l.whatsapp) return erro('Contato não encontrado.');
+        var c = cidade(l.cidade);
+        if (c.status !== 'ativa') return erro(MSG_AVISO_FECHADA);
+        var dup = l.whatsappAvisadoEm != null;
+        if (!dup) {
+          l.whatsappAvisadoEm = agora();
+          registrar(c.slug, 'aviso_whatsapp', 'cidade', c.id, '', c.nome);
+          if (l.avisadoEm != null) st.lista = st.lista.filter(function (x) { return x !== l; });
+        }
+        return ok({ duplicado: dup, contagens: avisoContagens(c.slug) });
       }
     };
+    // Um lote do aviso por e-mail (ação avisar_lista_espera da vagas-conta): na prévia nada sai; quem tinha a marca de falha volta
+    // para a fila uma vez (como uma falha de envio de verdade).
+    function avisarLote(corpo) {
+      var c = cidade(texto(corpo && corpo.cidade));
+      if (!c) return erro('Cidade não encontrada.');
+      if (c.status !== 'ativa') return erro(MSG_AVISO_FECHADA);
+      var n = Math.min(Math.max(parseInt(corpo.limite, 10) || 25, 1), 50);
+      var lote = listaDe(c.slug).filter(function (l) { return l.avisadoEm == null; }).sort(function (p, q) { return p.criadoEm - q.criadoEm; }).slice(0, n);
+      var falhas = 0;
+      lote.forEach(function (l) { if (l.falhaUmaVez) { l.falhaUmaVez = false; falhas += 1; } else l.avisadoEm = agora(); });
+      st.lista = st.lista.filter(function (l) { return !(lote.indexOf(l) >= 0 && l.avisadoEm != null && !l.whatsapp); });
+      if (lote.length) registrar(c.slug, 'aviso_email_lote', 'cidade', c.id, '', c.nome);
+      var ct = avisoContagens(c.slug);
+      return ok({ cidade: { slug: c.slug, nome: c.nome }, enviados: lote.length - falhas, falhas: falhas, restantes: ct.aAvisarEmail,
+        aAvisarWhatsapp: ct.aAvisarWhatsapp, terminou: ct.aAvisarEmail === 0 });
+    }
     return {
       tipo: 'simulada',
       rpc: function (nome, args) {
@@ -663,6 +774,7 @@
         return Promise.resolve().then(function () { return H_[nome](args || {}); });
       },
       conta: function (acao, corpo) {
+        if (acao === 'avisar_lista_espera') return avisarLote(corpo || {});
         if (acao !== 'operador') return erro('Ação desconhecida.');
         var email = texto(corpo && corpo.email).trim().toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return erro('E-mail inválido.');
@@ -679,10 +791,11 @@
 
   /* ------------------------------------------------------------------------------------------------- tela */
 
-  var est = { banco: null, fonte: null, cache: {}, num: { cidade: '' }, mod: { busca: '', cidade: '', tipo: '' } };
+  function estadoAviso() { return { cidade: '', confirmado: {}, contato: {}, abriu: {}, lote: {} }; }
+  var est = { banco: null, fonte: null, cache: {}, num: { cidade: '' }, mod: { busca: '', cidade: '', tipo: '' }, aviso: estadoAviso() };
 
   function bancoConferido(resp) { est.banco = bancoTemVagas(resp); }
-  function esquecer() { est.fonte = null; est.cache = {}; est.num = { cidade: '' }; est.mod = { busca: '', cidade: '', tipo: '' }; }
+  function esquecer() { est.fonte = null; est.cache = {}; est.num = { cidade: '' }; est.mod = { busca: '', cidade: '', tipo: '' }; est.aviso = estadoAviso(); }
   function fonte(ctx) {
     if (est.fonte) return est.fonte;
     if (ctx.simulada) est.fonte = criarSimulada({});
@@ -822,6 +935,9 @@
     acoes.push(botao('botao--claro botao--pequeno', nz == null ? 'Zonas' : 'Zonas (' + nz + ')', function () { janelaZonas(ctx, c, recarregar); }, { 'data-acao': 'zonas' }));
     acoes.push(botao('botao--claro botao--pequeno', 'Editar', function () { janelaCidade(ctx, c, recarregar, cidades); }, { 'data-acao': 'editar' }));
     if (c.status === 'ativa') acoes.push(botao('botao--claro botao--pequeno', 'Pausar', function () { mudarStatus(ctx, c, 'pausada', recarregar); }, { 'data-acao': 'pausar' }));
+    if (c.status === 'ativa' && ctx.irPara) {
+      acoes.push(botao('botao--claro botao--pequeno', 'Avisar a lista', function () { est.aviso.cidade = c.slug; ctx.irPara('vg-aviso'); }, { 'data-acao': 'avisar' }));
+    }
     if (c.status === 'pausada') acoes.push(botao('botao--principal botao--pequeno', 'Reativar', function () { mudarStatus(ctx, c, 'ativa', recarregar); }, { 'data-acao': 'reativar' }));
     if (c.status === 'rascunho') acoes.push(botao('botao--principal botao--pequeno', 'Abrir lista de espera', function () { mudarStatus(ctx, c, 'lista_espera', recarregar); }, { 'data-acao': 'lista' }));
     if (c.status === 'lista_espera') {
@@ -843,7 +959,8 @@
       classeBotao: novo === 'pausada' ? 'botao--perigo' : 'botao--principal' }).then(function (sim) {
       if (!sim) return;
       fonte(ctx).rpc('vagas_adm_cidade_salvar', { p_dados: { slug: c.slug, status: novo } }).then(function () {
-        ctx.avisar('Situação de ' + c.nome + ': ' + STATUS_CIDADE[novo] + '.', 'ok');
+        ctx.avisar('Situação de ' + c.nome + ': ' + STATUS_CIDADE[novo] + '.' + (novo === 'ativa' && c.status === 'lista_espera'
+          ? ' Agora avise a lista de espera em Aviso de abertura.' : ''), 'ok');
         depois();
       }, function (e) { falhou(ctx, e); });
     });
@@ -1151,8 +1268,188 @@
     return [semPorte, praca, cartoes, protegidos, tabela, gatilhos];
   }
 
+  // ------------------------------------------------------------------------------------------------- vg-aviso
+  // Aviso de abertura para a lista de espera (só a equipe). Nunca uma lista de e-mails ou de números: o e-mail sai em lotes pela
+  // Edge Function (a resposta tem só números) e o WhatsApp é um contato por vez, aberto à mão no WhatsApp da Gestão sem Caos.
+  var CONTAGENS_AVISO = [['naLista', 'Na lista de espera'], ['aAvisarEmail', 'Falta avisar por e-mail'], ['avisadosEmail', 'Já avisados por e-mail'],
+    ['aAvisarWhatsapp', 'Falta avisar pelo WhatsApp']];
+  function dia(isoTxt) { return quando(isoTxt).replace(/ \d\d:\d\d$/, ''); }
+  function telaAviso(vista, ctx) {
+    var corpo = el('div', { id: 'vg-adm-aviso-corpo' });
+    var acoes = el('div', { classe: 'vg-adm-num-escolha' });
+    var sobre = el('p', { classe: 'sobretitulo' }, 'Vagas sem Caos · equipe');
+    trocar(vista, [el('div', { classe: 'cabecalho' }, [el('div', { classe: 'cabecalho__texto-area' }, [sobre, el('h2', { classe: 'cabecalho__titulo t-pagina seminegrito' }, 'Aviso de abertura'),
+      el('p', { classe: 'cabecalho__texto' }, 'Quando a cidade abre, avise quem pediu: por e-mail, em lotes, e pelo WhatsApp, um contato por vez. ' +
+        'Esta tela nunca mostra a lista de e-mails nem de números.')]),
+    el('div', { classe: 'cabecalho__acoes' }, acoes)]), corpo]);
+    carregando(corpo);
+    return carregarCidades(ctx).then(function (r) {
+      var cidades = r.cidades.filter(function (c) { return c.status === 'ativa' || c.status === 'lista_espera' || c.status === 'pausada'; })
+        .sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0); });
+      if (!cidades.length) { vazio(corpo, 'Nenhuma cidade com lista de espera.', 'O aviso aparece quando uma cidade abrir a lista de espera.', 'vg-adm-aviso-vazio'); return; }
+      if (!cidades.some(function (c) { return c.slug === est.aviso.cidade; })) {
+        var ativa = cidades.filter(function (c) { return c.status === 'ativa' && !c.praca; })[0];
+        est.aviso.cidade = (ativa || cidades[0]).slug;
+      }
+      var esc = ctx.criarEscolha({ id: 'vg-adm-aviso-cidade', rotulo: 'Cidade', prefixo: 'Cidade', valor: est.aviso.cidade,
+        opcoes: cidades.map(function (c) { return { valor: c.slug, rotulo: c.nome + ' · ' + rotuloStatusCidade(c).toLowerCase() }; }) });
+      esc.botao.addEventListener('change', function () { est.aviso.cidade = esc.botao.value; carregar(); });
+      trocar(acoes, esc.caixa);
+      function carregar() {
+        carregando(corpo);
+        return fonte(ctx).rpc('vagas_adm_aviso_resumo', { p_cidade: est.aviso.cidade }).then(desenhar, function (e) {
+          if (e.bancoDesatualizado) {
+            vazio(corpo, 'O aviso de abertura ainda não está neste banco.', 'Falta aplicar a atualização do Vagas com o aviso de abertura (docs/SUPABASE.md).', 'vg-adm-aviso-indisponivel');
+            return;
+          }
+          erroNaTela(corpo, e, carregar, ctx);
+        });
+      }
+      function desenhar(res) {
+        var c = res.cidade || {};
+        var k = res.contagens || {};
+        sobre.textContent = 'Vagas sem Caos · equipe · ' + (c.nome || '');
+        var datas = c.status === 'ativa' && c.abertaEm ? 'Aberta em ' + dia(c.abertaEm) + (c.listaAte ? ' · a lista de espera é apagada em ' + dia(c.listaAte) +
+          ' (30 dias depois da abertura), avisada ou não.' : '.') : '';
+        var resumo = el('section', { classe: 'caixa vg-adm-aviso-resumo', id: 'vg-adm-aviso-resumo', 'data-status': c.status || '' }, [
+          el('div', { classe: 'vg-adm-cidade__topo' }, [el('p', { classe: 'seminegrito' }, linhaAviso(res)), selo(STATUS_CIDADE[c.status] || c.status || '', c.status === 'ativa' ? 'selo--noite' : '')]),
+          datas ? el('p', { classe: 't-nota texto-suave' }, datas) : null,
+          el('div', { classe: 'vg-adm-aviso-numeros' }, CONTAGENS_AVISO.map(function (x) {
+            return el('div', { classe: 'vg-adm-aviso-numero', 'data-contagem': x[0] }, [el('p', { classe: 'vg-adm-numero__rotulo' }, x[1]),
+              el('p', { classe: 'vg-adm-numero__valor tabular' }, numeroBr(k[x[0]] || 0))]);
+          }))]);
+        if (c.status !== 'ativa') {
+          trocar(corpo, [resumo, el('p', { classe: 'aviso vg-adm-nota', id: 'vg-adm-aviso-fechada' },
+            'Esta cidade ainda não está aberta. Quando abrir (Cidades e praças > Ativar), volte aqui para avisar a lista de espera.')]);
+          return;
+        }
+        trocar(corpo, [resumo, el('div', { classe: 'vg-adm-aviso-grade' }, [secaoEmail(c, k), secaoWhatsapp(c, k)])]);
+      }
+
+      // ---- e-mail em lotes
+      function secaoEmail(c, k) {
+        var resultado = el('div', { id: 'vg-adm-aviso-lote', 'aria-live': 'polite' }, est.aviso.lote[c.slug] ? linhaLote(est.aviso.lote[c.slug]) : null);
+        var erro = el('div', { id: 'vg-adm-aviso-email-resultado', 'aria-live': 'polite' });
+        var confirmar = el('div', { id: 'vg-adm-aviso-confirmar-area' });
+        var falta = Number(k.aAvisarEmail) || 0;
+        var enviar = botao('botao--laranja', falta ? 'Enviar próximo lote de e-mails' : 'Todos já foram avisados por e-mail', function () {
+          trocar(erro, null);
+          if (est.aviso.confirmado[c.slug]) { mandar(); return; }
+          // Confirmação na própria tela (1ª vez nesta cidade; os lotes seguintes saem direto).
+          enviar.hidden = true;
+          trocar(confirmar, el('div', { classe: 'vg-adm-aviso-confirmar', id: 'vg-adm-aviso-confirmar', role: 'group', 'aria-labelledby': 'vg-adm-aviso-confirmar-txt' }, [
+            el('p', { id: 'vg-adm-aviso-confirmar-txt' }, 'Enviar agora até ' + Math.min(LOTE_AVISO, falta) + ' e-mails para a lista de espera de ' + c.nome +
+              '? Cada pessoa recebe uma vez só, com o link para criar a conta e o link para sair da lista.'),
+            el('div', { classe: 'vg-adm-acoes' }, [
+              botao('botao--laranja', 'Sim, enviar o lote', function () { est.aviso.confirmado[c.slug] = true; trocar(confirmar, null); enviar.hidden = false; mandar(); }, { id: 'vg-adm-aviso-enviar-sim' }),
+              botao('botao--claro', 'Cancelar', function () { trocar(confirmar, null); enviar.hidden = false; enviar.focus(); }, { id: 'vg-adm-aviso-enviar-nao' })])]));
+          var sim = doc.getElementById('vg-adm-aviso-enviar-sim');
+          if (sim) sim.focus();
+        }, { id: 'vg-adm-aviso-enviar', disabled: falta ? null : true });
+        function mandar() {
+          enviar.disabled = true;
+          var rotulo = enviar.textContent;
+          enviar.textContent = 'Enviando…';
+          fonte(ctx).conta('avisar_lista_espera', { cidade: c.slug, limite: LOTE_AVISO }).then(function (r) {
+            est.aviso.lote[c.slug] = { enviados: r.enviados, falhas: r.falhas, restantes: r.restantes, terminou: r.terminou };
+            ctx.avisar(r.terminou ? 'Pronto: todos da lista de ' + c.nome + ' foram avisados por e-mail.' : 'Lote enviado: ' + numeroBr(r.enviados) + ' e-mails.', 'ok');
+            carregar();
+          }, function (e) {
+            enviar.disabled = false;
+            enviar.textContent = rotulo;
+            if (e.sessaoExpirada && ctx.sessaoExpirou) { ctx.sessaoExpirou(); return; }
+            var msg = e.conexao && !ctx.simulada ? 'Não deu para falar com o serviço de e-mails do Vagas. Confira a internet e tente de novo.' : e.message;
+            trocar(erro, el('p', { classe: 'aviso aviso--erro', role: 'alert', id: 'vg-adm-aviso-email-erro' }, msg));
+          });
+        }
+        return el('section', { classe: 'caixa vg-adm-aviso-secao', id: 'vg-adm-aviso-email' }, [
+          el('h3', { classe: 'caixa__titulo' }, 'Por e-mail'),
+          el('p', { classe: 't-nota texto-suave' }, 'Cada lote manda até ' + LOTE_AVISO + ' e-mails, das inscrições mais antigas para as mais novas. Ninguém recebe ' +
+            'duas vezes; quem falhou volta para a fila. Repita até terminar.'),
+          resultado, erro, confirmar, el('div', { classe: 'vg-adm-acoes' }, enviar)]);
+      }
+      function linhaLote(l) {
+        return el('p', { classe: 'vg-adm-aviso-lote' + (l.falhas ? ' vg-adm-aviso-lote--falhas' : '') }, 'Último lote: ' + numeroBr(l.enviados) + ' enviados · ' +
+          numeroBr(l.falhas) + (l.falhas === 1 ? ' falha' : ' falhas') + ' · ' + (l.terminou ? 'nenhum e-mail falta.' : 'faltam ' + numeroBr(l.restantes) + '.') +
+          (l.falhas ? ' Quem falhou volta para a fila e sai no próximo lote.' : ''));
+      }
+
+      // ---- WhatsApp: um contato por vez
+      function secaoWhatsapp(c, k) {
+        var area = el('div', { id: 'vg-adm-aviso-wa-area' });
+        var caixa = el('section', { classe: 'caixa vg-adm-aviso-secao', id: 'vg-adm-aviso-whatsapp' }, [
+          el('h3', { classe: 'caixa__titulo' }, 'Pelo WhatsApp'),
+          el('p', { classe: 't-nota texto-suave' }, 'Só de quem deixou o número. Abra no WhatsApp da Gestão sem Caos, envie a mensagem pronta e marque Feito. ' +
+            'Número que não é de WhatsApp: marque Feito para pular. Cada número aberto fica no registro, sem o número.'),
+          area]);
+        var falta = Number(k.aAvisarWhatsapp) || 0;
+        var atual = est.aviso.contato[c.slug];
+        if (atual) desenharContato(atual, falta);
+        else semContato(falta);
+        function semContato(n) {
+          if (!n) { trocar(area, el('p', { classe: 'vg-adm-aviso-wa-vazio', id: 'vg-adm-aviso-wa-vazio' }, 'Ninguém para avisar pelo WhatsApp nesta cidade.')); return; }
+          trocar(area, [el('p', { classe: 't-rotulo' }, numeroBr(n) + (n === 1 ? ' contato espera' : ' contatos esperam') + ' o aviso pelo WhatsApp.'),
+            el('div', { classe: 'vg-adm-acoes' }, botao('botao--principal', 'Mostrar o próximo contato', proximo, { id: 'vg-adm-aviso-wa-proximo' }))]);
+        }
+        function proximo() {
+          carregando(area);
+          return fonte(ctx).rpc('vagas_adm_aviso_whatsapp', { p_cidade: c.slug }).then(function (r) {
+            est.aviso.contato[c.slug] = r.contato || null;
+            est.aviso.abriu[c.slug] = false;
+            atualizarContagens(r.contagens);
+            if (r.contato) desenharContato(r.contato, (r.contagens || {}).aAvisarWhatsapp);
+            else semContato(0);
+          }, function (e) { erroNaTela(area, e, proximo, ctx); });
+        }
+        function desenharContato(ct, n) {
+          var confirmarPulo = el('div', { id: 'vg-adm-aviso-wa-pular-area' });
+          var abrir = el('a', { classe: 'botao botao--laranja', id: 'vg-adm-aviso-wa-abrir', href: ct.link, target: '_blank', rel: 'noopener noreferrer',
+            onclick: function () { est.aviso.abriu[c.slug] = true; } }, 'Abrir no WhatsApp');
+          var feito = botao('botao--principal', 'Feito', function () {
+            if (est.aviso.abriu[c.slug]) { marcar(); return; }
+            // Feito sem abrir = pular o número: confirma na própria tela.
+            feito.hidden = true;
+            trocar(confirmarPulo, el('div', { classe: 'vg-adm-aviso-confirmar', id: 'vg-adm-aviso-wa-pular', role: 'group', 'aria-labelledby': 'vg-adm-aviso-wa-pular-txt' }, [
+              el('p', { id: 'vg-adm-aviso-wa-pular-txt' }, 'Marcar como feito sem abrir no WhatsApp? Use só para pular um número que não é de WhatsApp: ' +
+                'ele sai da fila e não volta.'),
+              el('div', { classe: 'vg-adm-acoes' }, [botao('botao--perigo', 'Sim, pular este número', marcar, { id: 'vg-adm-aviso-wa-pular-sim' }),
+                botao('botao--claro', 'Voltar', function () { trocar(confirmarPulo, null); feito.hidden = false; feito.focus(); }, { id: 'vg-adm-aviso-wa-pular-nao' })])]));
+            var sim = doc.getElementById('vg-adm-aviso-wa-pular-sim');
+            if (sim) sim.focus();
+          }, { id: 'vg-adm-aviso-wa-feito' });
+          function marcar() {
+            feito.disabled = true;
+            fonte(ctx).rpc('vagas_adm_aviso_whatsapp_feito', { p_id: ct.id }).then(function (r) {
+              est.aviso.contato[c.slug] = null;
+              atualizarContagens(r.contagens);
+              ctx.avisar('Contato marcado como avisado.', 'ok');
+              if ((r.contagens || {}).aAvisarWhatsapp) proximo(); else semContato(0);
+            }, function (e) { feito.disabled = false; falhou(ctx, e); });
+          }
+          trocar(area, el('div', { classe: 'vg-adm-aviso-contato', id: 'vg-adm-aviso-contato', 'data-contato': ct.id }, [
+            el('p', { classe: 't-nota texto-suave' }, (ct.perfil === 'empresa' ? 'Empresa' : 'Pessoa que procura emprego') + (n ? ' · ' + numeroBr(n) + (n === 1 ? ' na fila, contando este' : ' na fila, contando este') : '')),
+            el('p', { classe: 'vg-adm-aviso-numero-wa tabular', id: 'vg-adm-aviso-wa-numero' }, formatarWhatsapp(ct.whatsapp)),
+            el('p', { classe: 'campo__rotulo' }, 'Mensagem que vai pronta'),
+            el('p', { classe: 'vg-adm-aviso-texto', id: 'vg-adm-aviso-wa-texto' }, ct.texto || ''),
+            confirmarPulo,
+            el('div', { classe: 'vg-adm-acoes' }, [abrir, feito])]));
+        }
+        return caixa;
+      }
+      // Os números do resumo seguem as respostas da fila (sem recarregar a tela inteira).
+      function atualizarContagens(k) {
+        if (!k) return;
+        CONTAGENS_AVISO.forEach(function (x) {
+          var n = vista.querySelector('[data-contagem="' + x[0] + '"] .vg-adm-numero__valor');
+          if (n) n.textContent = numeroBr(k[x[0]] || 0);
+        });
+      }
+      return carregar();
+    }, function (e) { erroNaTela(corpo, e, function () { telaAviso(vista, ctx); }, ctx); });
+  }
+
   // ------------------------------------------------------------------------------------------------- entrada
-  var TELAS = { 'vg-cidades': telaCidades, 'vg-operadores': telaOperadores, 'vg-moderacao': telaModeracao, 'vg-numeros': telaNumeros };
+  var TELAS = { 'vg-cidades': telaCidades, 'vg-aviso': telaAviso, 'vg-operadores': telaOperadores, 'vg-moderacao': telaModeracao, 'vg-numeros': telaNumeros };
   function mostrar(aba, vista, ctx) {
     if (!TELAS[aba] || !vista) return Promise.resolve();
     return Promise.resolve(TELAS[aba](vista, ctx)).catch(function (e) { erroNaTela(vista, e, null, ctx); });
@@ -1164,7 +1461,9 @@
     efeitoStatus: efeitoStatus, faltamParaAtivar: faltamParaAtivar, slugCidade: slugCidade, lerCidade: lerCidade, lerOperador: lerOperador,
     rotuloAto: rotuloAto, tituloMotivo: tituloMotivo, reversao: reversao, pendencias: pendencias, filtrarAtos: filtrarAtos,
     numeroBr: numeroBr, valorComUnidade: valorComUnidade, formatarIndicador: formatarIndicador, formatarGatilho: formatarGatilho, contagensResumo: contagensResumo,
-    contagemProtegida: contagemProtegida, NOTA_PROTEGIDOS: NOTA_PROTEGIDOS, criarSimulada: criarSimulada, criarSupabase: criarSupabase,
+    contagemProtegida: contagemProtegida, NOTA_PROTEGIDOS: NOTA_PROTEGIDOS, criarSimulada: criarSimulada,
+    LOTE_AVISO: LOTE_AVISO, TEXTO_AVISO_WHATSAPP: TEXTO_AVISO_WHATSAPP, textoAvisoWhatsapp: textoAvisoWhatsapp, formatarWhatsapp: formatarWhatsapp,
+    linhaAviso: linhaAviso, criarSupabase: criarSupabase,
     bancoConferido: bancoConferido, banco: function () { return est.banco; }, esquecer: esquecer, mostrar: mostrar
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = DISC_ADMIN_VAGAS;

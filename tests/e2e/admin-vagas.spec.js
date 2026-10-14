@@ -30,7 +30,7 @@ test('com ?vagas=1: grupo Vagas entre Empresas e Vendas; cidades e praças com s
   const erros = coletarErros(page);
   await entrar(page, '/admin.html?vagas=1');
   await expect(page.locator('.menu-grupo__titulo:visible')).toHaveText(['Seleção', 'Empresas', 'Vagas', 'Vendas', 'Configurações']);
-  await expect(page.locator('.menu-grupo[data-grupo="vagas"] .aba:visible .aba__texto')).toHaveText(['Cidades e praças', 'Operadores', 'Moderação geral', 'Números da praça']);
+  await expect(page.locator('.menu-grupo[data-grupo="vagas"] .aba:visible .aba__texto')).toHaveText(['Cidades e praças', 'Aviso de abertura', 'Operadores', 'Moderação geral', 'Números da praça']);
   await abrir(page, 'vg-cidades');
   await expect(page.locator('#vista-vg-cidades h2')).toHaveText('Cidades e praças');
   await expect(page.locator('#vista-vg-cidades h2')).toBeFocused();
@@ -86,6 +86,92 @@ test('com ?vagas=1: grupo Vagas entre Empresas e Vendas; cidades e praças com s
   await page.click('#janela-ok');
   await expect(page.locator('#aviso-geral')).toContainText('Zona criada');
   await expect(mesma.locator('[data-acao="zonas"]')).toHaveText('Zonas (' + (zonas + 1) + ')');
+  expect(erros).toEqual([]);
+});
+
+test('aviso de abertura: resumo só com contagens; e-mail em lotes com confirmação na tela; WhatsApp um contato por vez (abrir, Feito, pular)', async ({ page }) => {
+  const erros = coletarErros(page);
+  await entrar(page, '/admin.html?vagas=1');
+  // Pela cidade aberta em Cidades e praças ("Avisar a lista"), sem nome fixo.
+  await abrir(page, 'vg-cidades');
+  const ativa = page.locator('#vg-adm-cidades > li[data-status="ativa"]').first();
+  const slug = await ativa.getAttribute('data-cidade');
+  await ativa.locator('[data-acao="avisar"]').click();
+  await expect(page.locator('#vista-vg-aviso h2')).toHaveText('Aviso de abertura');
+  await expect(page.locator('.aba[data-aba="vg-aviso"]')).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('#vg-adm-aviso-cidade')).toHaveAttribute('value', slug);
+  const resumo = page.locator('#vg-adm-aviso-resumo');
+  await expect(resumo).toHaveAttribute('data-status', 'ativa');
+  const n = async (k) => Number((await resumo.locator('[data-contagem="' + k + '"] .vg-adm-numero__valor').innerText()).replace(/\D/g, ''));
+  const faltaEmail = await n('aAvisarEmail');
+  expect(faltaEmail).toBeGreaterThan(0);
+  await expect(resumo).toContainText('a lista de espera é apagada em');
+  await expect(page.locator('#vista-vg-aviso')).not.toContainText('@', { timeout: 1000 });
+  // E-mail: a 1ª vez pede confirmação na própria tela; cancelar não manda nada.
+  await page.click('#vg-adm-aviso-enviar');
+  await expect(page.locator('#vg-adm-aviso-confirmar')).toContainText('Enviar agora até ' + Math.min(25, faltaEmail) + ' e-mails');
+  await expect(page.locator('#vg-adm-aviso-enviar')).toBeHidden();
+  await page.click('#vg-adm-aviso-enviar-nao');
+  await expect(page.locator('#vg-adm-aviso-confirmar')).toHaveCount(0);
+  expect(await n('aAvisarEmail')).toBe(faltaEmail);
+  await page.click('#vg-adm-aviso-enviar');
+  await page.click('#vg-adm-aviso-enviar-sim');
+  await expect(page.locator('#vg-adm-aviso-lote')).toContainText(/Último lote: \d+ enviados · 1 falha · faltam \d+\. Quem falhou volta para a fila/);
+  const depois1 = await n('aAvisarEmail');
+  expect(depois1).toBeLessThan(faltaEmail);
+  // Os lotes seguintes saem direto, até terminar.
+  for (let i = 0; i < 5; i++) {
+    const antes = await n('aAvisarEmail');
+    if (!antes) break;
+    await page.click('#vg-adm-aviso-enviar');
+    await expect(page.locator('#vg-adm-aviso-confirmar')).toHaveCount(0);
+    await expect.poll(() => n('aAvisarEmail')).toBeLessThan(antes);
+  }
+  await expect(page.locator('#vg-adm-aviso-lote')).toContainText('nenhum e-mail falta.');
+  await expect(page.locator('#vg-adm-aviso-enviar')).toBeDisabled();
+  await expect(page.locator('#vg-adm-aviso-enviar')).toHaveText('Todos já foram avisados por e-mail');
+  // WhatsApp: nada aparece antes de pedir; depois, UM contato com o link wa.me pronto (nova aba) e Feito.
+  await expect(page.locator('#vg-adm-aviso-contato')).toHaveCount(0);
+  const faltaWa = await n('aAvisarWhatsapp');
+  expect(faltaWa).toBeGreaterThan(1);
+  await page.click('#vg-adm-aviso-wa-proximo');
+  const contato = page.locator('#vg-adm-aviso-contato');
+  await expect(contato).toHaveCount(1);
+  await expect(page.locator('#vg-adm-aviso-wa-numero')).toHaveText(/^\+55 \d{2} \d{4,5}-\d{4}$/);
+  const link = page.locator('#vg-adm-aviso-wa-abrir');
+  await expect(link).toHaveAttribute('href', /^https:\/\/wa\.me\/55\d{10,11}\?text=/);
+  await expect(link).toHaveAttribute('target', '_blank');
+  await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  await expect(page.locator('#vg-adm-aviso-wa-texto')).toContainText('Nunca pague para se candidatar.');
+  const primeiro = await contato.getAttribute('data-contato');
+  // Feito sem abrir = pular: confirma na própria tela; "Voltar" não marca.
+  await page.click('#vg-adm-aviso-wa-feito');
+  await expect(page.locator('#vg-adm-aviso-wa-pular')).toContainText('Marcar como feito sem abrir no WhatsApp?');
+  await page.click('#vg-adm-aviso-wa-pular-nao');
+  await expect(page.locator('#vg-adm-aviso-wa-pular')).toHaveCount(0);
+  await expect(contato).toHaveAttribute('data-contato', primeiro);
+  // Abrir no WhatsApp (nova aba) e Feito: marca e já mostra o próximo.
+  const [aba] = await Promise.all([page.context().waitForEvent('page'), link.click()]);
+  await aba.close();
+  await page.click('#vg-adm-aviso-wa-feito');
+  await expect(page.locator('#aviso-geral')).toContainText('Contato marcado como avisado.');
+  await expect(contato).not.toHaveAttribute('data-contato', primeiro);
+  expect(await n('aAvisarWhatsapp')).toBe(faltaWa - 1);
+  await expect(page.locator('#vista-vg-aviso [data-contato]')).toHaveCount(1);
+  // Pular o próximo (número que não é de WhatsApp).
+  await page.click('#vg-adm-aviso-wa-feito');
+  await page.click('#vg-adm-aviso-wa-pular-sim');
+  await expect.poll(() => n('aAvisarWhatsapp')).toBe(faltaWa - 2);
+  // Cidade em lista de espera: só o resumo e o aviso de que ainda não abriu.
+  await page.click('#vg-adm-aviso-cidade');
+  await page.locator('#vg-adm-aviso-cidade-lista [data-valor]').filter({ hasText: 'lista de espera' }).first().click();
+  await expect(resumo).toHaveAttribute('data-status', 'lista_espera');
+  await expect(page.locator('#vg-adm-aviso-fechada')).toContainText('ainda não está aberta');
+  await expect(page.locator('#vg-adm-aviso-enviar, #vg-adm-aviso-wa-proximo')).toHaveCount(0);
+  // Tudo no registro, sem o número.
+  await abrir(page, 'vg-moderacao');
+  await expect(page.locator('#vg-adm-moderacao')).toContainText('Avisou um contato pelo WhatsApp');
+  await expect(page.locator('#vg-adm-moderacao')).not.toContainText('556298000');
   expect(erros).toEqual([]);
 });
 
