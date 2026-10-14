@@ -90,7 +90,9 @@
       if (!p || !estado || (estado.modo !== 'combinou' && estado.modo !== 'contratada')) return {};
       return { nome: p.nome, foto: P.fotoMini(p.fotoUrl, { id: 'vg-conversa-foto', nome: p.nome }) };
     }
+    // O nome e a foto chegam depois (contatoPessoa): a conversa redesenha o cabeçalho (VAGAS_CONVERSA, c.redesenhar).
     function aplicarCabecalho() {
+      if (conv && typeof conv.redesenhar === 'function') { conv.redesenhar(); return; }
       var c = cabecalhoConversa();
       var nome = raiz.querySelector('#vg-conversa-nome');
       if (!nome || !c.nome) return;

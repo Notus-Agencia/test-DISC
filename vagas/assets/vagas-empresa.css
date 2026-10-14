@@ -3,9 +3,6 @@
  * Só tokens do notus.css; nenhuma cor nova. O que é comum a outras telas fica na casca (pedido na mesa de equipe).
  */
 
-/* Faixa de situação (em análise / suspensa) no computador: não pode ficar embaixo do menu lateral fixo.
-   [pedido à casca: levar para vagas-pc.css] */
-body.vg-pc > .vg-faixa { margin-left: 248px; }
 /* Conta suspensa: some o que muda dados (a tela já não desenha as ações; isto é a segunda trava). */
 body.vg-so-leitura .vg-so-escrita { display: none !important; }
 
@@ -85,9 +82,11 @@ body.vg-so-leitura .vg-so-escrita { display: none !important; }
 .vg-emp-pedido { margin-top: 10px; }
 .vg-emp-faixa-fase2 { border-radius: 16px; margin-bottom: 8px; }
 
-@media (max-width: 899.98px) {
-  body.vg-pc > .vg-faixa { margin-left: 0; }
-}
+/* Convite para a equipe (empresa.html?convite=): tela de uma tarefa só, pensada para o celular; sem menu do painel, só o logo no topo */
+body.vg-emp-convite .vg-pc__topo { display: block; }
+body.vg-emp-convite #vg-menu-abrir { display: none; }
+body.vg-emp-convite .vg-pc__conteudo { margin: 0 auto; max-width: 640px; padding: 24px 16px 48px; }
+
 @media print {
   .menu-lateral, .vg-pc__topo, #vg-conversa-lateral, .vg-escrever { display: none !important; }
   .vg-pc__conteudo { margin-left: 0; }

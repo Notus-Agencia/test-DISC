@@ -1,9 +1,10 @@
 // Vagas sem Caos — painel da EMPRESA no computador (projeto desktop), sobre a PRÉVIA: guarda de conta, início, nova vaga como
 // produto (termo proibido recusado com a lei), vaga publicada (link curto, WhatsApp, pausar/retomar/encerrar), cartões cegos
 // (P1, P3: só o filtro "Mostrar"), conversa antes e depois do Combinou (contato, roteiro, "Contratada" com o Mapa DISC só ali),
-// referências (P2: a empresa não vê a decisão da pessoa), referencia.html?t= e o cadastro da empresa depois da conta.
+// referências (P2: a empresa não vê a decisão da pessoa), referencia.html?t=, o cadastro da empresa depois da conta e a equipe
+// (listar, convidar, cancelar, remover, sair) — o aceite do convite pelo link roda com o celular (Pixel 5), que é onde o e-mail abre.
 // Nada aqui depende do nome nem do slug da cidade: os dados são descobertos pela própria API da prévia.
-const { test, expect } = require('@playwright/test');
+const { test, expect, devices } = require('@playwright/test');
 
 const BASE = '/vagas/';
 const SENHA = 'previa123';
@@ -18,6 +19,15 @@ async function entrar(page, email, hash) {
   await page.goto(BASE + 'entrar.html?tipo=empresa');
   await page.evaluate(([e, s]) => window.VAGAS_API.entrar(e, s), [email, SENHA]);
   if (hash !== null) await page.goto(BASE + 'empresa.html#' + (hash || 'inicio'));
+}
+// Nenhum id repetido na página (o leitor de tela e os aria-labelledby dependem disso).
+async function semIdsRepetidos(page) {
+  const repetidos = await page.evaluate(() => {
+    const c = {};
+    document.querySelectorAll('[id]').forEach((n) => { c[n.id] = (c[n.id] || 0) + 1; });
+    return Object.keys(c).filter((k) => c[k] > 1);
+  });
+  expect(repetidos).toEqual([]);
 }
 // Troca a conta da prévia dentro da página (a sessão fica no armazenamento do navegador).
 async function como(page, email, fn, arg) {
@@ -342,52 +352,153 @@ test('abaixo de 900 px o menu vira gaveta', async ({ page }) => {
   await expect(page.locator('body')).not.toHaveClass(/menu-aberto/);
 });
 
-test('equipe: a dona convida (resposta neutra), cancela, convida de novo; quem foi convidado aceita em empresa.html?convite= e entra como recrutador(a)', async ({ page }) => {
+// ------------------------------------------------------------------------------------------------- equipe da empresa
+// Painel (computador): a dona lista, convida, cancela convite e remove; a recrutadora não convida e pode sair da equipe.
+test('equipe (computador): a dona vê a equipe e os convites, convida com resposta neutra, cancela e remove; recusas do banco aparecem no campo', async ({ page }) => {
   const erros = vigiarErros(page);
-  await entrar(page, 'empresa@previa.com', null);
-  test.skip(!(await page.evaluate(() => typeof window.VAGAS_API.equipeDaEmpresa === 'function')), 'RPCs da equipe (banco-onda2) ainda não integradas');
-  const empresaNome = await page.evaluate(async () => (await window.VAGAS_API.minhasEmpresas()).empresas[0].nomeFantasia);
-  await page.goto(BASE + 'empresa.html#dados');
-  await expect(page.locator('#vg-equipe-membros')).toBeVisible();
-  await expect(page.locator('#vg-equipe-membros')).toContainText('Você');
+  await entrar(page, 'empresa@previa.com', 'dados');
+  const equipe = page.locator('#vg-equipe');
+  const membros = page.locator('#vg-equipe-membros');
+  await expect(membros).toBeVisible();
+  // Quem é dono(a) se vê como "Você" (sem botão de remover a si mesmo); a recrutadora aparece com o nome da conta.
+  await expect(membros.locator('tr', { hasText: 'Você' })).toContainText('Dono(a)');
+  await expect(membros.locator('tr', { hasText: 'Você' }).locator('[data-acao="remover"]')).toHaveCount(0);
+  const rita = membros.locator('tr', { hasText: 'recrutador@previa.com' });
+  await expect(rita).toContainText('Recrutador(a)');
+  await expect(rita).toContainText('Rita Moraes');
+  await expect(page.locator('#vg-equipe-convites tr', { hasText: 'convidada@previa.com' })).toContainText('Esperando o aceite');
+  await expect(equipe).toContainText('O convite vale 72 horas.');
+  await semIdsRepetidos(page);
+  // E-mail inválido para no campo; quem já está na equipe, o banco recusa e a mensagem vai para o campo.
+  await page.fill('#vg-equipe-email', 'isto-nao-e-email');
+  await page.click('#vg-equipe-convidar');
+  await expect(equipe).toContainText('E-mail inválido.');
+  await page.fill('#vg-equipe-email', 'recrutador@previa.com');
+  await page.click('#vg-equipe-convidar');
+  await expect(equipe).toContainText('Esta pessoa já faz parte da equipe.');
+  // Convite novo: resposta neutra (não diz se o e-mail tem conta) e a linha "Esperando o aceite".
   await page.fill('#vg-equipe-email', 'colega.nova@previa.com');
   await page.click('#vg-equipe-convidar');
+  await expect(page.locator('#vg-aviso-geral')).toContainText('Se este e-mail puder entrar na equipe, a pessoa recebe o convite em instantes.');
   const linha = page.locator('#vg-equipe-convites tr', { hasText: 'colega.nova@previa.com' });
   await expect(linha).toContainText('Esperando o aceite');
+  await expect(page.locator('#vg-equipe-abrir-previa')).toHaveAttribute('href', /convite=[0-9a-f]{64}/);
   await linha.locator('[data-acao="cancelar"]').click();
-  await expect(page.locator('#vg-equipe-convites tr', { hasText: 'colega.nova@previa.com' }).first()).toContainText('Cancelado');
-  await page.fill('#vg-equipe-email', 'colega.nova@previa.com');
-  await page.click('#vg-equipe-convidar');
-  const link = await page.locator('#vg-equipe-abrir-previa').getAttribute('href');
-  const token = /convite=([0-9a-f]{64})/.exec(link)[1];
-  // Quem foi convidado não tinha conta: o link confirma o e-mail e cria a senha.
-  await page.evaluate(() => window.VAGAS_API.sair());
-  await page.goto(BASE + link);
-  await page.fill('#vg-ns-senha', 'senha-boa-123');
-  await page.fill('#vg-ns-confirmar', 'senha-boa-123');
-  await page.click('#vg-ns-salvar');
-  await page.waitForURL(/(empresa\.html|entrar\.html)/);
-  if (await page.locator('#vg-aceite-termos').count()) { await page.check('#vg-aceite-termos'); await page.click('#vg-aceite-enviar'); }
-  await page.waitForURL(/empresa\.html/);
-  await page.goto(BASE + 'empresa.html?convite=' + token);
-  await expect(page.locator('#vg-convite-texto')).toContainText(empresaNome);
-  await expect(page.locator('#vg-convite-texto')).toContainText('recrutador(a)');
-  await page.click('#vg-convite-aceitar');
-  await expect(page.locator('#vg-convite-ok')).toContainText('Agora você faz parte da equipe de ' + empresaNome);
-  await page.click('#vg-convite-ir');
-  await expect(page.locator('#vg-emp-saudacao')).toBeVisible();
-  await page.goto(BASE + 'empresa.html?convite=' + token);
-  await expect(page.locator('#vg-convite-invalido')).toHaveText('Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.');
-  await page.goto(BASE + 'empresa.html#dados');
-  await expect(page.locator('#vg-equipe')).toContainText('Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.');
-  await expect(page.locator('#vg-equipe-sair')).toBeVisible();
-  // A dona vê a nova pessoa e pode tirá-la da equipe.
-  await page.evaluate(async () => { await window.VAGAS_API.sair(); await window.VAGAS_API.entrar('empresa@previa.com', 'previa123'); });
-  await page.reload();
-  const membro = page.locator('#vg-equipe-membros tr', { hasText: 'colega.nova@previa.com' });
-  await expect(membro).toContainText('Recrutador(a)');
-  await membro.locator('[data-acao="remover"]').click();
+  await expect(page.locator('#vg-equipe-convites tr', { hasText: 'colega.nova@previa.com' })).toContainText('Cancelado');
+  await expect(page.locator('#vg-equipe-convites tr', { hasText: 'colega.nova@previa.com' }).locator('[data-acao="cancelar"]')).toHaveCount(0);
+  // Remover a recrutadora (com confirmação): ela some da lista e perde o acesso ao painel da empresa.
+  await rita.locator('[data-acao="remover"]').click();
+  await expect(page.locator('#vg-confirmar-remover')).toContainText('Rita Moraes');
   await page.click('#vg-confirmar-remover-sim');
-  await expect(page.locator('#vg-equipe-membros tr', { hasText: 'colega.nova@previa.com' })).toHaveCount(0);
+  await expect(page.locator('#vg-aviso-geral')).toContainText('Pessoa removida da equipe.');
+  await expect(membros.locator('tr', { hasText: 'recrutador@previa.com' })).toHaveCount(0);
+  await como(page, 'recrutador@previa.com');
+  await page.goto('about:blank');
+  await page.goto(BASE + 'empresa.html#inicio');
+  await expect(page.locator('#vg-emp-cad-titulo')).toHaveText('Complete o cadastro da empresa');
   expect(erros).toEqual([]);
+});
+
+test('equipe (computador): a recrutadora vê o nome da conta, não convida e pode sair da equipe', async ({ page }) => {
+  const erros = vigiarErros(page);
+  await entrar(page, 'recrutador@previa.com');
+  await expect(page.locator('#vg-emp-saudacao')).toHaveText(/, Rita$/);
+  await expect(page.locator('#vg-menu')).toContainText('Rita Moraes');
+  await page.click('#vg-emp-aba-dados');
+  await expect(page.locator('#vg-equipe')).toContainText('Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.');
+  await expect(page.locator('#vg-equipe-email')).toHaveCount(0);
+  await expect(page.locator('#vg-emp-form-editar')).toHaveCount(0);
+  await page.click('#vg-equipe-sair');
+  await page.click('#vg-confirmar-sair-equipe-sim');
+  await expect(page.locator('#vg-emp-cad-titulo')).toHaveText('Complete o cadastro da empresa');
+  expect(erros).toEqual([]);
+});
+
+// Aceite do convite pelo link do e-mail: a tela é de celular (Pixel 5), sem o menu do painel.
+const { defaultBrowserType: _tipo, ...CELULAR } = devices['Pixel 5'];
+test.describe('equipe: convite pelo link, no celular', () => {
+  test.use(CELULAR);
+
+  async function convidar(page, email) {
+    await page.goto(BASE + 'entrar.html?tipo=empresa');
+    return page.evaluate(async ([e, s, quem]) => {
+      await window.VAGAS_API.entrar(e, s);
+      const emp = (await window.VAGAS_API.minhasEmpresas()).empresas[0];
+      const r = await window.VAGAS_API.convidarEquipe(emp.id, quem);
+      await window.VAGAS_API.sair();
+      return { link: r.linkPrevia, empresaNome: emp.nomeFantasia };
+    }, ['empresa@previa.com', SENHA, email]);
+  }
+  async function semRolagemLateral(page) {
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+
+  test('conta nova: o link cria a senha, aceita os termos, cai no convite, "Agora não" sai sem aceitar; aceita e entra como recrutador(a); o link não serve de novo', async ({ page }) => {
+    const erros = vigiarErros(page);
+    const { link, empresaNome } = await convidar(page, 'colega.celular@previa.com');
+    expect(link).toMatch(/^entrar\.html\?token_hash=.+&type=invite&convite=[0-9a-f]{64}$/);
+    const token = /convite=([0-9a-f]{64})/.exec(link)[1];
+    await page.goto(BASE + link);
+    await page.fill('#vg-ns-senha', 'senha-boa-123');
+    await page.fill('#vg-ns-confirmar', 'senha-boa-123');
+    await page.click('#vg-ns-salvar');
+    await page.check('#vg-aceite-termos');
+    await page.click('#vg-aceite-enviar');
+    // O entrar.html leva direto para a tela de aceite (a pessoa não precisa achar o link de novo).
+    await page.waitForURL(new RegExp('empresa\\.html\\?convite=' + token + '$'));
+    await expect(page.locator('main h1')).toHaveText('Convite para a equipe');
+    await expect(page).toHaveTitle('Convite para a equipe | Vagas sem Caos');
+    await expect(page.locator('#vg-convite-texto')).toContainText(empresaNome + ' (');
+    await expect(page.locator('#vg-convite-texto')).toContainText('como recrutador(a): publicar vagas, ver os cartões e conversar com as pessoas.');
+    await expect(page.locator('#vg-convite')).toContainText('Ao aceitar, quem é dono(a) da empresa vê o seu nome e o seu e-mail na lista da equipe.');
+    // Tela de uma tarefa: sem menu do painel nem botão de abrir menu.
+    await expect(page.locator('#vg-menu')).toHaveCount(0);
+    await expect(page.locator('#vg-menu-abrir')).toBeHidden();
+    await semRolagemLateral(page);
+    await semIdsRepetidos(page);
+    // "Agora não": sem empresa própria, volta para o início do Vagas sem Caos e o convite continua valendo.
+    await page.click('#vg-convite-agora-nao');
+    await page.waitForURL(/\/vagas\/index\.html$/);
+    await page.goto(BASE + 'empresa.html?convite=' + token);
+    await page.click('#vg-convite-aceitar');
+    await expect(page.locator('#vg-convite-ok')).toContainText('Pronto. Agora você faz parte da equipe de ' + empresaNome + '.');
+    await page.click('#vg-convite-ir');
+    await expect(page.locator('#vg-emp-saudacao')).toBeVisible();
+    await expect(page.locator('#vg-menu-abrir')).toBeVisible();
+    await page.goto(BASE + 'empresa.html?convite=' + token);
+    await expect(page.locator('#vg-convite-invalido')).toHaveText('Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.');
+    await expect(page.locator('#vg-convite-painel')).toHaveText('Ir para o painel');
+    await semRolagemLateral(page);
+    // A dona vê a pessoa nova na equipe e o convite como aceito.
+    await como(page, 'empresa@previa.com');
+    await page.goto(BASE + 'empresa.html#dados');
+    await expect(page.locator('#vg-equipe-membros tr', { hasText: 'colega.celular@previa.com' })).toContainText('Recrutador(a)');
+    await expect(page.locator('#vg-equipe-convites tr', { hasText: 'colega.celular@previa.com' })).toContainText('Aceito');
+    expect(erros).toEqual([]);
+  });
+
+  test('conta que já existe (dona de outra empresa): entra pelo link, aceita e passa a ter as duas empresas', async ({ page }) => {
+    const erros = vigiarErros(page);
+    const { link, empresaNome } = await convidar(page, 'empresa2@previa.com');
+    expect(link).toMatch(/^entrar\.html\?convite=[0-9a-f]{64}$/);
+    const token = /convite=([0-9a-f]{64})/.exec(link)[1];
+    await page.goto(BASE + link);
+    await page.fill('#vg-entrar-email', 'empresa2@previa.com');
+    await page.fill('#vg-entrar-senha', SENHA);
+    await page.click('#vg-entrar-enviar');
+    await page.waitForURL(new RegExp('empresa\\.html\\?convite=' + token + '$'));
+    await expect(page.locator('#vg-convite-texto')).toContainText(empresaNome);
+    await expect(page.locator('#vg-convite-agora-nao')).toHaveAttribute('href', 'empresa.html#inicio');
+    await semRolagemLateral(page);
+    await page.click('#vg-convite-aceitar');
+    await page.click('#vg-convite-ir');
+    await expect(page.locator('#vg-emp-saudacao')).toBeVisible();
+    expect(await page.evaluate(async () => (await window.VAGAS_API.minhasEmpresas()).empresas.length)).toBe(2);
+    await page.goto(BASE + 'empresa.html#dados');
+    await expect(page.locator('#vg-emp-dados-h1')).toHaveText(empresaNome);
+    await expect(page.locator('#vg-emp-trocar .vg-chip')).toHaveCount(2);
+    // Na empresa nova a pessoa é recrutador(a): não vê a lista da equipe.
+    await expect(page.locator('#vg-equipe')).toContainText('Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.');
+    expect(erros).toEqual([]);
+  });
 });

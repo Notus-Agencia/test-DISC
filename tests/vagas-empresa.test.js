@@ -243,6 +243,49 @@ test('a vaga montada pela tela é aceita pela prévia (mesmo contrato do banco) 
   assert.equal((await api.salvarAnuncio(v2.dados)).anuncio.funcao, 'Caixa de loja');
 });
 
+test('equipe: os nomes que a tela chama existem na API (§8.4a) e o ciclo convidar → aceitar → listar → remover funciona na prévia', async () => {
+  // A tela lê os nomes do mapa EQUIPE de empresa.js e chama conviteEquipe/aceitarConviteEquipe/conviteDoEndereco no aceite.
+  const fonte = ler('vagas/js/empresa.js');
+  const mapa = /var EQUIPE = \{([^}]+)\}/.exec(fonte)[1];
+  const nomes = [...mapa.matchAll(/'(\w+)'/g)].map((m) => m[1]);
+  assert.deepEqual(nomes, ['equipeDaEmpresa', 'convidarEquipe', 'cancelarConvite', 'removerMembro']);
+  for (const m of ['equipeDaEmpresa', 'cancelarConvite', 'removerMembro', 'conviteEquipe', 'aceitarConviteEquipe']) assert.ok(API.METODOS[m], m + ' em METODOS');
+  for (const m of ['conviteEquipe', 'aceitarConviteEquipe', 'conviteDoEndereco']) assert.match(fonte, new RegExp('A\\.' + m + '\\('), m + ' chamado pela tela');
+  assert.equal(R.MSG.CONVITE_INVALIDO, 'Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.');
+  for (const [lista, ids] of [[R.PAPEIS_EMPRESA, ['dono', 'recrutador']], [R.STATUS_CONVITE_EQUIPE, ['pendente', 'vencido', 'aceito', 'cancelado']]]) {
+    assert.deepEqual(lista.map((x) => x.id), ids);
+  }
+
+  const agora = Date.now();
+  const api = API.criar({ modo: 'previa', backend: PREVIA.criarBackend({ armazenamento: armazem(), agora: () => agora }) });
+  assert.equal(typeof api.convidarEquipe, 'function');
+  await api.entrar('empresa@previa.com', 'previa123');
+  const emp = (await api.minhasEmpresas()).empresas[0];
+  const c = await api.convidarEquipe(emp.id, 'empresa2@previa.com');
+  assert.match(c.mensagem, /^Pronto\. Se este e-mail puder entrar na equipe/);
+  const token = api.conviteDoEndereco({ search: '?' + c.linkPrevia.split('?')[1] });
+  assert.match(token, /^[0-9a-f]{64}$/);
+  await api.sair();
+  await api.entrar('empresa2@previa.com', 'previa123');
+  const cv = (await api.conviteEquipe(token)).convite;
+  assert.equal(cv.empresa.nomeFantasia, emp.nomeFantasia);
+  assert.equal(cv.papel, 'recrutador');
+  assert.equal(cv.jaMembro, false);
+  const ac = await api.aceitarConviteEquipe(token);
+  assert.equal(ac.empresa.id, emp.id);
+  await assert.rejects(api.aceitarConviteEquipe(token), { message: R.MSG.CONVITE_INVALIDO });
+  // Recrutador(a) não lista a equipe; dono(a) lista e remove.
+  await assert.rejects(api.equipeDaEmpresa(emp.id), /Só quem é dono\(a\)/);
+  await api.sair();
+  await api.entrar('empresa@previa.com', 'previa123');
+  const eq = await api.equipeDaEmpresa(emp.id);
+  const novo = eq.membros.find((m) => m.email === 'empresa2@previa.com');
+  assert.equal(novo.papel, 'recrutador');
+  assert.equal(eq.convites.find((x) => x.email === 'empresa2@previa.com').status, 'aceito');
+  await api.removerMembro(emp.id, novo.userId);
+  assert.ok(!(await api.equipeDaEmpresa(emp.id)).membros.some((m) => m.email === 'empresa2@previa.com'));
+});
+
 test('roteiro de entrevista: transcrição IGUAL a docs/painel-cientifico/vagas/entrevista-estruturada.md (8 perguntas, âncoras, o que não perguntar)', () => {
   const md = ler('docs/painel-cientifico/vagas/entrevista-estruturada.md');
   const limpo = (s) => s.replace(/\*\*(.+?)\*\*/g, '$1').trim();

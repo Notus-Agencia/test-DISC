@@ -46,7 +46,13 @@
   function suspensa() { return !!(ctx.empresa && ctx.empresa.status === 'suspensa'); }
   function verificada() { return !!(ctx.empresa && ctx.empresa.status === 'ativa' && ctx.empresa.cnpjConferidoEm); }
   function dono() { return !!(ctx.empresa && ctx.empresa.papel === 'dono'); }
-  function nomeResponsavel() { var n = U.armazenamento.ler(CHAVE_NOME); return typeof n === 'string' ? n : ''; }
+  // Nome de quem está usando: o da conta (vagas_eu.conta.nome); sem ele, o que a pessoa digitou no cadastro neste aparelho.
+  function nomeResponsavel() {
+    var c = ctx.eu && ctx.eu.conta;
+    if (c && typeof c.nome === 'string' && c.nome.trim()) return c.nome.trim();
+    var n = U.armazenamento.ler(CHAVE_NOME);
+    return typeof n === 'string' ? n : '';
+  }
   function lembrarResponsavel(nome) { if (nome) U.armazenamento.gravar(CHAVE_NOME, String(nome).slice(0, 60)); }
   // Motivo da moderação para a empresa (moderacao.json via textos-conta.js); motivo livre aparece como veio.
   function motivo(chave, vars) {

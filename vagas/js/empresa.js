@@ -23,7 +23,7 @@
   function t(c, v) { return U.t(c, v); }
   // Métodos da equipe da empresa (banco-onda2, docs/VAGAS-SPEC.md §8.4a). Se faltarem, a seção Equipe fica "em breve".
   var EQUIPE = { listar: 'equipeDaEmpresa', convidar: 'convidarEquipe', cancelar: 'cancelarConvite', remover: 'removerMembro' };
-  var CONVITE_INVALIDO = 'Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.';
+  var CONVITE_INVALIDO = (R.MSG && R.MSG.CONVITE_INVALIDO) || 'Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.';
   function temEquipe() { return Object.keys(EQUIPE).every(function (k) { return typeof A[EQUIPE[k]] === 'function'; }); }
 
   // ------------------------------------------------------------------------------------------------- início
@@ -177,7 +177,7 @@
     }
     lateral.push(E.caixa({ id: 'vg-emp-dados-ajuda', titulo: 'Quem vê o quê' }, [E.lista(['Nome, setor e descrição aparecem na vaga (menos na confidencial).',
       'WhatsApp e e-mail aparecem para a pessoa só depois do Combinou.'])]));
-    E.tela(raiz, [E.cabecalho({ sobre: 'Dados da empresa', titulo: e.nomeFantasia, idTitulo: 'vg-emp-dados-titulo' }),
+    E.tela(raiz, [E.cabecalho({ sobre: 'Dados da empresa', titulo: e.nomeFantasia, idTitulo: 'vg-emp-dados-h1' }),
       el('div', { class: 'vg-grade' }, [el('div', { class: 'vg-lateral' }, principal), el('aside', { class: 'vg-lateral' }, lateral)])]);
   }
   function formDados(podeEditar) {
@@ -321,7 +321,9 @@
   }
   function telaConvite(raiz, token) {
     var cab = E.cabecalho({ sobre: 'Equipe da empresa', titulo: 'Convite para a equipe', idTitulo: 'vg-convite-titulo' });
-    var painel = el('a', { class: 'botao botao--claro', href: 'empresa.html#inicio', id: 'vg-convite-painel' }, ctx.empresa ? 'Ir para o painel' : 'Continuar');
+    // Sem empresa própria, "Agora não" e a saída voltam para o início do Vagas sem Caos (o painel abriria o cadastro de empresa).
+    var saida = ctx.empresa ? 'empresa.html#inicio' : 'index.html';
+    var painel = el('a', { class: 'botao botao--claro botao--grande', href: saida, id: 'vg-convite-painel' }, ctx.empresa ? 'Ir para o painel' : 'Ir para o início');
     if (typeof A.conviteEquipe !== 'function') {
       E.tela(raiz, [cab, el('p', { class: 'aviso', role: 'note', id: 'vg-convite-em-breve' }, 'Em breve: aceitar o convite para a equipe por aqui.'), el('div', { class: 'acoes' }, painel)]);
       return Promise.resolve();
@@ -336,7 +338,7 @@
         return;
       }
       var aceitar = el('button', { type: 'button', class: 'botao botao--laranja botao--grande', id: 'vg-convite-aceitar' }, 'Aceitar o convite');
-      var agoraNao = el('a', { class: 'botao botao--claro botao--grande', href: 'empresa.html#inicio', id: 'vg-convite-agora-nao' }, 'Agora não');
+      var agoraNao = el('a', { class: 'botao botao--claro botao--grande', href: saida, id: 'vg-convite-agora-nao' }, 'Agora não');
       var erro = el('p', { class: 'aviso aviso--erro', id: 'vg-convite-erro', role: 'alert', hidden: true });
       var caixaConvite = E.caixa({ id: 'vg-convite', classe: 'caixa--ampla caixa--destaque' }, [
         el('p', { class: 't-corpo', id: 'vg-convite-texto' }, [el('strong', {}, nome), ' convidou você para a equipe da empresa no Vagas sem Caos, como ' + papel(cv.papel).toLowerCase() +
@@ -350,7 +352,7 @@
           E.escolher(x.empresa.id);
           E.tela(raiz, [cab, el('section', { class: 'caixa caixa--ampla', id: 'vg-convite-ok', role: 'status' }, [el('div', { class: 'vg-ok-icone' }, U.icone('check')),
             el('h2', { class: 't-titulo', tabindex: '-1' }, 'Pronto. Agora você faz parte da equipe de ' + x.empresa.nomeFantasia + '.'),
-            el('div', { class: 'acoes' }, el('a', { class: 'botao botao--principal', href: 'empresa.html#inicio', id: 'vg-convite-ir' }, 'Ir para o painel'))])]);
+            el('div', { class: 'acoes' }, el('a', { class: 'botao botao--principal botao--grande', href: 'empresa.html#inicio', id: 'vg-convite-ir' }, 'Ir para o painel'))])]);
           U.focarTitulo(raiz.querySelector('#vg-convite-ok'));
         }, function (e) {
           U.ocupado(aceitar, false);
@@ -358,7 +360,7 @@
           erro.textContent = e.message; erro.hidden = false;
         });
       });
-      E.tela(raiz, [cab, caixaConvite, P.golpe({ id: 'vg-aviso-golpe' })]);
+      E.tela(raiz, [cab, caixaConvite]);
     }, function (e) {
       if (e.sessaoExpirada || e.confirmar || e.conexao) { U.tratarErro(e, { raiz: raiz, aoTentar: function () { root.location.reload(); } }); return; }
       E.tela(raiz, [cab, el('p', { class: 'aviso aviso--erro', role: 'alert', id: 'vg-convite-invalido' }, e.message || CONVITE_INVALIDO), el('div', { class: 'acoes' }, painel)]);
@@ -399,15 +401,17 @@
       ctx.eu = eu;
       return E.carregar();
     }).then(function () {
-      E.menu({});
-      E.faixas();
-      E.contarConversas();
       // Convite para a equipe (?convite=): vem antes do cadastro (quem foi convidado pode não ter empresa própria) e do roteador.
+      // Tela de uma tarefa só, feita para o celular (o link chega por e-mail): sem o menu do painel.
       var token = tokenDoConvite();
       if (token) {
+        doc.body.classList.add('vg-emp-convite');
         doc.title = 'Convite para a equipe | Vagas sem Caos';
         return telaConvite(raiz, token).then(function () { U.focarTitulo(raiz); });
       }
+      E.menu({});
+      E.faixas();
+      E.contarConversas();
       function rota(fn) {
         return function (resto) {
           if (parar) { parar(); parar = null; }
