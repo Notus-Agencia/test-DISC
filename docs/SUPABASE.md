@@ -406,7 +406,10 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
 1f. **Ajustes da fase C:** [`20261024120005_vagas_fase_c.sql`](../supabase/migrations/20261024120005_vagas_fase_c.sql), depois da
    20261024120004 (idempotente). Confira: `versao_banco()` com `versao: 20261024120005`. Ela muda dados de um jeito só: as
    vagas que pediam experiência "até 1 ano", "1 a 3 anos" ou "mais de 3 anos" passam a "pelo menos 6 meses na função"
-   (CLT, art. 442-A). A empresa deixa de ver se a pessoa aceitou a referência (veto P2 da psicologia).
+   (CLT, art. 442-A). A empresa deixa de ver se a pessoa aceitou a referência (veto P2 da psicologia). Depois de aplicar,
+   publique de novo a `vagas-conta` (o operador reenvia a confirmação sem o "não sou robô") e agende no `pg_cron`
+   (Database → Cron), uma vez por dia, `select vagas_interno.contas_assistidas_limpar();` — apaga as contas do cadastro
+   assistido nunca confirmadas 7 dias depois de criadas, como promete o e-mail (também roda a cada cadastro assistido).
 2. **Função `vagas-conta`:** crie como no passo 8 (arquivo `dist/funcoes/vagas-conta/index.ts`) com **Verify JWT
    desligado** (o cadastro é feito por quem ainda não tem login; as ações que exigem login conferem o token sozinhas).
 3. **Segredos** (passo 9): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`, e os opcionais `VAGAS_EMAIL_REMETENTE` e

@@ -247,7 +247,8 @@ test('vaga como produto na prévia: filtros da lista (áreas, turno, salário me
   const mensal = (a) => (a.valor.maxCentavos != null ? a.valor.maxCentavos : a.valor.minCentavos) * ({ mes: 1, dia: 22, hora: 220 }[a.valor.unidade] || 0);
   assert.ok(sal.anuncios.length >= 1 && sal.anuncios.every((a) => mensal(a) >= 220000));
   const semExp = await ok(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'uruacu-go', semExperiencia: true } }));
-  assert.ok(semExp.anuncios.length >= 1 && semExp.anuncios.every((a) => a.experiencia === 'nao_precisa'));
+  // "Aceita sem experiência" traz também a vaga em que experiência só ajuda; fica de fora só a de 6 meses (20261024120005).
+  assert.ok(semExp.anuncios.some((a) => a.experiencia === 'nao_precisa') && semExp.anuncios.every((a) => a.experiencia !== '6_meses'));
   const proibidos = await ok(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'uruacu-go', limite: 20, nota: 90, selo: 'caixa',
     temReferencia: true, idade: 30, sexo: 'f' } }));
   assert.deepEqual(proibidos.anuncios.map((a) => a.id), todas.anuncios.map((a) => a.id), 'nada de filtro por dado da pessoa');
@@ -901,4 +902,53 @@ test('fase C na prévia (20261024120005): experiência pela CLT, cartões sem fi
   const depois = await lista();
   assert.deepEqual([depois.referencias.length, depois.restantes30Dias], [antes.referencias.length, antes.restantes30Dias - 2]);
   assert.ok(depois.referencias.every((r) => ['enviada', 'removida'].includes(r.status)));
+});
+
+test('fase C na prévia (20261024120005): semDona, alvoNome/quem, "aceita sem experiência" com ajuda, aceite da foto e quem abriu o contato', async () => {
+  const b = novo();
+  const st = b.estado();
+  // Mural: "aceita sem experiência" traz nao_precisa e ajuda; 6_meses fica de fora.
+  const semExp = (await ok(b.rpc('vagas_anuncios_publicos', { p_filtro: { cidade: 'uruacu-go', semExperiencia: true, limite: 20 } }))).anuncios;
+  assert.ok(semExp.some((a) => a.experiencia === 'ajuda') && semExp.every((a) => a.experiencia !== '6_meses'));
+  // Operação: donos e semDona.
+  const dona = st.usuarios.find((u) => u.email === 'empresa@previa.com');
+  const merc = st.empresas.find((e) => e.nomeFantasia === 'Mercadinho Sol do Norte');
+  await entrar(b, 'operador@previa.com');
+  const daEmpresa = async () => (await ok(b.rpc('vagas_op_empresas', { p_filtro: {} }))).empresas.find((e) => e.id === merc.id);
+  let e = await daEmpresa();
+  assert.deepEqual([e.membros, e.donos, e.semDona], [2, 1, false]);
+  st.contas[dona.id].status = 'suspensa';
+  e = await daEmpresa();
+  assert.deepEqual([e.donos, e.semDona], [0, true]);
+  await ok(b.rpc('vagas_op_empresa_dono', { p_empresa: merc.id, p_email: 'recrutador@previa.com', p_motivo: 'pedido' }));
+  assert.deepEqual([(await daEmpresa()).donos, (await daEmpresa()).semDona], [1, false]);
+  // Registro: alvoNome (nunca nome de pessoa) e quem; o e-mail mascarado só para a equipe.
+  const reg = async () => (await ok(b.rpc('vagas_op_moderacao', { p_filtro: { limite: 200 } }))).registros;
+  const doOp = (await reg()).find((r) => r.acao === 'empresa_dono');
+  assert.deepEqual([doOp.alvoNome, doOp.quem], ['Mercadinho Sol do Norte', { papel: 'operador', voce: true, email: '' }]);
+  assert.ok((await reg()).every((r) => r.quem.email === '' && typeof r.alvoNome === 'string'));
+  await ok(b.conta.sair());
+  await entrar(b, 'admin@previa.com');
+  const daEquipe = await reg();
+  assert.deepEqual(daEquipe.find((r) => r.id === doOp.id).quem, { papel: 'operador', voce: false, email: 'o***@p***.com' });
+  assert.ok(daEquipe.filter((r) => !['operador', 'moderador', 'admin'].includes(r.papel)).every((r) => r.quem.email === ''));
+  await ok(b.conta.sair());
+  // Pessoa: aceite da foto opcional ao enviar e a retirada ao apagar (grava só quando muda).
+  await entrar(b, 'pessoa@previa.com');
+  const ana = st.usuarios.find((u) => u.email === 'pessoa@previa.com');
+  const aceites = () => st.consentimentos.filter((c) => c.userId === ana.id && c.tipo === 'foto_opcional').map((c) => c.aceito);
+  await ok(b.conta.enviarFoto({ tipo: 'image/jpeg', tamanho: 1000, dataUrl: '' }));
+  await ok(b.conta.enviarFoto({ tipo: 'image/jpeg', tamanho: 1000, dataUrl: '' }));
+  await ok(b.conta.apagarFoto());
+  assert.deepEqual(aceites(), [true, false]);
+  assert.deepEqual(await ok(b.rpc('vagas_foto_consentimento', { p_aceito: false })), { ok: true, fotoOpcional: false, duplicado: true });
+  await erro(b.rpc('vagas_foto_consentimento', { p_aceito: 'sim' }), 'Dados inválidos. Confira os campos.');
+  // Quem abriu o contato: por papel (dono | recrutador | null), somando as vezes; nunca e-mail.
+  const acessos = (await ok(b.rpc('vagas_quem_viu_meu_contato', {}))).acessos;
+  assert.ok(acessos.length >= 1);
+  for (const a of acessos) {
+    assert.equal(a.quem.reduce((s, q) => s + q.vezes, 0), a.vezes);
+    assert.ok(a.quem.every((q) => q.empresa === a.empresa && [null, 'dono', 'recrutador'].includes(q.papel)));
+  }
+  assert.ok(!JSON.stringify(acessos).includes('@'));
 });

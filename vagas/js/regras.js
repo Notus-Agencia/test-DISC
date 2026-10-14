@@ -438,7 +438,8 @@
         if (numeroMes(fim) < numeroMes(ini)) return falha('A saída não pode ser antes do início.');
         if (numeroMes(fim) > numeroMes(atual)) return falha('A saída não pode estar no futuro.');
       }
-      lidas.push({ funcao: funcao, empregador: limparTexto(texto(x.empregador), 120), inicio: ini.texto, fim: fim ? fim.texto : '', informal: x.informal === true });
+      lidas.push({ funcao: funcao, empregador: limparTexto(texto(x.empregador), 120), inicio: ini.texto, fim: fim ? fim.texto : '',
+        informal: x.informal === true ? true : x.informal === null ? null : false });   // null = prefiro não dizer; sem a chave, false
     }
     var campos = { cargos: cargos, escolaridade: texto(d.escolaridade), turnos: turnos, cnh: listaEnum(d.cnh, CNH), modalidades: mods,
       pretensaoCentavos: pret, cursos: cursos, areas: areas, sobre: limparMultilinha(sobre, 600), nome: nome, whatsapp: whats, email: email, experiencias: lidas };

@@ -292,3 +292,160 @@ test('veto P2: a empresa nunca sabe o que a pessoa fez com a referência (lista,
   assert.deepEqual([depois.referencias.length, depois.restantes30Dias], [0, r0 - 2], 'o aceite não muda nada para a empresa');
   assert.equal((await db.query(`select count(*)::int n from public.vagas_referencia_envios_email where empresa_id = $1`, [c.emp])).rows[0].n, 2);
 });
+
+async function publicar(dona, an) {
+  ok(await de(dona)('vagas_anuncio_publicar', an));
+  if ((await db.query(`select status from public.vagas_anuncios where id = $1`, [an])).rows[0].status === 'em_revisao') {
+    ok(await de(S.admin)('vagas_op_anuncio_decidir', an, 'publicar', ''));
+  }
+}
+
+test('mural e feed: "aceita sem experiência" traz as vagas em que experiência só ajuda; a de 6 meses fica de fora', async () => {
+  exigirBanco();
+  const e = await empresaComVaga('888777666005', 'Loja Ajuda Ltda', { experiencia: 'ajuda', funcao: 'Vendedor de loja' });
+  const seis = ok(await de(e.dona)('vagas_anuncio_salvar', anuncioDados(e.emp, { experiencia: '6_meses', funcao: 'Caixa de loja' }))).anuncio.id;
+  await publicar(e.dona, seis);
+  const exps = async (f) => [...new Set(ok(await anon('vagas_anuncios_publicos', Object.assign({ cidade: 'fc-go', areas: [] }, f)))
+    .anuncios.map((a) => a.experiencia))].sort();
+  assert.deepEqual(await exps({}), ['6_meses', 'ajuda', 'nao_precisa']);
+  assert.deepEqual(await exps({ semExperiencia: true }), ['ajuda', 'nao_precisa']);
+  const p = await contaVagas('pessoa');
+  ok(await de(p)('vagas_pessoa_salvar', pessoaDados()));
+  const feed = ok(await de(p)('vagas_feed', { semExperiencia: true, areas: [] })).anuncios.map((a) => a.experiencia);
+  assert.deepEqual([...new Set(feed)].sort(), ['ajuda', 'nao_precisa']);
+});
+
+test('operação: donos e semDona; alvoNome e quem no registro (e-mail mascarado só para a equipe; nunca de pessoa)', async () => {
+  exigirBanco();
+  S.op = await contaVagas('operador', { operador: { cidade: 'fc-go', papel: 'operador' } });
+  const e = await empresaComVaga('888777666006', 'Bazar Sem Dona Ltda');
+  const rec = await contaVagas('empresa');
+  await db.query(`insert into public.vagas_empresa_membros (empresa_id, user_id, papel) values ($1, $2, 'recrutador')`, [e.emp, rec]);
+  const sozinha = await empresaComVaga('888777666008', 'Empresa Sozinha Ltda');
+  const daEmpresa = async (id) => {
+    const x = ok(await de(S.op)('vagas_op_empresas', { cidade: 'fc-go' })).empresas.find((y) => y.id === id);
+    return [x.donos, x.semDona];
+  };
+  assert.deepEqual(await daEmpresa(e.emp), [1, false]);
+  assert.deepEqual(await daEmpresa(sozinha.emp), [1, false]);
+  // A dona fica sem conta válida (suspensa): a empresa tem equipe e nenhuma dona válida.
+  await db.query(`update public.vagas_contas set status = 'suspensa' where user_id = $1`, [e.dona]);
+  assert.deepEqual(await daEmpresa(e.emp), [0, true]);
+  ok(await de(S.op)('vagas_op_empresa_dono', e.emp, await emailDe(rec), 'A pessoa dona saiu da empresa.'));
+  assert.deepEqual(await daEmpresa(e.emp), [1, false]);
+  // Cadastro assistido feito pelo operador: registro com alvo 'conta' (sem nome).
+  const assistida = await contaVagas('pessoa', { assistidaPor: S.op, cidade: 'fc-go' });
+  ok(await de(assistida)('vagas_pessoa_salvar', pessoaDados({ nome: 'Joana Assistida Pereira' })));
+  const registros = async (uid) => ok(await de(uid)('vagas_op_moderacao', { cidade: 'fc-go', limite: 200 })).registros;
+  const nome = (await db.query(`select nome_fantasia from public.vagas_empresas where id = $1`, [e.emp])).rows[0].nome_fantasia;
+  const doOp = await registros(S.op);
+  const dono = doOp.find((r) => r.acao === 'empresa_dono' && r.alvoId === e.emp);
+  assert.deepEqual([dono.alvoNome, dono.quem], [nome, { papel: 'operador', voce: true, email: '' }]);
+  const conta = doOp.find((r) => r.acao === 'cadastro_assistido' && r.alvoId === assistida);
+  assert.deepEqual([conta.alvoNome, conta.quem], ['', { papel: 'operador', voce: true, email: '' }]);
+  assert.ok(doOp.every((r) => r.quem.email === ''), 'o operador não vê e-mail de ninguém');
+  assert.deepEqual(doOp.filter((r) => r.alvo === 'zona').map((r) => r.alvoNome).sort(), ['Centro (Fase C)', 'Norte (Fase C)']);
+  assert.equal(doOp.find((r) => r.alvo === 'cidade').alvoNome, 'Fase C');
+  // A equipe vê o e-mail mascarado de quem é da operação ou da equipe.
+  const daEquipe = await registros(S.admin);
+  const opEmail = await emailDe(S.op);
+  assert.deepEqual(daEquipe.find((r) => r.id === dono.id).quem,
+    { papel: 'operador', voce: false, email: opEmail.charAt(0) + '***@a***.teste' });
+  assert.deepEqual(daEquipe.find((r) => r.alvo === 'cidade').quem, { papel: 'admin', voce: true, email: 'd***@g***.teste' });
+  for (const r of daEquipe) {
+    if (!['operador', 'moderador', 'admin'].includes(r.papel)) assert.equal(r.quem.email, '', r.acao);
+    assert.ok(!/Joana|Maria|Pessoa de Teste/.test(r.alvoNome), r.alvoNome);
+  }
+});
+
+test('reenvio pela operação: conta_limite aceita reenviar_op só com quem age; consultar devolve a cidade da conta assistida', async () => {
+  exigirBanco();
+  const lim = (acao, ator) => servico('vagas_conta_limite', acao, '203.0.113.50', '', 'alguem-fc@reenvio.teste', ator);
+  erro(await lim('reenviar_op', null), 'Sem permissão.');
+  ok(await lim('reenviar_op', S.op));
+  erro(await lim('reenviar_outro', S.op), 'Ação desconhecida.');
+  const id = crypto.randomUUID();
+  await db.query(`insert into auth.users (id, email, raw_app_meta_data) values ($1, 'assistida-fc@reenvio.teste', '{"produto":"vagas"}')`, [id]);
+  ok(await servico('vagas_conta_registrar', id, { tipo: 'pessoa', assistidaPor: S.op, cidade: 'fc-go' }));
+  assert.deepEqual(ok(await servico('vagas_conta_consultar', 'assistida-fc@reenvio.teste')).conta,
+    { tipo: 'pessoa', status: 'pendente', assistidaCidade: 'fc-go' });
+  assert.equal(ok(await servico('vagas_conta_consultar', await emailDe(S.op))).conta.assistidaCidade, null);
+  await rejeita(de(S.op)('vagas_conta_limite', 'reenviar_op', '', '', '', S.op), /permission denied/);
+});
+
+test('pessoa: consentimento da foto opcional (grava só quando muda), quem abriu o contato (papel, nunca e-mail) e carteira "prefiro não dizer"', async () => {
+  exigirBanco();
+  const p = await contaVagas('pessoa');
+  const exps = [
+    { funcao: 'Atendente', empregador: 'Loja A', inicio: '2022-01', fim: '2023-01', informal: true },
+    { funcao: 'Ajudante', empregador: 'Loja B', inicio: '2021-01', fim: '2021-06', informal: false },
+    { funcao: 'Diarista', empregador: '', inicio: '2020-01', fim: '2020-06', informal: null },
+    { funcao: 'Repositor', empregador: '', inicio: '2019-01', fim: '2019-06' }];
+  const salvo = ok(await de(p)('vagas_pessoa_salvar', pessoaDados({ nome: 'Carla Contato Dias', experiencias: exps })));
+  assert.deepEqual(salvo.pessoa.experiencias.map((x) => x.informal), [true, false, null, false], 'sem a chave: false, como antes');
+  // Foto opcional: true ao enviar, false ao apagar; repetir não grava de novo.
+  const foto = (v) => de(p)('vagas_foto_consentimento', v);
+  assert.deepEqual(await foto(true), { ok: true, fotoOpcional: true, duplicado: false });
+  assert.deepEqual(await foto(true), { ok: true, fotoOpcional: true, duplicado: true });
+  assert.deepEqual(await foto(false), { ok: true, fotoOpcional: false, duplicado: false });
+  erro(await foto(null), 'Dados inválidos. Confira os campos.');
+  assert.deepEqual((await db.query(`select aceito, versao from public.vagas_consentimentos where user_id = $1 and tipo = 'foto_opcional' order by id`, [p])).rows,
+    [{ aceito: true, versao: '2026-10' }, { aceito: false, versao: '2026-10' }]);
+  await rejeita(anon('vagas_foto_consentimento', true), /permission denied/);
+  // Quem abriu o contato: papel de quem abriu (dona, recrutador), por empresa; nunca e-mail.
+  const a = await empresaComVaga('888777666007', 'Clinica Contato Ltda');
+  const naoPessoa = await de(a.dona)('vagas_foto_consentimento', true);
+  assert.equal(naoPessoa.ok, false);
+  const rec = await contaVagas('empresa');
+  await db.query(`insert into public.vagas_empresa_membros (empresa_id, user_id, papel) values ($1, $2, 'recrutador')`, [a.emp, rec]);
+  const k = ok(await de(p)('vagas_quero', a.an)).candidatura.id;
+  ok(await de(a.dona)('vagas_empresa_decidir', k, 'conversar'));
+  ok(await de(p)('vagas_combinar', k));
+  ok(await de(a.dona)('vagas_contato_pessoa', k));
+  ok(await de(rec)('vagas_contato_pessoa', k));
+  ok(await de(rec)('vagas_contato_pessoa', k));
+  const acessos = ok(await de(p)('vagas_quem_viu_meu_contato')).acessos;
+  assert.equal(acessos.length, 1);
+  const nome = (await db.query(`select nome_fantasia from public.vagas_empresas where id = $1`, [a.emp])).rows[0].nome_fantasia;
+  assert.deepEqual([acessos[0].vezes, acessos[0].empresa, acessos[0].podeCortar], [3, nome, true]);
+  assert.deepEqual(acessos[0].quem, [{ empresa: nome, papel: 'recrutador', vezes: 2 }, { empresa: nome, papel: 'dono', vezes: 1 }]);
+  assert.ok(!JSON.stringify(acessos).includes('@'), 'nenhum e-mail');
+  assert.deepEqual((await db.query(`select papel from public.vagas_acessos_contato where pessoa_id = $1 order by id`, [p])).rows.map((x) => x.papel),
+    ['dono', 'recrutador', 'recrutador']);
+  await rejeita(db.query(`insert into public.vagas_acessos_contato (pessoa_id, empresa_nome, papel) values ($1, 'X', 'operador')`, [p]),
+    /vagas_acessos_contato_papel_check/);
+});
+
+test('limpeza: conta do cadastro assistido nunca confirmada some 7 dias depois; o resto fica', async () => {
+  exigirBanco();
+  const pend = async (email, dados, dias, produto) => {
+    const id = crypto.randomUUID();
+    await db.query(`insert into auth.users (id, email, raw_app_meta_data) values ($1, $2, $3)`, [id, email, JSON.stringify({ produto: produto || 'vagas' })]);
+    ok(await servico('vagas_conta_registrar', id, Object.assign({ tipo: 'pessoa', assistidaPor: S.op, cidade: 'fc-go' }, dados)));
+    // criado_em não muda pela API (gatilho): o teste envelhece a conta com o gatilho desligado.
+    await db.query(`alter table public.vagas_contas disable trigger vagas_contas_antes_gravar`);
+    await db.query(`update public.vagas_contas set criado_em = now() - make_interval(days => $2) where user_id = $1`, [id, dias]);
+    await db.query(`alter table public.vagas_contas enable trigger vagas_contas_antes_gravar`);
+    return id;
+  };
+  const velha = await pend('velha-fc@limpa.teste', {}, 8);
+  const empresaVelha = await pend('empresa-velha-fc@limpa.teste', { tipo: 'empresa' }, 8);
+  const ficam = [
+    await pend('nova-fc@limpa.teste', {}, 6),
+    await pend('aberta-fc@limpa.teste', { assistidaPor: '' }, 8),
+    await pend('confirmada-fc@limpa.teste', {}, 8),
+    await pend('convite-op-fc@limpa.teste', { tipo: 'operador', operador: { cidade: 'fc-go', papel: 'moderador' } }, 8),
+    await pend('disc-fc@limpa.teste', {}, 8, 'disc')];
+  await db.query(`update auth.users set email_confirmed_at = now() where id = $1`, [ficam[2]]);
+  const todas = [velha, empresaVelha].concat(ficam);
+  assert.equal((await db.query(`select vagas_interno.contas_assistidas_limpar() n`)).rows[0].n, 2);
+  const restam = async (ids) => (await db.query(`select id from auth.users where id = any ($1)`, [ids])).rows.map((x) => x.id).sort();
+  assert.deepEqual(await restam(todas), ficam.slice().sort());
+  assert.equal((await db.query(`select count(*)::int n from public.vagas_contas where user_id = any ($1)`, [[velha, empresaVelha]])).rows[0].n, 0);
+  assert.equal((await db.query(`select vagas_interno.contas_assistidas_limpar() n`)).rows[0].n, 0, 'rodar de novo não apaga mais nada');
+  // A cada cadastro assistido (limite 'assistido' da Function) a limpeza roda sozinha.
+  const outra = await pend('outra-velha-fc@limpa.teste', {}, 9);
+  ok(await servico('vagas_conta_limite', 'assistido', '203.0.113.61', '', 'mais-uma-fc@limpa.teste', S.op));
+  assert.deepEqual(await restam([outra]), []);
+  await rejeita(como('authenticated', S.admin, `select vagas_interno.contas_assistidas_limpar()`), /permission denied/);
+});

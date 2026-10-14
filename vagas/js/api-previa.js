@@ -1035,7 +1035,7 @@
         if (areas.length && areas.indexOf(a.area) < 0) return false;
         if (turnos.length && turnos.indexOf(a.turno) < 0) return false;
         if (sal != null && (a.valor.maxCentavos != null ? a.valor.maxCentavos : a.valor.minCentavos) * (mult[a.valor.unidade] || 0) < sal) return false;
-        if (semExp && a.experiencia !== 'nao_precisa') return false;
+        if (semExp && a.experiencia === '6_meses') return false;   // "ajuda" também aceita sem experiência (20261024120005)
         if (busca && R.normalizar(a.funcao + ' ' + areaJson(a.area).nome).indexOf(busca) < 0) return false;
         if (pessoaId && (st.pulos.some(function (p) { return p.pessoaId === pessoaId && p.anuncioId === a.id; }) ||
           st.candidaturas.some(function (k) { return k.pessoaId === pessoaId && k.anuncioId === a.id; }))) return false;
@@ -1421,23 +1421,39 @@
       return ok({ candidatura: candidaturaPessoa(k) });
     };
 
+    // Aceite da foto opcional (20261024120005): grava só quando muda; versão = a dos termos da conta.
+    H.vagas_foto_consentimento = function (a) {
+      var c = contaAtual('pessoa');
+      if (!c.ok) return c;
+      if (a.p_aceito !== true && a.p_aceito !== false) return erro('Dados inválidos. Confira os campos.');
+      var ultimo = st.consentimentos.filter(function (x) { return x.userId === st.sessao && x.tipo === 'foto_opcional'; }).pop();
+      var dup = !!ultimo && ultimo.aceito === a.p_aceito;
+      if (!dup) st.consentimentos.push({ userId: st.sessao, tipo: 'foto_opcional', versao: st.contas[st.sessao].termosVersao || 'sem-versao', aceito: a.p_aceito, em: agora() });
+      return ok({ fotoOpcional: a.p_aceito, duplicado: dup });
+    };
+
     H.vagas_quem_viu_meu_contato = function () {
       var c = contaAtual('pessoa');
       if (!c.ok) return c;
       var grupos = {};
       st.acessos.filter(function (x) { return x.pessoaId === st.sessao; }).forEach(function (x) {
         var g = x.candidaturaId || ('sem-' + x.em);
-        if (!grupos[g]) grupos[g] = { candidaturaId: x.candidaturaId || null, empresa: x.empresaNome, anuncio: x.anuncioTitulo, primeira: x.em, ultima: x.em, vezes: 0 };
+        if (!grupos[g]) grupos[g] = { candidaturaId: x.candidaturaId || null, empresa: x.empresaNome, anuncio: x.anuncioTitulo, primeira: x.em, ultima: x.em, vezes: 0, quem: [] };
         grupos[g].vezes += 1;
         grupos[g].primeira = Math.min(grupos[g].primeira, x.em);
         grupos[g].ultima = Math.max(grupos[g].ultima, x.em);
+        // quem abriu: o papel na empresa (dono | recrutador | null), nunca e-mail nem nome (20261024120005)
+        var q = grupos[g].quem.filter(function (y) { return y.empresa === x.empresaNome && y.papel === (x.papel || null); })[0];
+        if (!q) grupos[g].quem.push(q = { empresa: x.empresaNome, papel: x.papel || null, vezes: 0 });
+        q.vezes += 1;
       });
       return ok({ acessos: Object.keys(grupos).map(function (g) { return grupos[g]; }).sort(function (x, y) { return y.ultima - x.ultima; })
         .map(function (g) {
           var k = g.candidaturaId ? minhaCandidatura(g.candidaturaId) : null;
           return { candidaturaId: g.candidaturaId, empresa: g.empresa, anuncio: g.anuncio, primeiraVez: iso(g.primeira), ultimaVez: iso(g.ultima), vezes: g.vezes,
             cortadoEm: iso(k ? k.contatoCortadoEm : null),
-            podeCortar: !!k && (k.status === 'combinou' || k.status === 'contratada') && k.contatoCortadoEm == null };
+            podeCortar: !!k && (k.status === 'combinou' || k.status === 'contratada') && k.contatoCortadoEm == null,
+            quem: g.quem.sort(function (x, y) { return y.vezes - x.vezes || (x.papel === null) - (y.papel === null) || String(x.papel).localeCompare(String(y.papel)); }) };
         }) });
     };
 
@@ -1754,7 +1770,9 @@
       if (contar('contato_empresa', k.empresaId, DIA) > 300) return erro('Muitas consultas de contato hoje. Tente de novo amanhã.', { bloqueado: true });
       var an = anuncio(k.anuncioId);
       var ct = st.contatos[k.pessoaId];
-      st.acessos.push({ candidaturaId: k.id, pessoaId: k.pessoaId, empresaId: e.id, empresaNome: e.nomeFantasia, anuncioTitulo: an.titulo, userId: st.sessao, em: agora() });
+      var quemAbriu = st.membros.filter(function (m) { return m.empresaId === e.id && m.userId === st.sessao; })[0];
+      st.acessos.push({ candidaturaId: k.id, pessoaId: k.pessoaId, empresaId: e.id, empresaNome: e.nomeFantasia, anuncioTitulo: an.titulo, userId: st.sessao,
+        papel: quemAbriu ? quemAbriu.papel : null, em: agora() });
       return ok({ pessoa: { nome: ct.nome, whatsapp: ct.whatsapp, email: ct.email, sobre: st.pessoas[k.pessoaId].sobre, temFoto: temFoto(k.pessoaId),
         cartao: cartao(k.pessoaId, k.empresaId),
         referencias: st.referencias.filter(function (r) { return r.pessoaId === k.pessoaId && referenciaParaEmpresa(r, [k.empresaId]); })
@@ -2061,9 +2079,11 @@
           (!busca || R.normalizar(e.nomeFantasia + ' ' + e.razaoSocial + ' ' + e.cnpj).indexOf(busca) >= 0);
       }).sort(function (p, q) { return (q.status === 'em_analise') - (p.status === 'em_analise') || q.criadoEm - p.criadoEm; }).map(function (e) {
         var as = st.anuncios.filter(function (a2) { return a2.empresaId === e.id; });
+        var ms = st.membros.filter(function (m) { return m.empresaId === e.id && m.ativo; });
+        var donos = ms.filter(function (m) { return m.papel === 'dono' && contaValida(m.userId); }).length;
         return Object.assign(empresaJson(e), { anuncios: { total: as.length, noAr: as.filter(noAr).length },
           denunciasAbertas: st.denuncias.filter(function (d) { return d.empresaId === e.id && d.status === 'aberta'; }).length,
-          membros: st.membros.filter(function (m) { return m.empresaId === e.id && m.ativo; }).length });
+          membros: ms.length, donos: donos, semDona: ms.length > 0 && donos === 0 });   // 20261024120005
       }) });
     };
 
@@ -2232,9 +2252,31 @@
       var f = obj(a.p_filtro);
       var cids = cidadesDoFiltro(f);
       var lim = R.inteiro(f.limite); lim = Math.min(Math.max(lim == null ? 100 : lim, 1), 200);
+      var equipe = eAdmin();
       return ok({ registros: st.moderacao.filter(function (m) { return cids.indexOf(m.cidade) >= 0; }).sort(function (p, q) { return q.em - p.em || q.id - p.id; })
-        .slice(0, lim).map(function (m) { return { id: m.id, em: iso(m.em), papel: m.papel, acao: m.acao, alvo: m.alvo, alvoId: m.alvoId, motivo: m.motivo, dados: clone(m.dados), cidade: m.cidade }; }) });
+        .slice(0, lim).map(function (m) {
+          var u = m.ator ? usuario(m.ator) : null;
+          return { id: m.id, em: iso(m.em), papel: m.papel, acao: m.acao, alvo: m.alvo, alvoId: m.alvoId, motivo: m.motivo, dados: clone(m.dados), cidade: m.cidade,
+            alvoNome: alvoNome(m.alvo, m.alvoId),
+            quem: { papel: m.papel, voce: !!m.ator && m.ator === st.sessao,
+              email: equipe && u && ['operador', 'moderador', 'admin'].indexOf(m.papel) >= 0 ? mascarar(u.email) : '' } };
+        }) });
     };
+    // Nome do alvo de um registro (igual a vagas_interno.moderacao_alvo_nome, 20261024120005): título da vaga, nome fantasia
+    // (também o da referência e o da denúncia), cidade ou zona. Conta e operador: '' (nunca nome de pessoa).
+    function alvoNome(alvo, id) {
+      function por(lista) { return lista.filter(function (x) { return x.id === id; })[0] || null; }
+      var x = null, nome = '';
+      if (alvo === 'anuncio') nome = (x = anuncio(id)) ? x.titulo : '';
+      else if (alvo === 'empresa') nome = (x = empresa(id)) ? x.nomeFantasia : '';
+      else if (alvo === 'cidade') nome = (x = por(st.cidades)) ? x.nome : '';
+      else if (alvo === 'zona') nome = (x = por(st.zonas)) ? x.nome + ' (' + ((cidade(x.cidade) || {}).nome || '') + ')' : '';
+      else if (alvo === 'referencia') nome = (x = por(st.referencias)) && empresa(x.empresaId) ? empresa(x.empresaId).nomeFantasia : '';
+      else if (alvo === 'denuncia' && (x = por(st.denuncias))) {
+        nome = x.anuncioId && anuncio(x.anuncioId) ? anuncio(x.anuncioId).titulo : (empresa(x.empresaId) || {}).nomeFantasia || '';
+      }
+      return nome || '';
+    }
 
     H.vagas_op_referencias = function (a) {
       var x = exigirOperacao(); if (x) return x;
@@ -3083,6 +3125,9 @@
         if (['image/jpeg', 'image/png', 'image/webp'].indexOf(txt(arq.tipo)) < 0 || !(Number(arq.tamanho) > 0) || Number(arq.tamanho) > 1048576) {
           return erro('A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.');
         }
+        // O aceite 'foto_opcional' é gravado antes da foto (como faz o cliente com vagas_foto_consentimento).
+        var aceite = H.vagas_foto_consentimento({ p_aceito: true });
+        if (!aceite.ok) return aceite;
         st.fotos = st.fotos || {};
         st.fotos[uid] = /^data:image\//.test(txt(arq.dataUrl)) && txt(arq.dataUrl).length <= 1500000 ? txt(arq.dataUrl) : FOTO_PREVIA;
         return ok({ temFoto: true });
@@ -3091,6 +3136,7 @@
         var uid = st.sessao;
         if (!uid) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
         if (st.fotos) delete st.fotos[uid];
+        if (st.contas[uid] && st.contas[uid].tipo === 'pessoa') H.vagas_foto_consentimento({ p_aceito: false });
         return ok({ temFoto: false });
       },
       fotoUrl: function (candId) {
