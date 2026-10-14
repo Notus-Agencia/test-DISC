@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {
   atenderVagasConta, montarEmailVagas, mascararEmailVagas, linkVagas, vagasCors, lerEnvVagasConta, criarBaseVagasConta,
   VAGAS_MSG_ENVIADO, VAGAS_MSG_EMAIL_NAO_CONFIGURADO, VAGAS_MSG_CAPTCHA, VAGAS_MSG_TERMOS, VAGAS_MSG_JA_EXISTE, VAGAS_MSG_CONVITE_EQUIPE,
-  linkConviteEquipe, linksAvisoAbertura
+  linkConviteEquipe, linksAvisoAbertura, emailVagas
 } from '../../supabase/funcoes-compartilhadas/vagas-conta.js';
 
 const SITE = 'https://vagas.gestaosemcaos.com.br';
@@ -70,23 +70,35 @@ function preparar(op) {
     async avisoLote(userId, cidade, limite) {
       avisos.push({ lote: [userId, cidade, limite] });
       if (op.avisoLote) return op.avisoLote(userId, cidade, limite);
-      const lote = lista.filter((l) => l.cidade === cidade && !l.avisado).slice(0, limite);
+      // Como o banco: primeiro quem tem menos tentativas; no máximo o que cabe no teto de 24 h (op.teto; padrão 60).
+      const teto = op.teto === undefined ? 60 : op.teto;
+      const cabe = Math.max(teto - usadosAviso.n, 0);
+      const lote = lista.filter((l) => l.cidade === cidade && !l.avisado && (l.tentativas || 0) < 3)
+        .sort((a, b) => (a.tentativas || 0) - (b.tentativas || 0)).slice(0, Math.min(limite, cabe));
       lote.forEach((l) => { l.avisado = true; l.token = (l.id.replace(/[^0-9a-f]/g, '') + 'ab'.repeat(32)).slice(0, 64); });
+      usadosAviso.n += lote.length;
       return { ok: true, cidade: { slug: cidade, nome: 'Uruaçu' }, lote: lote.map((l) => ({ id: l.id, email: l.email, perfil: l.perfil, sairToken: l.token })),
-        contagens: contagensAviso(cidade) };
+        contagens: contagensAviso(cidade), teto: { porDia: teto, usados24h: usadosAviso.n, disponivel: Math.max(teto - usadosAviso.n, 0) + lote.length } };
     },
-    async avisoMarcar(userId, cidade, enviadosIds, falhasIds) {
-      avisos.push({ marcar: [userId, cidade, enviadosIds, falhasIds] });
+    async listaEspera(dados, cf, xff, humano) {
+      listas.push({ dados, cf, xff, humano });
+      return op.listaEspera ? op.listaEspera(dados) : { ok: true, cidade: dados.cidade, interessados: 10 };
+    },
+    async avisoMarcar(userId, cidade, enviadosIds, falhasIds, invalidosIds) {
+      avisos.push({ marcar: [userId, cidade, enviadosIds, falhasIds, invalidosIds] });
       if (op.avisoMarcarFalha) return { ok: false, erro: 'Sem permissão.' };
-      lista.forEach((l) => { if (falhasIds.includes(l.id)) l.avisado = false; });
-      return { ok: true, enviados: enviadosIds.length, falhas: falhasIds.length, contagens: contagensAviso(cidade) };
+      lista.forEach((l) => { if (falhasIds.includes(l.id)) { l.avisado = false; l.tentativas = (l.tentativas || 0) + 1; } });
+      for (let i = lista.length - 1; i >= 0; i--) if (invalidosIds.includes(lista[i].id)) lista.splice(i, 1);
+      return { ok: true, enviados: enviadosIds.length, falhas: falhasIds.length, invalidos: invalidosIds.length, contagens: contagensAviso(cidade) };
     }
   };
   const lista = (op.lista || []).map((l) => Object.assign({ cidade: 'uruacu-go', perfil: 'pessoa' }, l));
   const avisos = [];
+  const listas = [];
+  const usadosAviso = { n: 0 };
   function contagensAviso(cidade) {
     const ls = lista.filter((l) => l.cidade === cidade);
-    return { naLista: ls.length, aAvisarEmail: ls.filter((l) => !l.avisado).length, avisadosEmail: ls.filter((l) => l.avisado).length,
+    return { naLista: ls.length, aAvisarEmail: ls.filter((l) => !l.avisado && (l.tentativas || 0) < 3).length, avisadosEmail: ls.filter((l) => l.avisado).length,
       aAvisarWhatsapp: ls.filter((l) => l.whatsapp).length };
   }
   const storage = {
@@ -132,7 +144,7 @@ function preparar(op) {
   const pausas = [];
   const base = { env, fetch, db, auth, storage, aleatorio: () => 'senha-aleatoria-' + (n + 1), esperar: async (ms) => { pausas.push(ms); } };
   return { base, usuarios, contas, operadores, links, enviados, captchas, chamadasLimite, excluidos, fotosPedidas, assinadas, removidos, apps, convites,
-    lista, avisos, pausas };
+    lista, avisos, pausas, listas };
 }
 
 async function chamar(base, corpo, op) {
@@ -510,12 +522,14 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
   await b.db.conviteEquipe('u1', EMPRESA, 'a@b.com', '1.2.3.4', '');
   await b.db.exclusaoConferir('u1');
   await b.db.avisoLote('u1', 'uruacu-go', 25);
-  await b.db.avisoMarcar('u1', 'uruacu-go', [EMPRESA], []);
+  await b.db.avisoMarcar('u1', 'uruacu-go', [EMPRESA], [], [ID(9)]);
+  await b.db.listaEspera({ cidade: 'uruacu-go', email: 'a@b.com' }, '1.2.3.4', '', true);
   assert.deepEqual(chamadas.map((c) => c[0] === 'rpc' ? c[1] : c[0]), ['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar',
     'vagas_conta_quem', 'createUser', 'generateLink', 'deleteUser', 'vagas_conta_foto', 'assinar', 'remover', 'vagas_conta_convite_equipe',
-    'vagas_conta_exclusao_conferir', 'vagas_conta_aviso_lote', 'vagas_conta_aviso_marcar']);
+    'vagas_conta_exclusao_conferir', 'vagas_conta_aviso_lote', 'vagas_conta_aviso_marcar', 'vagas_conta_lista_espera']);
+  assert.deepEqual(chamadas[14][2], { p_dados: { cidade: 'uruacu-go', email: 'a@b.com' }, p_cf: '1.2.3.4', p_xff: '', p_humano: true });
   assert.deepEqual(chamadas[12][2], { p_user: 'u1', p_cidade: 'uruacu-go', p_limite: 25 });
-  assert.deepEqual(chamadas[13][2], { p_user: 'u1', p_cidade: 'uruacu-go', p_enviados: [EMPRESA], p_falhas: [] });
+  assert.deepEqual(chamadas[13][2], { p_user: 'u1', p_cidade: 'uruacu-go', p_enviados: [EMPRESA], p_falhas: [], p_invalidos: [ID(9)] });
   assert.deepEqual(chamadas[11][2], { p_user: 'u1' });
   assert.deepEqual(chamadas[10][2], { p_user: 'u1', p_empresa: EMPRESA, p_email: 'a@b.com', p_cf: '1.2.3.4', p_xff: '' });
   assert.deepEqual(chamadas[7][2], { p_user: 'u1', p_candidatura: null });
@@ -527,7 +541,10 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
 
 // ---- Aviso de abertura (avisar_lista_espera, migração 20261024120002) ----
 const ID = (n) => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
-const AVISO_CAMPOS = ['aAvisarWhatsapp', 'cidade', 'enviados', 'falhas', 'ok', 'restantes', 'terminou'];
+const AVISO_CAMPOS = ['aAvisarWhatsapp', 'cidade', 'enviados', 'falhas', 'invalidos', 'ok', 'restantes', 'terminou', 'tetoAtingido', 'travado'];
+// Resposta do lote (só contagens); as marcas de parar vêm false a não ser quando dito.
+const RESP = (enviados, falhas, restantes, aAvisarWhatsapp, extra) => Object.assign({ ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' },
+  enviados, falhas, invalidos: 0, restantes, aAvisarWhatsapp, terminou: restantes === 0, travado: false, tetoAtingido: false }, extra || {});
 
 test('avisar_lista_espera: só a equipe (operador, empresa e pessoa não); cidade conferida; sem e-mail configurado não reserva ninguém', async () => {
   const mundo = (env) => preparar({ admins: ['adm'], env, jwts: { 'jwt-adm': 'adm', 'jwt-op': 'op', 'jwt-p': 'p' },
@@ -565,11 +582,11 @@ test('avisar_lista_espera: em lotes (padrão 25, até 50), um e-mail por pessoa 
     { id: ID(3), email: 'bia@exemplo.com' }, { id: ID(4), email: 'caio@exemplo.com', cidade: 'outra-go' }] });
   const pede = (limite) => chamar(w.base, { acao: 'avisar_lista_espera', cidade: 'Uruacu-GO', limite }, { jwt: 'jwt-adm' });
   const r1 = (await pede(2)).json;
-  assert.deepEqual(r1, { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 2, falhas: 0, restantes: 1, aAvisarWhatsapp: 1, terminou: false });
+  assert.deepEqual(r1, RESP(2, 0, 1, 1));
   assert.deepEqual(Object.keys(r1).sort(), AVISO_CAMPOS);
   assert.ok(!JSON.stringify(r1).includes('@') && !JSON.stringify(r1).includes('abababab'), 'nenhum e-mail nem token na resposta');
   assert.deepEqual(w.avisos[0], { lote: ['adm', 'uruacu-go', 2] });
-  assert.deepEqual(w.avisos[1], { marcar: ['adm', 'uruacu-go', [ID(1), ID(2)], []] });
+  assert.deepEqual(w.avisos[1], { marcar: ['adm', 'uruacu-go', [ID(1), ID(2)], [], []] });
   assert.deepEqual(w.enviados.map((e) => e.to[0]), ['ana@exemplo.com', 'loja@exemplo.com']);
   assert.deepEqual(w.pausas, [600], 'uma pausa entre um e-mail e outro');
   const [pessoa, empresa] = w.enviados;
@@ -589,9 +606,9 @@ test('avisar_lista_espera: em lotes (padrão 25, até 50), um e-mail por pessoa 
   }
   assert.ok(!pessoa.text.includes(tk(ID(2))) && !empresa.text.includes(tk(ID(1))));
   // Segundo lote: o que falta; depois, nada a fazer (não chama o marcar à toa).
-  assert.deepEqual((await pede(2)).json, { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 1, falhas: 0, restantes: 0, aAvisarWhatsapp: 1, terminou: true });
+  assert.deepEqual((await pede(2)).json, RESP(1, 0, 0, 1));
   const n = w.avisos.length;
-  assert.deepEqual((await pede(2)).json, { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 0, falhas: 0, restantes: 0, aAvisarWhatsapp: 1, terminou: true });
+  assert.deepEqual((await pede(2)).json, RESP(0, 0, 0, 1));
   assert.equal(w.avisos.length, n + 1, 'lote vazio: sem marcar');
   assert.deepEqual(w.enviados.map((e) => e.to[0]), ['ana@exemplo.com', 'loja@exemplo.com', 'bia@exemplo.com'], 'ninguém recebe duas vezes; outra cidade fica de fora');
   // Tamanho do lote: padrão 25; de 1 a 50.
@@ -606,19 +623,18 @@ test('avisar_lista_espera: falha de um endereço volta para a fila (o resto do l
   const w = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' }, resendFalhaPara: 'bia@exemplo.com',
     lista: [{ id: ID(1), email: 'ana@exemplo.com' }, { id: ID(2), email: 'bia@exemplo.com' }, { id: ID(3), email: 'caio@exemplo.com' }] });
   const pede = () => chamar(w.base, { acao: 'avisar_lista_espera', cidade: 'uruacu-go' }, { jwt: 'jwt-adm' });
-  assert.deepEqual((await pede()).json, { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 2, falhas: 1, restantes: 1, aAvisarWhatsapp: 0, terminou: false });
-  assert.deepEqual(w.avisos[1], { marcar: ['adm', 'uruacu-go', [ID(1), ID(3)], [ID(2)]] });
-  // Próxima rodada: só a Bia de novo (e falha de novo; continua na fila, sem repetir para os outros).
-  assert.deepEqual((await pede()).json, { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 0, falhas: 1, restantes: 1, aAvisarWhatsapp: 0, terminou: false });
+  assert.deepEqual((await pede()).json, RESP(2, 1, 1, 0));
+  assert.deepEqual(w.avisos[1], { marcar: ['adm', 'uruacu-go', [ID(1), ID(3)], [ID(2)], []] });
+  // Próxima rodada: só a Bia de novo; falha de novo e o lote não avisou ninguém: travado (a tela para de repetir).
+  assert.deepEqual((await pede()).json, RESP(0, 1, 1, 0, { travado: true }));
   assert.deepEqual(w.enviados.map((e) => e.to[0]), ['ana@exemplo.com', 'bia@exemplo.com', 'caio@exemplo.com', 'bia@exemplo.com']);
-  // O banco devolveu algo estranho: id que não é UUID é ignorado; e-mail inválido conta como falha (volta para a fila).
+  // O banco devolveu algo estranho: id que não é UUID é ignorado; e-mail inválido vai como inválido (não volta para a fila).
   const estranho = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' }, avisoLote: () => ({ ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' },
     lote: [{ id: 'x', email: 'a@x.com' }, { id: ID(5), email: 'sem-arroba' }, null, { id: ID(6), email: 'ok@x.com', perfil: 'golpe', sairToken: '<script>' }],
     contagens: { aAvisarEmail: 0 } }) });
   const r = (await chamar(estranho.base, { acao: 'avisar_lista_espera', cidade: 'uruacu-go' }, { jwt: 'jwt-adm' })).json;
-  assert.equal(r.enviados, 1);
-  assert.equal(r.falhas, 1);
-  assert.deepEqual(estranho.avisos[1].marcar.slice(2), [[ID(6)], [ID(5)]]);
+  assert.deepEqual([r.enviados, r.falhas, r.invalidos, r.travado], [1, 0, 1, false]);
+  assert.deepEqual(estranho.avisos[1].marcar.slice(2), [[ID(6)], [], [ID(5)]], 'e-mail recusado não volta para a fila');
   assert.deepEqual(estranho.enviados.map((e) => e.to[0]), ['ok@x.com']);
   assert.ok(estranho.enviados[0].text.includes('Criar minha conta: ' + SITE + '/entrar.html#criar'), 'perfil desconhecido: e-mail de pessoa');
   assert.ok(estranho.enviados[0].text.includes('/emprego.html?cidade=uruacu-go#sair') && !estranho.enviados[0].text.includes('script'), 'token fora do formato: link sem token');
@@ -646,3 +662,64 @@ test('aviso de abertura: links e e-mail (pessoa e empresa), escapados, com a mar
   }
   assert.ok(!montarEmailVagas('cidadeAbriu', { cidade: 'Uruaçu', url: SITE }).html.includes('Sair da lista'), 'sem link de saída, sem o parágrafo');
 });
+
+test('avisar_lista_espera (3ª revisão): e-mail com caractere invisível não trava a fila; falha vai para o fim e para na 3ª; teto de 24 h', async () => {
+  // A1: o banco agora recusa estes e-mails na entrada; se algum chegar, a Function o manda como inválido e ele não volta.
+  for (const e of ['a b@ex.com', 'a﻿b@ex.com', 'a b@ex.com', 'a　b@ex.com', 'joão@ex.com', 'a b@ex.com', 'a@b@ex.com']) {
+    assert.equal(emailVagas(e), '', JSON.stringify(e));
+  }
+  assert.equal(emailVagas(' Ana.Souza+vagas@Exemplo.COM.br '), 'ana.souza+vagas@exemplo.com.br');
+  assert.equal(emailVagas(' ana@ex.com '), 'ana@ex.com', 'espaço nas pontas sai antes de conferir');
+  const lista = [];
+  for (let i = 1; i <= 6; i++) lista.push({ id: ID(i), email: 'x' + i + ' @exemplo.com' });
+  lista.push({ id: ID(7), email: 'real@exemplo.com' });
+  const w = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' }, lista });
+  const pede = (limite) => chamar(w.base, { acao: 'avisar_lista_espera', cidade: 'uruacu-go', limite }, { jwt: 'jwt-adm' });
+  assert.deepEqual((await pede(5)).json, RESP(0, 0, 2, 0, { invalidos: 5 }), 'sem envio, mas a fila andou: não está travada');
+  assert.deepEqual((await pede(5)).json, RESP(1, 0, 0, 0, { invalidos: 1 }));
+  assert.deepEqual(w.enviados.map((e) => e.to[0]), ['real@exemplo.com'], 'a pessoa de verdade é avisada');
+  // Falha passageira: volta para o FIM da fila; na 3ª, a fila do e-mail desiste dela (terminou, sem laço).
+  const f = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' }, resendFalhaPara: 'cai@exemplo.com',
+    lista: [{ id: ID(1), email: 'cai@exemplo.com' }, { id: ID(2), email: 'ok@exemplo.com' }] });
+  const pf = () => chamar(f.base, { acao: 'avisar_lista_espera', cidade: 'uruacu-go', limite: 1 }, { jwt: 'jwt-adm' });
+  assert.deepEqual((await pf()).json, RESP(0, 1, 2, 0, { travado: true }));
+  assert.deepEqual((await pf()).json, RESP(1, 0, 1, 0), 'quem falhou foi para o fim: a próxima da fila vai antes');
+  assert.deepEqual((await pf()).json, RESP(0, 1, 1, 0, { travado: true }));
+  assert.deepEqual((await pf()).json, RESP(0, 1, 0, 0, { travado: true }), 'na 3ª falha sai da fila do e-mail');
+  assert.deepEqual((await pf()).json, RESP(0, 0, 0, 0));
+  // A2: teto de 24 h. O lote só reserva o que cabe; acabou a cota com gente na fila: tetoAtingido (a tela para até amanhã).
+  const t = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' }, teto: 3,
+    lista: [1, 2, 3, 4, 5].map((i) => ({ id: ID(i), email: 'p' + i + '@exemplo.com' })) });
+  const pt = () => chamar(t.base, { acao: 'avisar_lista_espera', cidade: 'uruacu-go', limite: 2 }, { jwt: 'jwt-adm' });
+  assert.deepEqual((await pt()).json, RESP(2, 0, 3, 0));
+  assert.deepEqual((await pt()).json, RESP(1, 0, 2, 0, { tetoAtingido: true }));
+  assert.deepEqual((await pt()).json, RESP(0, 0, 2, 0, { tetoAtingido: true }));
+  assert.equal(t.enviados.length, 3);
+});
+
+test('lista_espera (Turnstile): sem login; só os campos da lista vão ao banco; captcha conferido só com TURNSTILE_SECRET; resposta do banco', async () => {
+  const corpo = { acao: 'lista_espera', cidade: 'niquelandia-go', email: 'ana@exemplo.com', perfil: 'pessoa', whatsapp: '62 99999-0000',
+    origem: 'radio', site: '', captcha: 'captcha-bom', extra: 'x', userId: 'outro', email2: 'b@b.com' };
+  // Sem TURNSTILE_SECRET: grava com o limite comum (humano false), sem chamar o Cloudflare.
+  const w = preparar();
+  assert.deepEqual((await chamar(w.base, corpo)).json, { ok: true, cidade: 'niquelandia-go', interessados: 10 });
+  assert.deepEqual(w.listas, [{ dados: { cidade: 'niquelandia-go', email: 'ana@exemplo.com', perfil: 'pessoa', whatsapp: '62 99999-0000', origem: 'radio', site: '' },
+    cf: '', xff: '203.0.113.9, 10.0.0.1', humano: false }]);
+  assert.equal(w.captchas.length, 0);
+  // Campo que não é texto não vai; texto longo vai cortado.
+  await chamar(w.base, { acao: 'lista_espera', cidade: 'x', email: { $gt: '' }, origem: 'a'.repeat(1000), site: 1 });
+  assert.deepEqual(w.listas[1].dados, { cidade: 'x', origem: 'a'.repeat(300) });
+  // Com o segredo: captcha errado não chega ao banco; certo grava com o limite maior.
+  const t = preparar({ env: { TURNSTILE_SECRET: 'segredo' } });
+  assert.deepEqual((await chamar(t.base, Object.assign({}, corpo, { captcha: 'ruim' }))).json, { ok: false, erro: VAGAS_MSG_CAPTCHA, captcha: true });
+  assert.deepEqual((await chamar(t.base, Object.assign({}, corpo, { captcha: undefined }))).json, { ok: false, erro: VAGAS_MSG_CAPTCHA, captcha: true });
+  assert.equal(t.listas.length, 0);
+  ok(await chamar(t.base, corpo).then((r) => r.json));
+  assert.equal(t.listas[0].humano, true);
+  // A resposta do banco volta como veio (erro com as marcas); nada do banco: erro genérico.
+  const e = preparar({ listaEspera: () => ({ ok: false, erro: 'Muitas tentativas. Tente de novo mais tarde.', bloqueado: true }) });
+  assert.deepEqual((await chamar(e.base, corpo)).json, { ok: false, erro: 'Muitas tentativas. Tente de novo mais tarde.', bloqueado: true });
+  const n = preparar({ listaEspera: () => null });
+  assert.deepEqual((await chamar(n.base, corpo)).json, { ok: false, erro: 'Erro interno no servidor. Tente novamente em instantes.' });
+});
+function ok(r) { assert.equal(r.ok, true, r && r.erro); return r; }

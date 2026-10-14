@@ -285,7 +285,7 @@
 
   function normalizarEmail(p) {
     var e = String(p == null ? '' : p).replace(/^\s+|\s+$/g, '').toLowerCase();
-    return e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : '';
+    return e.length <= 254 && /^[!-?A-~]+@[!-?A-~]+\.[!-?A-~]+$/.test(e) ? e : '';   // só ASCII visível, igual ao banco
   }
 
   // Igual a disc_interno.nome_valido: pelo menos 2 palavras com letra e no mínimo 5 letras.

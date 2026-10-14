@@ -850,8 +850,11 @@
         zonas: st.zonas.filter(function (z) { return z.cidade === c.slug && z.ativa; }).sort(function (a, b) { return a.ordem - b.ordem || a.nome.localeCompare(b.nome); })
           .map(function (z) { return { id: z.id, slug: z.slug, nome: z.nome, bairros: z.bairros.slice() }; }),
         interessados: c.status === 'lista_espera' ? interessados(c.slug) : null,
-        metaListaEspera: c.metaListaEspera == null ? null : c.metaListaEspera };
+        metaListaEspera: c.metaListaEspera == null ? null : c.metaListaEspera,
+        // 20261024120004: a empresa já se cadastra e anuncia na cidade em lista de espera; canal de WhatsApp da cidade.
+        preAbertura: c.status === 'lista_espera', aceitaEmpresas: aceitaEmpresas(c), canalWhatsapp: c.canalWhatsapp || null };
     }
+    function aceitaEmpresas(c) { return !!c && (c.status === 'ativa' || c.status === 'lista_espera'); }
     // Interessados na lista de espera, APROXIMADO como no banco: só quem entrou até o dia anterior, em dezenas (ninguém
     // descobre pelo contador se um e-mail já estava na lista).
     function interessados(slug) {
@@ -907,15 +910,20 @@
       r.empresa.descricao = a.confidencial && !revelar ? '' : e.descricao;
       return r;
     }
+    // Pré-abertura (20261024120004): vaga publicada numa cidade que ainda não abriu fica marcada (a validade conta da abertura).
+    function marcarPublicada(an) { an.preAbertura = cidade(an.cidade).status !== 'ativa'; }
     function anuncioEmpresa(a) {
       var r = anuncioDetalhe(a, true);
+      var c = cidade(a.cidade);
+      var aguarda = !!a.preAbertura && a.status === 'publicado' && c.status !== 'ativa';
       var ks = st.candidaturas.filter(function (k) { return k.anuncioId === a.id; });
       var conta = function (s) { return ks.filter(function (k) { return k.status === s; }).length; };
       return Object.assign(r, { empresaId: a.empresaId, confidencial: a.confidencial, diasNoAr: a.diasNoAr, prazoHoras: a.prazoHoras == null ? null : a.prazoHoras,
         status: a.status, statusMotivo: a.statusMotivo,
-        noAr: noAr(a), expirado: a.expiraEm != null && a.expiraEm <= agora(), encerradoEm: iso(a.encerradoEm), criadoEm: iso(a.criadoEm),
+        noAr: noAr(a), expirado: a.expiraEm != null && a.expiraEm <= agora() && !aguarda, encerradoEm: iso(a.encerradoEm), criadoEm: iso(a.criadoEm),
         atualizadoEm: iso(a.atualizadoEm), candidaturas: { total: ks.filter(function (k) { return k.status !== 'retirada'; }).length, novas: conta('enviada'),
-          conversar: conta('conversar'), combinou: conta('combinou'), contratada: conta('contratada') } });
+          conversar: conta('conversar'), combinou: conta('combinou'), contratada: conta('contratada') },
+        aguardaAbertura: aguarda, avisoAbertura: aguarda ? 'Sua vaga entra no ar no dia em que ' + c.nome + ' abrir.' : '' });
     }
     function pontosFortesIds() { return R.PONTOS_FORTES.map(function (p) { return p.id; }); }
     function referenciaVisivel(r) { var e = empresa(r.empresaId); return r.status === 'aceita' && !!e && e.status === 'ativa'; }
@@ -1098,6 +1106,7 @@
 
     // WhatsApp opcional (celular com DDD); a resposta é a mesma com ou sem ele e não revela se o e-mail já estava; o primeiro
     // número gravado para o e-mail fica. N2 (20261024120002): e-mail que saiu da lista há menos de 24 h entra sem WhatsApp.
+    var ORIGENS_LISTA = ['radio', 'cartaz', 'grupo', 'canal', 'escola', 'mutirao', 'indicacao', 'outro'];
     function saidas() { if (!st.listaSaidas) st.listaSaidas = {}; return st.listaSaidas; }
     function marcarSaida(slug, email) { saidas()[slug + '|' + email] = agora(); }
     function saiuHaPouco(slug, email) { var t = saidas()[slug + '|' + email]; return t != null && t > agora() - DIA; }
@@ -1106,13 +1115,18 @@
       var c = cidade(txt(d.cidade).trim().toLowerCase());
       if (!c || c.status === 'rascunho' || c.status === 'pausada') return erro('Cidade não encontrada.');
       if (c.status === 'ativa') return erro('Esta cidade já está aberta: faça o seu cadastro.', { ativa: true });
+      // Isca (20261024120004): campo "site" preenchido = robô; resposta igual à de sucesso, nada gravado.
+      if (txt(d.site).trim()) return ok({ cidade: c.slug, interessados: interessados(c.slug) });
       var l = R.lerListaEspera(d);
       if (!l.ok) return l;
+      // Origem (20261024120004): lista fechada; o resto vira null; a primeira fica.
+      var origem = txt(d.origem).trim().toLowerCase();
+      if (ORIGENS_LISTA.indexOf(origem) < 0) origem = null;
       var linha = st.listaEspera.filter(function (x) { return x.cidade === c.slug && x.email === l.campos.email; })[0];
       if (!linha) {
-        linha = { cidade: c.slug, email: l.campos.email, perfil: l.campos.perfil, whatsapp: '', whatsappEm: null, criadoEm: agora() };
+        linha = { cidade: c.slug, email: l.campos.email, perfil: l.campos.perfil, whatsapp: '', whatsappEm: null, criadoEm: agora(), origem: origem };
         st.listaEspera.push(linha);
-      }
+      } else if (!linha.origem) linha.origem = origem;
       // Sem prova de dono do e-mail, o primeiro WhatsApp gravado fica (revisão de segurança, I5).
       if (l.campos.whatsapp && !linha.whatsapp && !saiuHaPouco(c.slug, l.campos.email)) { linha.whatsapp = l.campos.whatsapp; linha.whatsappEm = agora(); }
       return ok({ cidade: c.slug, interessados: interessados(c.slug) });
@@ -1451,7 +1465,7 @@
       if (st.empresas.some(function (e) { return e.cnpj === l.campos.cnpj; })) return erro('Este CNPJ já tem cadastro. Peça acesso a quem cadastrou ou fale com a Gestão sem Caos.');
       var c = cidade(txt(d.cidade).trim().toLowerCase());
       if (!c || c.status === 'rascunho') return erro('Escolha a cidade da empresa.');
-      if (c.status !== 'ativa') return erro(R.MSG.CIDADE_FECHADA);
+      if (!aceitaEmpresas(c)) return erro(R.MSG.CIDADE_FECHADA);
       var z = null;
       if (txt(d.zona).trim()) { z = zona(c.slug, txt(d.zona).trim().toLowerCase()); if (!z) return erro('Escolha uma zona da cidade da empresa.'); }
       return { ok: true, campos: l.campos, cidade: c.slug, zona: z ? z.slug : null };
@@ -1524,7 +1538,7 @@
       if (f.inicio === 'data' && f.modalidade !== 'diaria' && f.inicioData < h) return erro('A data de início não pode estar no passado.');
       var z = null;
       if (txt(d.zona).trim()) { z = zona(cid, txt(d.zona).trim().toLowerCase()); if (!z) return erro('Escolha uma zona da cidade da vaga.'); }
-      if ((!an || an.cidade !== cid) && cobj.status !== 'ativa') return erro(R.MSG.CIDADE_FECHADA);
+      if ((!an || an.cidade !== cid) && !aceitaEmpresas(cobj)) return erro(R.MSG.CIDADE_FECHADA);
       if (f.confidencial && !e.cnpjConferidoEm) return erro('Só empresa com CNPJ conferido pela Gestão sem Caos pode anunciar como confidencial.');
       if (f.modalidade === 'diaria' && (!an || !an.diaria || an.diaria.data !== f.diaria.data || an.modalidade !== 'diaria')) {
         if (f.diaria.data < h) return erro('A data da diária já passou. Escolha outra data.');
@@ -1595,6 +1609,7 @@
       an = g.an;
       if (d.publicar === true && an.status !== 'publicado' && an.status !== 'pausado') {
         an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = an.publicadoEm || agora(); an.expiraEm = expiraCalculada(an); an.encerradoEm = null;
+        marcarPublicada(an);
       }
       registrar(an.cidade, papel, 'anuncio_assistido', 'anuncio', an.id, '', { publicado: an.status === 'publicado' });
       return ok({ anuncio: anuncioEmpresa(an) });
@@ -1616,11 +1631,11 @@
       var e = empresa(an.empresaId);
       if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.');
       var cobj = cidade(an.cidade);
-      if (cobj.status !== 'ativa') return erro(R.MSG.CIDADE_FECHADA);
+      if (!aceitaEmpresas(cobj)) return erro(R.MSG.CIDADE_FECHADA);
       if (an.modalidade === 'diaria' && an.diaria.data < hoje(cobj.fuso)) return erro('A data da diária já passou. Escolha outra data.');
       var revisao = e.status !== 'ativa' || st.anuncios.filter(function (x) { return x.empresaId === e.id && x.publicadoEm != null; }).length < 3;
       if (revisao) { an.status = 'em_revisao'; an.statusMotivo = ''; }
-      else { an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = agora(); an.expiraEm = expiraCalculada(an); }
+      else { an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = agora(); an.expiraEm = expiraCalculada(an); marcarPublicada(an); }
       tocar(an);
       return ok({ anuncio: anuncioEmpresa(an), emRevisao: revisao });
     };
@@ -1640,13 +1655,14 @@
         if (an.status !== 'pausado') return erro('Só dá para retomar uma vaga pausada.');
         if (an.expiraEm <= agora()) return erro('O prazo desta vaga acabou. Use "Renovar".');
         if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.');
-        an.status = 'publicado';
+        an.status = 'publicado'; marcarPublicada(an);
       } else if (acao === 'encerrar') {
         if (an.status !== 'encerrado') { an.status = 'encerrado'; an.encerradoEm = agora(); }
       } else if (acao === 'renovar') {
         if (an.modalidade === 'diaria') return erro('Para outra data, crie uma diária nova.');
         if (['publicado', 'pausado', 'encerrado'].indexOf(an.status) < 0) return erro('Só dá para renovar uma vaga que já foi publicada.');
         if (e.status !== 'ativa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.');
+        if (an.status !== 'publicado') marcarPublicada(an);
         an.status = 'publicado'; an.encerradoEm = null; an.expiraEm = expiraCalculada(an);
       } else return erro('Ação inválida.');
       tocar(an);
@@ -2140,6 +2156,7 @@
         if (e.status !== 'ativa') return erro('Aprove a empresa antes de publicar a vaga.');
         if (an.modalidade === 'diaria' && an.diaria.data < hoje(cidade(an.cidade).fuso)) return erro('A data da diária já passou.');
         if (an.status === 'em_revisao' || an.expiraEm == null || an.expiraEm <= agora()) { an.publicadoEm = an.publicadoEm || agora(); an.expiraEm = expiraCalculada(an); }
+        if (an.status !== 'publicado') marcarPublicada(an);
         an.status = 'publicado'; an.statusMotivo = '';
         st.denuncias.forEach(function (d) {
           if (d.anuncioId === an.id && d.alvo === 'anuncio' && d.status === 'aberta') {
@@ -2266,6 +2283,10 @@
       if (porte && ['grande', 'pequena'].indexOf(porte) < 0) return erro('Porte da cidade inválido (grande ou pequena).');
       var praca = null;
       if (txt(d.praca).trim()) { praca = cidade(txt(d.praca).trim().toLowerCase()); if (!praca) return erro('Cidade-polo não encontrada.'); }
+      var canal = txt(d.canalWhatsapp).trim().replace(/\/+$/, '') || null;
+      if (canal && !/^https:\/\/whatsapp\.com\/channel\/[0-9A-Za-z]{10,64}$/.test(canal)) {
+        return erro('Link do canal de WhatsApp inválido. Use o link do canal (https://whatsapp.com/channel/...).');
+      }
       var c = cidade(slug);
       var tem = function (k) { return Object.prototype.hasOwnProperty.call(d, k); };
       if (!c) {
@@ -2278,11 +2299,23 @@
       if (tem('uf')) c.uf = txt(d.uf).trim().toUpperCase();
       if (tem('ibge')) c.ibge = txt(d.ibge).trim() || null;
       if (tem('fuso')) c.fuso = txt(d.fuso).trim() || 'America/Sao_Paulo';
-      if (tem('status')) { if (status === 'ativa' && c.status !== 'ativa') c.abertaEm = agora(); c.status = status; }
+      if (tem('status')) {
+        if (status === 'ativa' && c.status !== 'ativa') {
+          c.abertaEm = agora();
+          st.anuncios.forEach(function (an) {
+            if (an.cidade === c.slug && an.preAbertura && (an.status === 'publicado' || an.status === 'pausado')) {
+              an.publicadoEm = c.abertaEm; an.expiraEm = c.abertaEm + (an.modalidade === 'diaria' ? (an.prazoHoras || 48) * 3600000 : an.diasNoAr * DIA);
+              an.preAbertura = false;
+            }
+          });
+        }
+        c.status = status;
+      }
       if (tem('porte')) c.porte = porte;
       if (tem('praca')) c.praca = praca ? praca.slug : null;
       if (tem('metaListaEspera')) c.metaListaEspera = R.inteiro(d.metaListaEspera);
       if (tem('ordem')) c.ordem = R.inteiro(d.ordem) || 0;
+      if (tem('canalWhatsapp')) c.canalWhatsapp = canal;
       registrar(c.slug, 'admin', 'cidade_salvar', 'cidade', c.id, '', { status: c.status, porte: c.porte || null });
       return ok({ cidade: Object.assign(cidadeJson(c), { porte: c.porte || null }) });
     };
@@ -2341,6 +2374,7 @@
       return ok({ cidades: st.cidades.slice().sort(function (a, b) { return a.ordem - b.ordem || a.nome.localeCompare(b.nome); }).map(function (c) {
         return { id: c.id, slug: c.slug, nome: c.nome, uf: c.uf, ibge: c.ibge || null, fuso: c.fuso, status: c.status, porte: c.porte || null,
           praca: c.praca || null, metaListaEspera: c.metaListaEspera == null ? null : c.metaListaEspera, ordem: c.ordem,
+          canalWhatsapp: c.canalWhatsapp || null, abertaEm: iso(c.abertaEm),
           zonas: st.zonas.filter(function (z) { return z.cidade === c.slug; }).sort(function (a, b) { return a.ordem - b.ordem || a.nome.localeCompare(b.nome); })
             .map(function (z) { return { id: z.id, slug: z.slug, nome: z.nome, bairros: z.bairros.slice(), ordem: z.ordem, ativa: z.ativa }; }),
           operadoresAtivos: st.operadores.filter(function (o) { return o.cidade === c.slug && o.ativo; }).length };
@@ -2556,6 +2590,12 @@
       var filaE = st.empresas.filter(function (e) { return naPraca(e.cidade) && e.status === 'em_analise' && e.criadoEm < t - DIA; }).length;
       var filaR = st.referencias.filter(function (r) { var e = empresa(r.empresaId); return e && naPraca(e.cidade) && r.textoStatus === 'pendente' && r.criadoEm < t - DIA; }).length;
       var lista = st.listaEspera.filter(function (l) { return naPraca(l.cidade); });
+      // Origem do cadastro na lista (20261024120004): cidade protegida, abaixo de 3 sai null.
+      var porOrigem = {};
+      ORIGENS_LISTA.concat(['naoInformada']).forEach(function (k) {
+        var n = lista.filter(function (l) { return (l.origem || 'naoInformada') === k; }).length;
+        porOrigem[k] = protege && n < 3 ? null : n;
+      });
       var assistidas = Object.keys(st.contas).map(function (uid) { return { uid: uid, c: st.contas[uid] }; })
         .filter(function (x) { return x.c.assistidaPor && naPraca(x.c.cidade) && (x.c.tipo === 'pessoa' || x.c.tipo === 'empresa'); });
       var alvoMutirao = alvoNumero(R.INDICADORES[14].alvo, porte);
@@ -2594,8 +2634,10 @@
         indicadorJson('denuncia_tempo_decisao_h', porte, den, { semBase: decididas.length === 0, detalhe: { base: decididas.length, abertasMais24h: abertas24 } }),
         indicadorJson('emails_mes', porte, null, { semDado: true, alerta: R.INDICADORES[11].alerta }),
         indicadorJson('fila_moderacao', porte, filaA + filaE + filaR, { detalhe: { anuncios: filaA, empresas: filaE, referencias: filaR } }),
-        indicadorJson('lista_espera', porte, lista.length, { detalhe: { pessoa: lista.filter(function (l) { return l.perfil === 'pessoa'; }).length,
-          empresa: lista.filter(function (l) { return l.perfil === 'empresa'; }).length, comWhatsapp: lista.filter(function (l) { return !!l.whatsapp; }).length } }),
+        indicadorJson('lista_espera', porte, lista.length, { poucos: protege && ORIGENS_LISTA.concat(['naoInformada']).some(function (k) { return porOrigem[k] === null; }),
+          detalhe: { pessoa: lista.filter(function (l) { return l.perfil === 'pessoa'; }).length,
+          empresa: lista.filter(function (l) { return l.perfil === 'empresa'; }).length, comWhatsapp: lista.filter(function (l) { return !!l.whatsapp; }).length,
+          porOrigem: porOrigem } }),
         indicadorJson('cadastros_assistidos_confirmados', porte, assistidas.filter(function (x) { return x.c.confirmadaEm != null && x.c.confirmadaEm >= mes; }).length,
           { detalhe: { porMutirao: porMutirao } })
       ];
@@ -2636,26 +2678,39 @@
     var TEXTO_AVISO_WHATSAPP = 'Oi! Aqui é a equipe do Vagas sem Caos, da Gestão sem Caos. Você pediu para ser avisado(a) quando abríssemos em {{cidade}}: ' +
       'abrimos! As vagas da cidade já estão no site: {{link_cidade}}\n\nEsta é a única mensagem sobre a lista de espera: depois dela, o seu número sai da lista.\n\n' +
       'Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.';
+    // Reforço (20261024120003): sai quem teve o envio confirmado e não espera o WhatsApp (na prévia o envio é na hora; não
+    // há lote interrompido); teto de 60 e-mails em 24 h; a fila anda por tentativas (sempre 0 na prévia) e entrada.
+    var TETO_AVISO = 60;
     function listaLimpar(slug) {
       st.listaEspera = st.listaEspera.filter(function (l) {
         var c = cidade(l.cidade);
         if (!c || c.status !== 'ativa' || (slug && l.cidade !== slug)) return true;
         if (c.abertaEm != null && c.abertaEm <= agora() - 30 * DIA) return false;
-        return !(l.avisadoEm != null && l.avisadoEm < agora() - 3600000 && (!l.whatsapp || l.whatsappAvisadoEm != null));
+        return !(l.avisoEnviadoEm != null && (!l.whatsapp || l.whatsappAvisadoEm != null));
       });
     }
     function avisoContagens(slug) {
       var ls = st.listaEspera.filter(function (l) { return l.cidade === slug; });
-      return { naLista: ls.length, aAvisarEmail: ls.filter(function (l) { return l.avisadoEm == null; }).length,
-        avisadosEmail: ls.filter(function (l) { return l.avisadoEm != null; }).length,
-        aAvisarWhatsapp: ls.filter(function (l) { return l.whatsapp && l.whatsappAvisadoEm == null; }).length };
+      var conta = function (f) { return ls.filter(f).length; };
+      return { naLista: ls.length, aAvisarEmail: conta(function (l) { return l.avisadoEm == null && (l.avisoTentativas || 0) < 3; }),
+        avisadosEmail: conta(function (l) { return l.avisoEnviadoEm != null; }),
+        emEnvio: conta(function (l) { return l.avisadoEm != null && l.avisoEnviadoEm == null && (l.avisoTentativas || 0) < 3; }),
+        semEmail: conta(function (l) { return l.avisoEnviadoEm == null && (l.avisoTentativas || 0) >= 3; }),
+        aAvisarWhatsapp: conta(function (l) { return l.whatsapp && l.whatsappAvisadoEm == null; }) };
+    }
+    function avisosUsados() { if (!st.avisosEnviados) st.avisosEnviados = []; return st.avisosEnviados.filter(function (t) { return t > agora() - DIA; }).length; }
+    function avisoTeto(aAvisar) {
+      var disp = Math.max(TETO_AVISO - avisosUsados(), 0);
+      return { porDia: TETO_AVISO, usados24h: avisosUsados(), disponivel: disp,
+        diasPrevistos: !aAvisar ? 0 : aAvisar <= disp ? 1 : (disp > 0 ? 1 : 0) + Math.ceil((aAvisar - disp) / TETO_AVISO) };
     }
     H.vagas_adm_aviso_resumo = function (a) {
       if (!eAdmin()) return erro(R.MSG.SEM_PERMISSAO);
       var c = cidade(txt(a.p_cidade).trim().toLowerCase());
       if (!c) return erro('Cidade não encontrada.');
       return ok({ cidade: { slug: c.slug, nome: c.nome, status: c.status, abertaEm: iso(c.abertaEm),
-        listaAte: c.status === 'ativa' && c.abertaEm != null ? iso(c.abertaEm + 30 * DIA) : '' }, contagens: avisoContagens(c.slug) });
+        listaAte: c.status === 'ativa' && c.abertaEm != null ? iso(c.abertaEm + 30 * DIA) : '' }, contagens: avisoContagens(c.slug),
+        teto: avisoTeto(avisoContagens(c.slug).aAvisarEmail) });
     };
     H.vagas_adm_aviso_whatsapp = function (a) {
       if (!eAdmin()) return erro(R.MSG.SEM_PERMISSAO);
@@ -2929,16 +2984,20 @@
         var c = cidade(txt(cidadeSlug).trim().toLowerCase());
         if (!c) return erro('Cidade não encontrada.');
         if (c.status !== 'ativa') return erro(MSG_AVISO_FECHADA);
-        var n = Math.min(Math.max(parseInt(limite, 10) || 25, 1), 50);
+        var pedido = parseInt(limite, 10);
+        var n = Math.min(Math.max(isFinite(pedido) ? pedido : 25, 1), 50, avisoTeto(0).disponivel);
         listaLimpar(c.slug);
-        var lote = st.listaEspera.filter(function (l) { return l.cidade === c.slug && l.avisadoEm == null; })
-          .sort(function (p, q) { return p.criadoEm - q.criadoEm; }).slice(0, n);
-        lote.forEach(function (l) { l.avisadoEm = agora(); l.sairToken = novoToken(); if (!l.id) l.id = novoId(); });
+        var lote = st.listaEspera.filter(function (l) { return l.cidade === c.slug && l.avisadoEm == null && (l.avisoTentativas || 0) < 3; })
+          .sort(function (p, q) { return (p.avisoTentativas || 0) - (q.avisoTentativas || 0) || p.criadoEm - q.criadoEm; }).slice(0, n);
+        lote.forEach(function (l) {
+          l.avisadoEm = agora(); l.avisoEnviadoEm = agora(); l.sairToken = novoToken(); if (!l.id) l.id = novoId(); st.avisosEnviados.push(agora());
+        });
         st.listaEspera = st.listaEspera.filter(function (l) { return lote.indexOf(l) < 0 || l.whatsapp; });
-        if (lote.length) registrar(c.slug, 'admin', 'aviso_email', 'cidade', c.id, '', { enviados: lote.length, falhas: 0 });
+        if (lote.length) registrar(c.slug, 'admin', 'aviso_email', 'cidade', c.id, '', { enviados: lote.length, falhas: 0, invalidos: 0 });
         var ct = avisoContagens(c.slug);
-        return ok({ cidade: { slug: c.slug, nome: c.nome }, enviados: lote.length, falhas: 0, restantes: ct.aAvisarEmail,
-          aAvisarWhatsapp: ct.aAvisarWhatsapp, terminou: ct.aAvisarEmail === 0 });
+        return ok({ cidade: { slug: c.slug, nome: c.nome }, enviados: lote.length, falhas: 0, invalidos: 0, restantes: ct.aAvisarEmail,
+          aAvisarWhatsapp: ct.aAvisarWhatsapp, terminou: ct.aAvisarEmail === 0, travado: false,
+          tetoAtingido: ct.aAvisarEmail > 0 && avisoTeto(0).disponivel === 0 });
       },
       // Convite para a equipe (Edge Function convite_equipe + vagas_conta_convite_equipe): só dono(a); resposta neutra.
       convidarEquipe: function (empresaId, email) {

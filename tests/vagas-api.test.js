@@ -11,7 +11,8 @@ const URL_SB = 'https://exemplo.supabase.co';
 const CHAVE = 'sb_publishable_teste';
 // A 20261024 (onda 2) acrescenta e redefine RPCs (painel da praça, equipe da empresa, lista de espera com WhatsApp).
 // A 20261024120002 acrescenta o aviso de abertura da lista de espera (painel da equipe e o link público de saída).
-const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql']
+const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql', '20261024120003_vagas_aviso_reforco.sql',
+  '20261024120004_vagas_pre_abertura.sql']
   .map((f) => fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', f), 'utf8')).join('\n');
 const SQL_FUNDACAO = SQL;   // o teste de contrato junta a migração dos testes (20261023) a esta
 
@@ -250,9 +251,10 @@ test('onda 2: painel da praça, equipe da empresa e convite por e-mail (Edge Fun
     ['vagas_op_indicadores', 'vagas_equipe_empresa', 'vagas_equipe_convite_cancelar', 'vagas_equipe_remover', 'vagas_equipe_convite', 'vagas_equipe_convite_aceitar']);
   assert.ok(['indicadores', 'equipeDaEmpresa', 'cancelarConvite', 'removerMembro', 'conviteEquipe', 'aceitarConviteEquipe'].every((m) => !API.METODOS[m].publico));
   // Recursos anunciados para as telas (a lista da cidade liga o campo de WhatsApp por aqui).
-  assert.deepEqual(API.RECURSOS, { listaEsperaWhatsapp: true });
+  const RECURSOS = { listaEsperaWhatsapp: true, preAberturaEmpresas: true, origemListaEspera: true };
+  assert.deepEqual(API.RECURSOS, RECURSOS);
   assert.deepEqual(API.criar({ modo: 'supabase', url: URL_SB, chave: CHAVE, fetch: () => Promise.reject(new Error('x')), armazenamento: memoria() }).RECURSOS,
-    { listaEsperaWhatsapp: true });
+    RECURSOS);
   // Pedidos da operação: opIndicadores (= indicadores, com o prefixo das outras da operação), opAssistidos, admCidades, admOperadores.
   assert.deepEqual(['opIndicadores', 'opAssistidos', 'admCidades', 'admOperadores'].map((m) => [API.METODOS[m].rpc, API.METODOS[m].p, !!API.METODOS[m].publico]),
     [['vagas_op_indicadores', ['p_cidade'], false], ['vagas_op_assistidos', ['p_filtro'], false], ['vagas_adm_cidades', [], false],
@@ -281,4 +283,19 @@ test('onda 2: painel da praça, equipe da empresa e convite por e-mail (Edge Fun
   assert.equal(API.conviteDoEndereco({ search: '?convite=' + tk + 'ff' }), '');
   assert.equal(API.conviteDoEndereco({ search: '' }), '');
   assert.equal(API.conviteDoEndereco(null), '');
+});
+
+test('RECURSOS da onda 2 e a lista de espera pelo Turnstile: com captcha vai pela vagas-conta (sem login); sem, pela RPC pública', async () => {
+  assert.deepEqual(API.RECURSOS, { listaEsperaWhatsapp: true, preAberturaEmpresas: true, origemListaEspera: true });
+  const { api, fetch } = criar([
+    ['/functions/v1/vagas-conta', () => resposta(200, { ok: true, cidade: 'niquelandia-go', interessados: 10 })],
+    ['/rest/v1/rpc/vagas_lista_espera_entrar', () => resposta(200, { ok: true, cidade: 'niquelandia-go', interessados: 10 })]]);
+  assert.deepEqual(api.RECURSOS, API.RECURSOS);
+  await api.listaEspera({ cidade: 'niquelandia-go', email: 'a@b.com', origem: 'radio', site: '', captcha: 'tk' });
+  assert.equal(fetch.chamadas[0].url, URL_SB + '/functions/v1/vagas-conta');
+  assert.deepEqual(fetch.chamadas[0].corpo, { acao: 'lista_espera', cidade: 'niquelandia-go', email: 'a@b.com', origem: 'radio', site: '', captcha: 'tk' });
+  assert.equal(fetch.chamadas[0].cabecalhos.Authorization, undefined, 'sem login');
+  await api.listaEspera({ cidade: 'niquelandia-go', email: 'a@b.com', origem: 'radio' });
+  assert.equal(fetch.chamadas[1].url, URL_SB + '/rest/v1/rpc/vagas_lista_espera_entrar');
+  assert.deepEqual(fetch.chamadas[1].corpo, { p_dados: { cidade: 'niquelandia-go', email: 'a@b.com', origem: 'radio' } });
 });
