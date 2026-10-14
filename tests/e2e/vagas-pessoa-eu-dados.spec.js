@@ -47,15 +47,10 @@ test('conta suspensa: tela com o caminho da revisão; "Baixar meus dados" e "Exc
   await expect(page.locator('.vg-estado .giro')).toHaveCount(0);
   await expect(page.locator('#vg-nav')).toHaveCount(0);
   await expect(page.locator('#vg-faixa-suspensa')).toHaveCount(0);
-  // Baixar: o banco ainda recusa exportar com a conta suspensa (pedido ao banco); a tela mostra a recusa e segue. Com o banco
-  // corrigido, o arquivo baixa.
-  const resultado = Promise.race([
-    page.waitForEvent('download').then((d) => 'arquivo:' + d.suggestedFilename()),
-    page.locator('#vg-aviso-geral').waitFor({ state: 'visible' }).then(() => 'aviso')]);
+  // Baixar: a conta suspensa também baixa os próprios dados (LGPD, art. 18; migração 0005 e prévia).
+  const resultado = page.waitForEvent('download').then((d) => 'arquivo:' + d.suggestedFilename());
   await page.click('#vg-dados-baixar');
-  const r = await resultado;
-  if (r === 'aviso') await expect(page.locator('#vg-aviso-geral')).toContainText('suspensa');
-  else expect(r).toBe('arquivo:meus-dados-vagas.json');
+  expect(await resultado).toBe('arquivo:meus-dados-vagas.json');
   await expect(page.locator('#vg-eu-suspensa-titulo')).toBeVisible();
   await expect(page.locator('#vg-dados-baixar')).toBeEnabled();
   // Excluir a conta funciona mesmo suspensa.
