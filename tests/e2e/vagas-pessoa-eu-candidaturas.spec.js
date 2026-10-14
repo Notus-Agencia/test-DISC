@@ -127,7 +127,7 @@ test('quem viu meu contato: quem abriu e quando; cortar o acesso (com confirmaç
   await expect(page.locator('#vg-quem-viu-titulo')).toHaveText('Quem viu meu contato');
   const item = page.locator('#vg-quem-viu-lista .vg-item').first();
   await expect(item).toContainText(/abriu em \d{2}\/\d{2} às \d{2}:\d{2}/);
-  await expect(page.locator('#vg-quem-viu-aviso')).toContainText('Ninguém mais tem o seu contato: nem o operador da praça, nem outras empresas.');
+  await expect(page.locator('#vg-quem-viu-aviso')).toContainText('Fora as empresas desta lista, nenhuma empresa nem o operador da praça vê o seu contato.');
   await item.locator('[data-acao="cortar"]').click();
   await expect(page.locator('#vg-confirmar-cortar')).toContainText('deixa de ver o seu WhatsApp e a sua foto');
   await page.click('#vg-confirmar-cortar-sim');

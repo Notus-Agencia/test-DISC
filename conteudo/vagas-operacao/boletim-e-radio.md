@@ -38,7 +38,7 @@ Vagas novas, todas de empresas conferidas (CNPJ ativo):
 • *Ajudante de evento* · Zona rural e lago · qua 22/10, 14h–22h · R$ 150 o dia
   vagas.gestaosemcaos.com.br/v/D5E6FG
 
-Candidatura é grátis, sempre. Mostre o que você sabe fazer: faça o teste da função no celular e ganhe o selo de habilidade testada.
+Candidatura é grátis, sempre. Faça seu currículo pelo celular e, se quiser, o teste da sua função.
 Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.
 Todas as vagas: vagas.gestaosemcaos.com.br/uruacu-go
 _Vagas sem Caos · uma empresa do grupo Gestão sem Caos_
@@ -54,8 +54,8 @@ Formato: 1 imagem (modelo da identidade visual: laranja + azul-escuro, logo do V
 
 ```
 Vaga da semana em Uruaçu: *Auxiliar administrativo(a)*, CLT, R$ 1.800, no Centro.
-Para se candidatar: faça o teste de rotina administrativa no celular (15 questões, grátis) e toque em "Quero".
-A empresa vê seu cartão sem nome e sem foto; o contato só aparece quando os dois querem conversar.
+Para se candidatar, toque em "Quero". Se quiser, faça antes o teste de rotina administrativa no celular (grátis).
+A empresa vê seu cartão sem nome e sem foto; o contato só aparece se você tocar em "Combinou".
 
 Esta semana: 9 vagas novas · 3 empresas novas · 28 pessoas com selo. (números fictícios do modelo)
 Link na bio · vagas.gestaosemcaos.com.br/uruacu-go
@@ -66,7 +66,7 @@ Vagas sem Caos · uma empresa do grupo Gestão sem Caos
 Para a empresa (versão alternada, a cada 2 semanas) [Marca]:
 
 ```
-Contratou e, em 15 dias, a pessoa não sabia dar o troco? No Vagas sem Caos, quem se candidata já fez o teste do básico da função. Você vê o resultado, chama só quem também quer a vaga e decide na entrevista. Anunciar é grátis no lançamento. Uma empresa do grupo Gestão sem Caos.
+Contratou e, em 15 dias, a pessoa não sabia dar o troco? No Vagas sem Caos, quem se candidata pode fazer o teste do básico da função, e você vê o selo com a nota e a margem. Sem selo não quer dizer que a pessoa não sabe. Você chama só quem também quer a vaga e decide na entrevista. Anunciar é grátis no lançamento. Uma empresa do grupo Gestão sem Caos.
 ```
 
 ## 3. Spot de rádio (30 segundos)
@@ -77,7 +77,8 @@ Locução neutra, ritmo normal (~75 palavras). Rádios de Uruaçu encontradas em
 
 ```
 Procurando emprego em Uruaçu? O Vagas sem Caos reúne vagas de empresas daqui, conferidas uma a uma.
-Mostre o que você sabe fazer: faça o teste da função no celular e ganhe o selo de habilidade testada.
+Você faz o currículo pelo celular e, se quiser, faz o teste da sua função. A empresa vê primeiro o que você sabe: sem nome e sem foto.
+Para quem tem 18 anos ou mais.
 É grátis para se candidatar, sempre. Nunca pague para concorrer a uma vaga: se alguém pedir dinheiro em nosso nome, é golpe.
 Entre em vagas ponto gestão sem caos ponto com ponto be erre.
 Vagas sem Caos, uma empresa do grupo Gestão sem Caos.
@@ -94,8 +95,8 @@ Nunca pague para se candidatar. Vagas sem Caos, uma empresa do grupo Gestão sem
 **Versão empresa (semanas 9–12):**
 
 ```
-Sua empresa em Uruaçu precisa contratar? No Vagas sem Caos, quem se candidata já fez o teste do básico da função.
-Veja quem já provou o básico da função e converse só com quem também quer a vaga. A decisão de contratar continua sendo sua. Grátis no lançamento.
+Sua empresa em Uruaçu precisa contratar? No Vagas sem Caos, você vê o que a pessoa sabe antes da entrevista.
+Quem se candidata pode fazer o teste da função, e você vê o selo. Sem nome e sem foto até vocês combinarem de conversar. A decisão continua sendo sua. Grátis no lançamento.
 Vagas ponto gestão sem caos ponto com ponto be erre. Uma empresa do grupo Gestão sem Caos.
 ```
 

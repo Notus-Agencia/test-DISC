@@ -133,7 +133,7 @@ Acréscimo aprovado pelo dono em 13/10: uma **empresa verificada** pode dar uma 
 1. A referência é da pessoa: o operador nunca monta, guarda ou repassa lista de quem tem ou não tem referência (o sistema nem dá esse acesso).
 2. **Mutirão:** a mesa só informa: "Já trabalhou em alguma empresa daqui? Pelo site você pode pedir uma referência profissional a ela." A pessoa decide; a mesa não liga para a empresa nem preenche nada.
 3. **Mutirão de empresas** (associação comercial, Sebrae): "Pessoas boas que passaram por aqui? Ofereça uma referência profissional: leva 2 minutos e aparece com o nome da sua empresa, se a pessoa autorizar."
-4. **Vaga assistida:** o operador ajuda a empresa a escrever a vaga, divulga no boletim, na rádio e no mutirão, marca uma data de prova presencial e divulga a data na própria vaga (o operador não sabe quem disse "Quero") e lembra a empresa de responder. **Quem lê os cartões e decide é a empresa.** O operador não monta lista curta, não ordena pessoas e não usa referência, selo ou nota para escolher ninguém (decisão P3).
+4. **Vaga assistida:** o operador ajuda a empresa a escrever a vaga, divulga no boletim, na rádio e no mutirão, marca uma data de prova no mutirão e divulga como opção, nunca como requisito ("Quem quiser pode fazer o teste no mutirão de DD/MM. Não é obrigatório para se candidatar.") (o operador não sabe quem disse "Quero") e lembra a empresa de responder. **Quem lê os cartões e decide é a empresa.** O operador não monta lista curta, não ordena pessoas e não usa referência, selo ou nota para escolher ninguém (decisão P3).
 5. Ausência de referência não é critério de nada e nunca é mencionada à empresa.
 6. Toda recusa, remoção e suspensão por referência entra no relatório mensal só como **número**.
 

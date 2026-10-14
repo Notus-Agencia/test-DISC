@@ -34,7 +34,8 @@
 
   // ------------------------------------------------------------------------------------------------- #assistido
   // Aviso lido em voz alta (texto do mockup aprovado; docs/VAGAS-TELAS.md §4.2).
-  var AVISO_LIDO = 'Você vai receber um e-mail para confirmar a conta. Só depois disso ela vale. Candidatar-se é grátis e ninguém da operação vê o seu currículo ou contato.';
+  var AVISO_LIDO = 'Você vai receber um e-mail para confirmar a conta. Só depois disso ela vale. Candidatar-se é grátis, sempre. Eu só vejo o e-mail que digitei agora: ninguém da operação vê o seu currículo nem o seu WhatsApp.';
+  var AVISO_LIDO_EMPRESA = 'Você vai receber um e-mail para confirmar a conta da empresa. Só depois disso ela vale. Anunciar é grátis no lançamento.';
   TELAS.assistido = function (raiz, ctx) {
     var c = ctx.cidade();
     var tipo = TELAS.assistido.tipo || 'pessoa';
@@ -71,9 +72,9 @@
     var p = ctx.pilulas({ id: 'vg-op-ass-cidade', rotuloId: 'vg-op-ass-cidade-rotulo', valor: c.slug, opcoes: ctx.cidades.map(function (x) { return { id: x.slug, rotulo: x.nome }; }) });
     return { elemento: p, valor: function () { return p.valor; } };
   }
-  function leuAviso() {
+  function leuAviso(aviso) {
     return el('div', { class: 'consentimento vg-op-leu' }, el('label', { class: 'marcar' }, [el('input', { type: 'checkbox', id: 'vg-op-ass-leu' }),
-      el('span', { class: 't-rotulo' }, 'Li para a pessoa, em voz alta, o aviso: "' + AVISO_LIDO + '"')]));
+      el('span', { class: 't-rotulo' }, 'Li para a pessoa, em voz alta, o aviso: "' + (aviso || AVISO_LIDO) + '"')]));
   }
   function seuEmail(ctx, email) { var c = ctx.eu && ctx.eu.conta; return !!(c && c.email && R.normalizarEmail(c.email) === email); }
 
@@ -151,7 +152,7 @@
         campo('vg-op-ass-nome', 'Nome de quem responde pela empresa', responsavel),
         campo('vg-op-ass-email', 'E-mail de quem responde pela empresa', email, { obrigatorio: true, ajuda: 'É o e-mail da conta. Nunca use o seu.' })
       ].concat(lugar.elementos)),
-      leuAviso(),
+      leuAviso(AVISO_LIDO_EMPRESA),
       el('div', { class: 'acoes vg-op-acoes-direita' }, criar),
       resultado
     ]);

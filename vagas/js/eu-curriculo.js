@@ -14,7 +14,7 @@
   var NOMES = ['', 'Onde', 'Áreas e experiência', 'Escolaridade e cursos', 'Disponibilidade e contato', 'Revisar'];
   var TITULOS = ['', 'Onde você quer trabalhar?', 'Em que áreas você quer trabalhar?', 'Até onde você estudou?', 'Quando você pode trabalhar?',
     'É assim que a empresa vê você'];
-  var SUBTITULOS = ['', 'Escolha a cidade e a zona onde você mora. A foto é opcional.',
+  var SUBTITULOS = ['', 'Escolha a cidade e a zona onde você mora. A empresa vê só a zona, nunca o endereço. A foto é opcional.',
     'Marque até 3. A lista de vagas já abre nas suas áreas e você recebe aviso de vaga nova nelas.',
     'Conte até onde estudou e os cursos que fez. Só o que ajuda na vaga.',
     'Turnos, tipo de vaga, pretensão e o seu contato.', ''];
@@ -413,7 +413,7 @@
               cv.experiencias.splice(i, 1); desenharExps(); mudou(); U.anunciar('Trabalho tirado.');
             } }, 'Tirar')]) : null,
           campoTexto({ id: 'vg-exp-cargo' + s, rotulo: 'O que você fazia', valor: x.cargo, atributos: { maxlength: '80', autocomplete: 'off' }, aoMudar: function (v) { x.cargo = v; } }),
-          campoTexto({ id: 'vg-exp-onde' + s, rotulo: 'Onde', nota: '(opcional)', valor: x.onde, atributos: { maxlength: '120', autocomplete: 'off' }, aoMudar: function (v) { x.onde = v; } }),
+          campoTexto({ id: 'vg-exp-onde' + s, rotulo: 'Onde', nota: '(opcional)', ajuda: 'Não aparece no cartão. A empresa só vê depois do Combinou.', valor: x.onde, atributos: { maxlength: '120', autocomplete: 'off' }, aoMudar: function (v) { x.onde = v; } }),
           tempo,
           el('label', { class: 'marcar', for: 'vg-exp-atual' + s }, [atual, el('span', {}, 'Trabalho lá atualmente')]),
           botaoDatas, datas, carteira
@@ -480,7 +480,7 @@
           el('p', { class: 't-rotulo texto-medio' }, 'Só aparece para a empresa depois do Combinou.')]),
         campoTexto({ id: 'vg-cv-nome', rotulo: 'Nome e sobrenome', valor: cv.nome, atributos: { autocomplete: 'name', maxlength: '120' }, aoMudar: function (v) { cv.nome = v; } }),
         campoTexto({ id: 'vg-cv-whatsapp', rotulo: 'WhatsApp com DDD', tipo: 'tel', valor: cv.whatsapp, atributos: { inputmode: 'tel', autocomplete: 'tel-national', maxlength: '20' },
-          ajuda: 'Só aparece para a empresa depois do Combinou. Sem confirmação por código nesta fase.', aoMudar: function (v) { cv.whatsapp = v; } })
+          ajuda: 'Só aparece para a empresa depois do Combinou.', aoMudar: function (v) { cv.whatsapp = v; } })
       ]);
     }
 
@@ -592,7 +592,7 @@
         el('span', { class: 'vg-ok-icone' }, U.icone('check')),
         el('h1', { id: 'vg-cv-pronto-titulo', class: 'titulo-pagina', tabindex: '-1' }, 'Currículo salvo'),
         el('p', { class: 'subtitulo' }, 'Agora é só tocar em "Quero" nas vagas que você escolher. A empresa recebe o seu cartão sem nome.'),
-        el('p', { class: 't-rotulo texto-medio' }, 'Mostre o que você sabe fazer: faça o teste da função no celular e ganhe o selo de habilidade testada.'),
+        el('p', { class: 't-rotulo texto-medio' }, 'Se quiser, faça o teste da sua função no celular e tente o selo de habilidade testada.'),
         el('div', { class: 'acoes acoes-coluna' }, [
           el('a', { class: 'botao botao--principal botao--grande', href: ctx.hrefVagas(), id: 'vg-cv-pronto-vagas' }, 'Ver vagas'),
           el('a', { class: 'botao botao--claro botao--grande', href: 'testes.html', id: 'vg-cv-pronto-testes' }, 'Ver os testes')])

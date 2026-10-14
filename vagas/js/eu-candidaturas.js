@@ -230,7 +230,7 @@
       }
       var algumCortavel = itens.some(function (x) { return x.podeCortar; });
       U.trocar(lista, [el('ul', { class: 'vg-lista-itens', id: 'vg-quem-viu-lista' }, itens.map(item)),
-        el('p', { class: 'aviso vg-eu-aviso', id: 'vg-quem-viu-aviso' }, 'Ninguém mais tem o seu contato: nem o operador da praça, nem outras empresas.' +
+        el('p', { class: 'aviso vg-eu-aviso', id: 'vg-quem-viu-aviso' }, 'Fora as empresas desta lista, nenhuma empresa nem o operador da praça vê o seu contato. Quem já salvou seu número no celular continua com ele.' +
           (algumCortavel ? ' Quer cortar o acesso de alguma? Toque em "Cortar acesso".' : ''))]);
     }
     function foiHoje(iso) { var r = U.relativa(iso); return r === 'agora' || r === 'hoje' || /^há \d+ (min|h)$/.test(r); }
