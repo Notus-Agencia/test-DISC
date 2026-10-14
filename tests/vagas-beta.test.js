@@ -48,3 +48,13 @@ test('toda página do site de vagas carrega a porta da beta no <head>, depois de
     assert.ok(iEndereco >= 0 && iBeta > iEndereco, `${p}: beta.js no <head>, depois de endereco.js`);
   }
 });
+
+test('enquanto a beta mora em disc.gestaosemcaos.com.br/vagas/, o GitHub Pages publica a pasta vagas/', () => {
+  const END = require('../vagas/js/endereco.js');
+  const cfg = fs.readFileSync(path.join(__dirname, '..', '_config.yml'), 'utf8');
+  const excluidos = cfg.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('- ')).map((l) => l.slice(2).trim());
+  if (!END.LIGADO) {
+    assert.ok(!excluidos.includes('vagas') && !excluidos.includes('vagas/'), '_config.yml não pode excluir vagas/ (a beta daria 404)');
+  }
+  assert.ok(excluidos.includes('vagas/functions'), 'o código do Cloudflare não vira página');
+});

@@ -1,8 +1,10 @@
 # GitHub Pages (Jekyll) do site do DISC: o que NÃO vira página pública em disc.gestaosemcaos.com.br.
-# O repositório é público, mas o site só precisa dos HTML da raiz, assets/ e js/. As pastas abaixo são
-# código, documentação e testes (e a pasta vagas/, que é outro site, publicado pelo Cloudflare Pages).
+# O repositório é público, mas o site só precisa dos HTML da raiz, assets/, js/ e vagas/. As pastas abaixo são
+# código, documentação e testes. A pasta vagas/ fica publicada aqui como versão beta fechada com código
+# (disc.gestaosemcaos.com.br/vagas/) até o domínio próprio (vagas.gestaosemcaos.com.br, Cloudflare Pages) abrir;
+# vagas/functions/ é código do Cloudflare e não vira página.
 exclude:
-  - vagas
+  - vagas/functions
   - supabase
   - tests
   - test-results
