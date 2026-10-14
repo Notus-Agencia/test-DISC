@@ -28,6 +28,8 @@
   var guardado = null;
   try { guardado = root.localStorage.getItem(CHAVE); } catch (e) { /* bloqueado: pede o código a cada visita */ }
   if (!doc || !precisa(root.location && root.location.hostname, guardado, CODIGO_SHA256)) return;
+  // A conferência (crypto.subtle) só existe em página segura: quem abrir por http vai para a mesma página em https.
+  if (root.location.protocol === 'http:') { root.location.replace('https:' + root.location.href.slice(5)); return; }
   doc.documentElement.classList.add(CLASSE);
 
   function el(tag, attrs, filhos) {
@@ -44,7 +46,7 @@
     var form = el('form', { class: 'vg-beta__form', novalidate: 'novalidate' }, [
       el('label', { for: 'vg-beta-codigo', class: 'vg-beta__rotulo' }, ['Código de acesso']), campo, erro, botao]);
     var caixa = el('main', { class: 'vg-beta', id: 'vg-beta' }, [el('div', { class: 'vg-beta__cartao' }, [
-      el('img', { class: 'vg-beta__logo', src: 'comum/marca/gsc-vagas.svg', alt: 'Gestão sem Caos Vagas', width: '206', height: '20' }),
+      el('img', { class: 'vg-beta__logo', src: 'comum/marca/gsc-logo.svg', alt: 'Gestão sem Caos', width: '199', height: '28' }),
       el('p', { class: 'vg-beta__selo' }, ['Versão beta']),
       el('h1', { class: 'vg-beta__titulo' }, ['Acesso com código']),
       el('p', { class: 'vg-beta__texto' }, ['Esta é uma versão de demonstração, com dados de exemplo. Para ver, digite o código que a Gestão sem Caos passou para você.']),
