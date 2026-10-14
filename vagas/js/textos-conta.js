@@ -22,7 +22,7 @@
    "modalidade_obrigatoria": "Escolha a modalidade: CLT, temporário, diária, autônomo ou estágio.",
    "titulo_curto": "O título precisa ter entre 5 e 60 letras.",
    "descricao_curta": "Descreva a vaga em pelo menos 40 caracteres.",
-   "selo_sugerido": "Quer pedir o selo de {{teste_nome}}? A pessoa faz o teste de conhecimento prático no celular e você vê a nota com a margem. Não é obrigatório e não substitui a entrevista.",
+   "selo_sugerido": "Quer sugerir o teste de {{teste_nome}}? Quem quiser faz o teste de conhecimento prático no celular, e você vê a nota com a margem. Não é obrigatório e não substitui a entrevista.",
    "area_obrigatoria": "Escolha a área da vaga.",
    "turno_obrigatorio": "Escolha o turno da vaga.",
    "experiencia_obrigatoria": "Escolha a experiência que a vaga pede.",
@@ -101,8 +101,8 @@
     "versao": "2026-10-13",
     "quem": "pessoa",
     "titulo": "Liberar meu contato para esta empresa",
-    "texto": "Quero conversar com {{empresa_nome}}. Libero meu nome, meu currículo completo e meu WhatsApp só para esta empresa, só para esta vaga.",
-    "explicacao": "A empresa aparece agora com o nome dela: se for uma vaga confidencial, é a primeira vez que você vê quem é. Se não quiser, toque em \"Agora não\" e nada é liberado. Depois do Combinou você pode encerrar a conversa e pedir que a empresa não entre mais em contato. Você vê em \"Quem viu meu contato\" quando ela abriu os seus dados. Nunca pague nada: se a empresa pedir dinheiro, Pix ou documento, denuncie.",
+    "texto": "Quero conversar com {{empresa_nome}}. Libero meu nome, meu WhatsApp, meu e-mail, meu currículo completo e a minha foto (se eu enviei) só para esta empresa, só para esta vaga.",
+    "explicacao": "A empresa aparece agora com o nome dela: se for uma vaga confidencial, é a primeira vez que você vê quem é. Você passa a ver o WhatsApp e o e-mail dela. Se não quiser, toque em \"Agora não\" e nada é liberado. Depois do Combinou, em \"Quem viu meu contato\", você vê quando ela abriu os seus dados e pode cortar o acesso. Nunca pague nada para se candidatar. Documento, só na contratação, depois de conhecer a empresa. Nunca passe código que chegou por SMS.",
     "obrigatorio": true,
     "variaveis": [
      "empresa_nome"
@@ -382,7 +382,7 @@
     "alvo": "denuncia",
     "acao": "acatar",
     "titulo": "Denúncia revisada e acatada",
-    "texto_empresa": "Revisamos a denúncia sobre \"{{alvo_descricao}}\" e tomamos uma providência ({{detalhe}}). Quem foi denunciado não sabe quem denunciou. Obrigado.",
+    "texto_empresa": "Revisamos a denúncia sobre \"{{alvo_descricao}}\" e tomamos uma providência ({{detalhe}}). Não mostramos a quem foi denunciado quem denunciou. Obrigado.",
     "correcao": "",
     "lei": ""
    },
@@ -454,7 +454,7 @@
     "alvo": "denuncia",
     "acao": "acatar",
     "titulo": "Golpe confirmado: resposta a quem denunciou",
-    "texto_empresa": "Obrigado por denunciar. Confirmamos o problema: a vaga saiu do ar e a empresa foi suspensa. Se você mandou dinheiro ou documento, registre um boletim de ocorrência (pode ser online) e, se quiser, fale com a gente para orientação. Quem foi denunciado não sabe quem denunciou.",
+    "texto_empresa": "Obrigado por denunciar. Confirmamos o problema: a vaga saiu do ar e a empresa foi suspensa. Se você mandou dinheiro ou documento, registre um boletim de ocorrência (pode ser online) e, se quiser, fale com a gente para orientação. Não mostramos a quem foi denunciado quem denunciou.",
     "correcao": "",
     "lei": "termos de uso, seção 10.5; protocolo de golpe em docs/VAGAS-OPERACAO.md"
    },

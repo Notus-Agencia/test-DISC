@@ -104,8 +104,11 @@ test('instruções: uma por vez, sem voltar, tempo, sozinho(a), não mede inteli
   assert.match(at.join(' '), /refazer em 30 dias, de graça/);
   assert.match(at.join(' '), /Com nota 60 ou mais, você ganha o selo/);
   assert.match(at.join(' '), /Se você encerrar antes de responder tudo, a tentativa conta: o que ficou sem resposta vale como erro\./);
-  // LGPD (art. 6º, VI): a pessoa sabe o que a prova registra antes de começar.
-  assert.match(at.join(' '), /registramos o tempo de cada questão, a saída da tela e a cópia de texto\. Ninguém perde o selo só por isso: uma pessoa da equipe revisa/);
+  // LGPD (art. 6º, VI): a pessoa sabe o que a prova registra antes de começar; a frase é informativa (sem tom de punição) e
+  // diz que o relógio continua quando ela sai (revisão de UX, fase C).
+  assert.match(at.join(' '), /Se você sair da prova \(para atender uma ligação, por exemplo\), o relógio continua\. Registramos o tempo de cada questão, quando você sai da tela e quando copia texto\. Sozinho, esse registro não muda a sua nota nem tira o seu selo\./);
+  assert.ok(!/presencial|antes de qualquer decisão/.test(at.join(' ')), 'psicologia (revisão C 2.7)');
+  assert.match(at.join(' '), /Se a internet cair, entre de novo e continue de onde parou, no tempo que sobrou\./);
   assert.ok(!at.join(' ').includes('calculadora'));
   assert.match(cx.join(' '), /Você tem 25 minutos/);
   assert.match(cx.join(' '), /Pode usar papel e caneta para as contas\. Não use calculadora\./);
@@ -140,7 +143,9 @@ test('selo: nota com margem, "online, sem supervisão", validade, vencido, cance
   assert.equal(T.exibirSelo(selo, '2027-10-14').situacao, 'vencido', 'vencido pela data, mesmo sem o servidor dizer');
   assert.equal(T.exibirSelo(Object.assign({}, selo, { situacao: 'vencido' }), '2026-11-01').rotuloSituacao, 'Vencido');
   const rev = T.exibirSelo(Object.assign({}, selo, { situacao: 'revogado', nota: null }), '2026-11-01');
-  assert.deepEqual([rev.situacao, rev.nota, rev.linhaNota, rev.rotuloSituacao], ['revogado', null, '', 'Cancelado pela equipe']);
+  // Psicologia (revisão C 2.6): "sem validade", nunca "cancelado" (soa como fraude a quem confere).
+  assert.deepEqual([rev.situacao, rev.nota, rev.linhaNota, rev.rotuloSituacao], ['revogado', null, '', 'Sem validade']);
+  assert.equal(rev.descricao, 'Este selo não vale mais. Se quiser, peça à pessoa para fazer o teste de novo.');
   const pres = T.exibirSelo(Object.assign({}, selo, { supervisao: 'presencial', margem: undefined }), '2026-11-01');
   assert.equal(pres.modalidade, 'Presencial, com documento conferido');
   assert.equal(pres.linhaNota, 'Nota 82 (±10)', 'sem margem do servidor, usa a padrão');
@@ -161,7 +166,8 @@ test('resultado: com e sem selo, onde acertou menos, tempo esgotado e data para 
     selo: { codigo: 'K7M2QX9A', nota: 73, margem: 10, data: '2026-10-13', validoAte: '2027-10-13' } };
   const com = T.textoResultado(base);
   assert.equal(com.titulo, 'Você ganhou o selo de Caixa e matemática prática.');
-  assert.equal(com.linhas[0], 'Você acertou 11 de 15 questões. Nota 73 (±10).');
+  // No resultado, a margem por extenso (o "±" sozinho é opaco para quem lê pouco).
+  assert.equal(com.linhas[0], 'Você acertou 11 de 15 questões. Nota 73 (margem de cerca de 10 pontos, para mais ou para menos).');
   assert.match(com.linhas.join(' '), /O selo vale até 13\/10\/2027\. Código para conferir: K7M2-QX9A\./);
   assert.equal(com.refazer, 'Você pode refazer este teste a partir de 12/11/2026, de graça.');
   assert.deepEqual(com.estudar, ['Porcentagem e desconto']);

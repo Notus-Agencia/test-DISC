@@ -1,0 +1,87 @@
+/*
+ * Vagas sem Caos — ajustes das telas de testes (testes.html) e da conferência do selo (selo.html), por cima das peças da casca
+ * (vagas.css, seção 17 "Prova e testes"); nenhuma cor, fonte ou componente novo: só tokens do notus.css. Os mockups aprovados
+ * usavam style="margin-top:…" nos mesmos lugares (a CSP bloqueia o atributo style). Este arquivo só é carregado nestas duas
+ * páginas, então as regras com #app valem só aqui.
+ */
+
+/* ---------------------------------------------------------------------------------------------------------------------------
+   Leitura no celular (revisão de UX, fase C): quem responde e quem confere lê o corpo com 16 px (--t-campo) e nada abaixo de
+   13 px (--t-rotulo). Os subtítulos sobre o fundo cinza usam --medio (contraste AA; --suave fica em 4,2:1 ali).
+   --------------------------------------------------------------------------------------------------------------------------- */
+#app { font-size: var(--t-campo); }
+#app .subtitulo, #app .t-corpo, #vg-instrucoes-lista .vg-item__texto, #app .vg-opcao, #app .vg-prova__apoio,
+#app .vg-estado, #app .progresso-topo { font-size: var(--t-campo); }
+#app .subtitulo { color: var(--medio); }
+#app .aviso, #app .t-rotulo, #app .vg-teste__info, #app .vg-reconectando, #app .vg-selo__nota, #app .vg-vaga__empresa { font-size: var(--t-corpo); }
+#app .t-nota, #app .campo__ajuda, #app .sobretitulo, #app .vg-selo__rotulo, #app .vg-selo__linha, #app .vg-etiqueta,
+#app .vg-vaga__meta, #app .vg-vaga__quando { font-size: var(--t-rotulo); }
+#app .vg-teste__info, #app .campo__ajuda, #app .vg-selo__linha { color: var(--medio); }
+#vg-confirmar-encerrar .t-corpo, #vg-confirmar-sair .t-corpo { font-size: var(--t-campo); }
+/* No catálogo, os avisos ficam em caixa branca (o fundo do .aviso é o mesmo da página) */
+#app > section > .aviso { background: var(--branco); }
+
+/* Alvos de toque com 44 px ou mais (público que usa o celular com uma mão, no ônibus) */
+#app .botao, #vg-confirmar-encerrar .botao, #vg-confirmar-sair .botao, #vg-cidade { min-height: 44px; }
+#app .acoes > .botao--link, #app .vg-estado .botao--link { display: inline-flex; align-items: center; min-height: 44px; }
+#vg-selo-conferir-link { display: inline-flex; align-items: center; min-height: 44px; }
+.vg-teste__espera { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--t-corpo); font-weight: 600; }
+
+/* ---------------------------------------------------------------------------------------------------------------------------
+   Respiros
+   --------------------------------------------------------------------------------------------------------------------------- */
+#vg-testes-aviso, #vg-testes-entrar-aviso, #vg-instrucoes-sozinho, #vg-instrucoes-aguardar, #vg-instrucoes-erro,
+#vg-resultado-limites, #vg-conferir-aviso { margin-top: 16px; }
+#vg-testes-entrar-aviso .acoes { margin-top: 10px; }
+/* "O teste é opcional…" (avisos.teste_opcional): catálogo, instruções e vagas que sugerem o teste */
+#vg-testes-opcional, #vg-testes-vagas-opcional { margin-top: 12px; }
+#vg-instrucoes-opcional, #vg-resultado-opcional { margin-top: 10px; }
+#vg-conferir-empresa, #vg-conferir-emitido, #vg-selo-conferir { margin-top: 10px; }
+
+/* Instruções: as linhas com ícone, sem as divisórias da lista de itens */
+#vg-instrucoes-lista { margin-top: 12px; }
+#vg-instrucoes-lista .vg-item { align-items: flex-start; border-top: 0; padding: 6px 0; color: var(--medio); }
+#vg-instrucoes-lista .vg-item .icone { margin-top: 4px; color: var(--tinta); }
+/* Teste já começado: o relógio continua (aviso em destaque, antes das regras) */
+#vg-instrucoes-aberta { margin-top: 14px; background: var(--branco); color: var(--tinta); box-shadow: inset 0 0 0 1px var(--notus); font-weight: 600; }
+
+/* ---------------------------------------------------------------------------------------------------------------------------
+   Prova
+   --------------------------------------------------------------------------------------------------------------------------- */
+/* "Encerrar o teste" discreto, embaixo das alternativas */
+#vg-prova .acoes { margin-top: 12px; justify-content: center; }
+#vg-prova-encerrar { color: var(--medio); }
+/* Barra fixa: a regra "depois de responder não dá para voltar" em destaque (e "Reconectando…" ou "o relógio continuou" quando
+   for o caso, em até duas linhas); o relógio na célula da esquerda, sempre à vista, ao lado de "Responder". */
+#vg-barra-prova .barra-dica { height: auto; min-height: 20px; line-height: 1.35; white-space: normal; overflow: visible;
+  font-size: var(--t-corpo); font-weight: 600; color: var(--tinta); }
+#vg-barra-prova .vg-tempo { justify-self: start; align-self: center; min-height: 44px; padding: 8px 14px; font-size: var(--t-titulo); }
+#vg-barra-prova .vg-tempo .icone { width: 20px; height: 20px; }
+/* Celular deitado: a barra encolhe para caber uma alternativa inteira na tela */
+@media (max-height: 480px) { #vg-barra-prova .barra-dica { display: none; } }
+
+/* ---------------------------------------------------------------------------------------------------------------------------
+   Resultado: selo, nota e as barras de cada parte
+   --------------------------------------------------------------------------------------------------------------------------- */
+.vg-resultado__selo { margin-top: 20px; }
+#vg-resultado-nota { margin-top: 16px; display: grid; gap: 6px; }
+#vg-resultado-refazer { margin-top: 6px; }
+.vg-resultado__partes-titulo { margin: 20px 0 10px; }
+#vg-resultado-partes { gap: 12px; }
+#vg-resultado-partes .vg-prova__barra { margin-top: 4px; }
+/* "2 de 3" nunca quebra em duas linhas (360 px) */
+#vg-resultado-partes .tabular { flex: none; white-space: nowrap; }
+#vg-resultado-estudar { margin-top: 12px; color: var(--tinta); }
+#vg-resultado-cada-parte { margin-top: 8px; }
+
+/* Catálogo: botão do item sem quebrar o nome em telas estreitas */
+.vg-teste__acao.botao { white-space: nowrap; }
+.vg-teste__nome .vg-etiqueta { vertical-align: 2px; }
+
+/* Vagas que sugerem o teste */
+#vg-testes-vagas { margin-top: 16px; }
+
+/* Conferência do selo */
+#vg-conferir-resultado { margin-top: 20px; display: grid; gap: 12px; }
+#vg-conferir-resultado:empty { display: none; }
+#vg-conferir-codigo { letter-spacing: .08em; text-transform: uppercase; }

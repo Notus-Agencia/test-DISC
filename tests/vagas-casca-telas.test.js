@@ -91,6 +91,9 @@ test('peso da lista pública (cidade.html, 1ª visita, gzip): até 100 KB, medid
 
 test('_redirects: /<cidade>/ vai para cidade.html (302), raiz sem cidade fixa', () => {
   const txt = fs.readFileSync(path.join(TELA.VAGAS, '_redirects'), 'utf8');
-  const regras = txt.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
-  assert.deepEqual(regras, ['/:cidade/  /cidade.html?cidade=:cidade  302']);
+  const regras = txt.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')).map((l) => l.split(/\s+/).join(' '));
+  // A dinâmica da cidade é a última; antes dela, as estáticas das páginas de divulgação e do selo (com a barra no fim), que ela
+  // engoliria, e o endereço curto da conferência do selo (/selo/<código>).
+  assert.deepEqual(regras, ['/emprego/ /emprego 301', '/empresas/ /empresas 301', '/selo/ /selo 301',
+    '/selo/:codigo /selo.html?codigo=:codigo 302', '/:cidade/ /cidade.html?cidade=:cidade 302']);
 });

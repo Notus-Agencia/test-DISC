@@ -21,6 +21,9 @@
  * No Node (testes): require('./vagas/js/api-previa.js').criarBackend({armazenamento, agora: () => ms, semente: true|false})
  *   -> {rpc(nome, args) -> Promise<json>, conta: {cadastrar, reenviarConfirmacao, esqueciSenha, cadastroAssistido, convidarOperador,
  *   convidarEquipe, excluirConta, entrar, sair, sessao, confirmarLink, definirSenha}, estado(), reiniciar()}
+ *
+ * Testes de habilidade: a prova da prévia usa um banco de DEMONSTRAÇÃO escrito só para ela (TESTES_DEMONSTRACAO, 18 questões
+ * por teste), nunca as questões reais; mesmas regras, tempos, tolerância, 30 dias e mensagens da migração 20261023.
  */
 (function (root) {
   'use strict';
@@ -43,6 +46,442 @@
     var m = {};
     return { getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },
       setItem: function (k, v) { m[k] = String(v); }, removeItem: function (k) { delete m[k]; } };
+  }
+
+  // ===============================================================================================================================
+  // PROVA DE DEMONSTRAÇÃO (frente testes, onda 2) — SÓ PARA A PRÉVIA.
+  // As questões abaixo foram escritas para demonstrar as telas. NÃO são as questões da prova real: aquelas são confidenciais e
+  // nunca entram no repositório (docs/VAGAS-TESTES.md, "Gabarito fora do repositório"). A tela mostra "Questões de demonstração
+  // (a prova real usa outro banco)". Redação no padrão de docs/painel-cientifico/vagas/padroes.md §2 a §4 (o teste de unidade
+  // passa cada questão pelo mesmo validador das questões reais, scripts/montar-testes.mjs).
+  // 18 por teste (6 fáceis, 6 médias, 6 difíceis), cobrindo as competências do contrato. As regras são as da migração
+  // 20261023120000_vagas_testes.sql: 15 questões (6/6/3), 20 min (caixa 25) pelo relógio do "servidor", 10 s de tolerância para a
+  // questão que já está na tela, 1 tentativa a cada 30 dias, nota = arredonda(100 × acertos ÷ total), selo com nota ≥ 60 válido
+  // por 12 meses, sinais (saiu da tela, copiou texto) só registrados. Sem limite por origem (a prévia não tem IP).
+  // ===============================================================================================================================
+  var MSG_PROVA = {
+    login: 'Entre na sua conta para fazer o teste.',
+    so_pessoa: 'Os testes são para a conta de pessoa. Entre com a sua conta de pessoa para fazer o teste.',
+    conta_inativa: 'Sua conta não está ativa. Confirme o e-mail ou fale com a equipe da Gestão sem Caos.',
+    teste_indisponivel: 'Este teste não está disponível agora.',
+    aguarde: 'Você fez este teste há menos de 30 dias. Pode fazer de novo a partir de ',
+    tentativa_inexistente: 'Teste não encontrado. Volte à lista de testes.',
+    encerrada: 'Este teste já foi encerrado.',
+    tempo_esgotado: 'O tempo acabou. As respostas dadas até aqui foram guardadas.',
+    fora_de_ordem: 'Esta questão não está disponível. Siga para a questão atual.',
+    alternativa_invalida: 'Escolha uma das alternativas.',
+    sinal_invalido: 'Sinal inválido.',
+    selo_inexistente: 'Selo não encontrado. Confira o código.'
+  };
+  var REGRAS_PROVA = { questoes: 15, intervaloDias: 30, toleranciaSeg: 10, notaMinima: 60, margem: 10, validadeMeses: 12, rapidaSeg: 3 };
+  var ALFABETO_SELO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  // Questão: {id, competencia, dificuldade 1|2|3, texto? (aviso a interpretar), enunciado, alternativas[4], correta 0..3, conta?}.
+  function q(id, competencia, dificuldade, enunciado, alternativas, correta, extra) {
+    return Object.assign({ id: id, competencia: competencia, dificuldade: dificuldade, enunciado: enunciado, alternativas: alternativas,
+      correta: correta }, extra || {});
+  }
+  var TESTES_DEMONSTRACAO = [
+    { slug: 'atendimento', nome: 'Atendimento e recepção', minutos: 20,
+      descricao: 'O básico de quem atende o público: receber, telefone e mensagens, agenda, reclamações e cuidado com os dados do cliente.',
+      competencias: [{ id: 'receber', nome: 'Receber e informar' }, { id: 'telefone', nome: 'Telefone e WhatsApp' },
+        { id: 'agenda', nome: 'Agenda e horários' }, { id: 'reclamacoes', nome: 'Reclamações e situações difíceis' },
+        { id: 'sigilo', nome: 'Sigilo e dados do cliente' }],
+      questoes: [ /* questões de demonstração fora da cópia de segurança (repositório público) */ ] },
+    { slug: 'vendas', nome: 'Vendas no varejo', minutos: 20,
+      descricao: 'O básico de quem vende no balcão: entender o que o cliente precisa, apresentar o produto, preço e desconto, troca e pós-venda.',
+      competencias: [{ id: 'abordagem', nome: 'Abordagem e necessidade do cliente' }, { id: 'apresentacao', nome: 'Apresentação do produto e fechamento' },
+        { id: 'objecoes', nome: 'Objeções, negociação e preço' }, { id: 'troca', nome: 'Troca, devolução e direitos do consumidor' },
+        { id: 'posvenda', nome: 'Pós-venda e relacionamento' }],
+      questoes: [ /* questões de demonstração fora da cópia de segurança (repositório público) */ ] },
+    { slug: 'administrativo', nome: 'Rotina administrativa', minutos: 20,
+      descricao: 'O básico da rotina de escritório: documentos, planilha, e-mail, contas a pagar e agenda.',
+      competencias: [{ id: 'documentos', nome: 'Organização de documentos' }, { id: 'planilha', nome: 'Planilha básica' },
+        { id: 'email', nome: 'E-mail e comunicação escrita' }, { id: 'contas', nome: 'Notas, recibos e contas a pagar' },
+        { id: 'rotina', nome: 'Agenda e rotina do escritório' }],
+      questoes: [ /* questões de demonstração fora da cópia de segurança (repositório público) */ ] },
+    { slug: 'caixa', nome: 'Caixa e matemática prática', minutos: 25,
+      descricao: 'O básico do caixa: troco, desconto, parcelas, Pix e cartão, abertura e fechamento.',
+      competencias: [{ id: 'troco', nome: 'Troco e contagem de dinheiro' }, { id: 'desconto', nome: 'Porcentagem e desconto' },
+        { id: 'parcelamento', nome: 'Juros e parcelamento' }, { id: 'pagamentos', nome: 'Pix, cartão e dinheiro' },
+        { id: 'fechamento', nome: 'Abertura, fechamento e conferência do caixa' }],
+      questoes: [ /* questões de demonstração fora da cópia de segurança (repositório público) */ ] },
+    { slug: 'portugues', nome: 'Português prático', minutos: 20,
+      descricao: 'O básico do português no trabalho: escrita correta, concordância, entender avisos e escrever mensagens.',
+      competencias: [{ id: 'ortografia', nome: 'Ortografia e acentuação' }, { id: 'concordancia', nome: 'Concordância e uso correto' },
+        { id: 'interpretacao', nome: 'Interpretação de avisos e mensagens' }, { id: 'mensagem', nome: 'Mensagem profissional' }],
+      questoes: [ /* questões de demonstração fora da cópia de segurança (repositório público) */ ] }
+  ];
+  var QUESTAO_DEMO = {};
+  TESTES_DEMONSTRACAO.forEach(function (t) { t.questoes.forEach(function (x) { QUESTAO_DEMO[x.id] = x; }); });
+
+  // Motor da prova de demonstração. c = {estado() -> st, agora(), novoId(), usuario(uid), cidade(slug), contaAtual(tipo), R}.
+  // Devolve as RPCs (mesmos nomes, argumentos, respostas e erros da migração 20261023) para o criarBackend pôr em H.
+  function provaDemonstracao(c) {
+    var DIA_MS = 86400000;
+    var R = c.R;
+    function st() { return c.estado(); }
+    function agora() { return c.agora(); }
+    function iso(ms) { return ms == null ? null : new Date(ms).toISOString(); }
+    function copia(x) { return x == null ? x : JSON.parse(JSON.stringify(x)); }
+    function falha(codigo, extra) { return Object.assign({ ok: false, erro: MSG_PROVA[codigo], codigo: codigo }, extra || {}); }
+    function inteiro(v) {
+      var n = typeof v === 'number' ? v : (typeof v === 'string' && /^\s*-?\d+\s*$/.test(v) ? Number(v) : NaN);
+      return Number.isInteger(n) ? n : null;
+    }
+    function teste(slug) { return TESTES_DEMONSTRACAO.filter(function (t) { return t.slug === slug; })[0] || null; }
+    function sorteio(n) { return Math.floor(Math.random() * n); }
+    function embaralhar(lista) {
+      var a = lista.slice();
+      for (var i = a.length - 1; i > 0; i--) { var j = sorteio(i + 1); var x = a[i]; a[i] = a[j]; a[j] = x; }
+      return a;
+    }
+    // Datas do selo no fuso da cidade da pessoa (reserva America/Sao_Paulo), como a migração da onda 2 do banco.
+    function fusoDe(uid) { var p = st().pessoas[uid]; var cid = p ? c.cidade(p.cidade) : null; return (cid && cid.fuso) || 'America/Sao_Paulo'; }
+    function diaDe(uid, ms) { return R.hoje(fusoDe(uid), ms == null ? agora() : ms); }
+    function dataBR(d) { return d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4); }
+    function somarMeses(d, n) {
+      var a = Number(d.slice(0, 4)); var m = Number(d.slice(5, 7)) - 1 + n; var dia = Number(d.slice(8, 10));
+      a += Math.floor(m / 12); m = ((m % 12) + 12) % 12;
+      var ultimo = new Date(Date.UTC(a, m + 1, 0)).getUTCDate();
+      return a + '-' + ('0' + (m + 1)).slice(-2) + '-' + ('0' + Math.min(dia, ultimo)).slice(-2);
+    }
+    // Estado da prova dentro do "banco" da prévia. Os selos fictícios da semente passam a morar aqui (com a dona); st.selos[uid]
+    // continua sendo o que vai no cartão (válido de maior nota por teste, o gancho vagas_interno.selos_cartao).
+    function dados() {
+      var s = st();
+      if (!s.provaDemo) {
+        var selos = [];
+        Object.keys(s.selos || {}).forEach(function (uid) {
+          (s.selos[uid] || []).forEach(function (x) {
+            selos.push({ uid: uid, codigo: String(x.codigo || ''), teste: x.teste, tentativa: null, nota: x.nota, questoes: x.questoes || REGRAS_PROVA.questoes,
+              data: x.data, validoAte: x.validoAte, supervisao: x.supervisao === 'presencial' ? 'presencial' : 'online', revogado: false, semente: true });
+          });
+        });
+        s.provaDemo = { tentativas: [], selos: selos };
+      }
+      return s.provaDemo;
+    }
+    function usuarioAtual() { var uid = st().sessao; return uid && c.usuario(uid) ? uid : null; }
+    function tentativasDe(uid, slug) { return dados().tentativas.filter(function (t) { return t.uid === uid && (!slug || t.teste === slug); }); }
+    function tentativaDe(uid, id) { return dados().tentativas.filter(function (t) { return t.uid === uid && t.id === String(id == null ? '' : id); })[0] || null; }
+
+    // Prazo: a questão que já está na tela (mostrada e sem resposta) vale até maior(fim, hora em que apareceu) + 10 s.
+    function prazo(tt) {
+      var item = tt.itens[tt.respondidas];
+      if (item && item.exibidaEm != null && item.respondidaEm == null) return Math.max(tt.terminaEm, item.exibidaEm) + REGRAS_PROVA.toleranciaSeg * 1000;
+      return tt.terminaEm;
+    }
+    function vencida(tt) { return tt.status === 'aberta' && agora() > prazo(tt); }
+    function segundos(tt) { return Math.max(0, Math.floor((tt.terminaEm - agora()) / 1000)); }
+
+    function seloJson(s) {
+      var t = teste(s.teste);
+      var revogado = !!s.revogado;
+      return { codigo: s.codigo, teste: s.teste, nome: t ? t.nome : s.teste, nota: revogado ? null : s.nota, margem: REGRAS_PROVA.margem,
+        questoes: s.questoes || REGRAS_PROVA.questoes, data: s.data, validoAte: s.validoAte, supervisao: s.supervisao,
+        situacao: revogado ? 'revogado' : (s.validoAte < diaDe(s.uid) ? 'vencido' : 'valido') };
+    }
+    function melhorSelo(uid, slug) {
+      var hoje = diaDe(uid);
+      return dados().selos.filter(function (s) { return s.uid === uid && s.teste === slug && !s.revogado && s.validoAte >= hoje; })
+        .sort(function (a, b) { return b.nota - a.nota || (a.data < b.data ? 1 : a.data > b.data ? -1 : 0); })[0] || null;
+    }
+    // O cartão (st.selos[uid]) recebe só o selo válido de maior nota de cada teste, sem "situacao" (formato de selos_cartao).
+    function atualizarCartao(uid) {
+      var temAlgum = dados().selos.some(function (s) { return s.uid === uid; });
+      if (!temAlgum && !(st().selos && st().selos[uid])) return;
+      st().selos = st().selos || {};
+      st().selos[uid] = TESTES_DEMONSTRACAO.map(function (t) { return melhorSelo(uid, t.slug); }).filter(Boolean).map(function (s) {
+        var j = seloJson(s);
+        delete j.situacao;
+        return j;
+      });
+    }
+    function novoCodigoSelo() {
+      var c8;
+      do {
+        c8 = '';
+        for (var i = 0; i < 8; i++) c8 += ALFABETO_SELO.charAt(sorteio(32));
+      } while (dados().selos.some(function (s) { return s.codigo === c8; }));
+      return c8;
+    }
+
+    // Igual a vagas_interno.teste_fechar: nota, acertos por competência, alertas (só registro) e o selo com nota ≥ 60.
+    function fechar(tt) {
+      if (tt.status !== 'aberta') return;
+      var t = teste(tt.teste);
+      var respondidos = tt.itens.filter(function (i) { return i.respondidaEm != null; });
+      var acertos = respondidos.filter(function (i) { return i.correta; }).length;
+      var rapidas = respondidos.filter(function (i) { return i.respondidaEm - i.exibidaEm < REGRAS_PROVA.rapidaSeg * 1000; }).length;
+      var fim = Math.min(agora(), tt.terminaEm + REGRAS_PROVA.toleranciaSeg * 1000);
+      tt.porCompetencia = t.competencias.map(function (comp) {
+        var itens = tt.itens.filter(function (i) { return QUESTAO_DEMO[i.id].competencia === comp.id; });
+        return { id: comp.id, nome: comp.nome, acertos: itens.filter(function (i) { return i.respondidaEm != null && i.correta; }).length, total: itens.length };
+      }).filter(function (x) { return x.total > 0; });
+      tt.alertas = [];
+      if (rapidas * 3 >= tt.total) tt.alertas.push('respostas_rapidas');
+      if (tt.sinais.trocasAba >= 3) tt.alertas.push('troca_aba');
+      if (tt.sinais.copias >= 1) tt.alertas.push('copiou_texto');
+      tt.status = tt.respondidas >= tt.total || agora() <= tt.terminaEm ? 'concluida' : 'tempo_esgotado';
+      tt.finalizadaEm = fim;
+      tt.acertos = acertos;
+      tt.nota = Math.floor((100 * acertos) / tt.total + 0.5 + 1e-9);
+      tt.notaMinima = REGRAS_PROVA.notaMinima;
+      tt.sinais.respostasRapidas = rapidas;
+      tt.sinais.duracaoSeg = Math.max(0, Math.floor((fim - tt.iniciadaEm) / 1000));
+      if (tt.nota >= tt.notaMinima) {
+        var data = diaDe(tt.uid, fim);
+        dados().selos.push({ uid: tt.uid, codigo: novoCodigoSelo(), teste: tt.teste, tentativa: tt.id, nota: tt.nota, questoes: tt.total, data: data,
+          validoAte: somarMeses(data, REGRAS_PROVA.validadeMeses), supervisao: 'online', revogado: false, semente: false });
+        atualizarCartao(tt.uid);
+      }
+    }
+    function fecharVencidas(uid) { tentativasDe(uid).forEach(function (tt) { if (vencida(tt)) fechar(tt); }); }
+    // Início da última tentativa que conta para os 30 dias (ao menos 1 questão mostrada). O selo fictício da semente conta como
+    // uma tentativa feita no dia do selo (no banco real ele sempre vem de uma tentativa).
+    function ultimoInicio(uid, slug) {
+      var ini = null;
+      tentativasDe(uid, slug).forEach(function (tt) {
+        if (tt.itens.some(function (i) { return i.exibidaEm != null; }) && (ini === null || tt.iniciadaEm > ini)) ini = tt.iniciadaEm;
+      });
+      dados().selos.forEach(function (s) {
+        if (s.uid !== uid || s.teste !== slug || !s.semente) return;
+        var t = Date.parse(s.data + 'T12:00:00Z');
+        if (isFinite(t) && (ini === null || t > ini)) ini = t;
+      });
+      return ini;
+    }
+
+    // Sorteio igual a vagas_interno.teste_sortear: 15 = 6 fáceis, 6 médias e 3 difíceis, n/C por competência (ordem sorteada), as
+    // dificuldades 3, 1 e 2 em rodízio, as difíceis primeiro, as já vistas por último; alternativas embaralhadas em cada prova.
+    function cotas(n, C) {
+      var q1 = Math.round(n * 0.4);
+      var q3 = Math.round(n * 0.2);
+      var quer = { 1: q1, 2: n - q1 - q3, 3: q3 };
+      var resta = [];
+      var cel = [];
+      for (var i = 0; i < C; i++) { resta.push(Math.floor(n / C) + (i < n % C ? 1 : 0)); cel.push({ 1: 0, 2: 0, 3: 0 }); }
+      var p = 0;
+      [3, 1, 2].forEach(function (d) {
+        var falta = quer[d];
+        for (var guarda = 0; falta > 0 && guarda < C * 50; guarda++, p++) {
+          var k = p % C;
+          if (resta[k] > 0) { cel[k][d]++; resta[k]--; falta--; }
+        }
+      });
+      return cel;
+    }
+    function sortear(t, vistas) {
+      var n = REGRAS_PROVA.questoes;
+      var comps = embaralhar(t.competencias.map(function (x) { return x.id; }));
+      var cel = cotas(n, comps.length);
+      var escolhidas = [];
+      var falta = { 1: 0, 2: 0, 3: 0 };
+      function porComp(comp) { return escolhidas.filter(function (x) { return x.competencia === comp; }).length; }
+      function candidatas(filtro, equilibrar) {
+        return embaralhar(t.questoes.filter(function (x) { return escolhidas.indexOf(x) < 0 && filtro(x); })).sort(function (a, b) {
+          var va = vistas.indexOf(a.id) >= 0 ? 1 : 0;
+          var vb = vistas.indexOf(b.id) >= 0 ? 1 : 0;
+          return va - vb || (equilibrar ? porComp(a.competencia) - porComp(b.competencia) : 0);
+        });
+      }
+      function naoVistaNaDificuldade(d) {
+        return t.questoes.some(function (y) { return y.dificuldade === d && escolhidas.indexOf(y) < 0 && vistas.indexOf(y.id) < 0; });
+      }
+      [3, 1, 2].forEach(function (d) {
+        comps.forEach(function (comp, i) {
+          for (var j = 0; j < cel[i][d]; j++) {
+            var x = candidatas(function (y) { return y.competencia === comp && y.dificuldade === d; }, false)[0];
+            // Demonstração: a célula só tem 1 ou 2 questões; se a melhor já foi vista e há outra da mesma dificuldade ainda não
+            // vista, deixa para o complemento abaixo (quem refaz quase nunca recebe questão repetida, como na prova real).
+            if (x && vistas.indexOf(x.id) >= 0 && naoVistaNaDificuldade(d)) x = null;
+            if (x) escolhidas.push(x); else falta[d]++;
+          }
+        });
+      });
+      // Demonstração: com só 18 questões a célula quase sempre falta. Completa na MESMA dificuldade (a competência com menos
+      // questões escolhidas primeiro), para manter 6/6/3 como na prova real, que tem 80 questões por teste.
+      [3, 1, 2].forEach(function (d) {
+        for (; falta[d] > 0; falta[d]--) {
+          var x = candidatas(function (y) { return y.dificuldade === d; }, true)[0];
+          if (x) escolhidas.push(x);
+        }
+      });
+      while (escolhidas.length < n) {
+        var resto = candidatas(function () { return true; }, true)[0];
+        if (!resto) break;
+        escolhidas.push(resto);
+      }
+      return embaralhar(escolhidas).sort(function (a, b) { return a.dificuldade - b.dificuldade; }).map(function (x) {
+        return { id: x.id, alt: embaralhar([0, 1, 2, 3]), exibidaEm: null, respondidaEm: null, alternativa: null, original: null, correta: null };
+      });
+    }
+
+    function tentativaJson(tt, retomada) {
+      var t = teste(tt.teste);
+      return { ok: true, demonstracao: true, tentativa: { id: tt.id, teste: tt.teste, nome: t.nome, total: tt.total, respondidas: tt.respondidas,
+        minutos: Math.round((tt.terminaEm - tt.iniciadaEm) / 60000), segundosRestantes: segundos(tt), terminaEm: iso(tt.terminaEm), retomada: !!retomada } };
+    }
+    // Questão atual, sem gabarito; marca a hora em que apareceu só da primeira vez (recarregar não zera o tempo).
+    function questaoJson(tt) {
+      var item = tt.itens[tt.respondidas];
+      if (item.exibidaEm == null) item.exibidaEm = agora();
+      var x = QUESTAO_DEMO[item.id];
+      return { ok: true, fim: false, demonstracao: true, tentativa: tt.id, numero: tt.respondidas + 1, total: tt.total, segundosRestantes: segundos(tt),
+        questao: { texto: x.texto || null, enunciado: x.enunciado, alternativas: item.alt.map(function (i) { return x.alternativas[i]; }) } };
+    }
+    // Resultado: acertos por competência, nunca quais questões a pessoa errou.
+    function resultadoJson(tt) {
+      var s = dados().selos.filter(function (x) { return x.tentativa === tt.id; })[0];
+      return { tentativa: tt.id, teste: tt.teste, nome: teste(tt.teste).nome, status: tt.status, acertos: tt.acertos, total: tt.total, nota: tt.nota,
+        margem: REGRAS_PROVA.margem, notaMinima: tt.notaMinima, porCompetencia: copia(tt.porCompetencia || []), selo: s ? seloJson(s) : null,
+        podeIniciarEm: tt.itens.some(function (i) { return i.exibidaEm != null; }) ? iso(tt.iniciadaEm + REGRAS_PROVA.intervaloDias * DIA_MS) : null };
+    }
+    function minha(uid, t) {
+      var ab = tentativasDe(uid, t.slug).filter(function (x) { return x.status === 'aberta' && !vencida(x); })[0] || null;
+      var ult = tentativasDe(uid, t.slug).filter(function (x) { return x.status !== 'aberta'; })
+        .sort(function (a, b) { return b.iniciadaEm - a.iniciadaEm; })[0] || null;
+      var ini = ultimoInicio(uid, t.slug);
+      var s = melhorSelo(uid, t.slug);
+      var volta = ini === null ? null : ini + REGRAS_PROVA.intervaloDias * DIA_MS;
+      return {
+        aberta: ab ? { tentativa: ab.id, respondidas: ab.respondidas, total: ab.total, segundosRestantes: segundos(ab) } : null,
+        ultima: ult ? { status: ult.status, nota: ult.nota, data: diaDe(uid, ult.finalizadaEm) } : null,
+        podeIniciarEm: !ab && volta !== null && volta > agora() ? iso(volta) : null,
+        selo: s ? seloJson(s) : null
+      };
+    }
+
+    var rpcs = {};
+    rpcs.vagas_testes_catalogo = function () {
+      var uid = usuarioAtual();
+      if (uid) { fecharVencidas(uid); atualizarCartao(uid); }
+      return { ok: true, demonstracao: true,
+        regras: { intervaloDias: REGRAS_PROVA.intervaloDias, toleranciaSegPorQuestao: REGRAS_PROVA.toleranciaSeg, supervisao: 'online' },
+        testes: TESTES_DEMONSTRACAO.map(function (t) {
+          var item = { slug: t.slug, nome: t.nome, descricao: t.descricao, questoes: REGRAS_PROVA.questoes, minutos: t.minutos,
+            validadeMeses: REGRAS_PROVA.validadeMeses, notaMinima: REGRAS_PROVA.notaMinima, margem: REGRAS_PROVA.margem, competencias: copia(t.competencias) };
+          if (uid) item.minha = minha(uid, t);
+          return item;
+        }) };
+    };
+    rpcs.vagas_iniciar_tentativa = function (a) {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      c.contaAtual(null);   // promove a conta confirmada de "pendente" para "ativa", como no resto da prévia
+      var conta = st().contas[uid];
+      if (!conta || conta.tipo !== 'pessoa') return falha('so_pessoa');
+      if (conta.status !== 'ativa') return falha('conta_inativa');
+      var t = teste(String(a.p_teste == null ? '' : a.p_teste).trim().toLowerCase());
+      if (!t) return falha('teste_indisponivel');
+      fecharVencidas(uid);
+      var aberta = tentativasDe(uid, t.slug).filter(function (x) { return x.status === 'aberta'; })[0];
+      if (aberta) return tentativaJson(aberta, true);
+      var ini = ultimoInicio(uid, t.slug);
+      if (ini !== null && ini + REGRAS_PROVA.intervaloDias * DIA_MS > agora()) {
+        var volta = ini + REGRAS_PROVA.intervaloDias * DIA_MS;
+        return { ok: false, erro: MSG_PROVA.aguarde + dataBR(diaDe(uid, volta)) + '.', codigo: 'aguarde', podeIniciarEm: iso(volta) };
+      }
+      var vistas = [];
+      tentativasDe(uid, t.slug).forEach(function (x) { x.itens.forEach(function (i) { vistas.push(i.id); }); });
+      var t0 = agora();
+      var tt = { id: c.novoId(), uid: uid, teste: t.slug, iniciadaEm: t0, terminaEm: t0 + t.minutos * 60000, itens: sortear(t, vistas), respondidas: 0,
+        total: REGRAS_PROVA.questoes, status: 'aberta', finalizadaEm: null, acertos: null, nota: null, notaMinima: null, porCompetencia: null,
+        sinais: { trocasAba: 0, copias: 0 }, alertas: [] };
+      dados().tentativas.push(tt);
+      return tentativaJson(tt, false);
+    };
+    rpcs.vagas_proxima_questao = function (a) {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      var tt = tentativaDe(uid, a.p_tentativa);
+      if (!tt) return falha('tentativa_inexistente');
+      if (vencida(tt)) fechar(tt);
+      if (tt.status !== 'aberta' || tt.respondidas >= tt.total) {
+        return { ok: true, fim: true, tentativa: tt.id, status: tt.status, respondidas: tt.respondidas, total: tt.total };
+      }
+      return questaoJson(tt);
+    };
+    rpcs.vagas_responder = function (a) {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      var tt = tentativaDe(uid, a.p_tentativa);
+      if (!tt) return falha('tentativa_inexistente');
+      if (tt.status !== 'aberta') return falha('encerrada', { fim: true });
+      if (vencida(tt)) { fechar(tt); return falha('tempo_esgotado', { fim: true }); }
+      var n = inteiro(a.p_questao);
+      if (n === null || n < 1 || n > tt.total) return falha('fora_de_ordem');
+      // Reenvio de uma resposta já gravada (internet fraca): devolve o estado atual sem mudar nada (sem voltar).
+      if (n <= tt.respondidas) {
+        var base = { ok: true, duplicado: true, respondidas: tt.respondidas, total: tt.total, fim: tt.respondidas >= tt.total };
+        if (tt.respondidas < tt.total) base.proxima = questaoJson(tt);
+        return base;
+      }
+      if (n > tt.respondidas + 1) return falha('fora_de_ordem');
+      var item = tt.itens[tt.respondidas];
+      if (item.exibidaEm == null) return falha('fora_de_ordem');
+      var alt = inteiro(a.p_alternativa);
+      if (alt === null || alt < 0 || alt > 3) return falha('alternativa_invalida');
+      item.alternativa = alt;
+      item.original = item.alt[alt];
+      item.correta = item.original === QUESTAO_DEMO[item.id].correta;
+      item.respondidaEm = agora();
+      tt.respondidas += 1;
+      // Última questão, ou o fim oficial já passou (nenhuma questão nova depois do fim): fecha; a tela chama vagas_finalizar.
+      if (tt.respondidas >= tt.total || agora() > tt.terminaEm) {
+        fechar(tt);
+        return { ok: true, respondidas: tt.respondidas, total: tt.total, fim: true };
+      }
+      return { ok: true, respondidas: tt.respondidas, total: tt.total, fim: false, proxima: questaoJson(tt) };
+    };
+    rpcs.vagas_finalizar = function (a) {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      var tt = tentativaDe(uid, a.p_tentativa);
+      if (!tt) return falha('tentativa_inexistente');
+      if (tt.status === 'aberta') fechar(tt);
+      return { ok: true, resultado: resultadoJson(tt) };
+    };
+    rpcs.vagas_registrar_sinal = function (a) {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      var chave = a.p_tipo === 'troca_aba' ? 'trocasAba' : a.p_tipo === 'copiar' ? 'copias' : null;
+      if (!chave) return falha('sinal_invalido');
+      var tt = tentativaDe(uid, a.p_tentativa);
+      if (!tt || tt.status !== 'aberta') return falha('tentativa_inexistente');
+      tt.sinais[chave] = Math.min(999, (tt.sinais[chave] || 0) + 1);
+      return { ok: true };
+    };
+    rpcs.vagas_meus_selos = function () {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      fecharVencidas(uid);
+      atualizarCartao(uid);
+      var exibidos = TESTES_DEMONSTRACAO.map(function (t) { var s = melhorSelo(uid, t.slug); return s ? s.codigo : null; });
+      return { ok: true, selos: dados().selos.filter(function (s) { return s.uid === uid; }).slice().reverse()
+        .sort(function (a, b) { return a.data < b.data ? 1 : a.data > b.data ? -1 : 0; })
+        .map(function (s) { return Object.assign(seloJson(s), { exibido: exibidos.indexOf(s.codigo) >= 0 }); }) };
+    };
+    // Conferência pública: qualquer selo da prova de demonstração ou da semente, sem dado da pessoa.
+    rpcs.seloPublico = function (a, anterior) {
+      var cod = String(a.p_codigo == null ? '' : a.p_codigo).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (!/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/.test(cod)) return falha('selo_inexistente');
+      var s = dados().selos.filter(function (x) { return x.codigo === cod; })[0];
+      if (s) return { ok: true, selo: seloJson(s) };
+      return anterior ? anterior(a) : falha('selo_inexistente');
+    };
+    // Exportação (LGPD), igual a vagas_interno.testes_exportar: tentativas em resumo e selos, sem questões nem gabarito.
+    rpcs.exportar = function (uid) {
+      return {
+        tentativas: tentativasDe(uid).slice().sort(function (a, b) { return a.iniciadaEm - b.iniciadaEm; }).map(function (tt) {
+          return { teste: tt.teste, status: tt.status, iniciadaEm: iso(tt.iniciadaEm), finalizadaEm: iso(tt.finalizadaEm), respondidas: tt.respondidas,
+            total: tt.total, acertos: tt.acertos, nota: tt.nota, porCompetencia: copia(tt.porCompetencia), sinais: copia(tt.sinais), alertas: copia(tt.alertas) };
+        }),
+        selos: dados().selos.filter(function (s) { return s.uid === uid; }).map(seloJson)
+      };
+    };
+    return rpcs;
   }
 
   function criarBackend(op) {
@@ -155,8 +594,11 @@
         zonas: st.zonas.filter(function (z) { return z.cidade === c.slug && z.ativa; }).sort(function (a, b) { return a.ordem - b.ordem || a.nome.localeCompare(b.nome); })
           .map(function (z) { return { id: z.id, slug: z.slug, nome: z.nome, bairros: z.bairros.slice() }; }),
         interessados: c.status === 'lista_espera' ? interessados(c.slug) : null,
-        metaListaEspera: c.metaListaEspera == null ? null : c.metaListaEspera };
+        metaListaEspera: c.metaListaEspera == null ? null : c.metaListaEspera,
+        // 20261024120004: a empresa já se cadastra e anuncia na cidade em lista de espera; canal de WhatsApp da cidade.
+        preAbertura: c.status === 'lista_espera', aceitaEmpresas: aceitaEmpresas(c), canalWhatsapp: c.canalWhatsapp || null };
     }
+    function aceitaEmpresas(c) { return !!c && (c.status === 'ativa' || c.status === 'lista_espera'); }
     // Interessados na lista de espera, APROXIMADO como no banco: só quem entrou até o dia anterior, em dezenas (ninguém
     // descobre pelo contador se um e-mail já estava na lista).
     function interessados(slug) {
@@ -212,15 +654,20 @@
       r.empresa.descricao = a.confidencial && !revelar ? '' : e.descricao;
       return r;
     }
+    // Pré-abertura (20261024120004): vaga publicada numa cidade que ainda não abriu fica marcada (a validade conta da abertura).
+    function marcarPublicada(an) { an.preAbertura = cidade(an.cidade).status !== 'ativa'; }
     function anuncioEmpresa(a) {
       var r = anuncioDetalhe(a, true);
+      var c = cidade(a.cidade);
+      var aguarda = !!a.preAbertura && a.status === 'publicado' && c.status !== 'ativa';
       var ks = st.candidaturas.filter(function (k) { return k.anuncioId === a.id; });
       var conta = function (s) { return ks.filter(function (k) { return k.status === s; }).length; };
       return Object.assign(r, { empresaId: a.empresaId, confidencial: a.confidencial, diasNoAr: a.diasNoAr, prazoHoras: a.prazoHoras == null ? null : a.prazoHoras,
         status: a.status, statusMotivo: a.statusMotivo,
-        noAr: noAr(a), expirado: a.expiraEm != null && a.expiraEm <= agora(), encerradoEm: iso(a.encerradoEm), criadoEm: iso(a.criadoEm),
+        noAr: noAr(a), expirado: a.expiraEm != null && a.expiraEm <= agora() && !aguarda, encerradoEm: iso(a.encerradoEm), criadoEm: iso(a.criadoEm),
         atualizadoEm: iso(a.atualizadoEm), candidaturas: { total: ks.filter(function (k) { return k.status !== 'retirada'; }).length, novas: conta('enviada'),
-          conversar: conta('conversar'), combinou: conta('combinou'), contratada: conta('contratada') } });
+          conversar: conta('conversar'), combinou: conta('combinou'), contratada: conta('contratada') },
+        aguardaAbertura: aguarda, avisoAbertura: aguarda ? 'Sua vaga entra no ar no dia em que ' + c.nome + ' abrir.' : '' });
     }
     function pontosFortesIds() { return R.PONTOS_FORTES.map(function (p) { return p.id; }); }
     function referenciaVisivel(r) { var e = empresa(r.empresaId); return r.status === 'aceita' && !!e && e.status === 'ativa'; }
@@ -403,6 +850,7 @@
 
     // WhatsApp opcional (celular com DDD); a resposta é a mesma com ou sem ele e não revela se o e-mail já estava; o primeiro
     // número gravado para o e-mail fica. N2 (20261024120002): e-mail que saiu da lista há menos de 24 h entra sem WhatsApp.
+    var ORIGENS_LISTA = ['radio', 'cartaz', 'grupo', 'canal', 'escola', 'mutirao', 'indicacao', 'outro'];
     function saidas() { if (!st.listaSaidas) st.listaSaidas = {}; return st.listaSaidas; }
     function marcarSaida(slug, email) { saidas()[slug + '|' + email] = agora(); }
     function saiuHaPouco(slug, email) { var t = saidas()[slug + '|' + email]; return t != null && t > agora() - DIA; }
@@ -411,13 +859,18 @@
       var c = cidade(txt(d.cidade).trim().toLowerCase());
       if (!c || c.status === 'rascunho' || c.status === 'pausada') return erro('Cidade não encontrada.');
       if (c.status === 'ativa') return erro('Esta cidade já está aberta: faça o seu cadastro.', { ativa: true });
+      // Isca (20261024120004): campo "site" preenchido = robô; resposta igual à de sucesso, nada gravado.
+      if (txt(d.site).trim()) return ok({ cidade: c.slug, interessados: interessados(c.slug) });
       var l = R.lerListaEspera(d);
       if (!l.ok) return l;
+      // Origem (20261024120004): lista fechada; o resto vira null; a primeira fica.
+      var origem = txt(d.origem).trim().toLowerCase();
+      if (ORIGENS_LISTA.indexOf(origem) < 0) origem = null;
       var linha = st.listaEspera.filter(function (x) { return x.cidade === c.slug && x.email === l.campos.email; })[0];
       if (!linha) {
-        linha = { cidade: c.slug, email: l.campos.email, perfil: l.campos.perfil, whatsapp: '', whatsappEm: null, criadoEm: agora() };
+        linha = { cidade: c.slug, email: l.campos.email, perfil: l.campos.perfil, whatsapp: '', whatsappEm: null, criadoEm: agora(), origem: origem };
         st.listaEspera.push(linha);
-      }
+      } else if (!linha.origem) linha.origem = origem;
       // Sem prova de dono do e-mail, o primeiro WhatsApp gravado fica (revisão de segurança, I5).
       if (l.campos.whatsapp && !linha.whatsapp && !saiuHaPouco(c.slug, l.campos.email)) { linha.whatsapp = l.campos.whatsapp; linha.whatsappEm = agora(); }
       return ok({ cidade: c.slug, interessados: interessados(c.slug) });
@@ -756,7 +1209,7 @@
       if (st.empresas.some(function (e) { return e.cnpj === l.campos.cnpj; })) return erro('Este CNPJ já tem cadastro. Peça acesso a quem cadastrou ou fale com a Gestão sem Caos.');
       var c = cidade(txt(d.cidade).trim().toLowerCase());
       if (!c || c.status === 'rascunho') return erro('Escolha a cidade da empresa.');
-      if (c.status !== 'ativa') return erro(R.MSG.CIDADE_FECHADA);
+      if (!aceitaEmpresas(c)) return erro(R.MSG.CIDADE_FECHADA);
       var z = null;
       if (txt(d.zona).trim()) { z = zona(c.slug, txt(d.zona).trim().toLowerCase()); if (!z) return erro('Escolha uma zona da cidade da empresa.'); }
       return { ok: true, campos: l.campos, cidade: c.slug, zona: z ? z.slug : null };
@@ -829,7 +1282,7 @@
       if (f.inicio === 'data' && f.modalidade !== 'diaria' && f.inicioData < h) return erro('A data de início não pode estar no passado.');
       var z = null;
       if (txt(d.zona).trim()) { z = zona(cid, txt(d.zona).trim().toLowerCase()); if (!z) return erro('Escolha uma zona da cidade da vaga.'); }
-      if ((!an || an.cidade !== cid) && cobj.status !== 'ativa') return erro(R.MSG.CIDADE_FECHADA);
+      if ((!an || an.cidade !== cid) && !aceitaEmpresas(cobj)) return erro(R.MSG.CIDADE_FECHADA);
       if (f.confidencial && !e.cnpjConferidoEm) return erro('Só empresa com CNPJ conferido pela Gestão sem Caos pode anunciar como confidencial.');
       if (f.modalidade === 'diaria' && (!an || !an.diaria || an.diaria.data !== f.diaria.data || an.modalidade !== 'diaria')) {
         if (f.diaria.data < h) return erro('A data da diária já passou. Escolha outra data.');
@@ -900,6 +1353,7 @@
       an = g.an;
       if (d.publicar === true && an.status !== 'publicado' && an.status !== 'pausado') {
         an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = an.publicadoEm || agora(); an.expiraEm = expiraCalculada(an); an.encerradoEm = null;
+        marcarPublicada(an);
       }
       registrar(an.cidade, papel, 'anuncio_assistido', 'anuncio', an.id, '', { publicado: an.status === 'publicado' });
       return ok({ anuncio: anuncioEmpresa(an) });
@@ -921,11 +1375,11 @@
       var e = empresa(an.empresaId);
       if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.');
       var cobj = cidade(an.cidade);
-      if (cobj.status !== 'ativa') return erro(R.MSG.CIDADE_FECHADA);
+      if (!aceitaEmpresas(cobj)) return erro(R.MSG.CIDADE_FECHADA);
       if (an.modalidade === 'diaria' && an.diaria.data < hoje(cobj.fuso)) return erro('A data da diária já passou. Escolha outra data.');
       var revisao = e.status !== 'ativa' || st.anuncios.filter(function (x) { return x.empresaId === e.id && x.publicadoEm != null; }).length < 3;
       if (revisao) { an.status = 'em_revisao'; an.statusMotivo = ''; }
-      else { an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = agora(); an.expiraEm = expiraCalculada(an); }
+      else { an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = agora(); an.expiraEm = expiraCalculada(an); marcarPublicada(an); }
       tocar(an);
       return ok({ anuncio: anuncioEmpresa(an), emRevisao: revisao });
     };
@@ -945,13 +1399,14 @@
         if (an.status !== 'pausado') return erro('Só dá para retomar uma vaga pausada.');
         if (an.expiraEm <= agora()) return erro('O prazo desta vaga acabou. Use "Renovar".');
         if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.');
-        an.status = 'publicado';
+        an.status = 'publicado'; marcarPublicada(an);
       } else if (acao === 'encerrar') {
         if (an.status !== 'encerrado') { an.status = 'encerrado'; an.encerradoEm = agora(); }
       } else if (acao === 'renovar') {
         if (an.modalidade === 'diaria') return erro('Para outra data, crie uma diária nova.');
         if (['publicado', 'pausado', 'encerrado'].indexOf(an.status) < 0) return erro('Só dá para renovar uma vaga que já foi publicada.');
         if (e.status !== 'ativa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.');
+        if (an.status !== 'publicado') marcarPublicada(an);
         an.status = 'publicado'; an.encerradoEm = null; an.expiraEm = expiraCalculada(an);
       } else return erro('Ação inválida.');
       tocar(an);
@@ -1445,6 +1900,7 @@
         if (e.status !== 'ativa') return erro('Aprove a empresa antes de publicar a vaga.');
         if (an.modalidade === 'diaria' && an.diaria.data < hoje(cidade(an.cidade).fuso)) return erro('A data da diária já passou.');
         if (an.status === 'em_revisao' || an.expiraEm == null || an.expiraEm <= agora()) { an.publicadoEm = an.publicadoEm || agora(); an.expiraEm = expiraCalculada(an); }
+        if (an.status !== 'publicado') marcarPublicada(an);
         an.status = 'publicado'; an.statusMotivo = '';
         st.denuncias.forEach(function (d) {
           if (d.anuncioId === an.id && d.alvo === 'anuncio' && d.status === 'aberta') {
@@ -1571,6 +2027,10 @@
       if (porte && ['grande', 'pequena'].indexOf(porte) < 0) return erro('Porte da cidade inválido (grande ou pequena).');
       var praca = null;
       if (txt(d.praca).trim()) { praca = cidade(txt(d.praca).trim().toLowerCase()); if (!praca) return erro('Cidade-polo não encontrada.'); }
+      var canal = txt(d.canalWhatsapp).trim().replace(/\/+$/, '') || null;
+      if (canal && !/^https:\/\/whatsapp\.com\/channel\/[0-9A-Za-z]{10,64}$/.test(canal)) {
+        return erro('Link do canal de WhatsApp inválido. Use o link do canal (https://whatsapp.com/channel/...).');
+      }
       var c = cidade(slug);
       var tem = function (k) { return Object.prototype.hasOwnProperty.call(d, k); };
       if (!c) {
@@ -1583,11 +2043,23 @@
       if (tem('uf')) c.uf = txt(d.uf).trim().toUpperCase();
       if (tem('ibge')) c.ibge = txt(d.ibge).trim() || null;
       if (tem('fuso')) c.fuso = txt(d.fuso).trim() || 'America/Sao_Paulo';
-      if (tem('status')) { if (status === 'ativa' && c.status !== 'ativa') c.abertaEm = agora(); c.status = status; }
+      if (tem('status')) {
+        if (status === 'ativa' && c.status !== 'ativa') {
+          c.abertaEm = agora();
+          st.anuncios.forEach(function (an) {
+            if (an.cidade === c.slug && an.preAbertura && (an.status === 'publicado' || an.status === 'pausado')) {
+              an.publicadoEm = c.abertaEm; an.expiraEm = c.abertaEm + (an.modalidade === 'diaria' ? (an.prazoHoras || 48) * 3600000 : an.diasNoAr * DIA);
+              an.preAbertura = false;
+            }
+          });
+        }
+        c.status = status;
+      }
       if (tem('porte')) c.porte = porte;
       if (tem('praca')) c.praca = praca ? praca.slug : null;
       if (tem('metaListaEspera')) c.metaListaEspera = R.inteiro(d.metaListaEspera);
       if (tem('ordem')) c.ordem = R.inteiro(d.ordem) || 0;
+      if (tem('canalWhatsapp')) c.canalWhatsapp = canal;
       registrar(c.slug, 'admin', 'cidade_salvar', 'cidade', c.id, '', { status: c.status, porte: c.porte || null });
       return ok({ cidade: Object.assign(cidadeJson(c), { porte: c.porte || null }) });
     };
@@ -1646,6 +2118,7 @@
       return ok({ cidades: st.cidades.slice().sort(function (a, b) { return a.ordem - b.ordem || a.nome.localeCompare(b.nome); }).map(function (c) {
         return { id: c.id, slug: c.slug, nome: c.nome, uf: c.uf, ibge: c.ibge || null, fuso: c.fuso, status: c.status, porte: c.porte || null,
           praca: c.praca || null, metaListaEspera: c.metaListaEspera == null ? null : c.metaListaEspera, ordem: c.ordem,
+          canalWhatsapp: c.canalWhatsapp || null, abertaEm: iso(c.abertaEm),
           zonas: st.zonas.filter(function (z) { return z.cidade === c.slug; }).sort(function (a, b) { return a.ordem - b.ordem || a.nome.localeCompare(b.nome); })
             .map(function (z) { return { id: z.id, slug: z.slug, nome: z.nome, bairros: z.bairros.slice(), ordem: z.ordem, ativa: z.ativa }; }),
           operadoresAtivos: st.operadores.filter(function (o) { return o.cidade === c.slug && o.ativo; }).length };
@@ -1861,6 +2334,12 @@
       var filaE = st.empresas.filter(function (e) { return naPraca(e.cidade) && e.status === 'em_analise' && e.criadoEm < t - DIA; }).length;
       var filaR = st.referencias.filter(function (r) { var e = empresa(r.empresaId); return e && naPraca(e.cidade) && r.textoStatus === 'pendente' && r.criadoEm < t - DIA; }).length;
       var lista = st.listaEspera.filter(function (l) { return naPraca(l.cidade); });
+      // Origem do cadastro na lista (20261024120004): cidade protegida, abaixo de 3 sai null.
+      var porOrigem = {};
+      ORIGENS_LISTA.concat(['naoInformada']).forEach(function (k) {
+        var n = lista.filter(function (l) { return (l.origem || 'naoInformada') === k; }).length;
+        porOrigem[k] = protege && n < 3 ? null : n;
+      });
       var assistidas = Object.keys(st.contas).map(function (uid) { return { uid: uid, c: st.contas[uid] }; })
         .filter(function (x) { return x.c.assistidaPor && naPraca(x.c.cidade) && (x.c.tipo === 'pessoa' || x.c.tipo === 'empresa'); });
       var alvoMutirao = alvoNumero(R.INDICADORES[14].alvo, porte);
@@ -1899,8 +2378,10 @@
         indicadorJson('denuncia_tempo_decisao_h', porte, den, { semBase: decididas.length === 0, detalhe: { base: decididas.length, abertasMais24h: abertas24 } }),
         indicadorJson('emails_mes', porte, null, { semDado: true, alerta: R.INDICADORES[11].alerta }),
         indicadorJson('fila_moderacao', porte, filaA + filaE + filaR, { detalhe: { anuncios: filaA, empresas: filaE, referencias: filaR } }),
-        indicadorJson('lista_espera', porte, lista.length, { detalhe: { pessoa: lista.filter(function (l) { return l.perfil === 'pessoa'; }).length,
-          empresa: lista.filter(function (l) { return l.perfil === 'empresa'; }).length, comWhatsapp: lista.filter(function (l) { return !!l.whatsapp; }).length } }),
+        indicadorJson('lista_espera', porte, lista.length, { poucos: protege && ORIGENS_LISTA.concat(['naoInformada']).some(function (k) { return porOrigem[k] === null; }),
+          detalhe: { pessoa: lista.filter(function (l) { return l.perfil === 'pessoa'; }).length,
+          empresa: lista.filter(function (l) { return l.perfil === 'empresa'; }).length, comWhatsapp: lista.filter(function (l) { return !!l.whatsapp; }).length,
+          porOrigem: porOrigem } }),
         indicadorJson('cadastros_assistidos_confirmados', porte, assistidas.filter(function (x) { return x.c.confirmadaEm != null && x.c.confirmadaEm >= mes; }).length,
           { detalhe: { porMutirao: porMutirao } })
       ];
@@ -1941,26 +2422,39 @@
     var TEXTO_AVISO_WHATSAPP = 'Oi! Aqui é a equipe do Vagas sem Caos, da Gestão sem Caos. Você pediu para ser avisado(a) quando abríssemos em {{cidade}}: ' +
       'abrimos! As vagas da cidade já estão no site: {{link_cidade}}\n\nEsta é a única mensagem sobre a lista de espera: depois dela, o seu número sai da lista.\n\n' +
       'Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.';
+    // Reforço (20261024120003): sai quem teve o envio confirmado e não espera o WhatsApp (na prévia o envio é na hora; não
+    // há lote interrompido); teto de 60 e-mails em 24 h; a fila anda por tentativas (sempre 0 na prévia) e entrada.
+    var TETO_AVISO = 60;
     function listaLimpar(slug) {
       st.listaEspera = st.listaEspera.filter(function (l) {
         var c = cidade(l.cidade);
         if (!c || c.status !== 'ativa' || (slug && l.cidade !== slug)) return true;
         if (c.abertaEm != null && c.abertaEm <= agora() - 30 * DIA) return false;
-        return !(l.avisadoEm != null && l.avisadoEm < agora() - 3600000 && (!l.whatsapp || l.whatsappAvisadoEm != null));
+        return !(l.avisoEnviadoEm != null && (!l.whatsapp || l.whatsappAvisadoEm != null));
       });
     }
     function avisoContagens(slug) {
       var ls = st.listaEspera.filter(function (l) { return l.cidade === slug; });
-      return { naLista: ls.length, aAvisarEmail: ls.filter(function (l) { return l.avisadoEm == null; }).length,
-        avisadosEmail: ls.filter(function (l) { return l.avisadoEm != null; }).length,
-        aAvisarWhatsapp: ls.filter(function (l) { return l.whatsapp && l.whatsappAvisadoEm == null; }).length };
+      var conta = function (f) { return ls.filter(f).length; };
+      return { naLista: ls.length, aAvisarEmail: conta(function (l) { return l.avisadoEm == null && (l.avisoTentativas || 0) < 3; }),
+        avisadosEmail: conta(function (l) { return l.avisoEnviadoEm != null; }),
+        emEnvio: conta(function (l) { return l.avisadoEm != null && l.avisoEnviadoEm == null && (l.avisoTentativas || 0) < 3; }),
+        semEmail: conta(function (l) { return l.avisoEnviadoEm == null && (l.avisoTentativas || 0) >= 3; }),
+        aAvisarWhatsapp: conta(function (l) { return l.whatsapp && l.whatsappAvisadoEm == null; }) };
+    }
+    function avisosUsados() { if (!st.avisosEnviados) st.avisosEnviados = []; return st.avisosEnviados.filter(function (t) { return t > agora() - DIA; }).length; }
+    function avisoTeto(aAvisar) {
+      var disp = Math.max(TETO_AVISO - avisosUsados(), 0);
+      return { porDia: TETO_AVISO, usados24h: avisosUsados(), disponivel: disp,
+        diasPrevistos: !aAvisar ? 0 : aAvisar <= disp ? 1 : (disp > 0 ? 1 : 0) + Math.ceil((aAvisar - disp) / TETO_AVISO) };
     }
     H.vagas_adm_aviso_resumo = function (a) {
       if (!eAdmin()) return erro(R.MSG.SEM_PERMISSAO);
       var c = cidade(txt(a.p_cidade).trim().toLowerCase());
       if (!c) return erro('Cidade não encontrada.');
       return ok({ cidade: { slug: c.slug, nome: c.nome, status: c.status, abertaEm: iso(c.abertaEm),
-        listaAte: c.status === 'ativa' && c.abertaEm != null ? iso(c.abertaEm + 30 * DIA) : '' }, contagens: avisoContagens(c.slug) });
+        listaAte: c.status === 'ativa' && c.abertaEm != null ? iso(c.abertaEm + 30 * DIA) : '' }, contagens: avisoContagens(c.slug),
+        teto: avisoTeto(avisoContagens(c.slug).aAvisarEmail) });
     };
     H.vagas_adm_aviso_whatsapp = function (a) {
       if (!eAdmin()) return erro(R.MSG.SEM_PERMISSAO);
@@ -2234,16 +2728,20 @@
         var c = cidade(txt(cidadeSlug).trim().toLowerCase());
         if (!c) return erro('Cidade não encontrada.');
         if (c.status !== 'ativa') return erro(MSG_AVISO_FECHADA);
-        var n = Math.min(Math.max(parseInt(limite, 10) || 25, 1), 50);
+        var pedido = parseInt(limite, 10);
+        var n = Math.min(Math.max(isFinite(pedido) ? pedido : 25, 1), 50, avisoTeto(0).disponivel);
         listaLimpar(c.slug);
-        var lote = st.listaEspera.filter(function (l) { return l.cidade === c.slug && l.avisadoEm == null; })
-          .sort(function (p, q) { return p.criadoEm - q.criadoEm; }).slice(0, n);
-        lote.forEach(function (l) { l.avisadoEm = agora(); l.sairToken = novoToken(); if (!l.id) l.id = novoId(); });
+        var lote = st.listaEspera.filter(function (l) { return l.cidade === c.slug && l.avisadoEm == null && (l.avisoTentativas || 0) < 3; })
+          .sort(function (p, q) { return (p.avisoTentativas || 0) - (q.avisoTentativas || 0) || p.criadoEm - q.criadoEm; }).slice(0, n);
+        lote.forEach(function (l) {
+          l.avisadoEm = agora(); l.avisoEnviadoEm = agora(); l.sairToken = novoToken(); if (!l.id) l.id = novoId(); st.avisosEnviados.push(agora());
+        });
         st.listaEspera = st.listaEspera.filter(function (l) { return lote.indexOf(l) < 0 || l.whatsapp; });
-        if (lote.length) registrar(c.slug, 'admin', 'aviso_email', 'cidade', c.id, '', { enviados: lote.length, falhas: 0 });
+        if (lote.length) registrar(c.slug, 'admin', 'aviso_email', 'cidade', c.id, '', { enviados: lote.length, falhas: 0, invalidos: 0 });
         var ct = avisoContagens(c.slug);
-        return ok({ cidade: { slug: c.slug, nome: c.nome }, enviados: lote.length, falhas: 0, restantes: ct.aAvisarEmail,
-          aAvisarWhatsapp: ct.aAvisarWhatsapp, terminou: ct.aAvisarEmail === 0 });
+        return ok({ cidade: { slug: c.slug, nome: c.nome }, enviados: lote.length, falhas: 0, invalidos: 0, restantes: ct.aAvisarEmail,
+          aAvisarWhatsapp: ct.aAvisarWhatsapp, terminou: ct.aAvisarEmail === 0, travado: false,
+          tetoAtingido: ct.aAvisarEmail > 0 && avisoTeto(0).disponivel === 0 });
       },
       // Convite para a equipe (Edge Function convite_equipe + vagas_conta_convite_equipe): só dono(a); resposta neutra.
       convidarEquipe: function (empresaId, email) {
@@ -2596,6 +3094,25 @@
     st = op.reiniciar ? null : carregar();
     if (!st) reiniciar(op.semente);
 
+    // Testes de habilidade com a prova de DEMONSTRAÇÃO (frente testes, onda 2): as RPCs da migração 20261023 e, por cima das
+    // que já existiam, a conferência pública (agora acha também os selos da prova) e a exportação (LGPD) com os testes.
+    (function () {
+      var prova = provaDemonstracao({ estado: function () { return st; }, agora: agora, novoId: novoId, usuario: usuario, cidade: cidade,
+        contaAtual: contaAtual, R: R });
+      ['vagas_testes_catalogo', 'vagas_iniciar_tentativa', 'vagas_proxima_questao', 'vagas_responder', 'vagas_finalizar', 'vagas_registrar_sinal',
+        'vagas_meus_selos'].forEach(function (nome) { H[nome] = prova[nome]; });
+      var seloAntes = H.vagas_selo_publico;
+      H.vagas_selo_publico = function (a) { return prova.seloPublico(a, seloAntes); };
+      var exportarAntes = H.vagas_exportar_meus_dados;
+      if (exportarAntes) {
+        H.vagas_exportar_meus_dados = function (a) {
+          var r = exportarAntes(a);
+          if (r && r.ok && st.sessao) r.testes = prova.exportar(st.sessao);
+          return r;
+        };
+      }
+    })();
+
     function rpc(nome, args) {
       return Promise.resolve().then(function () {
         if (!Object.prototype.hasOwnProperty.call(H, nome)) {
@@ -2618,6 +3135,10 @@
   }
 
   var VAGAS_PREVIA = { criarBackend: criarBackend, SENHA_PREVIA: SENHA_PREVIA };
+  // Prova de demonstração (só a prévia; os testes de unidade e do navegador conferem o banco e respondem com ele).
+  VAGAS_PREVIA.TESTES_DEMONSTRACAO = TESTES_DEMONSTRACAO;
+  VAGAS_PREVIA.MSG_PROVA = MSG_PROVA;
+  VAGAS_PREVIA.REGRAS_PROVA = REGRAS_PROVA;
   if (typeof module !== 'undefined' && module.exports) module.exports = VAGAS_PREVIA;
   else root.VAGAS_PREVIA = VAGAS_PREVIA;
 })(typeof self !== 'undefined' ? self : this);

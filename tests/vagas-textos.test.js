@@ -143,7 +143,7 @@ test('avisos.json: chaves obrigatórias e o aviso anti-golpe exato', () => {
   assert.equal(av.avisos.referencia_ja_dada, 'Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.');
   assert.equal(av.foto.formato, 'A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.');
   assert.equal(av.anuncio.campos.diaria_prazo, 'A diária fica no ar de 48 a 168 horas.');
-  assert.match(av.avisos.teste_lgpd_registro, /^Durante a prova, registramos o tempo de cada questão, a saída da tela e a cópia de texto\./);
+  assert.match(av.avisos.teste_lgpd_registro, /^Se você sair da prova \(para atender uma ligação, por exemplo\), o relógio continua\. Registramos o tempo de cada questão, quando você sai da tela e quando copia texto\./);
   assert.equal(av.avisos.teste_so_pessoa, 'Os testes são para a conta de pessoa. Entre com a sua conta de pessoa para fazer o teste.');
   assert.equal(av.avisos.teste_conta_inativa, 'Sua conta não está ativa. Confirme o e-mail ou fale com a equipe da Gestão sem Caos.');
   assert.deepEqual(av.foto._fase2, ['em_moderacao', 'recusada_moderacao']);
@@ -258,8 +258,11 @@ test('referência profissional: aceite da pessoa, declaração da empresa, aviso
   assert.match(av.avisos.referencia_texto_regras, /^Descreva uma situação de trabalho que você viu \(o que a pessoa fez\)\. Não escreva qualidades pessoais\./);
   assert.ok(json('moderacao.json').motivos.some((x) => x.chave === 'referencia_qualidade_pessoal'));
   // Textos fixos da psicologia: tela antes da prova, resultado sem selo, nota com margem.
-  assert.equal(av.avisos.teste_antes, 'Faça sozinho(a), sem consultar. A empresa pode pedir a prova presencial. O teste mede o que você sabe hoje do básico da função; não mede inteligência nem personalidade. Pode refazer em 30 dias.');
-  assert.equal(av.avisos.selo_sem_selo, 'Ainda sem selo neste teste. Você pode refazer em 30 dias, de graça.');
+  // (revisão C da psicologia: sem a prova presencial, que não existe; o "refazer" aparece uma vez só, com a data, no resultado)
+  assert.equal(av.avisos.teste_antes, 'Faça sozinho(a), sem consultar. O teste mede o que você sabe hoje do básico da função; não mede inteligência nem personalidade.');
+  assert.equal(av.avisos.selo_sem_selo, 'Ainda sem selo neste teste. A empresa não fica sabendo.');
+  assert.equal(av.avisos.teste_encerrar_conta, 'Se você encerrar antes do fim, a tentativa conta: este teste só pode ser feito de novo em 30 dias.');
+  assert.match(av.anuncio.campos.selo_sugerido, /^Quer sugerir o teste de {{teste_nome}}\? Quem quiser faz o teste/);
   assert.match(av.avisos.selo_emitido, /Nota {{nota}} de 100 \(15 questões; margem de cerca de ±{{margem}} pontos\)/);
   assert.match(ler('emails/seu-selo.html'), /Nota {{nota}} de 100<\/strong> \(15 questões; margem de cerca de ±{{margem}} pontos\)/);
   assert.ok(EMAILS.includes('contratada.html'));

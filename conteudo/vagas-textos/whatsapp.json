@@ -126,7 +126,7 @@
         "cidade",
         "link_cidade"
       ],
-      "texto": "Oi! A Gestão sem Caos está reunindo vagas de empresas de {{cidade}} em um só lugar: {{link_cidade}}. 1) Cadastro em 3 minutos pelo celular. 2) Se quiser, teste do básico da função, uns 15 minutos. 3) Você diz \"Quero\" nas vagas e, se a empresa também quiser, vocês conversam. É grátis. A gente nunca pede dinheiro para você se candidatar: se alguém pedir em nosso nome, é golpe."
+      "texto": "Oi! A Gestão sem Caos está reunindo vagas de empresas de {{cidade}} em um só lugar: {{link_cidade}}. 1) Cadastro em 3 minutos pelo celular. 2) Se quiser, teste do básico da função, de 20 a 25 minutos. 3) Você diz \"Quero\" nas vagas e, se a empresa também quiser, vocês conversam. É grátis. A gente nunca pede dinheiro para você se candidatar: se alguém pedir em nosso nome, é golpe."
     },
     {
       "chave": "operador_cadastro_assistido",

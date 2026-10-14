@@ -42,7 +42,7 @@
     return el('div', { class: 'vg-selo' + (op.mini ? ' vg-selo--mini' : '') + (op.destaque ? ' vg-selo--destaque' : ''), data: { codigo: codigo || null } }, [
       el('div', { class: 'vg-selo__topo' }, [el('span', { class: 'vg-selo__icone' }, U.icone('selo')),
         el('div', {}, [el('p', { class: 'vg-selo__rotulo' }, op.rotulo || SELO_ROTULO), el('p', { class: 'vg-selo__nome' }, s.nome || rotulo(R.TESTES_SELO, s.teste))])]),
-      revogado ? el('p', { class: 'vg-selo__nota' }, 'Cancelado pela equipe da Gestão sem Caos.')
+      revogado ? el('p', { class: 'vg-selo__nota' }, 'Sem validade.')
         : el('p', { class: 'vg-selo__nota' }, U.t('avisos.selo_nota', { nota: Math.round(Number(s.nota)), margem: s.margem == null ? 10 : s.margem })),
       el('p', { class: 'vg-selo__linha' }, linha)
     ]);
