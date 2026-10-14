@@ -18,7 +18,7 @@
 //       O link vai só para o e-mail da pessoa (nunca para quem fez o cadastro).
 //   operador (JWT da equipe) {email, cidade, papel:'operador'|'moderador'} -> convite de operação para a cidade.
 //   excluir (JWT) {confirmar:'EXCLUIR'} -> apaga a conta e tudo dela (LGPD), inclusive a foto do Storage. Conta que também
-//       acessa o painel DISC: recusa.
+//       acessa o painel DISC: recusa. Última pessoa dona de empresa com equipe: recusa (vagas_conta_exclusao_conferir).
 //   foto (JWT) {candidatura?} -> {ok, url, expiraEm}: URL assinada de 5 minutos da foto OPCIONAL da pessoa (bucket privado
 //       'vagas-fotos', <user_id>/foto.jpg). Sem candidatura = a própria foto (pessoa). Com candidatura = só membro da empresa
 //       daquela candidatura, depois do Combinou e sem corte de acesso (quem confere é public.vagas_conta_foto, no banco).
@@ -317,6 +317,9 @@ export async function acaoVagasExcluir(base, corpo, origem, quem) {
   if (corpo.confirmar !== 'EXCLUIR') return erro('Para excluir, digite EXCLUIR.');
   const lim = await base.db.limite('excluir', origem.cf, origem.xff, '', quem.id);
   if (!lim || lim.ok !== true) return lim || erro(MSG_ERRO_INTERNO);
+  // A última pessoa dona de uma empresa que tem equipe não sai sem passar a empresa adiante (o banco confere).
+  const pode = await base.db.exclusaoConferir(quem.id);
+  if (!pode || pode.ok !== true) return erro(pode && typeof pode.erro === 'string' ? pode.erro : MSG_ERRO_INTERNO);
   // A foto do Storage sai antes (o Auth não apaga usuário dono de arquivo; e a foto é dado pessoal).
   if (base.storage) await base.storage.remover(VAGAS_BUCKET_FOTOS, [quem.id + '/foto.jpg']);
   await base.auth.excluirUsuario(quem.id);
@@ -405,7 +408,8 @@ export function criarBaseVagasConta(createClient, getEnv, extras) {
       quem: (userId) => rpc('vagas_conta_quem', { p_user: userId }),
       foto: (userId, candidatura) => rpc('vagas_conta_foto', { p_user: userId, p_candidatura: candidatura || null }),
       conviteEquipe: (userId, empresaId, email, cf, xff) => rpc('vagas_conta_convite_equipe', { p_user: userId, p_empresa: empresaId,
-        p_email: email, p_cf: cf || '', p_xff: xff || '' })
+        p_email: email, p_cf: cf || '', p_xff: xff || '' }),
+      exclusaoConferir: (userId) => rpc('vagas_conta_exclusao_conferir', { p_user: userId })
     },
     storage: {
       async assinar(bucket, caminho, segundos) {
