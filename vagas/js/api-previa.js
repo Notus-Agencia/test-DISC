@@ -402,7 +402,10 @@
     };
 
     // WhatsApp opcional (celular com DDD); a resposta é a mesma com ou sem ele e não revela se o e-mail já estava; o primeiro
-    // número gravado para o e-mail fica.
+    // número gravado para o e-mail fica. N2 (20261024120002): e-mail que saiu da lista há menos de 24 h entra sem WhatsApp.
+    function saidas() { if (!st.listaSaidas) st.listaSaidas = {}; return st.listaSaidas; }
+    function marcarSaida(slug, email) { saidas()[slug + '|' + email] = agora(); }
+    function saiuHaPouco(slug, email) { var t = saidas()[slug + '|' + email]; return t != null && t > agora() - DIA; }
     H.vagas_lista_espera_entrar = function (a) {
       var d = obj(a.p_dados);
       var c = cidade(txt(d.cidade).trim().toLowerCase());
@@ -416,8 +419,17 @@
         st.listaEspera.push(linha);
       }
       // Sem prova de dono do e-mail, o primeiro WhatsApp gravado fica (revisão de segurança, I5).
-      if (l.campos.whatsapp && !linha.whatsapp) { linha.whatsapp = l.campos.whatsapp; linha.whatsappEm = agora(); }
+      if (l.campos.whatsapp && !linha.whatsapp && !saiuHaPouco(c.slug, l.campos.email)) { linha.whatsapp = l.campos.whatsapp; linha.whatsappEm = agora(); }
       return ok({ cidade: c.slug, interessados: interessados(c.slug) });
+    };
+
+    // Link "sair da lista" do e-mail do aviso de abertura (20261024120002): resposta sempre igual.
+    H.vagas_lista_espera_sair_link = function (a) {
+      var tk = txt(a.p_token).trim().toLowerCase();
+      if (/^[0-9a-f]{64}$/.test(tk)) {
+        st.listaEspera = st.listaEspera.filter(function (l) { if (l.sairToken !== tk) return true; marcarSaida(l.cidade, l.email); return false; });
+      }
+      return ok({ removido: true });
     };
 
     // Sair: pelo e-mail apaga a linha (com o WhatsApp); pelo WhatsApp tira só o número das linhas da cidade.
@@ -434,8 +446,10 @@
         if (!R.whatsappCelularValido(whats)) return erro(R.MSG.WHATSAPP_INVALIDO);
       }
       if (!email && !whats) return erro('E-mail inválido.');
-      if (email) st.listaEspera = st.listaEspera.filter(function (l) { return !(l.cidade === c.slug && l.email === email); });
-      if (whats) st.listaEspera.forEach(function (l) { if (l.cidade === c.slug && l.whatsapp === whats) { l.whatsapp = ''; l.whatsappEm = null; } });
+      if (email) {
+        st.listaEspera = st.listaEspera.filter(function (l) { if (l.cidade !== c.slug || l.email !== email) return true; marcarSaida(c.slug, email); return false; });
+      }
+      if (whats) st.listaEspera.forEach(function (l) { if (l.cidade === c.slug && l.whatsapp === whats) { l.whatsapp = ''; l.whatsappEm = null; marcarSaida(c.slug, l.email); } });
       return ok({ cidade: c.slug, removido: true });
     };
 
@@ -1569,7 +1583,7 @@
       if (tem('uf')) c.uf = txt(d.uf).trim().toUpperCase();
       if (tem('ibge')) c.ibge = txt(d.ibge).trim() || null;
       if (tem('fuso')) c.fuso = txt(d.fuso).trim() || 'America/Sao_Paulo';
-      if (tem('status')) c.status = status;
+      if (tem('status')) { if (status === 'ativa' && c.status !== 'ativa') c.abertaEm = agora(); c.status = status; }
       if (tem('porte')) c.porte = porte;
       if (tem('praca')) c.praca = praca ? praca.slug : null;
       if (tem('metaListaEspera')) c.metaListaEspera = R.inteiro(d.metaListaEspera);
@@ -1921,6 +1935,65 @@
         mes: hj.slice(0, 7), geradoEm: iso(t), indicadores: ind, gatilhos: gat });
     };
 
+    // ---- Aviso de abertura da lista de espera (igual à 20261024120002): e-mail em lotes pela Function; fila do WhatsApp
+    // (um contato por vez) só para a equipe; a linha some quando a pessoa foi avisada pelo que pediu ou 30 dias depois da abertura.
+    var MSG_AVISO_FECHADA = 'A cidade ainda não está aberta. Abra a cidade antes de avisar a lista de espera.';
+    var TEXTO_AVISO_WHATSAPP = 'Oi! Aqui é a equipe do Vagas sem Caos, da Gestão sem Caos. Você pediu para ser avisado(a) quando abríssemos em {{cidade}}: ' +
+      'abrimos! As vagas da cidade já estão no site: {{link_cidade}}\n\nEsta é a única mensagem sobre a lista de espera: depois dela, o seu número sai da lista.\n\n' +
+      'Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.';
+    function listaLimpar(slug) {
+      st.listaEspera = st.listaEspera.filter(function (l) {
+        var c = cidade(l.cidade);
+        if (!c || c.status !== 'ativa' || (slug && l.cidade !== slug)) return true;
+        if (c.abertaEm != null && c.abertaEm <= agora() - 30 * DIA) return false;
+        return !(l.avisadoEm != null && l.avisadoEm < agora() - 3600000 && (!l.whatsapp || l.whatsappAvisadoEm != null));
+      });
+    }
+    function avisoContagens(slug) {
+      var ls = st.listaEspera.filter(function (l) { return l.cidade === slug; });
+      return { naLista: ls.length, aAvisarEmail: ls.filter(function (l) { return l.avisadoEm == null; }).length,
+        avisadosEmail: ls.filter(function (l) { return l.avisadoEm != null; }).length,
+        aAvisarWhatsapp: ls.filter(function (l) { return l.whatsapp && l.whatsappAvisadoEm == null; }).length };
+    }
+    H.vagas_adm_aviso_resumo = function (a) {
+      if (!eAdmin()) return erro(R.MSG.SEM_PERMISSAO);
+      var c = cidade(txt(a.p_cidade).trim().toLowerCase());
+      if (!c) return erro('Cidade não encontrada.');
+      return ok({ cidade: { slug: c.slug, nome: c.nome, status: c.status, abertaEm: iso(c.abertaEm),
+        listaAte: c.status === 'ativa' && c.abertaEm != null ? iso(c.abertaEm + 30 * DIA) : '' }, contagens: avisoContagens(c.slug) });
+    };
+    H.vagas_adm_aviso_whatsapp = function (a) {
+      if (!eAdmin()) return erro(R.MSG.SEM_PERMISSAO);
+      var c = cidade(txt(a.p_cidade).trim().toLowerCase());
+      if (!c) return erro('Cidade não encontrada.');
+      if (c.status !== 'ativa') return erro(MSG_AVISO_FECHADA);
+      listaLimpar(c.slug);
+      var l = st.listaEspera.filter(function (x) { return x.cidade === c.slug && x.whatsapp && x.whatsappAvisadoEm == null; })
+        .sort(function (p, q) { return p.criadoEm - q.criadoEm; })[0];
+      var contato = null;
+      if (l) {
+        if (!l.id) l.id = novoId();
+        var texto = TEXTO_AVISO_WHATSAPP.replace('{{cidade}}', c.nome).replace('{{link_cidade}}', 'https://vagas.gestaosemcaos.com.br/cidade.html?cidade=' + c.slug);
+        contato = { id: l.id, whatsapp: l.whatsapp, perfil: l.perfil, texto: texto, link: 'https://wa.me/' + l.whatsapp + '?text=' + encodeURIComponent(texto) };
+        registrar(c.slug, 'admin', 'aviso_whatsapp_ver', 'cidade', c.id, '');
+      }
+      return ok({ cidade: { slug: c.slug, nome: c.nome }, contato: contato, contagens: avisoContagens(c.slug) });
+    };
+    H.vagas_adm_aviso_whatsapp_feito = function (a) {
+      if (!eAdmin()) return erro(R.MSG.SEM_PERMISSAO);
+      var l = st.listaEspera.filter(function (x) { return x.id && x.id === a.p_id; })[0];
+      if (!l || !l.whatsapp) return erro('Contato não encontrado.');
+      var c = cidade(l.cidade);
+      if (c.status !== 'ativa') return erro(MSG_AVISO_FECHADA);
+      var dup = l.whatsappAvisadoEm != null;
+      if (!dup) {
+        l.whatsappAvisadoEm = agora();
+        registrar(c.slug, 'admin', 'aviso_whatsapp', 'cidade', c.id, '');
+        if (l.avisadoEm != null) st.listaEspera = st.listaEspera.filter(function (x) { return x !== l; });
+      }
+      return ok({ duplicado: dup, contagens: avisoContagens(c.slug) });
+    };
+
     // ---- Equipe da empresa (convite pela própria empresa; igual às RPCs vagas_equipe_* da 20261024).
     var SO_DONO_EQUIPE = 'Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.';
     var VALIDADE_CONVITE = 72 * 3600000;
@@ -2011,7 +2084,7 @@
       if (!e) return erro('Empresa não encontrada.');
       var papel = papelCidade(e.cidade);
       if (!papel || papel === 'moderador') return erro(R.MSG.SEM_PERMISSAO);
-      if (papel === 'operador' && st.membros.some(function (d) { return d.empresaId === e.id && d.ativo && d.papel === 'dono'; })) {
+      if (papel === 'operador' && st.membros.some(function (d) { return d.empresaId === e.id && d.ativo && d.papel === 'dono' && contaValida(d.userId); })) {
         return erro('A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.');
       }
       var motivo = R.limparTexto(txt(a.p_motivo), 300);
@@ -2020,6 +2093,7 @@
       if (!em) return erro('E-mail inválido.');
       var m = st.membros.filter(function (x) { var u = usuario(x.userId); return x.empresaId === e.id && x.ativo && u && u.email === em; })[0];
       if (!m) return erro('Esta pessoa não está na equipe da empresa.');
+      if (!contaValida(m.userId)) return erro('Esta pessoa não pode ser dona agora: a conta dela está suspensa ou ainda não confirmou o e-mail.');
       m.papel = 'dono';
       registrar(e.cidade, papel, 'empresa_dono', 'empresa', e.id, motivo, { papel: 'dono' });
       return ok({ empresa: { id: e.id }, membro: { papel: 'dono' } });
@@ -2151,6 +2225,25 @@
         st.operadores.push({ userId: u.id, cidade: cid, papel: papel, ativo: true, repassePercentual: 0, contratoVersao: '' });
         var l = novoLink(email, 'invite');
         return ok({ enviado: true, email: mascarar(email), linkPrevia: l.caminho });
+      },
+      // Aviso de abertura por e-mail (Edge Function avisar_lista_espera): só a equipe; um lote por chamada; na prévia nenhum
+      // e-mail sai — quem foi "avisado" é marcado como no banco. Resposta: só contagens.
+      avisarListaEspera: function (cidadeSlug, limite) {
+        if (!st.sessao) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
+        if (!eAdmin()) return erro(R.MSG.SEM_PERMISSAO);
+        var c = cidade(txt(cidadeSlug).trim().toLowerCase());
+        if (!c) return erro('Cidade não encontrada.');
+        if (c.status !== 'ativa') return erro(MSG_AVISO_FECHADA);
+        var n = Math.min(Math.max(parseInt(limite, 10) || 25, 1), 50);
+        listaLimpar(c.slug);
+        var lote = st.listaEspera.filter(function (l) { return l.cidade === c.slug && l.avisadoEm == null; })
+          .sort(function (p, q) { return p.criadoEm - q.criadoEm; }).slice(0, n);
+        lote.forEach(function (l) { l.avisadoEm = agora(); l.sairToken = novoToken(); if (!l.id) l.id = novoId(); });
+        st.listaEspera = st.listaEspera.filter(function (l) { return lote.indexOf(l) < 0 || l.whatsapp; });
+        if (lote.length) registrar(c.slug, 'admin', 'aviso_email', 'cidade', c.id, '', { enviados: lote.length, falhas: 0 });
+        var ct = avisoContagens(c.slug);
+        return ok({ cidade: { slug: c.slug, nome: c.nome }, enviados: lote.length, falhas: 0, restantes: ct.aAvisarEmail,
+          aAvisarWhatsapp: ct.aAvisarWhatsapp, terminou: ct.aAvisarEmail === 0 });
       },
       // Convite para a equipe (Edge Function convite_equipe + vagas_conta_convite_equipe): só dono(a); resposta neutra.
       convidarEquipe: function (empresaId, email) {
@@ -2305,7 +2398,7 @@
       var t0 = agora();
       function cidadeNova(slug, nome, ibge, status, ordem, praca, porte) {
         st.cidades.push({ id: novoId(), slug: slug, nome: nome, uf: 'GO', ibge: ibge, fuso: 'America/Sao_Paulo', status: status, porte: porte || null,
-          praca: praca || null, metaListaEspera: null, ordem: ordem });
+          praca: praca || null, metaListaEspera: null, ordem: ordem, abertaEm: status === 'ativa' ? t0 - 2 * DIA : null });
       }
       // Praça piloto (dado real: IBGE e fuso) + duas vizinhas SÓ da prévia (entorno e lista de espera, para a tela mostrar os dois casos).
       cidadeNova('uruacu-go', 'Uruaçu', '5221601', 'ativa', 1, null, 'pequena');

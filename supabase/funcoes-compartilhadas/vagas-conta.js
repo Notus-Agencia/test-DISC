@@ -29,6 +29,11 @@
 //       (link para entrar e aceitar), conta de outro tipo (e-mail explicando que precisa de outro e-mail), conta só do painel
 //       DISC ou suspensa (nada é enviado). A pessoa só entra na equipe depois de confirmar o e-mail e aceitar
 //       (vagas_equipe_convite_aceitar, com o login dela).
+//   avisar_lista_espera (JWT da equipe) {cidade, limite?} -> um LOTE (padrão 25, até 50) do aviso "a cidade abriu" por e-mail
+//       para a lista de espera de uma cidade ATIVA. O banco (vagas_conta_aviso_lote) reserva quem ainda não foi avisado e
+//       marca na hora (rodar de novo não manda duas vezes); quem falhar volta para a fila (vagas_conta_aviso_marcar). Resposta:
+//       só contagens {enviados, falhas, restantes, aAvisarWhatsapp, terminou}; nenhum e-mail da lista sai daqui. A tela chama
+//       de novo até terminou:true. Migração 20261024120002_vagas_aviso_abertura.
 // Link do e-mail: <VAGAS_SITE_URL>/entrar.html?token_hash=<hash>&type=invite|recovery (gerado com auth.admin.generateLink,
 // no domínio do site; o antivírus que "abre" o link antes da pessoa não o gasta, porque a tela só confere no clique). No convite
 // de equipe o link leva também &convite=<token> (ou só ?convite=<token> para quem já tem conta de empresa).
@@ -53,6 +58,10 @@ export const VAGAS_MSG_TERMOS = 'Para criar a conta, aceite os termos de uso e o
 export const VAGAS_MSG_TIPO = 'Escolha se a conta é para procurar emprego ou para uma empresa.';
 export const VAGAS_MSG_JA_EXISTE = 'Este e-mail já tem conta. A pessoa pode entrar ou usar "Esqueci minha senha".';
 export const VAGAS_MSG_CONVITE_EQUIPE = 'Pronto. Se este e-mail puder entrar na equipe, a pessoa recebe o convite em instantes. O convite vale por 3 dias.';
+export const VAGAS_AVISO_LOTE_PADRAO = 25;
+export const VAGAS_AVISO_LOTE_MAX = 50;
+export const VAGAS_AVISO_INTERVALO_MS = 600;   // ~2 envios por segundo (limite padrão do Resend)
+export const VAGAS_MSG_CIDADE_FECHADA_AVISO = 'A cidade ainda não está aberta. Abra a cidade antes de avisar a lista de espera.';
 export const VAGAS_BUCKET_FOTOS = 'vagas-fotos';
 export const VAGAS_FOTO_SEGUNDOS = 300;
 const VAGAS_LIMITE_CORPO = 4000;
@@ -86,8 +95,9 @@ export function linkVagas(env, tokenHash, tipo) {
 }
 
 /** E-mails com a marca Vagas sem Caos (moldura da Gestão sem Caos).
- *  tipo: confirmar | jaTemConta | senha | assistido | operador | conviteEquipe | conviteEquipeOutraConta
- *  (textos completos para revisão: conteudo/vagas-textos/emails/convite-equipe*.html). */
+ *  tipo: confirmar | jaTemConta | senha | assistido | operador | conviteEquipe | conviteEquipeOutraConta | cidadeAbriu
+ *  (textos completos para revisão: conteudo/vagas-textos/emails/convite-equipe*.html e cidade-abriu.html).
+ *  cidadeAbriu: d.cidade, d.perfil ('pessoa' | 'empresa'), d.url (criar a conta), d.urlSair (sair da lista de espera). */
 export function montarEmailVagas(tipo, d) {
   d = d || {};
   const primeiro = String(d.nome || '').trim().split(/\s+/)[0] || '';
@@ -96,6 +106,8 @@ export function montarEmailVagas(tipo, d) {
   const quem = String(d.quem || '').trim();
   const convidou = (quem ? quem + ', da empresa ' + empresa + ', convidou' : 'A empresa ' + empresa + ' convidou') +
     ' você para a equipe dela no Vagas sem Caos' + (d.cidade ? ', em ' + d.cidade : '') + '.';
+  const cidadeAviso = String(d.cidade || '').trim() || 'a sua cidade';
+  const pediu = 'Você pediu para ser avisado(a) quando o Vagas sem Caos abrisse em ' + cidadeAviso + '.';
   const modelos = {
     confirmar: { assunto: 'Confirme seu e-mail — Vagas sem Caos', titulo: 'Confirme seu e-mail',
       paragrafos: [ola, 'Falta só um passo para usar o Vagas sem Caos: confirme que este e-mail é seu e crie a sua senha.'],
@@ -120,13 +132,36 @@ export function montarEmailVagas(tipo, d) {
       botao: 'Ver o convite', nota: 'O convite vale por 3 dias e funciona uma vez só. Se você não conhece esta empresa, ignore este e-mail: sem o seu aceite, nada acontece.' },
     conviteEquipeOutraConta: { assunto: 'Convite para a equipe de ' + empresa + ' — Vagas sem Caos', titulo: 'Convite para a equipe da empresa',
       paragrafos: [ola, convidou, 'Este e-mail já é usado numa conta do Vagas sem Caos de outro tipo, e cada e-mail tem um tipo de conta só. Para entrar na equipe, peça a quem convidou para usar outro e-mail seu.'],
-      botao: 'Abrir o Vagas sem Caos', nota: 'Se você não conhece esta empresa, ignore este e-mail: nada muda na sua conta.' }
+      botao: 'Abrir o Vagas sem Caos', nota: 'Se você não conhece esta empresa, ignore este e-mail: nada muda na sua conta.' },
+    cidadeAbriu: d.perfil === 'empresa'
+      ? { assunto: 'O Vagas sem Caos chegou a ' + cidadeAviso, titulo: 'Chegamos a ' + cidadeAviso,
+        paragrafos: ['Olá!', pediu + ' Abriu: a sua empresa já pode publicar vagas e conversar, pela plataforma, com quem se interessar.',
+          'Crie a conta da empresa com o CNPJ (MEI também serve) e publique a sua primeira vaga.'],
+        botao: 'Criar a conta da empresa', nota: 'Este é o aviso que você pediu. Depois dele, o seu e-mail sai da lista de espera desta cidade.' }
+      : { assunto: 'O Vagas sem Caos chegou a ' + cidadeAviso, titulo: 'Chegamos a ' + cidadeAviso,
+        paragrafos: ['Olá!', pediu + ' Abriu: as vagas das empresas da cidade já estão no site.',
+          'Para dizer "Quero" numa vaga, crie a sua conta. Leva 2 minutos, e procurar emprego aqui é sempre de graça.'],
+        botao: 'Criar minha conta', nota: 'Este é o aviso que você pediu. Depois dele, o seu e-mail sai da lista de espera desta cidade.' }
   };
   const m = modelos[tipo] || modelos.confirmar;
-  const html = htmlMarca({ titulo: m.titulo, previa: m.paragrafos[1], paragrafos: m.paragrafos, botao: { texto: m.botao, url: d.url }, nota: m.nota,
+  const extra = tipo === 'cidadeAbriu' && d.urlSair
+    ? { antes: 'Deixou também o WhatsApp e não quer o aviso por lá?', texto: 'Sair da lista de espera', url: d.urlSair } : null;
+  let html = htmlMarca({ titulo: m.titulo, previa: m.paragrafos[1], paragrafos: m.paragrafos, botao: { texto: m.botao, url: d.url }, nota: m.nota,
     rodape: VAGAS_RODAPE });
-  const texto = m.paragrafos.concat(['', m.botao + ': ' + d.url, '', m.nota, '', VAGAS_RODAPE]).join('\n');
+  // Link a mais (sair da lista), logo antes do "Se o botão não funcionar" da moldura — sem mexer na moldura comum do DISC.
+  if (extra) {
+    const marca = '<p style="margin:0 0 8px;font-size:13px';
+    const p = '<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#5B6878">' + escaparHtmlVagas(extra.antes) + ' <a href="' +
+      escaparHtmlVagas(extra.url) + '" style="color:#F34405">' + escaparHtmlVagas(extra.texto) + '</a></p>';
+    html = html.indexOf(marca) >= 0 ? html.replace(marca, p + marca) : html.replace('</td></tr><tr><td style="padding:24px', p + '</td></tr><tr><td style="padding:24px');
+  }
+  const texto = m.paragrafos.concat(['', m.botao + ': ' + d.url, '', m.nota], extra ? ['', extra.antes + ' ' + extra.texto + ': ' + extra.url] : [],
+    ['', VAGAS_RODAPE]).join('\n');
   return { assunto: m.assunto, html, texto };
+}
+
+function escaparHtmlVagas(t) {
+  return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /** Origem do pedido original (o banco transforma em chaves por IP; nunca guarda o IP inteiro de IPv6). */
@@ -376,6 +411,63 @@ export async function acaoVagasConviteEquipe(base, corpo, origem, quem) {
     convite: { id: c.id, email: c.email, papel: c.papel, status: c.status, criadoEm: c.criadoEm, expiraEm: c.expiraEm } };
 }
 
+/** Links do aviso de abertura: criar a conta (pessoa ou empresa) e sair da lista de espera (páginas de divulgação, #sair).
+ *  Com o token de saída (64 hex, do lote), o link tira a pessoa sem pedir o e-mail (vagas_lista_espera_sair_link). */
+export function linksAvisoAbertura(env, cidade, perfil, sairToken) {
+  const site = siteVagas(env);
+  const c = encodeURIComponent(String(cidade || ''));
+  const t = /^[0-9a-f]{64}$/.test(String(sairToken || '')) ? '&sair=' + sairToken : '';
+  return perfil === 'empresa'
+    ? { criar: site + '/entrar.html?tipo=empresa#criar', sair: site + '/empresas.html?cidade=' + c + t + '#sair' }
+    : { criar: site + '/entrar.html#criar', sair: site + '/emprego.html?cidade=' + c + t + '#sair' };
+}
+
+/** Aviso de abertura da cidade à lista de espera (só a equipe): o banco reserva um lote de quem ainda não foi avisado
+ *  (e marca na hora: rodar de novo não manda duas vezes) e devolve e-mail e perfil SÓ para cá; aqui sai um e-mail por
+ *  pessoa, ~2 por segundo; quem falhou volta para a fila. A tela recebe só contagens — nunca um e-mail da lista. */
+export async function acaoVagasAvisarListaEspera(base, corpo, origem, quem) {
+  if (!quem) return erro('Sessão expirada. Entre de novo.', { sessaoExpirada: true });
+  if (!quem.admin) return erro('Sem permissão.');
+  const cidade = String(corpo.cidade || '').trim().toLowerCase();
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(cidade) || cidade.length > 60) return erro('Cidade não encontrada.');
+  if (!vagasEmailConfigurado(base)) return erro(VAGAS_MSG_EMAIL_NAO_CONFIGURADO, { naoConfigurado: true });
+  const pedido = parseInt(corpo.limite, 10);
+  const limite = Math.min(Math.max(isFinite(pedido) ? pedido : VAGAS_AVISO_LOTE_PADRAO, 1), VAGAS_AVISO_LOTE_MAX);
+  const r = await base.db.avisoLote(quem.id, cidade, limite);
+  if (!r || r.ok !== true) {
+    if (!r || typeof r.erro !== 'string') return erro(MSG_ERRO_INTERNO);
+    return erro(r.erro, r.sessaoExpirada ? { sessaoExpirada: true } : undefined);
+  }
+  const nome = String((r.cidade && r.cidade.nome) || '');
+  const lote = Array.isArray(r.lote) ? r.lote : [];
+  const esperar = typeof base.esperar === 'function' ? base.esperar : (ms) => new Promise((res) => setTimeout(res, ms));
+  const enviados = [];
+  const falhas = [];
+  for (let i = 0; i < lote.length; i++) {
+    const c = lote[i] || {};
+    const email = emailVagas(c.email);
+    if (!UUID_VAGAS.test(String(c.id || ''))) continue;
+    if (!email) { falhas.push(c.id); continue; }
+    if (i > 0) await esperar(VAGAS_AVISO_INTERVALO_MS);
+    const l = linksAvisoAbertura(base.env, cidade, c.perfil, c.sairToken);
+    try {
+      await enviarEmailVagas(base, email, 'cidadeAbriu', { cidade: nome, perfil: c.perfil === 'empresa' ? 'empresa' : 'pessoa', url: l.criar, urlSair: l.sair });
+      enviados.push(c.id);
+    } catch (err) {
+      falhas.push(c.id);
+    }
+  }
+  let contagens = r.contagens || {};
+  if (enviados.length || falhas.length) {
+    const m = await base.db.avisoMarcar(quem.id, cidade, enviados, falhas);
+    if (!m || m.ok !== true) throw new Error('aviso: marcar o lote falhou');
+    contagens = m.contagens || contagens;
+  }
+  const n = (k) => (typeof contagens[k] === 'number' ? contagens[k] : 0);
+  return { ok: true, cidade: { slug: cidade, nome }, enviados: enviados.length, falhas: falhas.length,
+    restantes: n('aAvisarEmail'), aAvisarWhatsapp: n('aAvisarWhatsapp'), terminou: n('aAvisarEmail') === 0 };
+}
+
 /** URL assinada curta da foto: o banco decide se pode (vagas_conta_foto); aqui só se assina o caminho que ele devolver. */
 export async function acaoVagasFoto(base, corpo, origem, quem) {
   if (!quem) return erro('Sessão expirada. Entre de novo.', { sessaoExpirada: true });
@@ -409,7 +501,10 @@ export function criarBaseVagasConta(createClient, getEnv, extras) {
       foto: (userId, candidatura) => rpc('vagas_conta_foto', { p_user: userId, p_candidatura: candidatura || null }),
       conviteEquipe: (userId, empresaId, email, cf, xff) => rpc('vagas_conta_convite_equipe', { p_user: userId, p_empresa: empresaId,
         p_email: email, p_cf: cf || '', p_xff: xff || '' }),
-      exclusaoConferir: (userId) => rpc('vagas_conta_exclusao_conferir', { p_user: userId })
+      exclusaoConferir: (userId) => rpc('vagas_conta_exclusao_conferir', { p_user: userId }),
+      avisoLote: (userId, cidade, limite) => rpc('vagas_conta_aviso_lote', { p_user: userId, p_cidade: cidade, p_limite: limite }),
+      avisoMarcar: (userId, cidade, enviados, falhas) => rpc('vagas_conta_aviso_marcar', { p_user: userId, p_cidade: cidade,
+        p_enviados: enviados || [], p_falhas: falhas || [] })
     },
     storage: {
       async assinar(bucket, caminho, segundos) {
@@ -503,6 +598,7 @@ export async function atenderVagasConta(req, base) {
     else if (corpo.acao === 'excluir') r = await acaoVagasExcluir(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'foto') r = await acaoVagasFoto(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'convite_equipe') r = await acaoVagasConviteEquipe(base, corpo, origem, await quemChamaVagas(base, req));
+    else if (corpo.acao === 'avisar_lista_espera') r = await acaoVagasAvisarListaEspera(base, corpo, origem, await quemChamaVagas(base, req));
     else r = erro('Ação desconhecida.');
     return vagasResponder(r, 200, cors);
   } catch (err) {
