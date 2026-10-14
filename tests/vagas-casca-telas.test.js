@@ -91,6 +91,7 @@ test('peso da lista pública (cidade.html, 1ª visita, gzip): até 100 KB, medid
 
 test('_redirects: /<cidade>/ vai para cidade.html (302), raiz sem cidade fixa', () => {
   const txt = fs.readFileSync(path.join(TELA.VAGAS, '_redirects'), 'utf8');
-  const regras = txt.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
-  assert.deepEqual(regras, ['/:cidade/  /cidade.html?cidade=:cidade  302']);
+  const regras = txt.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')).map((l) => l.split(/\s+/).join(' '));
+  // A dinâmica é a última; antes dela, só as duas estáticas das páginas de divulgação (com a barra no fim), que ela engoliria.
+  assert.deepEqual(regras, ['/emprego/ /emprego 301', '/empresas/ /empresas 301', '/:cidade/ /cidade.html?cidade=:cidade 302']);
 });
