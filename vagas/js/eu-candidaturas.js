@@ -162,9 +162,9 @@
       return el('div', { class: 'vg-eu-decidir', id: 'vg-convite-decidir' }, [
         el('p', { class: 'seminegrito' }, 'Se você aceitar:'),
         el('ul', { class: 'vg-convite__lista' }, [
-          el('li', {}, [nome + ' vê o seu ', el('strong', {}, 'nome'), ' e o seu ', el('strong', {}, 'currículo completo'), ';']),
-          el('li', {}, ['o seu ', el('strong', {}, 'WhatsApp'), ' fica liberado para ela, e o dela para você;']),
-          el('li', {}, 'fica registrado quem viu o seu contato (você confere em "Eu").')]),
+          el('li', {}, [nome + ' vê o seu ', el('strong', {}, 'nome'), ', o seu ', el('strong', {}, 'currículo completo'), ' e a sua foto, se você enviou;']),
+          el('li', {}, ['o seu ', el('strong', {}, 'WhatsApp'), ' e o seu ', el('strong', {}, 'e-mail'), ' ficam liberados para ela, e os dela para você;']),
+          el('li', {}, 'fica registrado quem viu o seu contato, e você pode cortar o acesso depois (em "Eu").')]),
         el('p', { class: 't-rotulo texto-medio' }, 'Se recusar, a empresa não vê nada além do cartão e a conversa fecha. Nenhuma das duas respostas aparece para outras empresas.'),
         el('div', { class: 'acoes acoes-coluna' }, [
           el('button', { type: 'button', class: 'botao botao--laranja botao--grande', id: 'vg-convite-aceitar', onclick: function () { aceitar(k, nome); } }, 'Combinou: liberar meu contato'),
@@ -215,7 +215,7 @@
     U.trocar(ctx.app, [el('a', { class: 'botao botao--link vg-voltar', href: '#dados', id: 'vg-voltar' }, [U.icone('voltar'), 'Eu']),
       el('section', { class: 'caixa', id: 'vg-quem-viu', 'aria-labelledby': 'vg-quem-viu-titulo' }, [
         el('h1', { class: 'titulo-pagina', id: 'vg-quem-viu-titulo', tabindex: '-1' }, 'Quem viu meu contato'),
-        el('p', { class: 'subtitulo' }, 'Só empresas com quem você combinou conseguem abrir o seu nome e o seu WhatsApp. Cada abertura fica registrada aqui.'),
+        el('p', { class: 'subtitulo' }, 'Só empresas com quem você combinou conseguem abrir o seu nome, WhatsApp e e-mail. Cada abertura fica registrada aqui.'),
         lista])]);
     ctx.nav('eu');
     U.carregando(lista);

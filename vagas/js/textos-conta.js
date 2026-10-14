@@ -101,8 +101,8 @@
     "versao": "2026-10-13",
     "quem": "pessoa",
     "titulo": "Liberar meu contato para esta empresa",
-    "texto": "Quero conversar com {{empresa_nome}}. Libero meu nome, meu currículo completo e meu WhatsApp só para esta empresa, só para esta vaga.",
-    "explicacao": "A empresa aparece agora com o nome dela: se for uma vaga confidencial, é a primeira vez que você vê quem é. Se não quiser, toque em \"Agora não\" e nada é liberado. Depois do Combinou você pode encerrar a conversa e pedir que a empresa não entre mais em contato. Você vê em \"Quem viu meu contato\" quando ela abriu os seus dados. Nunca pague nada: se a empresa pedir dinheiro, Pix ou documento, denuncie.",
+    "texto": "Quero conversar com {{empresa_nome}}. Libero meu nome, meu WhatsApp, meu e-mail, meu currículo completo e a minha foto (se eu enviei) só para esta empresa, só para esta vaga.",
+    "explicacao": "A empresa aparece agora com o nome dela: se for uma vaga confidencial, é a primeira vez que você vê quem é. Você passa a ver o WhatsApp e o e-mail dela. Se não quiser, toque em \"Agora não\" e nada é liberado. Depois do Combinou, em \"Quem viu meu contato\", você vê quando ela abriu os seus dados e pode cortar o acesso. Nunca pague nada para se candidatar. Documento, só na contratação, depois de conhecer a empresa. Nunca passe código que chegou por SMS.",
     "obrigatorio": true,
     "variaveis": [
      "empresa_nome"

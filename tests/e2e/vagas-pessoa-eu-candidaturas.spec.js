@@ -63,7 +63,8 @@ test('convite: o nome da empresa confidencial aparece ANTES de liberar; o aceite
   await expect(page.locator('#vg-convite-empresa')).toContainText('Empresa verificada');
   await expect(page.locator('#vg-conversa-nome')).toHaveText(nome);
   await expect(page.locator('#vg-mensagens .vg-msg').first()).toContainText('Gostamos do seu cartão');
-  await expect(page.locator('#vg-convite-decidir')).toContainText(nome + ' vê o seu nome e o seu currículo completo;');
+  await expect(page.locator('#vg-convite-decidir')).toContainText(nome + ' vê o seu nome, o seu currículo completo e a sua foto, se você enviou;');
+  await expect(page.locator('#vg-convite-decidir')).toContainText('o seu WhatsApp e o seu e-mail ficam liberados para ela, e os dela para você;');
   await expect(page.locator('#vg-convite-decidir')).toContainText('Nenhuma das duas respostas aparece para outras empresas.');
   await expect(page.locator('#vg-nav')).toHaveCount(0);
   await expect(page.locator('#vg-aviso-golpe')).toContainText('Nunca pague para se candidatar.');
@@ -73,7 +74,8 @@ test('convite: o nome da empresa confidencial aparece ANTES de liberar; o aceite
 
   await page.click('#vg-convite-aceitar');
   const janela = page.locator('#vg-confirmar-combinou');
-  await expect(janela).toContainText('Quero conversar com ' + nome + '. Libero meu nome, meu currículo completo e meu WhatsApp só para esta empresa, só para esta vaga.');
+  await expect(janela).toContainText('Quero conversar com ' + nome + '. Libero meu nome, meu WhatsApp, meu e-mail, meu currículo completo e a minha foto (se eu enviei) só para esta empresa, só para esta vaga.');
+  await expect(janela).toContainText('Documento, só na contratação, depois de conhecer a empresa.');
   await expect(janela).not.toContainText('[REVISÃO');
   await page.click('#vg-confirmar-combinou-nao');
   await expect(page.locator('#vg-convite')).toBeVisible();
