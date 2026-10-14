@@ -91,11 +91,7 @@
     }
 
     // O que foi digitado e ainda não foi para o rascunho vai antes de a página fechar (celular troca de app, aba some).
-    root.addEventListener('pagehide', function () { if (ctx.gravarRascunhoPendente) ctx.gravarRascunhoPendente(); });
-    // "Pular para o conteúdo" (#app) viraria rota desconhecida no roteador por âncora: só leva o foco ao conteúdo.
-    var pular = doc.querySelector('a.pular[href="#app"]');
-    if (pular) pular.addEventListener('click', function (ev) { ev.preventDefault(); app.focus(); });
-    U.topo({});
+    root.addEventListener('pagehide', function () { if (ctx.gravarRascunhoPendente) ctx.gravarRascunhoPendente(); });    U.topo({});
     U.carregando(app);
     // Conta suspensa: exigirConta (casca) põe a faixa "só leitura" e não resolve; aqui o "Carregando…" vira a mensagem.
     var vigia = root.MutationObserver ? new root.MutationObserver(function () {

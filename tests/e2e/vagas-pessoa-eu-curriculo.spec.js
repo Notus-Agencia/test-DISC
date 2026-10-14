@@ -207,6 +207,15 @@ test('"Quero" guardado pela vaga: abre no passo que falta com o aviso e, ao salv
   await page.click('#vg-cv-concluir');
   await expect(page.locator('#vg-aviso-geral')).toContainText('Currículo salvo. Enviando a sua candidatura…');
   await page.waitForURL(new RegExp('vaga\\.html\\?vaga=' + codigo + '$'));
+  // A página da vaga (casca) envia sozinha: 1ª candidatura pede o aceite pessoa_candidatura e mostra "Candidatura enviada".
+  await expect(page.locator('#vg-janela-candidatura')).toBeVisible();
+  await page.check('#vg-aceite-candidatura');
+  await page.click('#vg-aceite-enviar');
+  await expect(page.locator('#vg-quero-ok-titulo')).toHaveText('Candidatura enviada');
+  const k = await page.evaluate(async () => ({ lista: (await window.VAGAS_API.minhasCandidaturas()).candidaturas.map((x) => [x.anuncio.codigo, x.status]),
+    quero: localStorage.getItem('vg.quero') }));
+  expect(k.lista).toEqual([[codigo, 'enviada']]);
+  expect(k.quero).toBeNull();
 });
 
 test('editar o currículo (pessoa da semente): rascunho mais novo pergunta "Continuar dele?"; continuar, descartar e salvar', async ({ page }) => {
