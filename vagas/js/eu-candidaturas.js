@@ -184,7 +184,7 @@
         U.ocupado(sim, true, 'Liberando…');
         A.combinar(k.id).then(function () {
           j.fechar('sim');
-          U.avisar(U.t('avisos.combinou_pessoa', { empresa_nome: nome }), { tipo: 'ok', ms: 8000 });
+          U.avisar(U.t('avisos.combinou_pessoa', { empresa_nome: nome }), { tipo: 'ok', ms: 12000 });
           recarregar();
         }, function (e) {
           U.ocupado(sim, false);
