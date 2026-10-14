@@ -38,16 +38,19 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
   do Auth), com `app_metadata.produto = 'vagas'`. O cadastro não recebe senha: a conta nasce com senha aleatória e o link do
   e-mail leva à tela que cria a senha (evita que alguém "reserve" o e-mail de outra pessoa).
 - **Prévia:** com `VAGAS_CONFIG.MODO = 'previa'` (padrão até o banco estar pronto) o `VAGAS_API` usa `vagas/js/api-previa.js`:
-  mesmo contrato, mesmas mensagens, dados fictícios guardados só no navegador. `?previa=1` na URL liga a prévia na aba;
-  `?previa=0` desliga.
+  mesmo contrato, mesmas mensagens, dados fictícios guardados só no navegador. Fora do domínio oficial (localhost, `*.pages.dev`,
+  artefato), `?previa=1` na URL liga a prévia na aba e `?previa=0` desliga; no domínio oficial (`*.gestaosemcaos.com.br`) o
+  endereço nunca liga a prévia, só o `MODO`. O `api.js` falha fechado: qualquer `MODO` que não seja exatamente `'previa'` usa
+  o Supabase. Na prévia toda tela mostra a faixa "Prévia: dados de exemplo, nada aqui é real" (`VAGAS_UI.faixaPrevia`), a
+  senha criada não fica guardada e os telefones e códigos de selo da semente não podem ser reais (DDD 23; códigos sorteados).
 - **Dependência do DISC no banco:** as funções do Vagas usam quatro auxiliares do schema `disc_interno` da migração
   `20261005120000_disc`: `texto(jsonb)`, `iso(timestamptz)`, `limpar_texto(text, int)` e `origens_requisicao()` (e, por ela,
   `ip_de_texto`, `ip_publico`, `chave_ip`). Quem mudar a assinatura ou o comportamento dessas funções no DISC quebra o Vagas:
   `tests/supabase/vagas.test.js` aplica as duas migrações em sequência e pega isso. (Copiá-las para `vagas_interno` fica para
   quando o DISC precisar mudá-las.)
 - **CSP das telas:** a meta `Content-Security-Policy` de `vagas/index.html` (modelo para as outras telas) libera
-  `connect-src 'self' https://*.supabase.co` (RPC/Auth/Function por `fetch`) e `img-src 'self' data: blob: https://*.supabase.co`
-  (foto assinada). O `_headers` da hospedagem pode apertar para o projeto exato (meta + cabeçalho = interseção) — nunca
+  `connect-src 'self' https://tevpqngqzxcswmticjnr.supabase.co` (RPC/Auth/Function por `fetch`) e `img-src 'self' data: blob:
+  https://tevpqngqzxcswmticjnr.supabase.co` (foto assinada): só o projeto, nunca `*.supabase.co`, igual ao `_headers` — nunca
   precisa abrir mais do que a meta. Sem a meta, a tela dependeria só do cabeçalho da hospedagem; com ela, uma tela aberta
   fora do Cloudflare (ex.: localmente) continua com a mesma política.
 
@@ -1156,7 +1159,7 @@ VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
   `vagas/js/config.js` (`SUPABASE_ANON_KEY: '…'`). Não chama `vagas_anuncio_vista`. Logos em `vagas/comum/marca/`.
   `titulo` continua vindo (= função); `requisitos` agora é LISTA de chaves: para o texto, use `requisitosLista.join(' · ')`.
   A foto (URL assinada) precisa de `img-src https://<projeto>.supabase.co` na CSP das telas da empresa (a meta de
-  `vagas/index.html` já libera `https://*.supabase.co` em `img-src` e `connect-src`; o `_headers` pode fixar o projeto — §1).
+  `vagas/index.html` libera só o projeto em `img-src` e `connect-src`, como o `_headers` — §1).
 - **Limite por origem:** pressupõe `cf-connecting-ip` (Cloudflare na frente do Supabase, como no projeto); sem ele o
   `x-forwarded-for` é forjável (§5, item 17).
 - **Avisos de moderação por e-mail (devolver vaga, recusar empresa):** o banco grava o motivo em `statusMotivo` (chave de

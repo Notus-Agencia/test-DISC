@@ -413,7 +413,8 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
 5. **Cadastro aberto do Auth continua fechado** (passo 4): as contas do Vagas são criadas só pela função `vagas-conta`
    (com `app_metadata.produto = 'vagas'`), sem senha no cadastro — a pessoa cria a senha depois de clicar no link.
 6. **Ligar o site ao banco:** em `vagas/js/config.js`, troque `MODO: 'previa'` por `MODO: 'supabase'` (até lá o site roda
-   com dados fictícios de Uruaçu guardados só no navegador). Na página, `?previa=1` volta a prévia só naquela aba.
+   com dados fictícios de Uruaçu guardados só no navegador). Fora do domínio oficial (localhost, `*.pages.dev`), `?previa=1`
+   volta a prévia só naquela aba; em `vagas.gestaosemcaos.com.br` o endereço nunca liga a prévia.
 7. **Operadores das cidades:** pelo painel (grupo "Vagas", quando existir) ou chamando a ação `operador` da `vagas-conta`
    com o login da equipe; o operador recebe o link, cria a senha e só enxerga empresas, vagas e denúncias da cidade dele
    (nunca pessoas nem contatos).

@@ -42,7 +42,7 @@ Regras que valem para TODAS as telas (não repetidas em cada uma):
   Caos (`admin.html`, inclusive a aba Vagas) continua com o logo da Gestão sem Caos.
 - **Estados padrão (todas as telas com dado remoto):** `carregando` (`.giro` + "Carregando…"), `vazio` (`.vazio` com uma frase
   e um botão), `erro` (`.aviso--erro` com "Não deu para carregar. Tentar de novo."), `offline` (`.vg-faixa--offline` + último
-  conteúdo em cache do aparelho), `sessaoExpirada` (flag das RPCs → volta para `entrar.html` com `?voltar=`), `confirmar`
+  conteúdo em cache do aparelho; a faixa sai sozinha quando a conexão volta ou o servidor responde de novo), `sessaoExpirada` (flag das RPCs → volta para `entrar.html` com `?voltar=`), `confirmar`
   (flag → tela "Confirme seu e-mail" com "Reenviar"), `suspensa` (flag → aviso fixo "Sua conta está suspensa. Fale com a praça.").
 - **Rascunho no aparelho:** currículo, nova vaga, mensagem e resposta da prova ficam em `localStorage` (`vg.rascunho.<tela>`)
   a cada mudança; a tela mostra "Rascunho salvo neste aparelho às HH:MM" (`.vg-rascunho`). Ids de envio gerados no aparelho
