@@ -294,6 +294,23 @@
       },
       "anti_golpe": false,
       "revisao_psicologia": true
+    },
+    {
+      "arquivo": "cidade-abriu.html",
+      "para": "pessoa ou empresa que entrou na lista de espera da cidade",
+      "assunto": "O Vagas sem Caos chegou a {{cidade}}",
+      "quando": "a equipe abre a cidade (status ativa) e manda o aviso pelo painel (Edge Function vagas-conta, ação avisar_lista_espera; migração 20261024120002_vagas_aviso_abertura), em lotes de até 50, um e-mail por endereço, uma vez só. Depois do aviso o e-mail sai da lista (se a pessoa deixou WhatsApp, a linha fica até a equipe avisar por lá também, ou 30 dias da abertura).",
+      "variaveis": {
+        "cidade": "nome da cidade que abriu",
+        "frase_perfil": "pessoa: \"Abriu: as vagas das empresas da cidade já estão no site.\" · empresa: \"Abriu: a sua empresa já pode publicar vagas e conversar, pela plataforma, com quem se interessar.\"",
+        "orientacao": "pessoa: \"Para dizer \\\"Quero\\\" numa vaga, crie a sua conta. Leva 2 minutos, e procurar emprego aqui é sempre de graça.\" · empresa: \"Crie a conta da empresa com o CNPJ (MEI também serve) e publique a sua primeira vaga.\"",
+        "texto_botao": "pessoa: \"Criar minha conta\" · empresa: \"Criar a conta da empresa\"",
+        "link_criar": "…/entrar.html#criar (pessoa) ou …/entrar.html?tipo=empresa#criar (empresa)",
+        "link_sair": "…/emprego.html?cidade=<slug>#sair (pessoa) ou …/empresas.html?cidade=<slug>#sair (empresa): o formulário \"sair da lista\" das páginas de divulgação",
+        "email": "e-mail do destinatário (o da lista de espera)"
+      },
+      "anti_golpe": true,
+      "revisao_psicologia": true
     }
   ]
 }

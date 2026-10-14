@@ -219,6 +219,18 @@
         "cidade"
       ],
       "texto": "*Alerta · Vagas sem Caos · {{cidade}}*\nA vaga \"{{vaga_titulo}}\" saiu do ar por suspeita de golpe. Se alguém falou com você em nome dela e pediu dinheiro, Pix, documento ou senha: não mande nada e denuncie pelo site.\nNunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe."
+    },
+    {
+      "chave": "lista_espera_cidade_abriu",
+      "de": "equipe da Gestão sem Caos",
+      "para": "pessoa ou empresa da lista de espera que deixou o WhatsApp",
+      "uso": "wa_me",
+      "quando": "painel da equipe, fila \"Avisar pelo WhatsApp\" depois que a cidade abre: um contato por vez, só de quem deixou o número e ainda não foi avisado por ele (migração 20261024120002; o banco devolve este texto preenchido e o link wa.me pronto)",
+      "variaveis": [
+        "cidade",
+        "link_cidade"
+      ],
+      "texto": "Oi! Aqui é a equipe do Vagas sem Caos, da Gestão sem Caos. Você pediu para ser avisado(a) quando abríssemos em {{cidade}}: abrimos! As vagas da cidade já estão no site: {{link_cidade}}\n\nEsta é a única mensagem sobre a lista de espera: depois dela, o seu número sai da lista.\n\nNunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe."
     }
   ]
 }

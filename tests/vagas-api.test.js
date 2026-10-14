@@ -10,8 +10,9 @@ const API = require('../vagas/js/api.js');
 const URL_SB = 'https://exemplo.supabase.co';
 const CHAVE = 'sb_publishable_teste';
 // A 20261024 (onda 2) acrescenta e redefine RPCs (painel da praça, equipe da empresa, lista de espera com WhatsApp).
-const SQL = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20261022120000_vagas.sql'), 'utf8') +
-  fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20261024120000_vagas_onda2.sql'), 'utf8');
+// A 20261024120002 acrescenta o aviso de abertura da lista de espera (painel da equipe e o link público de saída).
+const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql']
+  .map((f) => fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', f), 'utf8')).join('\n');
 
 function memoria() {
   const m = {};
@@ -54,8 +55,9 @@ test('contrato: todo método aponta para uma RPC que existe na migração (ou na
     const nomes = m[1].trim() ? m[1].split(',').map((x) => x.trim().split(/\s+/)[0]) : [];
     assert.deepEqual(nomes, def.p, def.rpc);
   }
-  // Públicos = exatamente os liberados para anon na migração (+ o selo da 20261023 e versao_banco).
-  const anon = /publicas text\[\] := array\[([^\]]+)\]/.exec(SQL)[1].match(/'([a-z_]+)'/g).map((x) => x.slice(1, -1)).sort();
+  // Públicos = exatamente os liberados para anon nas migrações (+ o selo da 20261023 e versao_banco).
+  const anon = [...new Set([...SQL.matchAll(/publicas text\[\] := array\[([^\]]+)\]/g)]
+    .flatMap((m) => [...m[1].matchAll(/'(?:public\.)?([a-z_]+)(?:\([^)]*\))?'/g)].map((x) => x[1])))].sort();
   const publicos = Object.values(API.METODOS).filter((d) => d.publico).map((d) => d.rpc)
     .filter((r) => r !== 'vagas_selo_publico' && r !== 'versao_banco').sort();
   assert.deepEqual(publicos, anon);

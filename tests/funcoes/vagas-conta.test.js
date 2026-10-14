@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {
   atenderVagasConta, montarEmailVagas, mascararEmailVagas, linkVagas, vagasCors, lerEnvVagasConta, criarBaseVagasConta,
   VAGAS_MSG_ENVIADO, VAGAS_MSG_EMAIL_NAO_CONFIGURADO, VAGAS_MSG_CAPTCHA, VAGAS_MSG_TERMOS, VAGAS_MSG_JA_EXISTE, VAGAS_MSG_CONVITE_EQUIPE,
-  linkConviteEquipe
+  linkConviteEquipe, linksAvisoAbertura
 } from '../../supabase/funcoes-compartilhadas/vagas-conta.js';
 
 const SITE = 'https://vagas.gestaosemcaos.com.br';
@@ -65,8 +65,30 @@ function preparar(op) {
     },
     async exclusaoConferir(userId) {
       return op.exclusao ? op.exclusao(userId) : { ok: true };
+    },
+    // Aviso de abertura (como vagas_conta_aviso_lote/_marcar): reserva quem não foi avisado e marca na hora; falha volta.
+    async avisoLote(userId, cidade, limite) {
+      avisos.push({ lote: [userId, cidade, limite] });
+      if (op.avisoLote) return op.avisoLote(userId, cidade, limite);
+      const lote = lista.filter((l) => l.cidade === cidade && !l.avisado).slice(0, limite);
+      lote.forEach((l) => { l.avisado = true; l.token = (l.id.replace(/[^0-9a-f]/g, '') + 'ab'.repeat(32)).slice(0, 64); });
+      return { ok: true, cidade: { slug: cidade, nome: 'Uruaçu' }, lote: lote.map((l) => ({ id: l.id, email: l.email, perfil: l.perfil, sairToken: l.token })),
+        contagens: contagensAviso(cidade) };
+    },
+    async avisoMarcar(userId, cidade, enviadosIds, falhasIds) {
+      avisos.push({ marcar: [userId, cidade, enviadosIds, falhasIds] });
+      if (op.avisoMarcarFalha) return { ok: false, erro: 'Sem permissão.' };
+      lista.forEach((l) => { if (falhasIds.includes(l.id)) l.avisado = false; });
+      return { ok: true, enviados: enviadosIds.length, falhas: falhasIds.length, contagens: contagensAviso(cidade) };
     }
   };
+  const lista = (op.lista || []).map((l) => Object.assign({ cidade: 'uruacu-go', perfil: 'pessoa' }, l));
+  const avisos = [];
+  function contagensAviso(cidade) {
+    const ls = lista.filter((l) => l.cidade === cidade);
+    return { naLista: ls.length, aAvisarEmail: ls.filter((l) => !l.avisado).length, avisadosEmail: ls.filter((l) => l.avisado).length,
+      aAvisarWhatsapp: ls.filter((l) => l.whatsapp).length };
+  }
   const storage = {
     async assinar(bucket, caminho, segundos) { assinadas.push({ bucket, caminho, segundos }); return 'https://p.supabase.co/storage/v1/object/sign/' + bucket + '/' + caminho + '?token=t'; },
     async remover(bucket, caminhos) { if (op.removerFalha) throw new Error('Storage: falha ao apagar'); removidos.push({ bucket, caminhos }); }
@@ -96,7 +118,7 @@ function preparar(op) {
   async function fetch(url, o) {
     if (String(url) === 'https://api.resend.com/emails') {
       enviados.push(JSON.parse(o.body));
-      if (op.resendFalha) return new Response('{"message":"x"}', { status: 500 });
+      if (op.resendFalha || (op.resendFalhaPara && JSON.parse(o.body).to.includes(op.resendFalhaPara))) return new Response('{"message":"x"}', { status: 500 });
       return new Response('{"id":"em_1"}', { status: 200 });
     }
     if (String(url) === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') {
@@ -107,8 +129,10 @@ function preparar(op) {
     throw new Error('teste: chamada externa inesperada para ' + url);
   }
   const env = Object.assign({ VAGAS_SITE_URL: SITE + '/', RESEND_API_KEY: 're_teste', VAGAS_EMAIL_REMETENTE: 'Vagas sem Caos <vagas@gestaosemcaos.com.br>' }, op.env);
-  const base = { env, fetch, db, auth, storage, aleatorio: () => 'senha-aleatoria-' + (n + 1) };
-  return { base, usuarios, contas, operadores, links, enviados, captchas, chamadasLimite, excluidos, fotosPedidas, assinadas, removidos, apps, convites };
+  const pausas = [];
+  const base = { env, fetch, db, auth, storage, aleatorio: () => 'senha-aleatoria-' + (n + 1), esperar: async (ms) => { pausas.push(ms); } };
+  return { base, usuarios, contas, operadores, links, enviados, captchas, chamadasLimite, excluidos, fotosPedidas, assinadas, removidos, apps, convites,
+    lista, avisos, pausas };
 }
 
 async function chamar(base, corpo, op) {
@@ -485,9 +509,13 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
   await b.storage.remover('vagas-fotos', ['u1/foto.jpg']);
   await b.db.conviteEquipe('u1', EMPRESA, 'a@b.com', '1.2.3.4', '');
   await b.db.exclusaoConferir('u1');
+  await b.db.avisoLote('u1', 'uruacu-go', 25);
+  await b.db.avisoMarcar('u1', 'uruacu-go', [EMPRESA], []);
   assert.deepEqual(chamadas.map((c) => c[0] === 'rpc' ? c[1] : c[0]), ['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar',
     'vagas_conta_quem', 'createUser', 'generateLink', 'deleteUser', 'vagas_conta_foto', 'assinar', 'remover', 'vagas_conta_convite_equipe',
-    'vagas_conta_exclusao_conferir']);
+    'vagas_conta_exclusao_conferir', 'vagas_conta_aviso_lote', 'vagas_conta_aviso_marcar']);
+  assert.deepEqual(chamadas[12][2], { p_user: 'u1', p_cidade: 'uruacu-go', p_limite: 25 });
+  assert.deepEqual(chamadas[13][2], { p_user: 'u1', p_cidade: 'uruacu-go', p_enviados: [EMPRESA], p_falhas: [] });
   assert.deepEqual(chamadas[11][2], { p_user: 'u1' });
   assert.deepEqual(chamadas[10][2], { p_user: 'u1', p_empresa: EMPRESA, p_email: 'a@b.com', p_cf: '1.2.3.4', p_xff: '' });
   assert.deepEqual(chamadas[7][2], { p_user: 'u1', p_candidatura: null });
@@ -495,4 +523,126 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
   assert.deepEqual(chamadas[0][2], { p_acao: 'cadastrar', p_cf: '1.2.3.4', p_xff: '', p_email: 'a@b.com', p_ator: null });
   assert.deepEqual(chamadas[4][1], { email: 'a@b.com', password: 's', email_confirm: false, app_metadata: { produto: 'vagas', tipo: 'pessoa' }, user_metadata: {} });
   assert.deepEqual(chamadas[5][1], { type: 'invite', email: 'a@b.com' });
+});
+
+// ---- Aviso de abertura (avisar_lista_espera, migração 20261024120002) ----
+const ID = (n) => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
+const AVISO_CAMPOS = ['aAvisarWhatsapp', 'cidade', 'enviados', 'falhas', 'ok', 'restantes', 'terminou'];
+
+test('avisar_lista_espera: só a equipe (operador, empresa e pessoa não); cidade conferida; sem e-mail configurado não reserva ninguém', async () => {
+  const mundo = (env) => preparar({ admins: ['adm'], env, jwts: { 'jwt-adm': 'adm', 'jwt-op': 'op', 'jwt-p': 'p' },
+    usuarios: [{ id: 'op', email: 'op@x.com', conta: { tipo: 'operacao' }, operador: [{ cidade: 'uruacu-go', papel: 'operador' }] },
+      { id: 'p', email: 'p@x.com', conta: { tipo: 'pessoa' } }],
+    lista: [{ id: ID(1), email: 'ana@exemplo.com' }] });
+  const w = mundo();
+  const pede = (jwt, corpo) => chamar(w.base, Object.assign({ acao: 'avisar_lista_espera', cidade: 'uruacu-go' }, corpo), { jwt });
+  assert.deepEqual((await pede(null)).json, { ok: false, erro: 'Sessão expirada. Entre de novo.', sessaoExpirada: true });
+  assert.deepEqual((await pede('jwt-ruim')).json, { ok: false, erro: 'Sessão expirada. Entre de novo.', sessaoExpirada: true });
+  assert.deepEqual((await pede('jwt-op')).json, { ok: false, erro: 'Sem permissão.' }, 'nem a operação da própria cidade');
+  assert.deepEqual((await pede('jwt-p')).json, { ok: false, erro: 'Sem permissão.' });
+  for (const cidade of ['', 'Uruaçu', '../x', 'a'.repeat(61), 'uruacu--go']) {
+    assert.deepEqual((await pede('jwt-adm', { cidade })).json, { ok: false, erro: 'Cidade não encontrada.' }, cidade);
+  }
+  assert.equal(w.avisos.length, 0, 'nada foi reservado');
+  assert.equal(w.enviados.length, 0);
+  const sem = mundo({ RESEND_API_KEY: '' });
+  assert.deepEqual((await chamar(sem.base, { acao: 'avisar_lista_espera', cidade: 'uruacu-go' }, { jwt: 'jwt-adm' })).json,
+    { ok: false, erro: VAGAS_MSG_EMAIL_NAO_CONFIGURADO, naoConfigurado: true });
+  assert.equal(sem.avisos.length, 0, 'sem e-mail configurado, ninguém é marcado como avisado');
+  // O erro do banco volta só com a mensagem (cidade fechada, sem permissão...).
+  const fechada = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' },
+    avisoLote: () => ({ ok: false, erro: 'A cidade ainda não está aberta. Abra a cidade antes de avisar a lista de espera.', detalhe: 'x' }) });
+  assert.deepEqual((await chamar(fechada.base, { acao: 'avisar_lista_espera', cidade: 'niquelandia-go' }, { jwt: 'jwt-adm' })).json,
+    { ok: false, erro: 'A cidade ainda não está aberta. Abra a cidade antes de avisar a lista de espera.' });
+  const quebrado = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' }, avisoLote: () => null });
+  assert.deepEqual((await chamar(quebrado.base, { acao: 'avisar_lista_espera', cidade: 'uruacu-go' }, { jwt: 'jwt-adm' })).json,
+    { ok: false, erro: 'Erro interno no servidor. Tente novamente em instantes.' });
+});
+
+test('avisar_lista_espera: em lotes (padrão 25, até 50), um e-mail por pessoa com a marca, link de criar conta e de sair com token; a tela recebe só contagens', async () => {
+  const w = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' }, lista: [
+    { id: ID(1), email: 'ana@exemplo.com' }, { id: ID(2), email: 'loja@exemplo.com', perfil: 'empresa', whatsapp: true },
+    { id: ID(3), email: 'bia@exemplo.com' }, { id: ID(4), email: 'caio@exemplo.com', cidade: 'outra-go' }] });
+  const pede = (limite) => chamar(w.base, { acao: 'avisar_lista_espera', cidade: 'Uruacu-GO', limite }, { jwt: 'jwt-adm' });
+  const r1 = (await pede(2)).json;
+  assert.deepEqual(r1, { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 2, falhas: 0, restantes: 1, aAvisarWhatsapp: 1, terminou: false });
+  assert.deepEqual(Object.keys(r1).sort(), AVISO_CAMPOS);
+  assert.ok(!JSON.stringify(r1).includes('@') && !JSON.stringify(r1).includes('abababab'), 'nenhum e-mail nem token na resposta');
+  assert.deepEqual(w.avisos[0], { lote: ['adm', 'uruacu-go', 2] });
+  assert.deepEqual(w.avisos[1], { marcar: ['adm', 'uruacu-go', [ID(1), ID(2)], []] });
+  assert.deepEqual(w.enviados.map((e) => e.to[0]), ['ana@exemplo.com', 'loja@exemplo.com']);
+  assert.deepEqual(w.pausas, [600], 'uma pausa entre um e-mail e outro');
+  const [pessoa, empresa] = w.enviados;
+  const tk = (id) => w.lista.find((l) => l.id === id).token;
+  assert.equal(pessoa.subject, 'O Vagas sem Caos chegou a Uruaçu');
+  assert.match(pessoa.text, /Você pediu para ser avisado\(a\) quando o Vagas sem Caos abrisse em Uruaçu\./);
+  assert.ok(pessoa.text.includes('Criar minha conta: ' + SITE + '/entrar.html#criar'));
+  assert.ok(pessoa.text.includes('Sair da lista de espera: ' + SITE + '/emprego.html?cidade=uruacu-go&sair=' + tk(ID(1)) + '#sair'));
+  assert.ok(pessoa.html.includes(SITE + '/emprego.html?cidade=uruacu-go&amp;sair=' + tk(ID(1)) + '#sair'));
+  assert.ok(empresa.text.includes('Criar a conta da empresa: ' + SITE + '/entrar.html?tipo=empresa#criar'));
+  assert.ok(empresa.text.includes(SITE + '/empresas.html?cidade=uruacu-go&sair=' + tk(ID(2)) + '#sair'));
+  assert.match(empresa.text, /CNPJ \(MEI também serve\)/);
+  for (const e of w.enviados) {
+    assert.ok(e.html.includes('Gestão sem Caos') && /Nunca pague/i.test(e.text), 'moldura da marca e o aviso contra golpe');
+    assert.ok(!/notus/i.test(e.html + e.text));
+    assert.ok(!e.text.includes(tk(ID(1)) + tk(ID(2))), 'cada e-mail leva só o próprio token');
+  }
+  assert.ok(!pessoa.text.includes(tk(ID(2))) && !empresa.text.includes(tk(ID(1))));
+  // Segundo lote: o que falta; depois, nada a fazer (não chama o marcar à toa).
+  assert.deepEqual((await pede(2)).json, { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 1, falhas: 0, restantes: 0, aAvisarWhatsapp: 1, terminou: true });
+  const n = w.avisos.length;
+  assert.deepEqual((await pede(2)).json, { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 0, falhas: 0, restantes: 0, aAvisarWhatsapp: 1, terminou: true });
+  assert.equal(w.avisos.length, n + 1, 'lote vazio: sem marcar');
+  assert.deepEqual(w.enviados.map((e) => e.to[0]), ['ana@exemplo.com', 'loja@exemplo.com', 'bia@exemplo.com'], 'ninguém recebe duas vezes; outra cidade fica de fora');
+  // Tamanho do lote: padrão 25; de 1 a 50.
+  for (const [pedido, vai] of [[undefined, 25], ['', 25], ['abc', 25], [0, 1], [-3, 1], [7, 7], ['12', 12], [999, 50]]) {
+    w.avisos.length = 0;
+    await pede(pedido);
+    assert.deepEqual(w.avisos[0].lote[2], vai, String(pedido));
+  }
+});
+
+test('avisar_lista_espera: falha de um endereço volta para a fila (o resto do lote segue); entrada estranha do banco não vira e-mail', async () => {
+  const w = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' }, resendFalhaPara: 'bia@exemplo.com',
+    lista: [{ id: ID(1), email: 'ana@exemplo.com' }, { id: ID(2), email: 'bia@exemplo.com' }, { id: ID(3), email: 'caio@exemplo.com' }] });
+  const pede = () => chamar(w.base, { acao: 'avisar_lista_espera', cidade: 'uruacu-go' }, { jwt: 'jwt-adm' });
+  assert.deepEqual((await pede()).json, { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 2, falhas: 1, restantes: 1, aAvisarWhatsapp: 0, terminou: false });
+  assert.deepEqual(w.avisos[1], { marcar: ['adm', 'uruacu-go', [ID(1), ID(3)], [ID(2)]] });
+  // Próxima rodada: só a Bia de novo (e falha de novo; continua na fila, sem repetir para os outros).
+  assert.deepEqual((await pede()).json, { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 0, falhas: 1, restantes: 1, aAvisarWhatsapp: 0, terminou: false });
+  assert.deepEqual(w.enviados.map((e) => e.to[0]), ['ana@exemplo.com', 'bia@exemplo.com', 'caio@exemplo.com', 'bia@exemplo.com']);
+  // O banco devolveu algo estranho: id que não é UUID é ignorado; e-mail inválido conta como falha (volta para a fila).
+  const estranho = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' }, avisoLote: () => ({ ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' },
+    lote: [{ id: 'x', email: 'a@x.com' }, { id: ID(5), email: 'sem-arroba' }, null, { id: ID(6), email: 'ok@x.com', perfil: 'golpe', sairToken: '<script>' }],
+    contagens: { aAvisarEmail: 0 } }) });
+  const r = (await chamar(estranho.base, { acao: 'avisar_lista_espera', cidade: 'uruacu-go' }, { jwt: 'jwt-adm' })).json;
+  assert.equal(r.enviados, 1);
+  assert.equal(r.falhas, 1);
+  assert.deepEqual(estranho.avisos[1].marcar.slice(2), [[ID(6)], [ID(5)]]);
+  assert.deepEqual(estranho.enviados.map((e) => e.to[0]), ['ok@x.com']);
+  assert.ok(estranho.enviados[0].text.includes('Criar minha conta: ' + SITE + '/entrar.html#criar'), 'perfil desconhecido: e-mail de pessoa');
+  assert.ok(estranho.enviados[0].text.includes('/emprego.html?cidade=uruacu-go#sair') && !estranho.enviados[0].text.includes('script'), 'token fora do formato: link sem token');
+  // Marcar falhou: erro genérico (quem foi reservado fica como avisado — nunca dois e-mails para a mesma pessoa).
+  const marcar = preparar({ admins: ['adm'], jwts: { 'jwt-adm': 'adm' }, avisoMarcarFalha: true, lista: [{ id: ID(1), email: 'ana@exemplo.com' }] });
+  assert.deepEqual((await chamar(marcar.base, { acao: 'avisar_lista_espera', cidade: 'uruacu-go' }, { jwt: 'jwt-adm' })).json,
+    { ok: false, erro: 'Erro interno no servidor. Tente novamente em instantes.' });
+});
+
+test('aviso de abertura: links e e-mail (pessoa e empresa), escapados, com a marca', () => {
+  const T = 'c'.repeat(64);
+  assert.deepEqual(linksAvisoAbertura({}, 'uruacu-go', 'pessoa', T),
+    { criar: SITE + '/entrar.html#criar', sair: SITE + '/emprego.html?cidade=uruacu-go&sair=' + T + '#sair' });
+  assert.deepEqual(linksAvisoAbertura({ VAGAS_SITE_URL: 'https://vagas-gestaosemcaos.pages.dev/' }, 'uruacu-go', 'empresa', ''),
+    { criar: 'https://vagas-gestaosemcaos.pages.dev/entrar.html?tipo=empresa#criar', sair: 'https://vagas-gestaosemcaos.pages.dev/empresas.html?cidade=uruacu-go#sair' });
+  assert.equal(linksAvisoAbertura({}, 'uruacu-go', 'pessoa', 'C'.repeat(64)).sair, SITE + '/emprego.html?cidade=uruacu-go#sair', 'só hexadecimal minúsculo');
+  for (const perfil of ['pessoa', 'empresa']) {
+    const m = montarEmailVagas('cidadeAbriu', { cidade: '<b>Uruaçu</b>', perfil, url: SITE + '/entrar.html#criar', urlSair: SITE + '/x?a=1&b="2"' });
+    assert.equal(m.assunto, 'O Vagas sem Caos chegou a <b>Uruaçu</b>', 'assunto é texto puro');
+    assert.ok(!m.html.includes('<b>Uruaçu</b>') && m.html.includes('&lt;b&gt;Uruaçu&lt;/b&gt;'));
+    assert.ok(m.html.includes('/x?a=1&amp;b=&quot;2&quot;') && !m.html.includes('b="2"'));
+    assert.ok(m.html.indexOf('Sair da lista de espera') < m.html.indexOf('Se o botão não funcionar') || !m.html.includes('Se o botão não funcionar'));
+    assert.ok(m.html.includes('Gestão sem Caos') && !/notus/i.test(m.html + m.texto));
+    assert.match(m.texto, /o seu e-mail sai da lista de espera desta cidade/);
+  }
+  assert.ok(!montarEmailVagas('cidadeAbriu', { cidade: 'Uruaçu', url: SITE }).html.includes('Sair da lista'), 'sem link de saída, sem o parágrafo');
 });
