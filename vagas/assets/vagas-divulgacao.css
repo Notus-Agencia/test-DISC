@@ -23,10 +23,13 @@ body.vg-div.vg-com-barra { padding-bottom: calc(112px + env(safe-area-inset-bott
 .vg-div-pilulas li { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border-radius: var(--raio-pilula); background: rgba(255, 255, 255, .62); font-size: var(--t-rotulo); font-weight: 600; }
 .vg-div-pilulas .icone { width: 16px; height: 16px; }
 
+/* Situação da cidade ("Ainda não abriu…"): espaço guardado desde o HTML, para nada pular quando o dado chega */
+.vg-div-hero__situacao { min-height: 2.9em; margin-top: 8px; font-weight: 600; line-height: 1.45; }
 .vg-div--empresa .vg-div-hero { color: var(--branco); }
 .vg-div--empresa .vg-div-hero .sobretitulo { color: var(--ambar); }
 .vg-div--empresa .vg-div-hero__texto { color: rgba(255, 255, 255, .82); font-size: var(--t-corpo); }
-.vg-div-hero__acoes { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+.vg-div-hero__acoes { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.vg-div--empresa .vg-div-hero__acoes { margin-top: 22px; min-height: 106px; }   /* lugar do "Falar no WhatsApp" */
 .vg-div-hero__acoes .botao, .vg-div-hero__acoes .vg-div-pendente { width: 100%; }
 .vg-div-fatos { margin: 24px 0 0; display: grid; gap: 10px; }
 .vg-div-fatos > div { padding: 14px 16px; border-radius: 16px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .14); }
@@ -93,14 +96,23 @@ body.vg-div.vg-com-barra { padding-bottom: calc(112px + env(safe-area-inset-bott
 .vg-div-chamada__texto { margin-top: 8px; color: var(--medio); }
 .vg-div-chamada .vg-estado { padding: 24px 0 8px; }
 .vg-div-form { margin-top: 18px; }
-.vg-div-form .campo__ajuda { font-size: var(--t-rotulo); }
+.vg-div-form .campo__ajuda, .vg-div-sair .campo__ajuda { font-size: var(--t-rotulo); }
+.vg-div-chamada .campo__ajuda { color: var(--medio); }   /* sobre o vidro: contraste AA com --medio */
+/* Foco do campo bem visível (o .entrada da base tira o contorno): borda azul-escura grossa */
+.vg-div .entrada:focus, .vg-div .entrada:focus-visible { border-color: var(--tinta); box-shadow: 0 0 0 1px var(--tinta); }
+/* Isca para robô: fora da tela, fora do Tab e do leitor de tela */
+.vg-div-isca { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 .vg-div-ok { margin-top: 18px; font-size: var(--t-corpo); }
 .vg-div-ok .acoes { margin-top: 12px; }
 .vg-div-chamada .acoes { margin-top: 18px; }
-.vg-div-nota { margin-top: 12px; font-size: var(--t-nota); color: var(--suave); }
+.vg-div-nota { margin-top: 12px; font-size: var(--t-nota); color: var(--medio); }
 .vg-div-nota a { color: var(--medio); }
 /* Link sozinho na linha ("Já tenho conta", outras cidades): alvo de toque de 44 px */
 #vg-ja-tenho-conta, #vg-outras-cidades a { display: inline-flex; align-items: center; min-height: 44px; }
+#vg-outras-cidades a { padding-inline: 8px; }
+.vg-div-canal { margin-top: 12px; }
+.vg-div-canal a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-weight: 600; color: var(--tinta); }
+.vg-div-canal .icone { color: var(--notus-forte); }
 .vg-div-sair { margin-top: 4px; font-size: var(--t-rotulo); }
 .vg-div-sair summary { display: inline-flex; align-items: center; min-height: 44px; color: var(--medio); text-decoration: underline; cursor: pointer; list-style: none; }
 .vg-div-sair summary::-webkit-details-marker { display: none; }
@@ -150,17 +162,31 @@ body.vg-div.vg-com-barra { padding-bottom: calc(112px + env(safe-area-inset-bott
 
 /* ---------- Rodapé ---------- */
 .vg-div-rodape { padding: 8px 16px 32px; }
-.vg-div-rodape__interno { max-width: 720px; margin: 0 auto; display: grid; justify-items: center; gap: 8px; text-align: center; font-size: var(--t-nota); color: var(--suave); }
-.vg-div-rodape a { color: var(--medio); display: inline-block; padding: 12px 0; }
+.vg-div-rodape__interno { max-width: 720px; margin: 0 auto; display: grid; justify-items: center; gap: 8px; text-align: center; font-size: var(--t-nota); color: var(--medio); }
+.vg-div-rodape a { color: var(--medio); display: inline-block; padding: 13px 0; }
+.vg-div-rodape__extra { display: grid; justify-items: center; gap: 8px; }
+.vg-div-rodape .vg-div-sair { text-align: left; }
 
 /* ---------- Barra fixa com a ação principal (sempre à mão; some quando a chamada está na tela) ---------- */
 .vg-div-barra { transition: transform .25s var(--curva), opacity .25s var(--curva); }
 .vg-div-barra--oculta { transform: translateY(110%); opacity: 0; pointer-events: none; }
 .vg-div-barra .botao { gap: 6px; }
+.vg-div-barra .barra-dica { color: var(--medio); }
+/* Com o WhatsApp: ele fica só com o ícone (quadrado de 48 px) e a ação fica com o resto da linha (cabe a 360 px) */
+.vg-div-barra .vg-div-barra__botoes--whats { grid-template-columns: 48px minmax(0, 1fr); }
+.vg-div-barra .vg-div-barra__whats { padding: 0; }
+/* O que o Tab alcança não fica escondido atrás da barra */
+html { scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
+
+/* ---------- Só na prévia: "ver como" (cidade em espera | cidade aberta) ---------- */
+.vg-div-previa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; font-size: var(--t-rotulo); color: var(--medio); }
+.vg-div-previa .segmento { margin-bottom: 0; background: var(--branco); }
+.vg-div-previa .segmento__botao { min-height: 44px; }
 
 /* ---------- Telas maiores ---------- */
 @media (min-width: 480px) {
-  .vg-div-hero__acoes { flex-direction: row; flex-wrap: wrap; }
+  .vg-div-hero__acoes { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+  .vg-div--empresa .vg-div-hero__acoes { min-height: 48px; }
   .vg-div-hero__acoes .botao, .vg-div-hero__acoes .vg-div-pendente { width: auto; }
 }
 @media (min-width: 640px) {

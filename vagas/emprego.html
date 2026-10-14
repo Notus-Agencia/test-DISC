@@ -4,23 +4,22 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://*.supabase.co; font-src 'self'; connect-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Emprego pelo celular, de graça | Vagas sem Caos</title>
-  <meta name="description" content="Faça seu currículo pelo celular, mostre o que você sabe fazer e apareça para as empresas da sua cidade. Grátis para quem procura trabalho. Sempre.">
-  <meta name="robots" content="noindex">
+  <title>Vagas de emprego da sua cidade, de graça | Vagas sem Caos</title>
+  <meta name="description" content="Vagas de carteira assinada, bico e diária de empresas da sua cidade, num lugar só. Currículo pelo celular. Grátis para quem procura trabalho. Sempre.">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#13283f">
   <link rel="canonical" href="https://vagas.gestaosemcaos.com.br/emprego">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="pt_BR">
   <meta property="og:site_name" content="Vagas sem Caos">
-  <meta property="og:title" content="Mostre o que você sabe fazer | Vagas sem Caos">
-  <meta property="og:description" content="Currículo pelo celular, teste da função e vagas de empresas da sua cidade. Grátis para quem procura trabalho. Sempre.">
+  <meta property="og:title" content="Vagas de emprego da sua cidade, de graça | Vagas sem Caos">
+  <meta property="og:description" content="Carteira assinada, bico e diária. Currículo pelo celular. Grátis para quem procura trabalho. Sempre.">
   <meta property="og:url" content="https://vagas.gestaosemcaos.com.br/emprego">
   <meta property="og:image" content="https://vagas.gestaosemcaos.com.br/assets/divulgacao-emprego.png">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Vagas sem Caos: mostre o que você sabe fazer. Grátis para quem procura trabalho.">
+  <meta property="og:image:alt" content="Vagas sem Caos: vagas de emprego da sua cidade. Grátis para quem procura trabalho. Sempre.">
   <meta name="twitter:card" content="summary_large_image">
   <script src="js/endereco.js"></script>
   <link rel="icon" type="image/svg+xml" href="comum/marca/gsc-favicon.svg">
@@ -43,6 +42,7 @@
     <symbol id="i-whatsapp" viewBox="0 0 24 24"><path d="M3 21l1.6-4.6A8.5 8.5 0 1 1 8 19.3z"/><path d="M9 9.5c.3 2 2.5 4.2 4.5 4.5l1.5-1.5 2 1-1 2c-4 0-8-4-8-8l2-1 1 2z"/></symbol>
     <symbol id="i-pessoa" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></symbol>
     <symbol id="i-vagas" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></symbol>
+    <symbol id="i-ajuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"/></symbol>
     <symbol id="i-abrir" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   </svg>
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
@@ -57,9 +57,13 @@
   <main id="conteudo" class="vg-div__principal" tabindex="-1">
 
     <section class="vg-div-hero moldura-laranja" aria-labelledby="vg-div-titulo">
-      <p class="sobretitulo vg-div-hero__sobre" data-cidade="Emprego em {{cidade}}" hidden></p>
+      <p class="sobretitulo vg-div-hero__sobre" id="vg-div-sobre">Emprego na sua cidade</p>
       <h1 class="vg-div-hero__titulo" id="vg-div-titulo" tabindex="-1">Mostre o que você sabe fazer.</h1>
-      <p class="vg-div-hero__texto">E apareça para as empresas <span data-cidade="de {{cidade}}">da sua cidade</span>.</p>
+      <p class="vg-div-hero__texto" id="vg-div-hero-texto">Vagas de carteira assinada, bico e diária de empresas da sua cidade, num lugar só.</p>
+      <p class="vg-div-hero__situacao" id="vg-div-situacao"></p>
+      <div class="vg-div-hero__acoes" id="vg-topo-acoes">
+        <a class="botao botao--principal botao--grande" id="vg-topo-acao" href="#vg-chamada" data-divulgacao-acao>Começar</a>
+      </div>
       <ul class="vg-div-pilulas" aria-label="Em resumo">
         <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Grátis, sempre</li>
         <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-celular"/></svg>Tudo pelo celular</li>
@@ -72,79 +76,46 @@
       <ul class="caixa vg-div-duvidas">
         <li>
           <span class="vg-div-icone"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-escudo"/></svg></span>
-          <p><strong>É golpe?</strong> Toda vaga é de empresa com CNPJ conferido pela Gestão sem Caos.</p>
+          <p><strong>É golpe?</strong> Toda vaga é de empresa com CNPJ conferido pela Gestão sem Caos. Mesmo assim, empresa nenhuma pode cobrar de você.</p>
         </li>
         <li>
           <span class="vg-div-icone"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-moeda"/></svg></span>
           <p><strong>Vão me cobrar?</strong> Não. Para quem procura trabalho, é grátis sempre.</p>
         </li>
         <li>
-          <span class="vg-div-icone"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-vagas"/></svg></span>
-          <p><strong>Precisa de experiência?</strong> Não para se cadastrar. Tem vaga que não pede.</p>
+          <span class="vg-div-icone"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-oculto"/></svg></span>
+          <p><strong>Vão ver minha cara?</strong> Antes do Combinou, não: a empresa não vê seu nome nem sua foto.</p>
         </li>
         <li>
-          <span class="vg-div-icone"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-oculto"/></svg></span>
-          <p><strong>Vão ver minha cara?</strong> Não. Seu nome e sua foto só aparecem se você aceitar conversar.</p>
+          <span class="vg-div-icone"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-vagas"/></svg></span>
+          <p><strong>Precisa de experiência?</strong> Não. Bico e trabalho sem carteira também contam no currículo. Tem vaga que não pede experiência.</p>
         </li>
       </ul>
       <div class="vg-golpe vg-div-golpe" id="vg-aviso-golpe" role="note">
         <svg class="icone" aria-hidden="true" focusable="false"><use href="#i-escudo"/></svg>
-        <p><strong>Nunca pague para se candidatar.</strong> Se alguém pedir dinheiro, Pix ou documento em nome do Vagas sem Caos, é golpe.</p>
+        <p><strong>Nunca pague para se candidatar.</strong> Se alguém pedir dinheiro, Pix ou documento em nome do Vagas sem Caos, é golpe. Empresa nenhuma pode cobrar de você: nem taxa, nem curso, nem exame, nem uniforme.</p>
       </div>
     </section>
 
-    <section class="vg-div-secao" aria-labelledby="vg-div-passos-titulo">
-      <h2 class="vg-div-secao__titulo" id="vg-div-passos-titulo">Como funciona</h2>
+    <section class="vg-div-secao" aria-labelledby="vg-div-como-titulo">
+      <h2 class="vg-div-secao__titulo" id="vg-div-como-titulo">Como funciona</h2>
       <ol class="vg-div-passos">
         <li>
           <p class="vg-div-passos__forte">Faça seu currículo pelo celular, em 5 passos.</p>
+          <p class="vg-div-passos__apoio">Bico e trabalho sem carteira também contam.</p>
         </li>
         <li>
-          <p class="vg-div-passos__forte">Faça o teste da sua função e ganhe o selo.</p>
-          <p class="vg-div-passos__apoio">Conhecimento prático da função, feito online. São 15 questões, de graça.</p>
+          <p class="vg-div-passos__forte">Se quiser, faça o teste da sua função e tente o selo.</p>
+          <p class="vg-div-passos__apoio">Não é obrigatório para se candidatar. Tem teste para algumas funções: 15 questões, de 20 a 25 minutos, de graça. Se não for bem, a empresa não fica sabendo: ela só vê o selo.</p>
         </li>
         <li>
           <p class="vg-div-passos__forte">Nas vagas que interessam, toque em "Quero".</p>
         </li>
         <li>
-          <p class="vg-div-passos__forte">Se a empresa também quiser, vocês conversam.</p>
-          <p class="vg-div-passos__apoio">Você escolhe quando liberar o seu WhatsApp.</p>
+          <p class="vg-div-passos__forte">Se a empresa quiser conversar, vocês conversam por aqui, sem número.</p>
+          <p class="vg-div-passos__apoio">Se você tocar em "Combinou", os dois passam a ver nome, WhatsApp e e-mail.</p>
         </li>
       </ol>
-    </section>
-
-    <section class="vg-div-secao" aria-labelledby="vg-div-cego-titulo">
-      <h2 class="vg-div-secao__titulo" id="vg-div-cego-titulo">A empresa vê primeiro o que você sabe</h2>
-      <p class="vg-div-secao__texto">Sem nome e sem foto. Assim conta o que você sabe, não a sua aparência.</p>
-      <figure class="caixa caixa--destaque vg-div-cartao">
-        <figcaption class="vg-div-cartao__legenda"><span class="selo">Exemplo</span> O que a empresa vê antes de vocês combinarem</figcaption>
-        <ul class="vg-div-cartao__linhas">
-          <li class="vg-div-cartao__fora"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-oculto"/></svg>Nome: só se você aceitar conversar</li>
-          <li class="vg-div-cartao__fora"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-oculto"/></svg>Foto: não aparece</li>
-          <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-check"/></svg>O que você já fez e onde estudou</li>
-          <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-selo"/></svg>Selo de habilidade testada</li>
-        </ul>
-      </figure>
-    </section>
-
-    <section class="vg-div-secao" aria-labelledby="vg-div-decide-titulo">
-      <h2 class="vg-div-secao__titulo" id="vg-div-decide-titulo">Você decide</h2>
-      <ul class="vg-div-lista">
-        <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Você escolhe com quem conversar.</li>
-        <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-whatsapp"/></svg>Seu WhatsApp só aparece quando você liberar.</li>
-        <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-oculto"/></svg>Pode parar de compartilhar quando quiser.</li>
-      </ul>
-    </section>
-
-    <section class="vg-div-secao" aria-labelledby="vg-div-tipos-titulo">
-      <h2 class="vg-div-secao__titulo" id="vg-div-tipos-titulo">Tipos de vaga</h2>
-      <ul class="vg-div-tipos">
-        <li>Carteira assinada</li>
-        <li>Bico e diária</li>
-        <li>Temporário</li>
-        <li>Estágio</li>
-      </ul>
-      <p class="vg-div-secao__texto" data-texto="avisos.bico_um_toque">Diária não pede teste: é só tocar em "Quero". Se combinar, o contato aparece para os dois.</p>
     </section>
 
     <section class="caixa caixa--vidro vg-div-chamada" id="vg-chamada" aria-labelledby="vg-chamada-titulo" data-divulgacao-acao>
@@ -155,59 +126,99 @@
       </div>
     </section>
 
+    <section class="vg-div-secao" aria-labelledby="vg-div-tipos-titulo">
+      <h2 class="vg-div-secao__titulo" id="vg-div-tipos-titulo">Tipos de vaga</h2>
+      <ul class="vg-div-tipos">
+        <li>Carteira assinada</li>
+        <li>Bico e diária</li>
+        <li>Temporário</li>
+        <li>Estágio</li>
+      </ul>
+      <p class="vg-div-secao__texto">Em qualquer vaga, é só tocar em "Quero": o teste nunca é obrigatório. Se combinar, o contato aparece para os dois.</p>
+      <p class="vg-div-secao__texto vg-div-idade">Para quem tem 18 anos ou mais.</p>
+    </section>
+
+    <section class="vg-div-secao" aria-labelledby="vg-div-cego-titulo">
+      <h2 class="vg-div-secao__titulo" id="vg-div-cego-titulo">A empresa vê primeiro o que você sabe</h2>
+      <p class="vg-div-secao__texto">Sem nome, sem foto e sem idade. Assim vale primeiro o que você sabe, não a sua aparência.</p>
+      <figure class="caixa caixa--destaque vg-div-cartao">
+        <figcaption class="vg-div-cartao__legenda"><span class="selo">Exemplo</span> O que a empresa vê antes do Combinou</figcaption>
+        <ul class="vg-div-cartao__linhas">
+          <li class="vg-div-cartao__fora"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-oculto"/></svg>Nome: só depois do Combinou</li>
+          <li class="vg-div-cartao__fora"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-oculto"/></svg>Foto: só depois do Combinou, se você puser</li>
+          <li class="vg-div-cartao__fora"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-oculto"/></svg>Idade e nome das empresas onde você trabalhou: não aparecem</li>
+          <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-check"/></svg>O que você já fez, seu nível de escolaridade e seus cursos</li>
+          <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-selo"/></svg>Selo de habilidade testada, se você tiver</li>
+        </ul>
+      </figure>
+    </section>
+
+    <section class="vg-div-secao" aria-labelledby="vg-div-decide-titulo">
+      <h2 class="vg-div-secao__titulo" id="vg-div-decide-titulo">Você decide</h2>
+      <ul class="vg-div-lista">
+        <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Você escolhe com quem conversar.</li>
+        <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-whatsapp"/></svg>Seu nome e seu contato só aparecem se você tocar em "Combinou".</li>
+        <li><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-oculto"/></svg>Pode cortar o acesso ao seu contato quando quiser. Quem já salvou seu número continua com ele.</li>
+      </ul>
+    </section>
+
+    <section class="caixa caixa--suave vg-div-ajuda" id="vg-div-ajuda" aria-labelledby="vg-div-ajuda-titulo" hidden>
+      <h2 class="vg-div-secao__titulo" id="vg-div-ajuda-titulo">Precisa de ajuda?</h2>
+      <p class="vg-div-secao__texto">Precisa de ajuda com o currículo, ou de adaptação para fazer o teste? Fale com a Gestão sem Caos.</p>
+      <div class="acoes" id="vg-ajuda-acoes"></div>
+    </section>
+
     <section class="vg-div-secao" aria-labelledby="vg-div-faq-titulo">
       <h2 class="vg-div-secao__titulo" id="vg-div-faq-titulo">Perguntas</h2>
       <div class="caixa vg-div-faq">
         <details class="vg-div-pergunta">
-          <summary>É grátis mesmo?<svg class="icone" aria-hidden="true" focusable="false"><use href="#i-abrir"/></svg></summary>
-          <p>Sim. Currículo, testes, selo e candidaturas são de graça, sempre. Você nunca paga para se candidatar.</p>
-        </details>
-        <details class="vg-div-pergunta">
           <summary>Meus dados ficam expostos?<svg class="icone" aria-hidden="true" focusable="false"><use href="#i-abrir"/></svg></summary>
-          <p>Não. Até vocês combinarem de conversar, a empresa vê um cartão sem nome, sem foto e sem contato.</p>
+          <p>Seu nome, sua foto e seu contato, não. Até o Combinou, a empresa vê um cartão sem nome, sem foto, sem idade, sem contato e sem o nome das empresas onde você trabalhou.</p>
           <p>Na tela "Meus dados", você vê, corrige, exporta e apaga tudo que está na sua conta. Não precisa pedir a ninguém.</p>
         </details>
         <details class="vg-div-pergunta">
           <summary>E se for golpe?<svg class="icone" aria-hidden="true" focusable="false"><use href="#i-abrir"/></svg></summary>
           <p>Nunca pague para se candidatar. Se alguém pedir dinheiro, Pix ou documento em nome do Vagas sem Caos, é golpe.</p>
+          <p>Nenhuma empresa pode cobrar para contratar: nem taxa, nem curso, nem exame, nem uniforme. Documento, só na contratação, depois de conhecer a empresa. Nunca passe código que chegou por SMS.</p>
           <p>Toda vaga tem o link "Denunciar esta vaga". A denúncia é confidencial: quem foi denunciado não sabe quem denunciou.</p>
+          <p data-com-whatsapp hidden>Pediram dinheiro? Denuncie a vaga ou chame a Gestão sem Caos no WhatsApp.</p>
+        </details>
+        <details class="vg-div-pergunta">
+          <summary>E se eu não for bem no teste?<svg class="icone" aria-hidden="true" focusable="false"><use href="#i-abrir"/></svg></summary>
+          <p>A empresa não fica sabendo: ela só vê o selo. <span data-padrao="refazer">Não conseguiu o selo? Pode refazer depois de 30 dias, de graça.</span></p>
+          <p>Faça com calma, quando tiver uns 20 minutos. Se parar no meio, conta como tentativa: o próximo teste só em 30 dias. Se a internet cair, continua de onde parou.</p>
         </details>
         <details class="vg-div-pergunta">
           <summary>Preciso ter feito curso?<svg class="icone" aria-hidden="true" focusable="false"><use href="#i-abrir"/></svg></summary>
-          <p>Não. O teste mede o que você sabe hoje do básico da função.</p>
-          <p data-padrao="refazer">Não conseguiu o selo? Pode refazer depois de 30 dias, de graça.</p>
-        </details>
-        <details class="vg-div-pergunta">
-          <summary>Preciso ter experiência?<svg class="icone" aria-hidden="true" focusable="false"><use href="#i-abrir"/></svg></summary>
-          <p>Não para se cadastrar. Cada vaga diz o que pede, e tem vaga que não pede experiência.</p>
-        </details>
-        <details class="vg-div-pergunta">
-          <summary>Vão ver minha foto?<svg class="icone" aria-hidden="true" focusable="false"><use href="#i-abrir"/></svg></summary>
-          <p>Só se você quiser. A foto é opcional e só aparece para a empresa depois que vocês combinarem de conversar.</p>
+          <p>Não. O teste mede o que você sabe hoje do básico da função. E ele não é obrigatório.</p>
         </details>
         <details class="vg-div-pergunta">
           <summary>O que é o selo?<svg class="icone" aria-hidden="true" focusable="false"><use href="#i-abrir"/></svg></summary>
-          <p>É o resultado do teste da função: conhecimento prático, feito online. Mostra o teste, a data e a nota. Vale 12 meses.</p>
+          <p>É o resultado do teste da função: conhecimento prático, feito online. Mostra o teste, a data e a nota, com margem de cerca de 10 pontos. Vale 12 meses.</p>
           <p>O teste não mede inteligência nem personalidade.</p>
         </details>
         <details class="vg-div-pergunta">
+          <summary>Não tenho e-mail. E agora?<svg class="icone" aria-hidden="true" focusable="false"><use href="#i-abrir"/></svg></summary>
+          <p>Quem usa celular Android já tem um: é o Gmail do celular. Se quiser, deixe também o WhatsApp.</p>
+        </details>
+        <details class="vg-div-pergunta">
           <summary>Quem pode se cadastrar?<svg class="icone" aria-hidden="true" focusable="false"><use href="#i-abrir"/></svg></summary>
-          <p>Quem tem 18 anos ou mais.</p>
+          <p>Quem tem 18 anos ou mais. Com 16 ou 17 anos, ainda não.</p>
         </details>
       </div>
     </section>
 
     <section class="caixa caixa--suave vg-div-amigo" aria-labelledby="vg-div-amigo-titulo">
       <h2 class="vg-div-secao__titulo" id="vg-div-amigo-titulo">Conhece alguém procurando emprego?</h2>
-      <p class="vg-div-secao__texto">Mande o link pelo WhatsApp. Para quem procura trabalho, é grátis.</p>
+      <p class="vg-div-secao__texto">Mande pelo WhatsApp. Para quem procura trabalho, é grátis.</p>
       <div class="acoes">
-        <a class="botao botao--claro botao--grande" id="vg-amigo" data-amigo target="_blank" rel="noopener" href="https://wa.me/?text=Oi!%20Conhece%20o%20Vagas%20sem%20Caos%3F%20Vagas%20de%20empresas%20da%20cidade%2C%20de%20gra%C3%A7a%20e%20pelo%20celular.%20Nunca%20pague%20para%20se%20candidatar.%20https%3A%2F%2Fvagas.gestaosemcaos.com.br%2Femprego"><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-whatsapp"/></svg>Mandar para um amigo</a>
+        <a class="botao botao--claro botao--grande" id="vg-amigo" data-amigo target="_blank" rel="noopener" href="https://wa.me/?text=Vagas%20sem%20Caos%3A%20vagas%20de%20empresas%20da%20cidade%2C%20de%20gra%C3%A7a%20e%20pelo%20celular.%20https%3A%2F%2Fvagas.gestaosemcaos.com.br%2Femprego%3Fde%3Dindicacao%20%C2%B7%20Nunca%20pague%20para%20se%20candidatar."><svg class="icone" aria-hidden="true" focusable="false"><use href="#i-whatsapp"/></svg>Mandar no WhatsApp</a>
       </div>
     </section>
   </main>
 
   <footer class="vg-div-rodape">
-    <div class="vg-div-rodape__interno">
+    <div class="vg-div-rodape__interno" id="vg-div-rodape">
       <img class="logo-gsc logo-gsc--pequeno" src="comum/marca/gsc-logo.svg" alt="Gestão sem Caos" width="157" height="22">
       <p>Vagas sem Caos · uma ferramenta da Gestão sem Caos</p>
       <p class="vg-div-rodape__links"><a href="empresas.html">É empresa? Anuncie sua vaga</a> · <a href="termos.html">Termos de uso</a> · <a href="privacidade.html">Aviso de privacidade</a></p>
