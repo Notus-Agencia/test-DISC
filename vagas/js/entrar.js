@@ -36,7 +36,7 @@
     linkExpirado: 'O link expirou ou já foi usado. Peça outro na tela de entrada.',
     cnpj: 'CNPJ inválido. Confira os 14 números.',
     empresaTitulo: 'Vagas da sua cidade com quem fez o teste da função.',
-    empresaApoio: 'Você publica em 5 minutos, recebe cartões sem nome por ordem de chegada e conversa só com quem também quer a vaga. Uma ferramenta da Gestão sem Caos.',
+    empresaApoio: 'Você publica em 5 minutos, recebe cartões sem nome por ordem de chegada e conversa só com quem também quer a vaga. Uma empresa do grupo Gestão sem Caos.',
     empresaNota: 'Sem senha agora: você cria a senha ao abrir o link do e-mail. Depois disso, a operação confere o CNPJ (em geral no mesmo dia útil). Você já pode escrever a vaga enquanto espera.'
   };
   var ESPERA_REENVIO = 60;
@@ -146,7 +146,7 @@
       lado = el('div', { class: 'login__noite moldura-noite' });
       U.trocar(app, [
         el('div', { class: 'login__laranja moldura-laranja' }, [
-          el('img', { class: 'logo-gsc logo-gsc--grande', src: 'comum/marca/gsc-logo-preto.svg', alt: 'Gestão sem Caos', width: '256', height: '36' }),
+          el('img', { class: 'logo-gsc logo-gsc--grande', src: 'comum/marca/vsc-logo-preto.svg', alt: 'Vagas sem Caos', width: '240', height: '36' }),
           el('div', {}, [el('p', { class: 'login__titulo' }, TXT.empresaTitulo), el('p', { class: 'login__apoio' }, TXT.empresaApoio),
             el('ol', { class: 'login__passos', 'aria-label': 'Como funciona' }, [
               el('li', { class: 'login__passo login__passo--noite' }, [el('span', { class: 'login__num' }, '1'), el('span', {}, 'Cadastre o CNPJ ou MEI')]),
@@ -161,8 +161,8 @@
       lado = el('div', { class: 'vg-entrada__lado' });
       U.trocar(app, [
         el('section', { class: 'vg-entrada__moldura moldura-laranja', 'aria-label': 'Vagas sem Caos' }, [
-          el('img', { class: 'logo-gsc', src: 'comum/marca/gsc-logo-preto.svg', alt: 'Gestão sem Caos', width: '199', height: '28' }),
-          el('p', { class: 'vg-entrada__produto' }, 'Vagas sem Caos'), el('p', { class: 'vg-entrada__frase' }, TXT.frase)]),
+          el('img', { class: 'logo-gsc logo-gsc--grande', src: 'comum/marca/vsc-logo-preto.svg', alt: 'Vagas sem Caos', width: '240', height: '36' }),
+          el('p', { class: 'vg-entrada__frase' }, TXT.frase)]),
         lado
       ]);
     }

@@ -187,9 +187,12 @@
   function hrefVagas() { return ctx.cidade ? 'cidade.html?cidade=' + encodeURIComponent(ctx.cidade.slug) : 'index.html'; }
   function demonstracao() { return A && A.modo === 'previa'; }
 
-  // Faixa da prévia: as questões são de demonstração (nunca as da prova real).
+  // Faixa da prévia: as questões são de demonstração (nunca as da prova real). Uma faixa só por tela: com a faixa geral da prévia
+  // (VAGAS_UI.faixaPrevia), o aviso das questões entra dentro dela.
   function marcarDemonstracao() {
     if (!demonstracao() || doc.getElementById('vg-faixa-demo')) return;
+    var geral = doc.getElementById('vg-faixa-previa');
+    if (geral) { geral.appendChild(doc.createTextNode(' ')); geral.appendChild(el('strong', { id: 'vg-faixa-demo' }, TXT.DEMONSTRACAO)); return; }
     var faixa = el('div', { class: 'faixa-demo', id: 'vg-faixa-demo', role: 'note' }, el('strong', {}, TXT.DEMONSTRACAO));
     var pular = doc.querySelector('.pular');
     doc.body.insertBefore(faixa, pular ? pular.nextSibling : doc.body.firstChild);

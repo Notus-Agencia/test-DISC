@@ -10,7 +10,7 @@
 4. **Sem telefone de empresa** no boletim: o contato é pelo link da vaga (protege a empresa de spam e a pessoa de golpe).
 5. **Salário ou diária sempre** (é obrigatório no anúncio).
 6. **Sem promessa:** nada de "garantido", "chance maior", "perfil ideal", "aprovado".
-7. **Marca:** "Vagas sem Caos · uma ferramenta da Gestão sem Caos". Nunca "Tinder", "match", nome de agência.
+7. **Marca:** "Vagas sem Caos · uma empresa do grupo Gestão sem Caos". Nunca "Tinder", "match", nome de agência.
 8. **Postagem à mão** no Canal e nos grupos parceiros (botão "Copiar boletim do dia" no painel [Prod]); nenhum disparador não oficial.
 9. **Horário:** boletim até 9h em dia útil; post semanal na segunda; rádio na terça (entrega) e veiculação conforme a rádio.
 10. **Correção:** vaga retirada do ar (golpe, encerrada) → editar/avisar no Canal no mesmo dia: "A vaga X saiu do ar."
@@ -41,14 +41,14 @@ Vagas novas, todas de empresas conferidas (CNPJ ativo):
 Candidatura é grátis, sempre. Mostre o que você sabe fazer: faça o teste da função no celular e ganhe o selo de habilidade testada.
 Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.
 Todas as vagas: vagas.gestaosemcaos.com.br/uruacu-go
-_Vagas sem Caos · uma ferramenta da Gestão sem Caos_
+_Vagas sem Caos · uma empresa do grupo Gestão sem Caos_
 ```
 
 Variações: sem vaga nova no dia → não publicar "nada hoje"; publicar "3 vagas ainda abertas" (reaproveitar as de maior interesse). Julho (Exposição Agropecuária e férias no lago, HIPÓTESE de sazonalidade): bloco de diárias primeiro. Os salários do modelo são fictícios.
 
 ## 2. Post semanal ("vaga da semana", segunda-feira)
 
-Formato: 1 imagem (modelo da identidade visual: laranja + azul-escuro, logo da Gestão sem Caos) + legenda curta. Uma vaga em destaque (a de maior salário ou mais interessante) + número da semana.
+Formato: 1 imagem (modelo da identidade visual: laranja + azul-escuro, logo do Vagas sem Caos e, pequeno, "Uma empresa do grupo" + logo da Gestão sem Caos) + legenda curta. Uma vaga em destaque (a de maior salário ou mais interessante) + número da semana.
 
 **Legenda modelo:**
 
@@ -60,13 +60,13 @@ A empresa vê seu cartão sem nome e sem foto; o contato só aparece quando os d
 Esta semana: 9 vagas novas · 3 empresas novas · 28 pessoas com selo. (números fictícios do modelo)
 Link na bio · vagas.gestaosemcaos.com.br/uruacu-go
 Candidatura é grátis, sempre. Nunca pague para se candidatar; se alguém pedir em nosso nome, é golpe.
-Vagas sem Caos · uma ferramenta da Gestão sem Caos
+Vagas sem Caos · uma empresa do grupo Gestão sem Caos
 ```
 
 Para a empresa (versão alternada, a cada 2 semanas) [Marca]:
 
 ```
-Contratou e, em 15 dias, a pessoa não sabia dar o troco? No Vagas sem Caos, quem se candidata já fez o teste do básico da função. Você vê o resultado, chama só quem também quer a vaga e decide na entrevista. Anunciar é grátis no lançamento. Uma ferramenta da Gestão sem Caos.
+Contratou e, em 15 dias, a pessoa não sabia dar o troco? No Vagas sem Caos, quem se candidata já fez o teste do básico da função. Você vê o resultado, chama só quem também quer a vaga e decide na entrevista. Anunciar é grátis no lançamento. Uma empresa do grupo Gestão sem Caos.
 ```
 
 ## 3. Spot de rádio (30 segundos)
@@ -80,7 +80,7 @@ Procurando emprego em Uruaçu? O Vagas sem Caos reúne vagas de empresas daqui, 
 Mostre o que você sabe fazer: faça o teste da função no celular e ganhe o selo de habilidade testada.
 É grátis para se candidatar, sempre. Nunca pague para concorrer a uma vaga: se alguém pedir dinheiro em nosso nome, é golpe.
 Entre em vagas ponto gestão sem caos ponto com ponto be erre.
-Vagas sem Caos, uma ferramenta da Gestão sem Caos.
+Vagas sem Caos, uma empresa do grupo Gestão sem Caos.
 ```
 
 **Versão "boletim da semana" (lido pelo locutor):**
@@ -88,7 +88,7 @@ Vagas sem Caos, uma ferramenta da Gestão sem Caos.
 ```
 Vagas da semana em Uruaçu, pelo Vagas sem Caos: atendente de loja no Centro, operador de caixa na região sul, auxiliar administrativo no Centro e diária de ajudante de evento na quarta. Salário na vaga, empresa conferida.
 Para se candidatar, grátis, entre em vagas ponto gestão sem caos ponto com ponto be erre.
-Nunca pague para se candidatar. Vagas sem Caos, uma ferramenta da Gestão sem Caos.
+Nunca pague para se candidatar. Vagas sem Caos, uma empresa do grupo Gestão sem Caos.
 ```
 
 **Versão empresa (semanas 9–12):**
@@ -96,7 +96,7 @@ Nunca pague para se candidatar. Vagas sem Caos, uma ferramenta da Gestão sem Ca
 ```
 Sua empresa em Uruaçu precisa contratar? No Vagas sem Caos, quem se candidata já fez o teste do básico da função.
 Veja quem já provou o básico da função e converse só com quem também quer a vaga. A decisão de contratar continua sendo sua. Grátis no lançamento.
-Vagas ponto gestão sem caos ponto com ponto be erre. Uma ferramenta da Gestão sem Caos.
+Vagas ponto gestão sem caos ponto com ponto be erre. Uma empresa do grupo Gestão sem Caos.
 ```
 
 ## 4. Lista de checagem antes de publicar (operador)
@@ -107,4 +107,4 @@ Vagas ponto gestão sem caos ponto com ponto be erre. Uma ferramenta da Gestão 
 - [ ] Nenhuma palavra proibida (idade, sexo, aparência, estado civil, nacionalidade)
 - [ ] Frase anti-golpe presente
 - [ ] Links curtos abrem (testei 2)
-- [ ] Assinatura "uma ferramenta da Gestão sem Caos"
+- [ ] Assinatura "uma empresa do grupo Gestão sem Caos"
