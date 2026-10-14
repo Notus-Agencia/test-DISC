@@ -9,8 +9,10 @@ const API = require('../vagas/js/api.js');
 
 const URL_SB = 'https://exemplo.supabase.co';
 const CHAVE = 'sb_publishable_teste';
-const SQL = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20261022120000_vagas.sql'), 'utf8');
-const SQL_FUNDACAO = SQL;
+// A 20261024 (onda 2) acrescenta e redefine RPCs (painel da praça, equipe da empresa, lista de espera com WhatsApp).
+const SQL = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20261022120000_vagas.sql'), 'utf8') +
+  fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20261024120000_vagas_onda2.sql'), 'utf8');
+const SQL_FUNDACAO = SQL;   // o teste de contrato junta a migração dos testes (20261023) a esta
 
 function memoria() {
   const m = {};
@@ -239,4 +241,42 @@ test('foto: grava e apaga direto no Storage com o login da pessoa; URL assinada 
   assinar = false;
   assert.equal((await api.contatoPessoa('11111111-2222-3333-4444-555555555555')).pessoa.fotoUrl, '', 'sem URL quando o banco não deixa');
   await assert.rejects(api.fotoUrl('11111111-2222-3333-4444-555555555555'), (e) => e.semCombinou === true);
+});
+
+test('onda 2: painel da praça, equipe da empresa e convite por e-mail (Edge Function, com a sessão)', async () => {
+  assert.deepEqual(['indicadores', 'equipeDaEmpresa', 'cancelarConvite', 'removerMembro', 'conviteEquipe', 'aceitarConviteEquipe'].map((m) => API.METODOS[m].rpc),
+    ['vagas_op_indicadores', 'vagas_equipe_empresa', 'vagas_equipe_convite_cancelar', 'vagas_equipe_remover', 'vagas_equipe_convite', 'vagas_equipe_convite_aceitar']);
+  assert.ok(['indicadores', 'equipeDaEmpresa', 'cancelarConvite', 'removerMembro', 'conviteEquipe', 'aceitarConviteEquipe'].every((m) => !API.METODOS[m].publico));
+  // Recursos anunciados para as telas (a lista da cidade liga o campo de WhatsApp por aqui).
+  assert.deepEqual(API.RECURSOS, { listaEsperaWhatsapp: true });
+  assert.deepEqual(API.criar({ modo: 'supabase', url: URL_SB, chave: CHAVE, fetch: () => Promise.reject(new Error('x')), armazenamento: memoria() }).RECURSOS,
+    { listaEsperaWhatsapp: true });
+  // Pedidos da operação: opIndicadores (= indicadores, com o prefixo das outras da operação), opAssistidos, admCidades, admOperadores.
+  assert.deepEqual(['opIndicadores', 'opAssistidos', 'admCidades', 'admOperadores'].map((m) => [API.METODOS[m].rpc, API.METODOS[m].p, !!API.METODOS[m].publico]),
+    [['vagas_op_indicadores', ['p_cidade'], false], ['vagas_op_assistidos', ['p_filtro'], false], ['vagas_adm_cidades', [], false],
+      ['vagas_adm_operadores', ['p_filtro'], false]]);
+  const arm = memoria();
+  arm.setItem(API.CHAVE_SESSAO, JSON.stringify({ access_token: 'tok1', refresh_token: 'ref1', expires_at: relogio / 1000 + 3600, user: { id: 'u1', email: 'a@b.co' } }));
+  const { api, fetch } = criar([
+    ['/rest/v1/rpc/vagas_op_indicadores', () => resposta(200, { ok: true, indicadores: [], gatilhos: [] })],
+    ['/rest/v1/rpc/vagas_equipe_remover', () => resposta(200, { ok: false, erro: 'A empresa precisa ter pelo menos uma pessoa como dona. Esta pessoa não pode sair da equipe.' })],
+    ['/functions/v1/vagas-conta', () => resposta(200, { ok: true, enviado: true, mensagem: 'Pronto.', email: 'n***@e***.com', convite: { id: 'c1' } })]
+  ], arm);
+  await api.indicadores('uruacu-go');
+  assert.deepEqual(fetch.chamadas[0].corpo, { p_cidade: 'uruacu-go' });
+  assert.equal(fetch.chamadas[0].cabecalhos.Authorization, 'Bearer tok1');
+  await assert.rejects(api.removerMembro('e1', 'u2'), (e) => /pelo menos uma pessoa como dona/.test(e.message));
+  assert.deepEqual(fetch.chamadas[1].corpo, { p_empresa: 'e1', p_membro: 'u2' });
+  const r = await api.convidarEquipe('e1', 'nova@exemplo.com');
+  assert.equal(r.convite.id, 'c1');
+  assert.deepEqual(fetch.chamadas[2].corpo, { acao: 'convite_equipe', empresaId: 'e1', email: 'nova@exemplo.com' });
+  assert.equal(fetch.chamadas[2].cabecalhos.Authorization, 'Bearer tok1');
+  // Convite no endereço: sozinho ou junto do link do e-mail; só 64 hex.
+  const tk = 'ab'.repeat(32);
+  assert.equal(API.conviteDoEndereco({ search: '?convite=' + tk }), tk);
+  assert.equal(API.conviteDoEndereco({ search: '?token_hash=abc12345&type=invite&convite=' + tk.toUpperCase() }), tk);
+  assert.deepEqual(API.linkDoEndereco({ search: '?token_hash=abc12345&type=invite&convite=' + tk }), { tokenHash: 'abc12345', tipo: 'invite' });
+  assert.equal(API.conviteDoEndereco({ search: '?convite=' + tk + 'ff' }), '');
+  assert.equal(API.conviteDoEndereco({ search: '' }), '');
+  assert.equal(API.conviteDoEndereco(null), '');
 });

@@ -5,7 +5,7 @@
  *   - Supabase (VAGAS_CONFIG.MODO = 'supabase'): fetch direto nas RPCs (/rest/v1/rpc/<nome>) e no Auth (/auth/v1/...), sem o
  *     supabase-js (páginas leves para celular simples). A sessão (access/refresh token) fica no localStorage ('vagas_sessao') e é
  *     renovada sozinha. As contas são criadas pela Edge Function vagas-conta (/functions/v1/vagas-conta).
- *   - Prévia (VAGAS_CONFIG.MODO = 'previa'): vagas/js/api-previa.js (carregado sob demanda), dados fictícios de Boa Vista neste
+ *   - Prévia (VAGAS_CONFIG.MODO = 'previa'): vagas/js/api-previa.js (carregado sob demanda), dados fictícios de Uruaçu (GO) neste
  *     navegador, com as mesmas regras e mensagens do banco.
  *
  * Todo método devolve uma Promise que RESOLVE com o JSON {ok:true, ...} da RPC ou REJEITA com Error em português, com:
@@ -23,12 +23,19 @@
  *   pedirReferencia(dados), conviteReferencia(token), responderReferencia(refId, acao), minhasReferencias, referenciasDaEmpresa(empresaId),
  *   publicarReferencias(ligar); operação — opResumo, opEmpresas(filtro), opEmpresaDecidir(id, acao, motivo), opEmpresaCadastrar(dados),
  *   opVincularMembro(empresaId, email), opAnuncios(filtro), opAnuncioSalvar(dados) (vaga assistida), opAnuncioDecidir(id, acao, motivo), opDenuncias(filtro),
- *   opDenunciaDecidir(id, dados), opModeracao(filtro), opReferencias(filtro), opReferenciaDecidir(id, acao, motivo);
- *   equipe — admCidadeSalvar(dados), admZonaSalvar(dados), admOperadorSalvar(dados).
+ *   opDenunciaDecidir(id, dados), opModeracao(filtro), opReferencias(filtro), opReferenciaDecidir(id, acao, motivo),
+ *   indicadores(cidade) = opIndicadores(cidade) (painel da praça: só números agregados; migração 20261024),
+ *   opAssistidos(filtro) (cadastros assistidos pendentes, e-mail mascarado; 20261024);
+ *   equipe da empresa (20261024) — equipeDaEmpresa(empresaId), cancelarConvite(conviteId), removerMembro(empresaId, userId),
+ *   conviteEquipe(token), aceitarConviteEquipe(token);
+ *   equipe da Gestão sem Caos — admCidadeSalvar(dados), admZonaSalvar(dados), admOperadorSalvar(dados), admCidades(),
+ *   admOperadores(filtro) (as duas da 20261024).
  * Conta e sessão: cadastrar({email, tipo, nome?, termosVersao?, captcha?}), reenviarConfirmacao(email, captcha?),
  *   esqueciSenha(email, captcha?), cadastroAssistido({email, tipo, cidade, empresaId?, nome?, codigoEvento?}),
- *   convidarOperador({email, cidade, papel, cidadeNome?}), excluirConta(), entrar(email, senha) -> resposta de eu(),
+ *   convidarOperador({email, cidade, papel, cidadeNome?}), convidarEquipe(empresaId, email) (só dono(a); resposta neutra),
+ *   excluirConta(), entrar(email, senha) -> resposta de eu(),
  *   sair(), sessao() -> {ok, usuario:{id, email}}, linkDoEndereco(location) -> {tokenHash, tipo} | null,
+ *   conviteDoEndereco(location) -> token do convite de equipe (?convite=…) | '', RECURSOS ({listaEsperaWhatsapp:true}),
  *   confirmarLink({tokenHash, tipo}) -> {ok, tipo, precisaSenha:true}, definirSenha(senha) -> {ok}.
  * Foto OPCIONAL da pessoa (bucket privado 'vagas-fotos' do Storage): enviarFoto(arquivo File/Blob jpg|png|webp ≤ 1 MB) -> {ok, temFoto},
  *   apagarFoto() -> {ok, temFoto:false}, fotoUrl(candidaturaId?) -> {ok, url, expiraEm} (URL assinada de 5 min pela Edge Function:
@@ -136,12 +143,26 @@
     opModeracao: { rpc: 'vagas_op_moderacao', p: ['p_filtro'] },
     opReferencias: { rpc: 'vagas_op_referencias', p: ['p_filtro'] },
     opReferenciaDecidir: { rpc: 'vagas_op_referencia_decidir', p: ['p_referencia', 'p_acao', 'p_motivo'] },
+    indicadores: { rpc: 'vagas_op_indicadores', p: ['p_cidade'] },
+    opIndicadores: { rpc: 'vagas_op_indicadores', p: ['p_cidade'] },   // o mesmo, com o prefixo das outras da operação
+    opAssistidos: { rpc: 'vagas_op_assistidos', p: ['p_filtro'] },
+    admCidades: { rpc: 'vagas_adm_cidades', p: [] },
+    admOperadores: { rpc: 'vagas_adm_operadores', p: ['p_filtro'] },
+    equipeDaEmpresa: { rpc: 'vagas_equipe_empresa', p: ['p_empresa'] },
+    cancelarConvite: { rpc: 'vagas_equipe_convite_cancelar', p: ['p_convite'] },
+    removerMembro: { rpc: 'vagas_equipe_remover', p: ['p_empresa', 'p_membro'] },
+    conviteEquipe: { rpc: 'vagas_equipe_convite', p: ['p_token'] },
+    aceitarConviteEquipe: { rpc: 'vagas_equipe_convite_aceitar', p: ['p_token'] },
     admCidadeSalvar: { rpc: 'vagas_adm_cidade_salvar', p: ['p_dados'] },
     admZonaSalvar: { rpc: 'vagas_adm_zona_salvar', p: ['p_dados'] },
     admOperadorSalvar: { rpc: 'vagas_adm_operador_salvar', p: ['p_dados'] }
   };
   // Valores padrão quando o argumento não vem (as RPCs recebem objeto, nunca null).
   var PADRAO = { p_filtro: {}, p_dados: {}, p_motivo: '', p_id: null };
+  // O que este cliente (e o banco que ele espera) já sabe fazer, para a tela ligar o campo novo só quando existir.
+  // listaEsperaWhatsapp: listaEspera/listaEsperaSair aceitam "whatsapp" (migração 20261024; no modo supabase, publicar o site
+  // só depois de aplicá-la — antes dela o banco ignoraria o número).
+  function recursos() { return { listaEsperaWhatsapp: true }; }
 
   function erroDe(json, extra) {
     var e = new Error((json && json.erro) ? String(json.erro) : MSG_RECUSA);
@@ -179,6 +200,12 @@
     var tipo = p.type;
     if (!/^[A-Za-z0-9_-]{8,200}$/.test(String(p.token_hash || '')) || ['invite', 'recovery', 'magiclink', 'signup', 'email'].indexOf(tipo) < 0) return null;
     return { tokenHash: String(p.token_hash), tipo: tipo };
+  }
+
+  // Convite de equipe (?convite=<64 hex>) lido do endereço atual; vem sozinho ou junto do link do e-mail (token_hash).
+  function conviteDoEndereco(loc) {
+    var m = /[?&]convite=([0-9a-fA-F]{64})(?:&|$)/.exec(String((loc && loc.search) || ''));
+    return m ? m[1].toLowerCase() : '';
   }
 
   // localStorage -> sessionStorage -> memória (a sessão abre mesmo em navegador que bloqueia o armazenamento; na memória ela dura
@@ -344,6 +371,7 @@
     api.esqueciSenha = function (email, captcha) { return funcao({ acao: 'esqueci', email: email, captcha: captcha || '' }, false); };
     api.cadastroAssistido = function (d) { return funcao(Object.assign({ acao: 'assistido' }, d || {}), true); };
     api.convidarOperador = function (d) { return funcao(Object.assign({ acao: 'operador' }, d || {}), true); };
+    api.convidarEquipe = function (empresaId, email) { return funcao({ acao: 'convite_equipe', empresaId: empresaId || '', email: email || '' }, true); };
     api.excluirConta = function () {
       return funcao({ acao: 'excluir', confirmar: 'EXCLUIR' }, true).then(function (r) { guardarSessao(null); return r; });
     };
@@ -369,6 +397,7 @@
       });
     };
     api.linkDoEndereco = linkDoEndereco;
+    api.conviteDoEndereco = conviteDoEndereco;
     api.confirmarLink = function (link) {
       if (!link || !link.tokenHash) return Promise.reject(erroDe({ ok: false, erro: MSG_LINK, linkExpirado: true }));
       return pedir('/auth/v1/verify', { headers: cabecalhos(null), body: JSON.stringify({ type: link.tipo, token_hash: link.tokenHash }) }).then(function (r) {
@@ -414,6 +443,7 @@
     };
     api.fotoUrl = function (candidaturaId) { return funcao({ acao: 'foto', candidatura: candidaturaId || '' }, true); };
     comFotoNoContato(api);
+    api.RECURSOS = recursos();
     api.modo = 'supabase';
     return api;
   }
@@ -463,7 +493,7 @@
         return backend().then(function (b) { return b.rpc(def.rpc, args); }).then(resultado);
       };
     });
-    ['cadastrar', 'reenviarConfirmacao', 'esqueciSenha', 'cadastroAssistido', 'convidarOperador', 'excluirConta', 'entrar', 'sair', 'sessao',
+    ['cadastrar', 'reenviarConfirmacao', 'esqueciSenha', 'cadastroAssistido', 'convidarOperador', 'convidarEquipe', 'excluirConta', 'entrar', 'sair', 'sessao',
       'confirmarLink', 'definirSenha', 'apagarFoto', 'fotoUrl'].forEach(function (m) {
       api[m] = function () {
         var args = Array.prototype.slice.call(arguments);
@@ -484,6 +514,8 @@
     };
     comFotoNoContato(api);
     api.linkDoEndereco = linkDoEndereco;
+    api.conviteDoEndereco = conviteDoEndereco;
+    api.RECURSOS = recursos();
     api.modo = 'previa';
     return api;
   }
@@ -494,7 +526,7 @@
     return criarSupabase(op);
   }
 
-  var exportado = { criar: criar, METODOS: METODOS, linkDoEndereco: linkDoEndereco, CHAVE_SESSAO: CHAVE_SESSAO,
+  var exportado = { criar: criar, METODOS: METODOS, RECURSOS: recursos(), linkDoEndereco: linkDoEndereco, conviteDoEndereco: conviteDoEndereco, CHAVE_SESSAO: CHAVE_SESSAO,
     MSG: { CONEXAO: MSG_CONEXAO, SESSAO: MSG_SESSAO, BANCO: MSG_BANCO, LOGIN: MSG_LOGIN, CONFIRMAR: MSG_CONFIRMAR, LINK: MSG_LINK, SENHA: MSG_SENHA } };
   if (typeof module !== 'undefined' && module.exports) { module.exports = exportado; return; }
   var cfg = root.VAGAS_CONFIG || {};
