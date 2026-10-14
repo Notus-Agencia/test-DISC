@@ -1,6 +1,6 @@
 # Roteiro do mutirão · cadastro + prova presencial · Uruaçu (GO)
 
-*Gestão sem Caos · Vagas sem Caos · v2 (13/10/2026). No mínimo 1 mutirão por mês (decisão do painel). Tudo grátis para a pessoa. Atendimento por pessoa: até 25 minutos (mesa ≤ 10 min + prova de uns 15 min; o limite da prova é 20 min, 25 no teste de caixa, então quem usa o tempo todo passa um pouco dos 25).*
+*Gestão sem Caos · Vagas sem Caos · v3 (14/10/2026: tempo real da prova e capacidade da sala). No mínimo 1 mutirão por mês (decisão do painel). Tudo grátis para a pessoa. Atendimento por pessoa: cerca de 35 minutos (recepção e mesa ≈ 12 min + prova de 20 min, 25 no teste de caixa, + saída), ou seja, até uns 40 minutos com o teste de caixa. Capacidade da sala na seção 5.*
 
 ## 1. Objetivo e metas
 
@@ -54,8 +54,10 @@ Todo voluntário assina o termo de sigilo (modelo a criar pelo(a) advogado(a)) e
 | 3. Currículo: o mínimo | 4 | Mesa | Zona, funções de interesse e escolaridade; o resto (experiência, turnos, CNH, pretensão) ela completa em casa, o rascunho fica salvo no aparelho. Lembrar: "Quero" numa vaga só vale com o currículo completo. **A pessoa digita** | Campos mínimos salvos |
 | 4. Banco de talentos | 1 | Mesa | "Quer que empresas encontrem você na busca, por 12 meses? É opcional e dá para desligar." A pessoa marca ela mesma | Resposta dada |
 | 5. Documento | 2 | Mesa → prova | Documento com foto (RG, CNH, CTPS digital). A mesa confere que o nome do documento = nome da conta e que a pessoa tem 18 anos ou mais. **Não fotografa, não copia, não anota número** | Conferido |
-| 6. Prova | ~15 (limite 20; caixa 25) | Sala | A pessoa escolhe 1 teste (atendimento, vendas, administrativo, caixa ou português): 15 questões, uma por vez, sem voltar, no próprio celular, sem conversar. Tela obrigatória antes da prova: "Faça sozinho(a), sem consultar…" (`padroes.md` §5.7) | Prova finalizada: selo com nota, margem (±10) e código, ou "Ainda sem selo neste teste. Você pode refazer em 30 dias, de graça." |
+| 6. Prova | 20 (caixa 25) | Sala | A pessoa escolhe 1 teste (atendimento, vendas, administrativo, caixa ou português): 15 questões, uma por vez, sem voltar, no próprio celular, sem conversar. Tela obrigatória antes da prova: "Faça sozinho(a), sem consultar…" (`padroes.md` §5.7) | Prova finalizada: selo com nota, margem (±10) e código, ou "Ainda sem selo neste teste. Você pode refazer em 30 dias, de graça." |
 | 7. Saída | 1 | Recepção | "As vagas estão no site e no Canal de Uruaçu [link]. Nunca pague nada para se candidatar." | Pessoa sai com o link do Canal |
+
+**Capacidade (com o tempo real da prova: 20 min, 25 no teste de caixa).** Cada lugar da sala fica ocupado ~25 min por prova (20 de prova + ~5 para entrar, conferir o documento, ler a tela de instruções e liberar o lugar) ou ~30 min no teste de caixa: **2 provas por lugar por hora** (até 2,4 sem caixa). Sala de 10 lugares: **~20 provas por hora** (até 24 sem caixa). Num mutirão de 3 horas, a primeira prova começa uns 15 min depois de abrir (recepção + mesa) e a última precisa começar até 25 min antes de fechar (30 no caixa): ~2h15 de sala, **~45 provas no máximo**, o que cobre a meta de 30 com folga. O gargalo é a mesa: quem chega sem conta passa ~10 min nela, então 2 postos atendem ~12 pessoas por hora (~36 em 3 horas). Para chegar às 60 pessoas da meta, divulgar antes "crie a sua conta em casa" (quem já tem conta passa ~2 min na mesa) ou abrir um 3º posto de mesa (HIPÓTESE; conferir no 1º mutirão). Chamar a próxima senha para a sala só quando um lugar vagar.
 
 Quem já tem conta pula para o passo 5. Regra do motor: **1 tentativa por teste a cada 30 dias**. Quem fez a prova online há menos de 30 dias não consegue refazer o mesmo teste no mutirão (pode fazer outro). Avisar na recepção.
 
