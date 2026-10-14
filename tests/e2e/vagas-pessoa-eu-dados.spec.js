@@ -33,10 +33,12 @@ test('conta suspensa: faixa "só leitura" e a mensagem no lugar do "Carregando�
   await page.goto(BASE + 'entrar.html');
   await page.evaluate(async () => {
     await window.VAGAS_API.entrar('pessoa@previa.com', 'previa123');
-    const s = JSON.parse(localStorage.getItem('vagas_previa_v2'));
+    // O "banco" da prévia fica no armazenamento do navegador (a chave muda com a versão da semente).
+    const chave = Object.keys(localStorage).find((k) => /^vagas_previa_v\d+$/.test(k));
+    const s = JSON.parse(localStorage.getItem(chave));
     const u = s.usuarios.find((x) => x.email === 'pessoa@previa.com');
     s.contas[u.id].status = 'suspensa';
-    localStorage.setItem('vagas_previa_v2', JSON.stringify(s));
+    localStorage.setItem(chave, JSON.stringify(s));
   });
   await page.goto(BASE + 'eu.html#candidaturas');
   await expect(page.locator('#vg-faixa-suspensa')).toContainText('Esta conta está suspensa.');

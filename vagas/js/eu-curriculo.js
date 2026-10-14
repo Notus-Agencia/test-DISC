@@ -57,7 +57,8 @@
     }
     function carregar() {
       var p = pessoa();
-      var base = p ? L.cvDaPessoa(p) : L.cvVazio({ cidade: cidadePadrao() });
+      // Conta nova: o nome do cadastro ("Como quer ser chamada(o)", vagas_eu) já vem no "Nome e sobrenome" do passo 4.
+      var base = p ? L.cvDaPessoa(p) : L.cvVazio({ cidade: cidadePadrao(), nome: ctx.eu && ctx.eu.conta && ctx.eu.conta.nome });
       var g = L.rascunhoDaConta(rasc.ler(), ctx.email);
       ctx.cv = base;
       // Completo ao COMEÇAR: os passos gravam no banco quando tudo já está certo, então "completo" vira true antes do fim.

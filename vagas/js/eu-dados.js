@@ -39,7 +39,7 @@
     desenharBanco();
 
     var cabeca = el('div', { class: 'vg-eu-cabecalho' }, [
-      el('h1', { class: 'titulo-pagina', id: 'vg-eu-titulo', tabindex: '-1' }, (p && p.nome) || 'Eu'),
+      el('h1', { class: 'titulo-pagina', id: 'vg-eu-titulo', tabindex: '-1' }, (p && p.nome) || (ctx.eu.conta && ctx.eu.conta.nome) || 'Eu'),
       el('p', { class: 'subtitulo', id: 'vg-eu-subtitulo' }, [ctx.email].concat(cidades.length ? [cidades.join(' e ')] : []).join(' · '))]);
     U.trocar(ctx.app, [cabeca,
       el('section', { class: 'caixa caixa--compacta', 'aria-label': 'Minha conta' }, el('ul', { class: 'vg-lista-itens', id: 'vg-eu-lista' },

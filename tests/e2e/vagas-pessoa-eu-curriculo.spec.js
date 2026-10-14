@@ -35,14 +35,14 @@ async function entrarComo(page, email, destino) {
   await page.goto(BASE + 'eu.html#' + destino);
 }
 // Conta de pessoa nova (cadastro sem senha -> link da prévia -> senha), já logada.
-async function contaNova(page, email) {
+async function contaNova(page, email, nome) {
   await page.goto(BASE + 'entrar.html');
-  await page.evaluate(async (e) => {
-    const r = await window.VAGAS_API.cadastrar({ email: e, tipo: 'pessoa', nome: 'Pessoa Teste', termosVersao: window.VAGAS_REGRAS.VERSAO_TERMOS });
+  await page.evaluate(async ([e, n]) => {
+    const r = await window.VAGAS_API.cadastrar({ email: e, tipo: 'pessoa', nome: n || 'Pessoa Teste', termosVersao: window.VAGAS_REGRAS.VERSAO_TERMOS });
     const link = window.VAGAS_API.linkDoEndereco({ search: '?' + r.linkPrevia.split('?')[1] });
     await window.VAGAS_API.confirmarLink(link);
     await window.VAGAS_API.definirSenha('senha-boa-123');
-  }, email);
+  }, [email, nome]);
 }
 // Cidade ativa da semente (com zonas): o teste não sabe qual é, pergunta à API.
 async function cidadeAtiva(page) {
@@ -90,7 +90,7 @@ async function passo2(page) {
 
 test('conta nova: 5 passos com erro no campo certo, rascunho no aparelho, cartão cego sem nome e sem foto, "Currículo salvo"', async ({ page }) => {
   const erros = coletarErros(page);
-  await contaNova(page, 'curriculo.novo@exemplo.com');
+  await contaNova(page, 'curriculo.novo@exemplo.com', 'Joana');   // "Como quer ser chamada(o)": só o primeiro nome
   const c = await cidadeAtiva(page);
   await page.goto(BASE + 'eu.html');
   await expect(page).toHaveURL(/eu\.html#curriculo\/1$/);
@@ -131,6 +131,7 @@ test('conta nova: 5 passos com erro no campo certo, rascunho no aparelho, cartã
   await page.click('#vg-cv-avancar');
   await expect(page.locator('#vg-cv-turnos-erro')).toHaveText('Marque pelo menos um turno em que pode trabalhar.');
   await expect(page.locator('#vg-cv-modalidades-erro')).toHaveText('Marque pelo menos um tipo de vaga (CLT, temporário, diária, freelancer ou estágio).');
+  await expect(page.locator('#vg-cv-nome')).toHaveValue('Joana');   // nome do cadastro (vagas_eu) já vem preenchido
   await expect(page.locator('#vg-cv-nome-erro')).toHaveText('Informe seu nome e sobrenome.');
   await expect(page.locator('#vg-cv-whatsapp-erro')).toHaveText('Escreva o WhatsApp com DDD e o número do celular, só os números (11 dígitos).');
   await expect(page.locator('#vg-cv-turnos .vg-chip').first()).toBeFocused();

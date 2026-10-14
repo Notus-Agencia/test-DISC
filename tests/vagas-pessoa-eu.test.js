@@ -208,7 +208,9 @@ test('conta nova: preenche os 5 passos, salva no banco (completo) e o cartão lo
   const { cidades, cidade, zonasDe } = await cidadeAtiva(b);
   await contaNova(b, 'nova.pessoa@exemplo.com');
   assert.equal((await rpc(b, 'vagas_pessoa_minha')).completo, false);
-  const cv = L.cvVazio({ cidade: cidade.slug });
+  const eu = await rpc(b, 'vagas_eu');
+  const cv = L.cvVazio({ cidade: cidade.slug, nome: eu.conta.nome });
+  assert.equal(cv.nome, 'Pessoa Nova', 'o nome do cadastro já vem no passo 4');
   Object.assign(cv, { zona: cidade.zonas[0].slug, areas: ['atendimento', 'caixa'], escolaridade: 'medio', cursos: ['Atendimento ao cliente'], cnh: 'B',
     turnos: ['tarde', 'manha'], modalidades: ['diaria', 'clt'], pretensao: '1600', nome: 'Nova Pessoa Teste', whatsapp: '(62) 99123-4567', banco: false });
   cv.experiencias = [{ cargo: 'Atendente', onde: 'Loja do Centro', tempo: '1a3', inicio: L.inicioDoTempo('1a3', AGORA), fim: '', atual: false, carteira: 'sim', datas: false }];

@@ -3,7 +3,7 @@
  * vagas/js. As telas (eu-*.js) só desenham; tudo o que dá para testar no Node fica aqui (tests/vagas-pessoa-eu.test.js).
  *
  *   Currículo (docs/VAGAS-TELAS.md §2.6; contrato vagas_pessoa_salvar em docs/VAGAS-SPEC.md §8.3):
- *     cvVazio({cidade}) · cvDaPessoa(pessoa, agora) -> estado do formulário · pessoaDoCv(cv, {sobre, email}) -> p_dados
+ *     cvVazio({cidade, nome}) · cvDaPessoa(pessoa, agora) -> estado do formulário · pessoaDoCv(cv, {sobre, email}) -> p_dados
  *     validarPasso(n, cv, {zonasDe, agora}) -> [{campo, msg}] · primeiroPassoIncompleto(cv, op) -> 1..5 (6 = tudo certo)
  *     cartaoLocal(cv, {cidades, cartao, agora}) -> o MESMO cartão cego que o banco monta (prévia do passo 5)
  *     TEMPOS (pílulas de tempo), inicioDoTempo(id, agora), tempoDoPeriodo(inicio, fim, agora), carteiraDe(informal),
@@ -122,7 +122,7 @@
   function cvVazio(op) {
     op = op || {};
     return { cidades: op.cidade ? [op.cidade] : [], zona: '', areas: [], experiencias: [expVazia()], semExperiencia: false, escolaridade: '',
-      cursos: [], cnh: '', turnos: [], modalidades: [], pretensao: '', nome: '', whatsapp: '', banco: false };
+      cursos: [], cnh: '', turnos: [], modalidades: [], pretensao: '', nome: R.limparTexto(op.nome || '', 120), whatsapp: '', banco: false };
   }
   function ordenar(lista, ids) { return (ids || []).filter(function (x) { return (lista || []).indexOf(x) >= 0; }); }
   function idsDe(l) { return l.map(function (x) { return x.id; }); }
