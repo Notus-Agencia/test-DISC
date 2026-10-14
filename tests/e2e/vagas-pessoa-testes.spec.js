@@ -85,6 +85,11 @@ test('catálogo sem login: 5 testes, faixa de demonstração e textos fixos; ins
   await expect(page.locator('#vg-instrucoes-lista')).toContainText('Pode usar papel e caneta para as contas. Não use calculadora.');
   await expect(page.locator('#vg-prova-comecar')).toHaveText('Entrar para começar');
   await expect(page.locator('#vg-prova-comecar')).toHaveAttribute('href', 'entrar.html?voltar=' + encodeURIComponent('testes.html#teste/caixa'));
+  // "Pular para o conteúdo" (#app) não é rota: a pessoa continua nas instruções.
+  await page.focus('.pular');
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#teste\/caixa$/);
+  await expect(page.locator('#vg-instrucoes-titulo')).toHaveText('Caixa e matemática prática');
   await page.goto(BASE + 'testes.html#prova');
   await page.waitForURL(/entrar\.html\?voltar=testes\.html%23prova/);
   expect(erros).toEqual([]);
