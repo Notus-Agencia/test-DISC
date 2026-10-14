@@ -2422,7 +2422,7 @@
       var umAno = R.somarDias(hojeBV, 355);
       st.selos[pessoas[0]] = [{ teste: 'atendimento', nome: 'Atendimento e recepção', nota: 80, data: R.somarDias(hojeBV, -10), codigo: 'Q8V3N2KD',
         validoAte: umAno, supervisao: 'online' }];
-      st.selos[pessoas[4]] = [{ teste: 'caixa', nome: 'Operação de caixa', nota: 73, data: R.somarDias(hojeBV, -10), codigo: 'K7M2QX9A',
+      st.selos[pessoas[4]] = [{ teste: 'caixa', nome: 'Caixa e matemática prática', nota: 73, data: R.somarDias(hojeBV, -10), codigo: 'K7M2QX9A',
         validoAte: umAno, supervisao: 'online' }];
       st.sessao = null;
     }

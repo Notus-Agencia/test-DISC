@@ -163,6 +163,9 @@ test('anúncio "como produto": campos fechados (chaves do design), salário obri
   assert.deepEqual(lista('requisitos_vaga'), R.REQUISITOS_VAGA.map((x) => x.id));
   assert.deepEqual(lista('beneficios_vaga'), R.BENEFICIOS.map((x) => x.id));
   assert.deepEqual(lista('testes_selo'), R.TESTES_SELO.map((x) => x.id));
+  // Rótulos = nomes do catálogo (docs/VAGAS-TESTES.md), iguais no cartão da vaga e no selo.
+  const catalogo = fs.readFileSync(path.join(__dirname, '..', 'docs', 'VAGAS-TESTES.md'), 'utf8');
+  for (const t of R.TESTES_SELO) assert.ok(catalogo.includes('| ' + t.rotulo + ' (`' + t.id + '`) |'), t.id + ': ' + t.rotulo);
   const semente = /insert into public\.vagas_areas \(slug, nome, ordem\) values([\s\S]*?)on conflict/.exec(SQL)[1];
   assert.deepEqual([...semente.matchAll(/\('([a-z-]+)', '([^']+)', (\d+)\)/g)].map((m) => [m[1], m[2]]), R.AREAS.map((x) => [x.id, x.rotulo]));
   assert.equal(R.AREAS.length, 24);

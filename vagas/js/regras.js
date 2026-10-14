@@ -58,8 +58,9 @@
   var BENEFICIOS = lista([['vt', 'Vale-transporte'], ['refeicao', 'Refeição ou vale-refeição'], ['saude', 'Plano de saúde'],
     ['moradia', 'Moradia'], ['comissao', 'Comissão']]);
   // Testes que a vaga pode citar ("valoriza o selo"): informativo, NUNCA filtro nem corte.
-  var TESTES_SELO = lista([['atendimento', 'Atendimento e recepção'], ['vendas', 'Vendas'], ['administrativo', 'Rotinas administrativas'],
-    ['caixa', 'Operação de caixa'], ['portugues', 'Português para o trabalho']]);
+  // Rótulos = nomes do catálogo dos testes (docs/VAGAS-TESTES.md), para o "Pede selo: …" da vaga e o selo dizerem o mesmo.
+  var TESTES_SELO = lista([['atendimento', 'Atendimento e recepção'], ['vendas', 'Vendas no varejo'], ['administrativo', 'Rotina administrativa'],
+    ['caixa', 'Caixa e matemática prática'], ['portugues', 'Português prático']]);
   // Lista fechada de pontos fortes da referência profissional: os 12 comportamentos observáveis da psicologia (evidencias.md
   // §4A.4; a empresa marca até 3). Mesma lista, na mesma ordem, em vagas_interno.pontos_fortes() (o teste do banco confere).
   var PONTOS_FORTES = lista([['pontualidade', 'Chega no horário e avisa quando não pode'], ['atendimento', 'Atende bem o cliente'],
