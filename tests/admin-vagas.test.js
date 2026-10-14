@@ -59,9 +59,11 @@ test('quando o grupo aparece: Supabase só com a migração do Vagas (versaoBanc
   assert.equal(V.disponivel({ simulada: true, config: {}, local: { search: '?x=1&vagas=0' }, sessionStorage: ss }), false);
   assert.equal(V.disponivel({ simulada: true, config: {}, local: { search: '' }, sessionStorage: ss }), false, '?vagas=0 desliga');
   assert.equal(V.disponivel({ simulada: true, config: { VAGAS_PAINEL: true }, local: { search: '' }, sessionStorage: null }), true);
-  assert.equal(V.bancoTemVagas({ ok: true, faltando: [] }), true);
-  assert.equal(V.bancoTemVagas({ ok: true, faltando: ['20261024120000_vagas_onda2'] }), true, 'faltar a onda 2 não esconde o grupo');
-  assert.equal(V.bancoTemVagas({ ok: true, faltando: [V.MIGRACAO] }), false);
+  assert.equal(V.bancoTemVagas({ ok: true, versao: 20261022120000, faltando: [] }), true);
+  assert.equal(V.bancoTemVagas({ ok: true, versao: 20261024120001, faltando: ['20261024120000_vagas_onda2'] }), true, 'faltar a onda 2 não esconde o grupo');
+  assert.equal(V.bancoTemVagas({ ok: true, versao: 20261024120001, faltando: [V.MIGRACAO] }), false);
+  assert.equal(V.bancoTemVagas({ ok: true, versao: 20261010120000, faltando: [] }), false, 'banco de antes do Vagas (versão anterior)');
+  assert.equal(V.bancoTemVagas({ ok: true, faltando: [] }), false, 'sem versão declarada: não arrisca');
   assert.equal(V.bancoTemVagas({ ok: false, faltando: [], semFuncao: true }), false);
   assert.equal(V.bancoTemVagas(null), false);
 });

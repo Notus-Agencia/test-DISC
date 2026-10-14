@@ -128,9 +128,11 @@
       return !!(ss && ss.getItem(CHAVE_PREVIA) === '1');
     } catch (e) { return /[?&]vagas=(1|sim)\b/.test(busca); }
   }
-  // O banco tem o Vagas? null = ainda não conferido; false = falta a migração (ou banco antigo sem versao_banco).
+  // O banco tem o Vagas? Só quando o versao_banco declara uma versão igual ou posterior à migração do Vagas E não a lista como
+  // faltando (banco antigo sem versao_banco, versão anterior ou migração faltando: não). null = ainda não conferido.
   function bancoTemVagas(resp) {
     if (!resp || resp.ok !== true || resp.semFuncao) return false;
+    if (!(Number(resp.versao) >= Number(MIGRACAO.slice(0, 14)))) return false;
     var falt = Array.isArray(resp.faltando) ? resp.faltando.map(String) : [];
     return falt.indexOf(MIGRACAO) === -1;
   }

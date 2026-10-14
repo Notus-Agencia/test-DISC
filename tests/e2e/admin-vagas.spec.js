@@ -184,3 +184,93 @@ test('sair limpa as telas do Vagas (o próximo login não vê nada do anterior)'
   await expect(page.locator('#vista-vg-cidades')).toBeHidden();
   expect(await page.locator('#vista-vg-cidades').evaluate((n) => n.childElementCount)).toBe(0);
 });
+
+// Supabase (sem rede): DISC_API falso no modo supabase e as RPCs do Vagas respondidas por page.route. O grupo só aparece quando o
+// versaoBanco declara a migração do Vagas; as chamadas levam a chave pública e o token da sessão do painel.
+const API_SUPABASE_VAGAS = `
+(function () {
+  var dona = { id: 'u1', nome: 'Equipe Teste', email: 'equipe@empresa.com', papel: 'admin' };
+  function ok(x) { return Promise.resolve(Object.assign({ ok: true }, x || {})); }
+  window.DISC_API = Object.assign({}, window.DISC_API, {
+    MODO: 'supabase', listarPedidos: undefined,
+    configurado: function () { return true; },
+    login: function () { window.__logado = true; return ok({ token: 'tk-painel', usuario: dona }); },
+    sair: function () { window.__logado = false; return ok(); },
+    // Antes do login não há sessão guardada (a página abre na tela de entrada, como no painel de verdade).
+    sessaoAtual: function () {
+      if (!window.__logado) { var e = new Error('Sessão expirada. Entre de novo.'); e.sessaoExpirada = true; return Promise.reject(e); }
+      return ok({ token: 'tk-sessao-renovada', usuario: dona });
+    },
+    listar: function () { return ok({ itens: [] }); },
+    processosListar: function () { return ok({ processos: [] }); },
+    listarUsuarios: function () { return ok({ usuarios: [] }); },
+    listarEmpresas: function () { return ok({ empresas: [] }); },
+    clickupStatus: function () { return ok({ configurado: false }); },
+    versaoBanco: function () { return ok({ versao: window.__versaoBanco || 20261022120000, faltando: [] }); }
+  });
+})();
+`;
+async function simularSupabaseVagas(page, versao) {
+  await configurar(page, { BACKEND: 'supabase', API_URL: 'https://projeto-teste.supabase.co', SUPABASE_URL: 'https://projeto-teste.supabase.co', SUPABASE_ANON_KEY: 'anon-publica' });
+  if (versao) await page.addInitScript((v) => { window.__versaoBanco = v; }, versao);
+  await page.route('**/assets/vendor/supabase.js', (route) => route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: '/* sem supabase-js */' }));
+  await page.route('**/js/api-supabase.js', (route) => route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: API_SUPABASE_VAGAS }));
+  const chamadas = [];
+  const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'apikey, authorization, content-type', 'Access-Control-Allow-Methods': 'POST, OPTIONS' };
+  await page.route('https://projeto-teste.supabase.co/**', (route) => {
+    const req = route.request();
+    if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
+    const nome = new URL(req.url()).pathname.replace('/rest/v1/rpc/', '');
+    chamadas.push({ nome, headers: req.headers(), corpo: req.postDataJSON() });
+    const resp = (status, corpo) => route.fulfill({ status, headers: CORS, contentType: 'application/json', body: JSON.stringify(corpo) });
+    if (nome === 'vagas_op_resumo') {
+      return resp(200, { ok: true, cidades: [{ id: 'c1', slug: 'praca-um-go', nome: 'Praça Um', status: 'ativa', papel: 'admin',
+        contagens: { anunciosNoAr: 3, anunciosEmRevisao: 1, anunciosSuspensos: 0, empresasAtivas: 2, empresasEmAnalise: 0, denunciasAbertas: 0, pessoas: 9, listaEspera: 0 } }] });
+    }
+    if (nome === 'vagas_cidades_publicas') {
+      return resp(200, { ok: true, cidades: [{ slug: 'praca-um-go', nome: 'Praça Um', uf: 'GO', status: 'ativa', fuso: 'America/Sao_Paulo', praca: null,
+        zonas: [{ slug: 'centro', nome: 'Centro', bairros: [] }], interessados: null, metaListaEspera: null }] });
+    }
+    return resp(404, { code: 'PGRST202', message: 'Could not find the function public.' + nome });
+  });
+  return chamadas;
+}
+async function entrarSupabase(page) {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await page.goto('/admin.html');
+  await page.fill('#campo-email', 'equipe@empresa.com');
+  await page.fill('#campo-senha', 'qualquer-1');
+  await page.click('#btn-entrar');
+  await expect(page.locator('#tela-painel')).toBeVisible({ timeout: 15000 });
+}
+
+test('Supabase: o grupo aparece com a migração do Vagas no banco e as RPCs levam a chave pública e o token da sessão do painel', async ({ page }) => {
+  const erros = coletarErros(page);
+  const chamadas = await simularSupabaseVagas(page);
+  await entrarSupabase(page);
+  await expect(page.locator('.aba[data-aba="vg-cidades"]')).toBeVisible();
+  await abrir(page, 'vg-cidades');
+  await expect(page.locator('#vg-adm-cidades > li')).toHaveCount(1);
+  await expect(page.locator('#vg-adm-cidades > li [data-acao="zonas"]')).toHaveText('Zonas (1)');
+  const resumo = chamadas.filter((c) => c.nome === 'vagas_op_resumo')[0];
+  expect(resumo.headers.authorization).toBe('Bearer tk-sessao-renovada');
+  expect(resumo.headers.apikey).toBe('anon-publica');
+  expect(chamadas.some((c) => c.nome === 'vagas_adm_cidades')).toBe(true);
+  // Sem vagas_adm_operadores (pedido ao banco): a lista fica indisponível; convidar continua.
+  await abrir(page, 'vg-operadores');
+  await expect(page.locator('#vg-adm-operadores-indisponivel')).toBeVisible();
+  // Sem vagas_op_indicadores: as 8 contagens e o aviso "Em breve".
+  await abrir(page, 'vg-numeros');
+  await expect(page.locator('#vg-adm-numeros [data-contagem]')).toHaveCount(8);
+  await expect(page.locator('#vg-adm-numeros-breve')).toContainText('Em breve');
+  expect(chamadas.every((c) => /^vagas_(op|adm)_|^vagas_cidades_publicas$/.test(c.nome))).toBe(true);
+  expect(erros.filter((e) => !/404/.test(e))).toEqual([]);
+});
+
+test('Supabase: banco de antes do Vagas (versão anterior) não mostra o grupo nem chama as RPCs do Vagas', async ({ page }) => {
+  const chamadas = await simularSupabaseVagas(page, 20261010120000);
+  await entrarSupabase(page);
+  await expect(page.locator('.aba[data-aba="usuarios"]')).toBeVisible();
+  await expect(page.locator('.menu-grupo[data-grupo="vagas"]')).toBeHidden();
+  expect(chamadas).toEqual([]);
+});
