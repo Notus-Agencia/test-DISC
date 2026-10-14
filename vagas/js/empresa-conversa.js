@@ -138,7 +138,7 @@
 
     function marcarContratada(botao) {
       var nome = (pessoa() && pessoa().nome) || 'esta pessoa';
-      U.confirmar({ id: 'vg-confirmar-contratada', titulo: 'Marcar ' + nome + ' como contratada?', texto: 'A vaga pode continuar no ar.', sim: t('botoes.marcar_contratada') || 'Marcar como contratada' })
+      U.confirmar({ id: 'vg-confirmar-contratada', titulo: 'Marcar a candidatura de ' + nome + ' como contratada?', texto: 'A vaga pode continuar no ar.', sim: t('botoes.marcar_contratada') || 'Marcar como contratada' })
         .then(function (sim) {
           if (!sim) return;
           U.ocupado(botao, true);
@@ -203,7 +203,7 @@
       } else if (depoisCombinou) {
         cards.push(E.caixa({ id: 'vg-contato', titulo: 'Contato' }, [el('p', { class: 't-rotulo texto-suave' }, 'Carregando…')]));
       } else if (modo !== 'encerrada') {
-        cards.push(E.caixa({ id: 'vg-contato', titulo: 'Contato', classe: 'caixa--compacta caixa--suave' }, [el('p', { class: 't-rotulo texto-medio' }, 'O nome e o WhatsApp aparecem quando a pessoa aceitar.')]));
+        cards.push(E.caixa({ id: 'vg-contato', titulo: 'Contato', classe: 'caixa--compacta caixa--suave' }, [el('p', { class: 't-rotulo texto-medio' }, 'O nome e o WhatsApp aparecem quando a pessoa tocar em "Combinou".')]));
       }
       // Contratou? (só depois do Combinou) e Contratada (o Mapa DISC aparece só aqui, depois da contratação)
       if (modo === 'combinou' && !E.suspensa()) {
@@ -215,9 +215,9 @@
         var enc = anuncioId && !E.suspensa() ? el('button', { type: 'button', class: 'botao botao--claro', id: 'vg-contratada-encerrar', onclick: function (ev) { encerrarVaga(ev.currentTarget); } }, 'Encerrar a vaga') : null;
         cards.push(E.caixa({ id: 'vg-contratada', titulo: 'Contratada' }, [el('p', { class: 't-rotulo texto-medio' }, 'Candidatura marcada como contratada. A vaga pode continuar no ar.'),
           enc ? el('div', { class: 'vg-emp-acoes-coluna' }, enc) : null]));
+        // Opcional para a pessoa e nunca para decidir se ela fica: os 90 dias coincidem com o contrato de experiência (psicologia, revisão C 3.4).
         cards.push(E.caixa({ id: 'vg-integracao', titulo: 'Integração dos 90 dias', classe: 'caixa--compacta caixa--destaque' }, [
-          el('p', { class: 't-rotulo texto-medio' }, 'A consultoria oferece o Mapa DISC de integração (só depois da contratação; nunca na seleção).'),
-          el('p', { class: 't-nota texto-suave vg-emp-nota' }, t('avisos.disc_fora'))]));
+          el('p', { class: 't-rotulo texto-medio' }, 'Se quiser, a consultoria ajuda na chegada da pessoa na equipe, com o Mapa DISC. É opcional para a pessoa, ela recebe o próprio resultado, e o resultado não pode ser usado para decidir se ela fica depois do contrato de experiência.')]));
       }
       // Referências completas (liberadas com o Combinou)
       if (depoisCombinou && p && (p.referencias || []).length) {

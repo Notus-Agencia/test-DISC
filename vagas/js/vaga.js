@@ -132,17 +132,25 @@
       return [a.funcao || a.titulo, [a.zona && a.zona.nome, a.cidade && a.cidade.nome].filter(Boolean).join(', '), P.valorVaga(a)].filter(Boolean).join(' · ') +
         '\n' + (site ? site + '/v/' + a.codigo : root.location.href);
     }
+    // Selo sugerido pela vaga (psicologia, revisão C 2.2): é só informação. Quem está logado também lê que pode se candidatar
+    // sem ele; o botão mostra os minutos daquele teste no catálogo (sem "agora"); "Seu selo" só para quem já tem.
     function blocoSelo(a) {
       var nome = R.rotulo(R.TESTES_SELO, a.selo) || a.selo;
       var meu = null;
       var bloco = el('div', { class: 'vg-selo vg-selo--mini', id: 'vg-vaga-selo' }, [
-        el('div', { class: 'vg-selo__topo' }, [el('span', { class: 'vg-selo__icone' }, U.icone('selo')), el('div', {}, [el('p', { class: 'vg-selo__rotulo' }, pessoa() ? 'Seu selo' : 'Selo pedido'),
-          el('p', { class: 'vg-selo__nome', id: 'vg-vaga-selo-texto' }, pessoa() ? 'Você ainda não tem o selo de ' + nome : 'Esta vaga pede o selo de ' + nome + '. Quem não tem o selo também pode se candidatar.')])]),
-        el('a', { class: 'botao botao--contorno', id: 'vg-vaga-fazer-teste', href: 'testes.html#teste/' + encodeURIComponent(a.selo) }, 'Fazer o teste agora (de 20 a 25 minutos)')]);
+        el('div', { class: 'vg-selo__topo' }, [el('span', { class: 'vg-selo__icone' }, U.icone('selo')), el('div', {}, [el('p', { class: 'vg-selo__rotulo', id: 'vg-vaga-selo-rotulo' }, 'Selo sugerido'),
+          el('p', { class: 'vg-selo__nome', id: 'vg-vaga-selo-texto' }, 'Esta vaga sugere o teste de ' + nome + '. ' + (pessoa() ? 'Você pode se candidatar sem ele.' : 'Quem não tem o selo também pode se candidatar.'))])]),
+        el('a', { class: 'botao botao--contorno', id: 'vg-vaga-fazer-teste', href: 'testes.html#teste/' + encodeURIComponent(a.selo) }, 'Fazer o teste')]);
+      A.testesCatalogo().then(function (r) {
+        var t = ((r && r.testes) || []).filter(function (x) { return x.slug === a.selo; })[0];
+        var botao = root.document.getElementById('vg-vaga-fazer-teste');
+        if (t && Number(t.minutos) > 0 && botao) botao.textContent = 'Fazer o teste (' + Math.round(Number(t.minutos)) + ' min)';
+      }, function () { /* fica "Fazer o teste" */ });
       if (pessoa() && pessoa().pessoa && pessoa().pessoa.completo) {
         A.minhaPessoa().then(function (r) {
           meu = ((r.cartao && r.cartao.selos) || []).filter(function (s) { return s.teste === a.selo; })[0];
           if (!meu) return;
+          U.trocar(root.document.getElementById('vg-vaga-selo-rotulo'), 'Seu selo');
           U.trocar(root.document.getElementById('vg-vaga-selo-texto'), 'Você já tem o selo de ' + nome + ': ' + U.t('avisos.selo_nota', { nota: Math.round(Number(meu.nota)), margem: meu.margem == null ? 10 : meu.margem }) + ', feito em ' + U.data(meu.data) + '.');
           var botao = root.document.getElementById('vg-vaga-fazer-teste');
           if (botao) botao.parentNode.removeChild(botao);

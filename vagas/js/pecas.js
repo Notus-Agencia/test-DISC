@@ -69,7 +69,7 @@
     if (a.destaque) e.push(el('span', { class: 'vg-etiqueta vg-etiqueta--destaque' }, 'Destaque'));
     if (a.urgente) e.push(el('span', { class: 'vg-etiqueta vg-etiqueta--urgente' }, 'Urgente hoje'));
     if (a.paraHoje) e.push(el('span', { class: 'vg-etiqueta vg-etiqueta--hoje' }, 'Para hoje'));
-    if (a.selo) e.push(el('span', { class: 'vg-etiqueta vg-etiqueta--selo' }, 'Pede selo: ' + (rotulo(R.TESTES_SELO, a.selo) || a.selo)));
+    if (a.selo) e.push(el('span', { class: 'vg-etiqueta vg-etiqueta--selo' }, 'Selo sugerido: ' + (rotulo(R.TESTES_SELO, a.selo) || a.selo)));
     return e;
   }
   function cartaoVaga(a, op) {

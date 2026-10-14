@@ -11,7 +11,7 @@
 - Diga: "Vou fazer as mesmas perguntas que faço a todas as pessoas para esta vaga e vou anotar. Não tem resposta certa decorada; quero exemplos do que você já fez ou faria."
 - Tenha a vaga à mão: horário, salário, tarefas. Vai responder a dúvidas no fim.
 - **Não pergunte** (Lei 9.029/1995; CLT art. 373-A; LGPD art. 11): idade, estado civil, filhos ou planos de ter, gravidez, religião, cor/raça, orientação sexual, saúde ou doença, antecedentes, se tem processo trabalhista, quem indicou, time de futebol, política, se "tem com quem deixar as crianças". Se a pessoa falar disso, não anote e não use.
-- **Não use o DISC** nem qualquer "perfil" nesta etapa.
+- **Não use teste de personalidade**, de "perfil" nem outro teste que só psicólogo(a) pode aplicar nesta etapa.
 
 ---
 
@@ -77,11 +77,11 @@ Para cada pergunta: ouça, **peça exemplo** ("me conte uma vez em que…"), ano
 
 ## Depois (5 min)
 
-1. Some as notas **só para você**; não mostre à pessoa. A soma serve para comparar as pessoas **nas mesmas perguntas**, não para "aprovar".
+1. Some as notas **só para você**; não mostre à pessoa. A soma serve para comparar as pessoas **nas mesmas perguntas**; a decisão é sua, não da soma.
 2. Pergunte: "Tem alguma dúvida sobre a vaga, o horário ou o salário?" e responda.
-3. Diga quando vai dar retorno. Dê retorno a todo mundo, inclusive a quem não ficou, pela plataforma ("Agora não").
+3. Diga quando vai dar retorno e dê retorno a todo mundo, inclusive a quem não ficou. Mande aqui na conversa, por exemplo: "Obrigado pela conversa. Desta vez seguimos com outra pessoa. Boa sorte!"
 4. Registre a decisão e o motivo (duas linhas). Isso protege a empresa e a pessoa.
-5. **Decida com três fontes**, não com uma: selo (conhecimento do básico), entrevista (como a pessoa age) e experiência/referência (o que já fez). Nenhuma delas sozinha prevê desempenho.
+5. **Decida com três fontes**, não com uma: o selo, quando houver (sem selo não quer dizer que a pessoa não sabe), a entrevista (como a pessoa age) e a experiência ou a referência (o que já fez). Nenhuma delas sozinha prevê desempenho.
 
 ---
 

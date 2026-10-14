@@ -12,11 +12,8 @@ da prévia** (repositório público; precisam ser reescritas antes de ir a qualq
 
 ## Para terminar, em ordem
 1. **Marca**: FEITA e integrada (logo em todas as telas e e-mails, prévia separada de produção, peso 95,9 KB).
-2. **Testes**: ajustes da psicologia (selo "sugerido", texto da conferência do selo para a empresa, "tente o selo",
-   "Selo sem validade"…) e de uso no celular; **reescrever as 23 questões de demonstração sinalizadas** e conferir de
-   novo, em privado, contra o banco real antes de integrar.
-3. **Empresa**: experiência exigida só até 6 meses (CLT 442-A), "Selo sugerido", vaga/mensagem sem duplicar quando a
-   internet cai, tokens fora da barra de endereço, aceite do convite no celular, cadastro em cidade em pré-abertura.
+2. **Testes**: FEITO e integrado (psicologia, celular; questões de demonstração reescritas e conferidas em privado: nenhuma parecida com as reais).
+3. **Empresa**: FEITA e integrada (experiência até 6 meses, selo sugerido, sem duplicar, convite no celular, pré-abertura).
 4. **Banco (migração 0005)**: a empresa não pode ver se a pessoa aceitou ou recusou a referência; ids novos de
    experiência; vagas_cartoes ignora escolaridade/experiência mínimas; pedidos abertos das telas.
 5. **Revisão de segurança** das migrações 0003/0004/0005 antes de enviar à principal (o envio aplica em produção).

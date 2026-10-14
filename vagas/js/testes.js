@@ -221,10 +221,10 @@
     var linhas = [
       'São ' + n + ' questões sobre o básico de ' + minuscula(t.nome || 'a função') + ', uma por vez. Não dá para voltar.',
       'Você tem ' + min + ' minutos. O tempo começa quando você tocar em "Começar" e não para, nem se a internet cair.',
-      'Se a internet cair, entre de novo: o teste continua de onde parou.',
+      'Se a internet cair, entre de novo e continue de onde parou, no tempo que sobrou.',
       'Se você encerrar antes de responder tudo, a tentativa conta: o que ficou sem resposta vale como erro.',
-      'Faça sozinho(a), sem consultar. A empresa pode pedir a prova presencial.',
-      'Durante a prova, registramos o tempo de cada questão, a saída da tela e a cópia de texto. Ninguém perde o selo só por isso: uma pessoa da equipe revisa antes de qualquer decisão.',
+      'Faça sozinho(a), sem consultar.',
+      'Se você sair da prova (para atender uma ligação, por exemplo), o relógio continua. Registramos o tempo de cada questão, quando você sai da tela e quando copia texto. Sozinho, esse registro não muda a sua nota nem tira o seu selo.',
       'O teste mede o que você sabe hoje do básico da função. Não mede inteligência nem personalidade.',
       'Com nota ' + (inteiro(t.notaMinima) || NOTA_MINIMA) + ' ou mais, você ganha o selo, que vale 12 meses. Você pode refazer em ' + INTERVALO_DIAS + ' dias, de graça.'
     ];
@@ -242,8 +242,12 @@
   function linhaNota(nota, margem) {
     return 'Nota ' + inteiro(nota) + ' (±' + (margem == null ? MARGEM_PADRAO : inteiro(margem)) + ')';
   }
+  // No resultado, a margem por extenso (o "±" sozinho é opaco para quem lê pouco).
+  function linhaNotaPorExtenso(nota, margem) {
+    return 'Nota ' + inteiro(nota) + ' (margem de cerca de ' + (margem == null ? MARGEM_PADRAO : inteiro(margem)) + ' pontos, para mais ou para menos)';
+  }
 
-  var ROTULOS_SITUACAO = { valido: 'Válido', vencido: 'Vencido', revogado: 'Cancelado pela equipe' };
+  var ROTULOS_SITUACAO = { valido: 'Válido', vencido: 'Vencido', revogado: 'Sem validade' };
 
   function exibirSelo(selo, hojeIso) {
     var s = selo || {};
@@ -262,7 +266,7 @@
         ? 'Teste sobre o básico de ' + minuscula(s.nome) + ', feito em ' + dataBR(s.data) + ', ' +
           (presencial ? 'presencial, com documento conferido' : 'online e sem supervisão') + '. Nota ' + inteiro(s.nota) +
           ' de 100 (' + questoes + ' questões; margem de cerca de ±' + margem + ' pontos).'
-        : 'Este selo foi cancelado pela equipe da Gestão sem Caos.',
+        : 'Este selo não vale mais. Se quiser, peça à pessoa para fazer o teste de novo.',
       data: dataBR(s.data), validade: s.validoAte ? 'Vale até ' + dataBR(s.validoAte) : '',
       situacao: situacao, rotuloSituacao: ROTULOS_SITUACAO[situacao],
       modalidade: presencial ? 'Presencial, com documento conferido' : AVISO_SUPERVISAO
@@ -285,7 +289,7 @@
       .map(function (c) { return c.nome; });
     var refazer = r.podeIniciarEm ? 'Você pode refazer este teste a partir de ' + dataDoIso(r.podeIniciarEm) + ', de graça.' : '';
     var margem = r.margem == null ? MARGEM_PADRAO : inteiro(r.margem);
-    var linhas = ['Você acertou ' + inteiro(r.acertos) + ' de ' + inteiro(r.total) + ' questões. ' + linhaNota(r.nota, margem) + '.'];
+    var linhas = ['Você acertou ' + inteiro(r.acertos) + ' de ' + inteiro(r.total) + ' questões. ' + linhaNotaPorExtenso(r.nota, margem) + '.'];
     if (r.status === 'tempo_esgotado') linhas.push('O tempo acabou antes do fim; as questões sem resposta contaram como erro.');
     var titulo;
     if (r.selo) {

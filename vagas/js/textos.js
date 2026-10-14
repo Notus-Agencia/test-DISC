@@ -13,12 +13,14 @@
  "versao": "2026-10-13",
  "avisos": {
   "nunca_pague": "Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.",
-  "selo_sem_selo": "Ainda sem selo neste teste. Você pode refazer em 30 dias, de graça.",
+  "selo_sem_selo": "Ainda sem selo neste teste. A empresa não fica sabendo.",
   "selo_supervisao": "online, sem supervisão",
   "selo_nao_e_psicologico": "Os testes são de conhecimento prático da função, feitos online, sem supervisão. O teste mede o que você sabe hoje do básico da função; não mede inteligência nem personalidade.",
   "selo_empresa": "Selo: teste de conhecimento prático da função, feito online, sem supervisão. Mostra teste, data, nota com margem e código. Não confere identidade e não substitui a entrevista.",
+  "selo_conferir_empresa": "Para quem contrata: a nota tem margem de cerca de 10 pontos, para mais ou para menos, e não serve para ordenar pessoas. Sem selo não quer dizer que a pessoa não sabe: o teste é opcional. A decisão de contratar continua sendo sua.",
   "selo_conferir": "Confira um selo pelo código em vagas.gestaosemcaos.com.br/selo/{{codigo}}.",
-  "teste_antes": "Faça sozinho(a), sem consultar. A empresa pode pedir a prova presencial. O teste mede o que você sabe hoje do básico da função; não mede inteligência nem personalidade. Pode refazer em 30 dias.",
+  "teste_antes": "Faça sozinho(a), sem consultar. O teste mede o que você sabe hoje do básico da função; não mede inteligência nem personalidade.",
+  "teste_opcional": "O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo: ela só vê o selo, se você ganhar.",
   "teste_reconectando": "Reconectando… sua tentativa está salva.",
   "cidade_lista_espera": "O Vagas sem Caos ainda não chegou em {{cidade}}. Deixe seu e-mail e avisamos quando abrir. {{total}} pessoas já estão na lista.",
   "cidade_lista_espera_ok": "Pronto! Avisamos por e-mail quando {{cidade}} abrir.",
@@ -32,7 +34,7 @@
   "selo_sem_selo_competencias": "Onde você acertou menos: {{competencias}}.",
   "denuncia_titulo": "Denunciar",
   "denuncia_texto": "O que está errado? A denúncia é confidencial: não mostramos a quem foi denunciado quem denunciou.",
-  "teste_encerrar_conta": "Se você encerrar antes do fim, a tentativa conta: o próximo teste só em 30 dias.",
+  "teste_encerrar_conta": "Se você encerrar antes do fim, a tentativa conta: este teste só pode ser feito de novo em 30 dias.",
   "cidade_lista_espera_vazia": "O Vagas sem Caos ainda não chegou em {{cidade}}. Entre na lista e avisamos quando chegar."
  },
  "botoes": {
