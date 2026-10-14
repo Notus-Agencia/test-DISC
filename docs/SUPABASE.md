@@ -203,7 +203,7 @@ Segredos são senhas que **só as funções** enxergam; nunca vão para o site.
 | `ANTHROPIC_API_KEY` | a chave da Anthropic (`sk-ant-…`) | Opcional — sem ela, o botão "Melhorar textos com IA" não aparece |
 | `CLICKUP_WEBHOOK_SECRET` | o `secret` devolvido pelo ClickUp no passo 13 | Só depois do passo 13 |
 | `VAGAS_SITE_URL` | `https://vagas.gestaosemcaos.com.br` (sem barra no fim) | Para o Vagas sem Caos: endereço dos links dos e-mails e única origem liberada para chamar a `vagas-conta` |
-| `VAGAS_EMAIL_REMETENTE` | `Vagas · Gestão sem Caos <vagas@gestaosemcaos.com.br>` | Opcional — sem ele, a `vagas-conta` usa o `EMAIL_REMETENTE` do DISC |
+| `VAGAS_EMAIL_REMETENTE` | `Vagas sem Caos <vagas@gestaosemcaos.com.br>` | Opcional — sem ele, a `vagas-conta` usa o `EMAIL_REMETENTE` do DISC |
 | `TURNSTILE_SECRET` | a chave secreta do widget Turnstile da Cloudflare | Opcional — liga o "não sou robô" no cadastro, reenviar e "Esqueci minha senha" do Vagas (a chave pública vai em `vagas/js/config.js`, `TURNSTILE_SITE_KEY`) |
 
 - Pesquisa de clima com identificação: o código por e-mail usa os mesmos `RESEND_API_KEY` e `EMAIL_REMETENTE` (docs/EMAILS.md). `WHATSAPP_PROVEDOR` fica **sem criar** até existir um provedor de WhatsApp contratado (sem ele, a opção "Código por WhatsApp" não aparece).
@@ -413,7 +413,8 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
 5. **Cadastro aberto do Auth continua fechado** (passo 4): as contas do Vagas são criadas só pela função `vagas-conta`
    (com `app_metadata.produto = 'vagas'`), sem senha no cadastro — a pessoa cria a senha depois de clicar no link.
 6. **Ligar o site ao banco:** em `vagas/js/config.js`, troque `MODO: 'previa'` por `MODO: 'supabase'` (até lá o site roda
-   com dados fictícios de Uruaçu guardados só no navegador). Na página, `?previa=1` volta a prévia só naquela aba.
+   com dados fictícios de Uruaçu guardados só no navegador). Fora do domínio oficial (localhost, `*.pages.dev`), `?previa=1`
+   volta a prévia só naquela aba; em `vagas.gestaosemcaos.com.br` o endereço nunca liga a prévia.
 7. **Operadores das cidades:** pelo painel (grupo "Vagas", quando existir) ou chamando a ação `operador` da `vagas-conta`
    com o login da equipe; o operador recebe o link, cria a senha e só enxerga empresas, vagas e denúncias da cidade dele
    (nunca pessoas nem contatos).

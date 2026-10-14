@@ -26,14 +26,14 @@ h1:focus, h1:focus-visible, h2[tabindex="-1"]:focus { outline: none; }
 .topo { position: relative; z-index: 5; }
 .topo-interno { max-width: 720px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .topo-logo { height: 24px; margin-right: 4px; }
-.topo-nome { font-size: var(--t-corpo); font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; padding-left: 12px; border-left: 1px solid var(--linha); }
 
 .conteudo { max-width: 720px; margin: 0 auto; padding: 16px 16px 48px; padding-bottom: max(48px, env(safe-area-inset-bottom)); }
 .caixa { overflow-wrap: anywhere; }
 .centro { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .giro--grande { width: 32px; height: 32px; border-width: 3px; color: var(--tinta); }
 .titulo-pagina { font-size: var(--t-pagina); font-weight: 600; }
-.subtitulo { margin-top: 6px; font-size: var(--t-corpo); color: var(--suave); }
+/* Texto sobre o --fundo: --medio (6,9:1); o --suave dá 4,16:1 ali (abaixo do AA) e fica só sobre o branco */
+.subtitulo { margin-top: 6px; font-size: var(--t-corpo); color: var(--medio); }
 .subtitulo strong { color: var(--tinta); }
 
 /* Grupo de botões: no celular empilha (principal por cima); a partir de 480 px lado a lado */
@@ -50,7 +50,7 @@ h1:focus, h1:focus-visible, h2[tabindex="-1"]:focus { outline: none; }
 .consentimento { padding: 14px 16px; border-radius: 16px; background: var(--nevoa); }
 .consentimento .marcar { font-size: var(--t-rotulo); line-height: 1.55; color: var(--medio); }
 .consentimento strong { color: var(--tinta); }
-.consentimento__explicacao { margin: 8px 0 0 30px; font-size: var(--t-nota); color: var(--suave); line-height: 1.5; }
+.consentimento__explicacao { margin: 8px 0 0 30px; font-size: var(--t-nota); color: var(--medio); line-height: 1.5; }
 
 /* Barra fixa inferior (ação principal sempre no mesmo lugar). Nunca junto com a .vg-nav. */
 .barra-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--branco) 88%, transparent); -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%); border-top: 1px solid var(--linha); }
@@ -70,7 +70,10 @@ body.vg-com-barra .conteudo { padding-bottom: calc(132px + env(safe-area-inset-b
 
 .codigo { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--t-campo); line-height: 1.45; word-break: break-all; background: var(--nevoa); border-color: transparent; }
 .rodape { text-align: center; padding: 8px 8px 0; margin-top: 24px; display: grid; justify-items: center; gap: 4px; }
-.rodape-nota { font-size: var(--t-nota); color: var(--suave); }
+.rodape-nota { font-size: var(--t-nota); color: var(--medio); }
+/* Endosso "Uma empresa do grupo" + logo da Gestão sem Caos (20 px, o mínimo do logo) */
+.vg-grupo { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
+.vg-grupo .logo-gsc { height: 20px; }
 .botao--sem-borda { padding-left: 0; padding-right: 0; min-height: 0; }
 
 /* ============================================================================================================================
@@ -80,15 +83,14 @@ body.vg-com-barra .conteudo { padding-bottom: calc(132px + env(safe-area-inset-b
 .vg-espera__envoltorio { width: 100%; max-width: 640px; margin: 0 auto; padding: 0 16px; }
 .vg-espera__topo { position: sticky; top: 0; z-index: 2; padding: 14px 0; }
 .vg-espera__marca { display: flex; align-items: center; gap: 12px; }
-.vg-espera__fio { width: 1px; height: 22px; background: var(--cinza-claro); flex: none; }
-.vg-espera__produto { font-size: var(--t-rotulo); font-weight: 600; color: var(--tinta); white-space: nowrap; }
 .vg-espera__principal { flex: 1; padding-top: 40px; padding-bottom: 40px; display: flex; flex-direction: column; gap: 16px; }
 .vg-espera__titulo { font-size: var(--t-pagina); color: var(--tinta); }
 .vg-espera__texto { color: var(--medio); }
 .vg-espera__caixa { margin-top: 8px; }
 .vg-espera__golpe { background: var(--branco); border: 1px solid var(--linha); color: var(--medio); }
 .vg-espera__golpe strong { color: var(--notus-forte); font-weight: 600; }
-.vg-espera__rodape { padding: 20px 0 28px; font-size: var(--t-nota); color: var(--suave); }
+.vg-espera__rodape { padding: 20px 0 28px; font-size: var(--t-nota); color: var(--medio); text-align: center; }
+.vg-espera__rodape p + p { margin-top: 8px; }
 
 /* ============================================================================================================================
    3. Estados padrão (carregando, vazio, erro, sem internet): nada pula de lugar
@@ -99,7 +101,7 @@ body.vg-com-barra .conteudo { padding-bottom: calc(132px + env(safe-area-inset-b
 .vg-estado--erro .acoes { margin-top: 12px; }
 .vazio { text-align: center; padding: 40px 24px; }
 .vazio__titulo { font-size: var(--t-titulo); }
-.vazio__texto { color: var(--suave); font-size: var(--t-corpo); max-width: 32rem; margin: 8px auto 0; }
+.vazio__texto { color: var(--medio); font-size: var(--t-corpo); max-width: 32rem; margin: 8px auto 0; }
 .vazio .acoes { max-width: 320px; margin-left: auto; margin-right: auto; }
 .vg-esqueleto { min-height: 132px; border-radius: 20px; background: var(--nevoa); }
 .vg-esqueletos { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
@@ -120,7 +122,6 @@ body.vg-com-barra .conteudo { padding-bottom: calc(132px + env(safe-area-inset-b
 .vg-cidade { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; max-width: 52vw; padding: 6px 12px; border-radius: var(--raio-pilula); background: var(--branco); border: 1px solid var(--linha); font: inherit; font-size: var(--t-rotulo); font-weight: 600; color: var(--tinta); cursor: pointer; white-space: nowrap; }
 .vg-cidade__nome { overflow: hidden; text-overflow: ellipsis; }
 .vg-cidade .icone { width: 16px; height: 16px; color: var(--notus-forte); }
-@media (max-width: 479px) { .topo-interno:has(.vg-cidade) .topo-nome { display: none; } }
 
 .vg-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--branco) 92%, transparent); -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%); border-top: 1px solid var(--linha); }
 .vg-nav__item { display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 48px; padding: 6px 4px; border-radius: 12px; color: var(--suave); font-size: var(--t-eixo); font-weight: 600; text-decoration: none; position: relative; }
@@ -156,10 +157,10 @@ body.vg-com-nav .conteudo { padding-bottom: calc(84px + env(safe-area-inset-bott
 .vg-chip__n { min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--raio-pilula); background: var(--notus); color: var(--sobre-notus); font-size: var(--t-eixo); line-height: 18px; text-align: center; }
 .vg-chips--ativos { margin: 0; padding: 2px 0; flex: 1; min-width: 0; }
 .vg-chips--ativos .vg-chip { min-height: 40px; padding: 6px 12px; }
-.vg-contagem { margin: 14px 0 8px; font-size: var(--t-rotulo); color: var(--suave); display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 24px; }
+.vg-contagem { margin: 14px 0 8px; font-size: var(--t-rotulo); color: var(--medio); display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 24px; }
 .vg-contagem strong { color: var(--tinta); }
 .vg-contagem .botao--link { padding: 0; min-height: 0; }
-.vg-nota-lista { margin-top: 12px; text-align: center; font-size: var(--t-nota); color: var(--suave); }
+.vg-nota-lista { margin-top: 12px; text-align: center; font-size: var(--t-nota); color: var(--medio); }
 
 /* ============================================================================================================================
    7. Folha que sobe de baixo (celular) / janela (computador), véu e confirmação na página
@@ -401,8 +402,7 @@ body.vg-com-nav .conteudo { padding-bottom: calc(84px + env(safe-area-inset-bott
 .vg-pilha { display: grid; gap: 12px; margin-top: 16px; }
 .vg-pilha > .acoes { margin-top: 4px; }
 .vg-entrada__moldura { border-radius: 24px; padding: 24px; margin-bottom: 12px; }
-.vg-entrada__produto { margin-top: 20px; font-size: var(--t-titulo); font-weight: 600; }
-.vg-entrada__frase { margin-top: 6px; font-size: var(--t-rotulo); }
+.vg-entrada__frase { margin-top: 16px; font-size: var(--t-rotulo); }
 .vg-entrada .segmento { display: flex; margin-bottom: 16px; }
 .vg-entrada .segmento__botao { flex: 1; }
 .vg-entrada__nota { margin-top: 4px; text-align: center; font-size: var(--t-nota); color: var(--suave); }
@@ -480,7 +480,6 @@ body.vg-com-nav .conteudo { padding-bottom: calc(84px + env(safe-area-inset-bott
   .login__noite { padding: 40px; align-items: center; }
   .vg-entrada { max-width: none; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 100vh; }
   .vg-entrada__moldura { margin: 0; border-radius: 0; padding: 40px; display: flex; flex-direction: column; justify-content: center; }
-  .vg-entrada__produto { font-size: var(--t-pagina); }
   .vg-entrada__lado { background: var(--tinta); padding: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; }
   .vg-entrada__lado > * { width: 100%; max-width: 460px; }
 }

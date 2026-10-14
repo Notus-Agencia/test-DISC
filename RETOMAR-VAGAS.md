@@ -11,9 +11,7 @@ da prévia** (repositório público; precisam ser reescritas antes de ir a qualq
 - `marca`, `testes`, `empresa`, `banco`: trabalho em andamento de cada frente (inclui commit "WIP").
 
 ## Para terminar, em ordem
-1. **Marca**: logo Vagas sem Caos em todas as telas e e-mails (endosso "Uma empresa do grupo" + logo da Gestão sem
-   Caos); separar prévia de produção (a prévia nunca liga no domínio oficial; faixa "Prévia"; senha e telefones de
-   exemplo); peso da lista pública (≤ 100 KB); contraste dos subtítulos; aviso "Sem internet" que some sozinho.
+1. **Marca**: FEITA e integrada (logo em todas as telas e e-mails, prévia separada de produção, peso 95,9 KB).
 2. **Testes**: ajustes da psicologia (selo "sugerido", texto da conferência do selo para a empresa, "tente o selo",
    "Selo sem validade"…) e de uso no celular; **reescrever as 23 questões de demonstração sinalizadas** e conferir de
    novo, em privado, contra o banco real antes de integrar.

@@ -19,8 +19,8 @@
 
 export const RPC_ANUNCIO = 'vagas_anuncio_publico';            // nome registrado pelo agente fundacao na mesa
 export const SUPABASE_URL = 'https://tevpqngqzxcswmticjnr.supabase.co';
-export const NOME_SITE = 'Vagas · Gestão sem Caos';
-export const IMAGEM_OG = '/comum/marca/gsc-logo-email.png';     // PNG (o WhatsApp não mostra SVG)
+export const NOME_SITE = 'Vagas sem Caos';
+export const IMAGEM_OG = '/comum/marca/vsc-logo-email.png';     // PNG (o WhatsApp não mostra SVG)
 export const CACHE_SEGUNDOS = 120;                               // prévia pode atrasar até 2 min depois de editar
 const PRAZO_RPC_MS = 6000;
 
@@ -156,6 +156,7 @@ const CSS = `
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--fundo);color:var(--tinta);font:16px/1.5 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
 header{background:var(--azul);padding:14px 16px}header img{display:block;height:28px;width:auto}
+.grupo{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 8px}.grupo img{display:block;height:20px;width:auto}
 main{max-width:640px;margin:0 auto;padding:16px}
 .cartao{background:var(--papel);border:1px solid var(--linha);border-radius:16px;padding:20px 18px}
 .rotulo{display:inline-block;font-size:.8rem;font-weight:700;color:var(--laranja);letter-spacing:.04em;text-transform:uppercase}
@@ -187,10 +188,10 @@ function cabecalhoHtml(tituloJanela, descricao, urlPagina, origem, extraMeta) {
     '<meta name="twitter:card" content="summary">\n' +
     '<link rel="icon" href="/comum/marca/gsc-favicon.svg" type="image/svg+xml">\n' +
     '<style>' + CSS + '</style>\n</head>\n<body>\n' +
-    '<header><a href="/"><img src="/comum/marca/gsc-logo-negativo.svg" alt="Gestão sem Caos" width="199" height="28"></a></header>\n';
+    '<header><a href="/"><img src="/comum/marca/vsc-logo-negativo.svg" alt="Vagas sem Caos" width="187" height="28"></a></header>\n';
 }
 
-const RODAPE = '<footer>Vagas · Gestão sem Caos. Nunca pague para se candidatar: a plataforma não cobra da pessoa e nenhuma empresa pode pedir dinheiro, Pix ou documento pelo chat. <a href="/termos.html">Termos</a> · <a href="/privacidade.html">Privacidade</a></footer>\n</body>\n</html>\n';
+const RODAPE = '<footer><p class="grupo">Uma empresa do grupo <img src="/comum/marca/gsc-logo.svg" alt="Gestão sem Caos" width="142" height="20"></p>Nunca pague para se candidatar: a plataforma não cobra da pessoa e nenhuma empresa pode pedir dinheiro, Pix ou documento pelo chat. <a href="/termos.html">Termos</a> · <a href="/privacidade.html">Privacidade</a></footer>\n</body>\n</html>\n';
 
 /** Página da vaga (HTML completo, sem JavaScript). `origem` = https://vagas.gestaosemcaos.com.br (sem barra). */
 export function montarPaginaVaga(anuncio, origem) {
