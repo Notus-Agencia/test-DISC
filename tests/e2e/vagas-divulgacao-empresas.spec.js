@@ -57,7 +57,7 @@ test('empresa, lista de espera (computador): em 10 segundos o ganho, o preço e 
   await page.click('#vg-espera-enviar');
   await expect(page.locator('#vg-espera-ok')).toHaveText('Pronto! Avisamos por e-mail quando ' + cidade.nome + ' abrir.');
   expect(await page.evaluate(() => window.__envios)).toEqual([{ cidade: cidade.slug, email: 'dona.loja@exemplo.com', perfil: 'empresa' }]);
-  const linha = await page.evaluate((slug) => JSON.parse(localStorage.getItem('vagas_previa_v2')).listaEspera.filter((l) => l.cidade === slug)[0], cidade.slug);
+  const linha = await page.evaluate((slug) => JSON.parse(localStorage.getItem(Object.keys(localStorage).filter((k) => /^vagas_previa_v\d+$/.test(k)).sort().pop())).listaEspera.filter((l) => l.cidade === slug)[0], cidade.slug);
   expect(linha.perfil).toBe('empresa');
   expect(erros).toEqual([]);
 });

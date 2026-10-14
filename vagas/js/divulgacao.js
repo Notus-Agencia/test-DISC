@@ -22,7 +22,7 @@
   // "Falar no WhatsApp" aparece desligado, com o marcador visível na prévia.
   var WHATSAPP_GESTAO = '[NÚMERO DA GESTÃO SEM CAOS]';
   var SITE = 'https://vagas.gestaosemcaos.com.br';
-  // Endereço curto de cada página (o Cloudflare Pages serve emprego.html em /emprego; _redirects cobre /emprego/ e /empregos).
+  // Endereço curto de cada página: o Cloudflare Pages serve emprego.html em /emprego e empresas.html em /empresas, sem regra.
   var ENDERECO = { pessoa: '/emprego', empresa: '/empresas' };
 
   // Transcritos de conteudo/vagas-textos/avisos.json (chave entre parênteses); o teste confere palavra por palavra.
@@ -44,9 +44,11 @@
     ajudaEmail: 'Para avisar quando abrir. Nada de propaganda.',
     ajudaWhatsapp: 'É por ele que avisamos quando abrir. Só para isso.',
     lgpd: 'Usamos o e-mail e o WhatsApp só para este aviso. Guardamos até a cidade abrir e mais 90 dias.',
+    lgpdSoEmail: 'Usamos o e-mail só para este aviso. Guardamos até a cidade abrir e mais 90 dias.',
     okWhatsapp: 'Se você deixou o WhatsApp, avisamos por lá também.',
     sairAbrir: 'Quero sair da lista',
     sairTexto: 'Escreva o e-mail que você deixou na lista. Ele sai da lista, junto com o WhatsApp.',
+    sairTextoSoEmail: 'Escreva o e-mail que você deixou na lista. Ele sai da lista.',
     sairBotao: 'Sair da lista',
     sairOk: 'Pronto. Se este e-mail estava na lista, ele saiu.',
     ativaTitulo: 'O Vagas sem Caos já está em {{cidade}}',
@@ -177,6 +179,8 @@
   var el = U.el;
   var tipo = doc.body && doc.body.getAttribute('data-divulgacao') === 'empresa' ? 'empresa' : 'pessoa';
   var estado = { cidade: null, sit: null, cidades: [] };
+  // O campo de WhatsApp só aparece quando o cliente anuncia que o banco aceita (RECURSOS da migração 20261024).
+  var comWhatsapp = !!(API.RECURSOS && API.RECURSOS.listaEsperaWhatsapp);
   var observador = null;
 
   // A prévia precisa de regras.js antes do api-previa.js (no modo supabase a página não baixa esse arquivo).
@@ -227,8 +231,8 @@
   function formEspera(c) {
     var email = campo('vg-espera-email', 'Seu e-mail', false, FRASES.ajudaEmail,
       { type: 'email', autocomplete: 'email', inputmode: 'email', required: 'required', 'aria-describedby': 'vg-espera-email-ajuda', placeholder: 'nome@exemplo.com' });
-    var whats = campo('vg-espera-whatsapp', 'Seu WhatsApp', true, FRASES.ajudaWhatsapp,
-      { type: 'tel', autocomplete: 'tel-national', inputmode: 'tel', 'aria-describedby': 'vg-espera-whatsapp-ajuda', placeholder: '(DDD) 9 0000-0000' });
+    var whats = comWhatsapp ? campo('vg-espera-whatsapp', 'Seu WhatsApp', true, FRASES.ajudaWhatsapp,
+      { type: 'tel', autocomplete: 'tel-national', inputmode: 'tel', 'aria-describedby': 'vg-espera-whatsapp-ajuda', placeholder: '(DDD) 9 0000-0000' }) : null;
     var erro = el('p', { class: 'aviso aviso--erro', id: 'vg-espera-erro', role: 'alert', hidden: true });
     var enviar = el('button', { type: 'submit', class: 'botao botao--laranja botao--grande botao--bloco', id: 'vg-espera-enviar' }, TEXTOS.lista_espera);
     var form = el('form', { class: 'formulario vg-div-form', id: 'vg-form-espera', novalidate: 'novalidate' }, [email, whats, erro, enviar]);
@@ -236,9 +240,9 @@
       ev.preventDefault();
       var cEmail = porId('vg-espera-email');
       var cWhats = porId('vg-espera-whatsapp');
-      U.limparErroCampo(cEmail); U.limparErroCampo(cWhats);
+      U.limparErroCampo(cEmail); if (cWhats) U.limparErroCampo(cWhats);
       erro.hidden = true;
-      var l = lerEspera({ cidade: c.slug, email: cEmail.value, whatsapp: cWhats.value, perfil: tipo });
+      var l = lerEspera({ cidade: c.slug, email: cEmail.value, whatsapp: cWhats ? cWhats.value : '', perfil: tipo });
       if (!l.ok) {
         var alvo = l.campo === 'whatsapp' ? cWhats : cEmail;
         U.erroCampo(alvo, l.erro);
@@ -259,7 +263,7 @@
         U.ocupado(enviar, false);
         if (e && e.resposta && e.resposta.ativa) { carregar(); return; }   // a cidade abriu enquanto a página estava aberta
         var msg = (e && e.message) || '';
-        if (/whatsapp/i.test(msg)) { U.erroCampo(cWhats, msg); cWhats.focus(); return; }
+        if (cWhats && /whatsapp/i.test(msg)) { U.erroCampo(cWhats, msg); cWhats.focus(); return; }
         if (/e-mail/i.test(msg) && !(e && e.conexao)) { U.erroCampo(cEmail, msg); cEmail.focus(); return; }
         erro.textContent = msg || FRASES.naoEnviou;
         erro.hidden = false;
@@ -273,7 +277,7 @@
     var campoEmail = el('input', { class: 'entrada', id: 'vg-sair-email', name: 'vg-sair-email', type: 'email', autocomplete: 'email', inputmode: 'email', 'aria-describedby': 'vg-sair-texto' });
     var botao = el('button', { type: 'submit', class: 'botao botao--claro', id: 'vg-sair-enviar' }, FRASES.sairBotao);
     var form = el('form', { class: 'vg-div-sair__form', id: 'vg-form-sair', novalidate: 'novalidate' }, [
-      el('p', { class: 'campo__ajuda', id: 'vg-sair-texto' }, FRASES.sairTexto),
+      el('p', { class: 'campo__ajuda', id: 'vg-sair-texto' }, comWhatsapp ? FRASES.sairTexto : FRASES.sairTextoSoEmail),
       el('div', { class: 'campo' }, [el('label', { class: 'campo__rotulo', for: 'vg-sair-email' }, 'E-mail'), campoEmail]),
       el('div', { class: 'acoes' }, botao)
     ]);
@@ -296,7 +300,7 @@
   }
 
   function notaLgpd() {
-    return el('p', { class: 'vg-div-nota', id: 'vg-espera-lgpd' }, [FRASES.lgpd + ' ', el('a', { href: 'privacidade.html' }, 'Aviso de privacidade'), '.']);
+    return el('p', { class: 'vg-div-nota', id: 'vg-espera-lgpd' }, [(comWhatsapp ? FRASES.lgpd : FRASES.lgpdSoEmail) + ' ', el('a', { href: 'privacidade.html' }, 'Aviso de privacidade'), '.']);
   }
 
   // ---- chamada por situação

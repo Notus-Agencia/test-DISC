@@ -79,8 +79,8 @@ test('lista de espera: nome da cidade do dado, dúvidas logo no começo, barra f
   await expect(page.locator('#vg-espera-ok')).toContainText('Pronto! Avisamos por e-mail quando ' + cidade.nome + ' abrir.');
   await expect(page.locator('#vg-espera-ok')).toContainText('Se você deixou o WhatsApp, avisamos por lá também.');
   expect(await page.evaluate(() => window.__envios)).toEqual([{ cidade: cidade.slug, email: 'quero.vaga@exemplo.com', perfil: 'pessoa', whatsapp: '5562988881111' }]);
-  const naLista = await page.evaluate((slug) => JSON.parse(localStorage.getItem('vagas_previa_v2')).listaEspera.filter((l) => l.cidade === slug).map((l) => [l.email, l.perfil]), cidade.slug);
-  expect(naLista).toEqual([['quero.vaga@exemplo.com', 'pessoa']]);
+  const naLista = await page.evaluate((slug) => JSON.parse(localStorage.getItem(Object.keys(localStorage).filter((k) => /^vagas_previa_v\d+$/.test(k)).sort().pop())).listaEspera.filter((l) => l.cidade === slug).map((l) => [l.email, l.perfil, l.whatsapp]), cidade.slug);
+  expect(naLista).toEqual([['quero.vaga@exemplo.com', 'pessoa', '5562988881111']]);
   // Depois de entrar na lista: "Mandar para um amigo" ali mesmo.
   await expect(page.locator('#vg-amigo-depois')).toHaveAttribute('href', /^https:\/\/wa\.me\/\?text=/);
   expect(erros).toEqual([]);
@@ -102,7 +102,7 @@ test('lista de espera: sair da lista pelo e-mail (LGPD), aviso de privacidade e 
   await page.fill('#vg-sair-email', 'sair@exemplo.com');
   await page.click('#vg-sair-enviar');
   await expect(page.locator('#vg-sair-ok')).toHaveText('Pronto. Se este e-mail estava na lista, ele saiu.');
-  const naLista = await page.evaluate((slug) => JSON.parse(localStorage.getItem('vagas_previa_v2')).listaEspera.filter((l) => l.cidade === slug).length, cidade.slug);
+  const naLista = await page.evaluate((slug) => JSON.parse(localStorage.getItem(Object.keys(localStorage).filter((k) => /^vagas_previa_v\d+$/.test(k)).sort().pop())).listaEspera.filter((l) => l.cidade === slug).length, cidade.slug);
   expect(naLista).toBe(0);
 
   const href = await page.locator('#vg-amigo').getAttribute('href');
@@ -158,4 +158,27 @@ test('sem ?cidade=: usa a primeira cidade-polo do banco; perguntas abrem sem scr
   await pagina.unroute('**/js/api-previa.js');
   await pagina.click('#vg-tentar-de-novo');
   await expect(pagina.locator('#vg-chamada-titulo')).toHaveText('Entre na lista de espera de ' + cidade.nome);
+});
+
+test('banco sem o WhatsApp da lista (RECURSOS.listaEsperaWhatsapp falso): só o e-mail, e o aviso de privacidade fala só dele', async ({ page }) => {
+  const cidade = await prepararCidade(page, 'lista_espera');
+  // Simula um cliente de antes da migração 20261024 trocando só o RECURSOS do api.js servido.
+  await page.route('**/js/api.js', async (r) => {
+    const resp = await r.fetch();
+    const corpo = (await resp.text()).replace('return { listaEsperaWhatsapp: true };', 'return { listaEsperaWhatsapp: false };');
+    await r.fulfill({ response: resp, body: corpo });
+  });
+  await page.goto(BASE + 'emprego.html?cidade=' + cidade.slug);
+  await expect(page.locator('#vg-espera-email')).toBeVisible();
+  await expect(page.locator('#vg-espera-whatsapp')).toHaveCount(0);
+  await expect(page.locator('#vg-espera-lgpd')).toContainText('Usamos o e-mail só para este aviso.');
+  await page.evaluate(() => {
+    window.__envios = [];
+    const original = window.VAGAS_API.listaEspera;
+    window.VAGAS_API.listaEspera = (d) => { window.__envios.push(d); return original(d); };
+  });
+  await page.fill('#vg-espera-email', 'so.email@exemplo.com');
+  await page.click('#vg-espera-enviar');
+  await expect(page.locator('#vg-espera-ok p')).toHaveText(['Pronto! Avisamos por e-mail quando ' + cidade.nome + ' abrir.']);
+  expect(await page.evaluate(() => window.__envios)).toEqual([{ cidade: cidade.slug, email: 'so.email@exemplo.com', perfil: 'pessoa' }]);
 });

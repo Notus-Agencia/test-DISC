@@ -249,11 +249,16 @@ test('vagas-divulgacao.css: só cores, tamanhos e pesos da identidade; respeita 
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test('_redirects: as variações de /emprego e /empresas vão para o endereço curto, sem laço e sem mexer na regra da raiz', () => {
+test('endereços curtos: /emprego e /empresas não são capturados por nenhuma regra do _redirects (o Pages serve o .html)', () => {
+  // O _redirects é da casca (uma regra só, /:cidade/). As variações com barra no fim (/emprego/, /empresas/) e o plural
+  // /empregos ficaram como pedido à casca na mesa; aqui só garantimos que os endereços divulgados chegam às páginas.
   const regras = ler('_redirects').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')).map((l) => l.split(/\s+/));
-  assert.equal(regras[0][0], '/', 'a regra da raiz continua a primeira (é da casca)');
-  const minhas = regras.filter((r) => /^\/(emprego|empresas)/.test(r[0]));
-  assert.deepEqual(minhas, [['/emprego/', '/emprego', '301'], ['/empregos', '/emprego', '301'], ['/empregos/', '/emprego', '301'], ['/empresas/', '/empresas', '301']]);
-  const origens = new Set(regras.map((r) => r[0]));
-  for (const r of minhas) assert.ok(!origens.has(r[1]), 'destino ' + r[1] + ' não é origem de outra regra (sem laço)');
+  const casa = (origem, caminho) => new RegExp('^' + origem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/:[a-z]+/g, '[^/]+')
+    .replace(/\\\*/g, '.*') + '$').test(caminho);
+  for (const caminho of [D.ENDERECO.pessoa, D.ENDERECO.empresa, '/emprego.html', '/empresas.html']) {
+    for (const r of regras) assert.ok(!casa(r[0], caminho), caminho + ' seria desviado por ' + r[0]);
+  }
+  assert.ok(casa('/:cidade/', '/emprego/'), 'a conferência de padrão funciona (a barra no fim cai na regra da cidade: pendência)');
+  assert.deepEqual([D.ENDERECO.pessoa, D.ENDERECO.empresa], ['/emprego', '/empresas']);
+  for (const p of Object.values(PAGINAS)) assert.ok(fs.existsSync(path.join(VAGAS, p)));
 });
