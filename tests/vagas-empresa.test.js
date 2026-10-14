@@ -263,13 +263,17 @@ test('a vaga montada pela tela é aceita pela prévia (mesmo contrato do banco) 
 });
 
 test('equipe: os nomes que a tela chama existem na API (§8.4a) e o ciclo convidar → aceitar → listar → remover funciona na prévia', async () => {
-  // A tela lê os nomes do mapa EQUIPE de empresa.js e chama conviteEquipe/aceitarConviteEquipe/conviteDoEndereco no aceite.
+  // A tela lê os nomes do mapa EQUIPE de empresa.js e chama conviteEquipe/aceitarConviteEquipe no aceite. O token do ?convite= é lido
+  // por E.tokenDoLink (empresa-base.js), que o tira da barra de endereço antes da guarda de conta (revisão C, E3/E4).
   const fonte = ler('vagas/js/empresa.js');
   const mapa = /var EQUIPE = \{([^}]+)\}/.exec(fonte)[1];
   const nomes = [...mapa.matchAll(/'(\w+)'/g)].map((m) => m[1]);
   assert.deepEqual(nomes, ['equipeDaEmpresa', 'convidarEquipe', 'cancelarConvite', 'removerMembro']);
   for (const m of ['equipeDaEmpresa', 'cancelarConvite', 'removerMembro', 'conviteEquipe', 'aceitarConviteEquipe']) assert.ok(API.METODOS[m], m + ' em METODOS');
-  for (const m of ['conviteEquipe', 'aceitarConviteEquipe', 'conviteDoEndereco']) assert.match(fonte, new RegExp('A\\.' + m + '\\('), m + ' chamado pela tela');
+  for (const m of ['conviteEquipe', 'aceitarConviteEquipe']) assert.match(fonte, new RegExp('A\\.' + m + '\\('), m + ' chamado pela tela');
+  assert.match(fonte, /var token = E\.tokenDoLink\('convite', CHAVE_CONVITE, 'empresa\.html'\);\s*\n[\s\S]*U\.exigirConta\(/, 'token lido antes da guarda');
+  assert.match(ler('vagas/js/referencia.js'), /E\.tokenDoLink\('t', CHAVE, 'referencia\.html'\)[\s\S]*U\.exigirConta\(/);
+  assert.match(ler('vagas/js/empresa-base.js'), /history\.replaceState\(null, '', pagina \+/);
   assert.equal(R.MSG.CONVITE_INVALIDO, 'Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.');
   for (const [lista, ids] of [[R.PAPEIS_EMPRESA, ['dono', 'recrutador']], [R.STATUS_CONVITE_EQUIPE, ['pendente', 'vencido', 'aceito', 'cancelado']]]) {
     assert.deepEqual(lista.map((x) => x.id), ids);

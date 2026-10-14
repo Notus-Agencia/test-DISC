@@ -2,7 +2,8 @@
  * Vagas sem Caos — referencia.html?t=<token>: a EMPRESA abre o pedido de referência que uma pessoa mandou (link do WhatsApp ou do
  * e-mail) e preenche a referência. Desenho: docs/VAGAS-TELAS.md §3.9; contrato: VAGAS_API.conviteReferencia(token) e
  * oferecerReferencia({conviteToken, …}) (docs/VAGAS-SPEC.md §8.6). O formulário é o mesmo de empresa.html#referencia/dar
- * (empresa-referencias.js). Sem login: entrar.html?voltar=referencia.html?t=… e volta para cá.
+ * (empresa-referencias.js). O token sai da barra de endereço assim que é lido e fica só na memória da aba (E.tokenDoLink), então
+ * sem login vai para entrar.html?voltar=referencia.html (sem o token) e, na volta, o pedido continua aberto.
  * Só empresa verificada (CNPJ conferido) dá referência. A pessoa decide se aceita; a empresa nunca fica sabendo da decisão (P2).
  */
 (function (root) {
@@ -19,7 +20,11 @@
     var raiz = doc.getElementById('conteudo');
     var pular = doc.querySelector('.pular');
     if (pular) pular.addEventListener('click', function (ev) { ev.preventDefault(); raiz.focus(); });
-    var token = String(U.parametro('t') || '').trim().toLowerCase();
+    var CHAVE = 'vg.referencia.t';
+    // ?t= que não é um token (link cortado): inválido, sem cair num pedido antigo guardado na aba.
+    var bruto = String(U.parametro('t') || '').trim();
+    var token = bruto && !/^[0-9a-fA-F]{64}$/.test(bruto) ? 'invalido' : E.tokenDoLink('t', CHAVE, 'referencia.html');
+    if (token === 'invalido') { try { root.history.replaceState(null, '', 'referencia.html'); } catch (e) { /* segue */ } }
     function semPedido(texto) {
       U.vazio(raiz, { titulo: 'Pedido de referência', h1: true, texto: texto, botao: { rotulo: 'Ir para referências', href: 'empresa.html#referencias', id: 'vg-ref-ir-referencias' } });
       U.focarTitulo(raiz);
@@ -36,7 +41,7 @@
         U.focarTitulo(raiz);
         return;
       }
-      if (!/^[0-9a-f]{64}$/.test(token)) { semPedido('Convite inválido ou vencido. Peça um link novo à pessoa.'); return; }
+      if (!/^[0-9a-f]{64}$/.test(token)) { E.esquecerToken(CHAVE); semPedido('Convite inválido ou vencido. Peça um link novo à pessoa.'); return; }
       return A.conviteReferencia(token).then(function (r) {
         var cv = r.convite || {};
         // Pedido feito para uma empresa da plataforma: usa essa empresa (quem tem mais de uma conta de empresa).
@@ -54,11 +59,13 @@
         }
         E.tela(raiz, [cab, el('div', { class: 'vg-grade' }, [
           E.referencia.formulario({ modo: 'convite', token: token, pessoaNome: nome, rotuloPessoa: nome + ' (pediu a referência)', base: 'empresa.html',
-            aoCancelar: function () { U._api.navegar('empresa.html#referencias'); } }),
+            aoEnviado: function () { E.esquecerToken(CHAVE); },
+            aoCancelar: function () { E.esquecerToken(CHAVE); U._api.navegar('empresa.html#referencias'); } }),
           E.referencia.lateral()])]);
         U.focarTitulo(raiz);
       }, function (e) {
         if (e.sessaoExpirada || e.confirmar || e.conexao || e.suspensa) { U.tratarErro(e, { raiz: raiz, aoTentar: function () { root.location.reload(); } }); return; }
+        E.esquecerToken(CHAVE);
         semPedido(e.message);
       });
     }, function (e) { U.tratarErro(e, { raiz: raiz, aoTentar: function () { root.location.reload(); } }); });

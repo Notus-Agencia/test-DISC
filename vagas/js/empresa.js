@@ -64,11 +64,14 @@
         E.caixa({ id: 'vg-emp-como-funciona', titulo: 'Como funciona' }, [el('ol', { class: 'vg-emp-lista' }, [
           el('li', {}, ['Quem se candidata chega como ', el('strong', {}, 'cartão sem nome, foto, idade ou nacionalidade'), ', por ordem de chegada.']),
           el('li', {}, ['Você marca ', el('strong', {}, 'Quero conversar'), ' ou ', el('strong', {}, 'Agora não'), '.']),
-          el('li', {}, ['Se a pessoa aceitar, é o ', el('strong', {}, 'Combinou'), ': nome, currículo e WhatsApp liberados para os dois.']),
+          el('li', {}, ['Se a pessoa tocar em ', el('strong', {}, 'Combinou'), ', nome, currículo e WhatsApp ficam liberados para os dois.']),
           el('li', {}, ['Contratou? Marque ', el('strong', {}, 'Contratada'), ': ajuda a praça e libera a integração com a consultoria.'])])]),
         E.caixa({ id: 'vg-emp-regras', titulo: 'Regras da casa' }, [el('p', { class: 't-rotulo texto-medio' },
           'Salário ou valor da diária sempre no anúncio. Nunca peça dinheiro, Pix ou documento a quem se candidata. ' + t('avisos.cartao_cego_ordem'))])]);
-      E.tela(raiz, [cab, resumo, el('div', { class: 'vg-grade' }, [vagas, lateral])]);
+      // Cidade em pré-abertura (§6.8): as vagas ficam prontas e entram no ar no dia da abertura.
+      var pre = E.preAbertura() ? el('p', { class: 'aviso vg-emp-pre-abertura', id: 'vg-emp-pre-abertura', role: 'note' },
+        'Suas vagas entram no ar no dia em que ' + ctx.cidade.nome + ' abrir. Até lá, ninguém vê as vagas nem se candidata.') : null;
+      E.tela(raiz, [cab, pre, resumo, el('div', { class: 'vg-grade' }, [vagas, lateral])]);
     }, function (e) { U.tratarErro(e, { raiz: raiz, aoTentar: function () { telaInicio(raiz); } }); });
   }
 
@@ -81,7 +84,8 @@
   function telaCadastro(raiz) {
     var rasc = U.rascunho('empresa');
     var g = (rasc.ler() || {}).dados || {};
-    var abertas = (ctx.cidades || []).filter(function (c) { return c.status === 'ativa'; });
+    // Cidades que aceitam empresa: abertas e, na pré-abertura (§6.8), as da lista de espera (aceitaEmpresas; sem o campo, só as abertas).
+    var abertas = (ctx.cidades || []).filter(function (c) { return c.aceitaEmpresas === true || (c.aceitaEmpresas == null && c.status === 'ativa'); });
     var cidadeAtual = abertas.some(function (c) { return c.slug === g.cidade; }) ? g.cidade : (abertas.length === 1 ? abertas[0].slug : '');
     var campos = {};
     var enviado = false;   // depois do envio, o rascunho atrasado (aoParar) não volta a gravar
@@ -114,15 +118,22 @@
       U.trocar(zonaLugar, zona ? zona.no : null);
       campos.zona = zona ? zona.grupo : null;
     }
+    // Cidade em pré-abertura: diz quando a vaga entra no ar (mesmo texto do banco, avisoAbertura).
+    var avisoCidade = el('p', { class: 'aviso campo--largo', id: 'vg-emp-cad-pre-abertura', role: 'note', hidden: true });
+    function desenharAviso(slug) {
+      var c = abertas.filter(function (x) { return x.slug === slug; })[0];
+      avisoCidade.hidden = !(c && c.preAbertura);
+      avisoCidade.textContent = c && c.preAbertura ? avisoAbertura(c) : '';
+    }
     var cidade = abertas.length ? E.chips({ id: 'vg-emp-cad-cidade', rotulo: 'Cidade', obrigatorio: true, largo: true, opcoes: abertas.map(function (c) { return { id: c.slug, rotulo: c.nome + ' (' + c.uf + ')' }; }),
-      valor: cidadeAtual, aoMudar: function (v) { g.zona = ''; desenharZonas(v); guardarDepois(); } }) : null;
+      valor: cidadeAtual, aoMudar: function (v) { g.zona = ''; desenharZonas(v); desenharAviso(v); guardarDepois(); } }) : null;
     campos.cidade = cidade ? cidade.grupo : null;
     var erro = el('p', { class: 'aviso aviso--erro', id: 'vg-emp-cad-erro', role: 'alert', hidden: true });
     var enviar = el('button', { type: 'submit', class: 'botao botao--laranja botao--grande', id: 'vg-emp-cad-enviar', disabled: !abertas.length }, 'Enviar para conferência');
     var form = el('form', { class: 'caixa caixa--ampla vg-emp-form', id: 'vg-emp-form-dados', novalidate: true }, [
       el('div', { class: 'form-grade' }, [cnpj.no, el('div', { class: 'campo vg-emp-marcar-linha' }, mei.no), razao.no, nome.no, setor.no, whatsapp.no,
         cidade ? cidade.no : el('p', { class: 'aviso campo--largo', id: 'vg-emp-cad-sem-cidade', role: 'note' }, 'Nenhuma cidade aberta para cadastro de empresa agora.'),
-        zonaLugar, email.no, descricao.no]),
+        avisoCidade, zonaLugar, email.no, descricao.no]),
       erro, el('div', { class: 'vg-emp-acoes-form' }, enviar)]);
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
@@ -156,8 +167,9 @@
       E.lista(['O CNPJ conferido mostra para quem procura que a empresa existe: é a marca "verificada".', 'O WhatsApp só aparece para a pessoa depois do Combinou.',
         'A vaga confidencial só é possível com o CNPJ conferido.']),
       P.golpe({ id: 'vg-aviso-golpe' })])])])]);
-    if (cidadeAtual) desenharZonas(cidadeAtual);
+    if (cidadeAtual) { desenharZonas(cidadeAtual); desenharAviso(cidadeAtual); }
   }
+  function avisoAbertura(c) { return E.avisoAbertura(c); }
 
   // ------------------------------------------------------------------------------------------------- dados da empresa e equipe
   function telaDados(raiz) {
@@ -396,19 +408,17 @@
 
   // ------------------------------------------------------------------------------------------------- convite para a equipe (quem recebeu)
   // O e-mail leva a entrar.html?convite=<token>; depois de entrar (ou de criar a senha) a pessoa chega aqui com ?convite=. Mostra de
-  // quem é o convite ANTES do aceite e só aceita no clique (docs/VAGAS-SPEC.md §8.4a).
-  function tokenDoConvite() {
-    if (typeof A.conviteDoEndereco === 'function') return A.conviteDoEndereco(root.location);
-    var m = /[?&]convite=([0-9a-fA-F]{64})(?:&|$)/.exec(String(root.location.search || ''));
-    return m ? m[1].toLowerCase() : '';
-  }
+  // quem é o convite ANTES do aceite e só aceita no clique (docs/VAGAS-SPEC.md §8.4a). Tela de celular (revisão C de UX): o token sai
+  // da barra assim que é lido (E.tokenDoLink), mensagem própria sem internet, foco no resultado e alvos de toque de 44 px ou mais.
+  var CHAVE_CONVITE = 'vg.empresa.convite';
   function telaConvite(raiz, token) {
     var cab = E.cabecalho({ sobre: 'Equipe da empresa', titulo: 'Convite para a equipe', idTitulo: 'vg-convite-titulo' });
     // Sem empresa própria, "Agora não" e a saída voltam para o início do Vagas sem Caos (o painel abriria o cadastro de empresa).
     var saida = ctx.empresa ? 'empresa.html#inicio' : 'index.html';
-    var painel = el('a', { class: 'botao botao--claro botao--grande', href: saida, id: 'vg-convite-painel' }, ctx.empresa ? 'Ir para o painel' : 'Ir para o início');
+    function esquecer() { E.esquecerToken(CHAVE_CONVITE); }
+    var painel = el('a', { class: 'botao botao--claro botao--grande', href: saida, id: 'vg-convite-painel', onclick: esquecer }, ctx.empresa ? 'Ir para o painel' : 'Ir para o início');
     if (typeof A.conviteEquipe !== 'function') {
-      E.tela(raiz, [cab, el('p', { class: 'aviso', role: 'note', id: 'vg-convite-em-breve' }, 'Em breve: aceitar o convite para a equipe por aqui.'), el('div', { class: 'acoes' }, painel)]);
+      E.tela(raiz, [cab, el('p', { class: 'aviso', role: 'note', id: 'vg-convite-em-breve' }, 'Em breve: aceitar o convite para a equipe por aqui.'), el('div', { class: 'vg-emp-acoes-coluna' }, painel)]);
       return Promise.resolve();
     }
     U.carregando(raiz);
@@ -417,36 +427,52 @@
       var emp = cv.empresa || {};
       var nome = emp.nomeFantasia + (emp.cidade && emp.cidade.nome ? ' (' + emp.cidade.nome + ')' : '');
       if (cv.jaMembro) {
-        E.tela(raiz, [cab, el('p', { class: 't-corpo texto-medio', id: 'vg-convite-texto' }, 'Você já faz parte da equipe de ' + nome + '.'), el('div', { class: 'acoes' }, painel)]);
+        esquecer();
+        E.tela(raiz, [cab, el('p', { class: 't-corpo texto-medio', id: 'vg-convite-texto' }, 'Você já faz parte da equipe de ' + nome + '.'), el('div', { class: 'vg-emp-acoes-coluna' }, painel)]);
         return;
       }
       var aceitar = el('button', { type: 'button', class: 'botao botao--laranja botao--grande', id: 'vg-convite-aceitar' }, 'Aceitar o convite');
-      var agoraNao = el('a', { class: 'botao botao--claro botao--grande', href: saida, id: 'vg-convite-agora-nao' }, 'Agora não');
+      var agoraNao = el('a', { class: 'botao botao--claro botao--grande', href: saida, id: 'vg-convite-agora-nao', onclick: esquecer }, 'Agora não');
       var erro = el('p', { class: 'aviso aviso--erro', id: 'vg-convite-erro', role: 'alert', hidden: true });
+      // A ordem no código é a mesma da tela: primeiro "Aceitar", depois "Agora não".
       var caixaConvite = E.caixa({ id: 'vg-convite', classe: 'caixa--ampla caixa--destaque' }, [
         el('p', { class: 't-corpo', id: 'vg-convite-texto' }, [el('strong', {}, nome), ' convidou você para a equipe da empresa no Vagas sem Caos, como ' + papel(cv.papel).toLowerCase() +
-          ': publicar vagas, ver os cartões e conversar com as pessoas.']),
+          ': publicar vagas, ver quem se candidatou e conversar com as pessoas.']),
         el('p', { class: 't-rotulo texto-medio' }, 'O convite vale até ' + U.data(cv.expiraEm) + ', ' + U.hora(cv.expiraEm) + '. Ao aceitar, quem é dono(a) da empresa vê o seu nome e o seu e-mail na lista da equipe.'),
-        erro, el('div', { class: 'acoes' }, [agoraNao, aceitar])]);
+        el('p', { class: 't-rotulo texto-medio', id: 'vg-convite-regras' }, 'Na seleção valem as regras da casa: cartão sem nome, por ordem de chegada; nada de pedir dinheiro ou documento; nada de perguntar idade, filhos, religião ou saúde.'),
+        erro, el('div', { class: 'vg-emp-acoes-coluna' }, [aceitar, agoraNao])]);
       aceitar.addEventListener('click', function () {
         erro.hidden = true;
         U.ocupado(aceitar, true, 'Aceitando…');
         A.aceitarConviteEquipe(token).then(function (x) {
+          esquecer();
           E.escolher(x.empresa.id);
-          E.tela(raiz, [cab, el('section', { class: 'caixa caixa--ampla', id: 'vg-convite-ok', role: 'status' }, [el('div', { class: 'vg-ok-icone' }, U.icone('check')),
-            el('h2', { class: 't-titulo', tabindex: '-1' }, 'Pronto. Agora você faz parte da equipe de ' + x.empresa.nomeFantasia + '.'),
-            el('div', { class: 'acoes' }, el('a', { class: 'botao botao--principal botao--grande', href: 'empresa.html#inicio', id: 'vg-convite-ir' }, 'Ir para o painel'))])]);
-          U.focarTitulo(raiz.querySelector('#vg-convite-ok'));
+          if (typeof U.faixaOffline === 'function') U.faixaOffline(false);
+          var titulo = el('h2', { class: 't-titulo', tabindex: '-1', id: 'vg-convite-ok-titulo' }, 'Pronto. Agora você faz parte da equipe de ' + x.empresa.nomeFantasia + '.');
+          E.tela(raiz, [cab, el('section', { class: 'caixa caixa--ampla', id: 'vg-convite-ok', role: 'status', 'aria-labelledby': 'vg-convite-ok-titulo' }, [el('div', { class: 'vg-ok-icone' }, U.icone('check')),
+            titulo, el('p', { class: 't-rotulo texto-medio', id: 'vg-convite-computador' }, 'O painel funciona melhor no computador.'),
+            el('div', { class: 'vg-emp-acoes-coluna' }, el('a', { class: 'botao botao--principal botao--grande', href: 'empresa.html#inicio', id: 'vg-convite-ir' }, 'Ir para o painel'))])]);
+          titulo.focus();
         }, function (e) {
           U.ocupado(aceitar, false);
-          if (e.sessaoExpirada || e.confirmar || e.conexao) { U.tratarErro(e); return; }
-          erro.textContent = e.message; erro.hidden = false;
+          if (e.sessaoExpirada || e.confirmar) { U.tratarErro(e); return; }
+          // Sem internet: mensagem desta tela (a faixa geral fala de rascunhos e não diz que o aceite não aconteceu).
+          erro.textContent = e.conexao ? 'Sem internet: o convite ainda não foi aceito. Confira a conexão e toque de novo em "Aceitar o convite".' : e.message;
+          erro.hidden = false;
+          aceitar.focus();
         });
       });
       E.tela(raiz, [cab, caixaConvite]);
     }, function (e) {
-      if (e.sessaoExpirada || e.confirmar || e.conexao) { U.tratarErro(e, { raiz: raiz, aoTentar: function () { root.location.reload(); } }); return; }
-      E.tela(raiz, [cab, el('p', { class: 'aviso aviso--erro', role: 'alert', id: 'vg-convite-invalido' }, e.message || CONVITE_INVALIDO), el('div', { class: 'acoes' }, painel)]);
+      if (e.sessaoExpirada || e.confirmar) { U.tratarErro(e); return; }
+      if (e.conexao) {
+        var tentar = el('button', { type: 'button', class: 'botao botao--principal botao--grande', id: 'vg-convite-tentar', onclick: function () { root.location.reload(); } }, 'Tentar de novo');
+        E.tela(raiz, [cab, el('p', { class: 'aviso aviso--erro', role: 'alert', id: 'vg-convite-sem-internet' }, 'Sem internet: não deu para abrir o convite. Confira a conexão e toque em "Tentar de novo".'),
+          el('div', { class: 'vg-emp-acoes-coluna' }, tentar)]);
+        return;
+      }
+      esquecer();
+      E.tela(raiz, [cab, el('p', { class: 'aviso aviso--erro', role: 'alert', id: 'vg-convite-invalido' }, e.message || CONVITE_INVALIDO), el('div', { class: 'vg-emp-acoes-coluna' }, painel)]);
     });
   }
 
@@ -480,13 +506,16 @@
     var pular = doc.querySelector('.pular');
     if (pular) pular.addEventListener('click', function (ev) { ev.preventDefault(); raiz.focus(); });
     var parar = null;
+    // Convite para a equipe (?convite=): lido ANTES da guarda de conta, para o token não ir para o ?voltar= do entrar.html.
+    var token = E.tokenDoLink('convite', CHAVE_CONVITE, 'empresa.html');
+    // A faixa "Sem internet" da base sai sozinha quando a conexão volta.
+    if (typeof U.aoVoltarInternet === 'function' && typeof U.faixaOffline === 'function') U.aoVoltarInternet(function () { U.faixaOffline(false); });
     U.exigirConta({ tipo: 'empresa', raiz: raiz }).then(function (eu) {
       ctx.eu = eu;
       return E.carregar();
     }).then(function () {
       // Convite para a equipe (?convite=): vem antes do cadastro (quem foi convidado pode não ter empresa própria) e do roteador.
       // Tela de uma tarefa só, feita para o celular (o link chega por e-mail): sem o menu do painel.
-      var token = tokenDoConvite();
       if (token) {
         doc.body.classList.add('vg-emp-tarefa');
         doc.title = 'Convite para a equipe | Vagas sem Caos';

@@ -56,6 +56,11 @@
     if (a.status === 'rascunho') return el('a', { class: 'botao botao--claro', href: '#vaga/' + a.id, data: { acao: 'editar' } }, 'Editar');
     return el('a', { class: 'botao botao--claro', href: '#vaga/' + a.id, data: { acao: 'ver' } }, 'Ver vaga');
   }
+  // Situação da vaga. Publicada numa cidade que ainda não abriu (pré-abertura, VAGAS-SPEC §6.8): "Aguardando a abertura".
+  function statusVaga(a) {
+    if (a.aguardaAbertura) return el('span', { class: 'vg-status vg-status--revisao', data: { status: 'aguarda_abertura' } }, 'Aguardando a abertura');
+    return P.status('anuncio', a.status);
+  }
   function tabelaVagas(lista, op) {
     op = op || {};
     return el('div', { class: 'vg-rolagem' }, el('table', { class: 'vg-tabela', id: op.id || 'vg-emp-vagas-tabela' }, [
@@ -65,10 +70,10 @@
         var no = a.status === 'publicado' || a.status === 'pausado';
         return el('tr', { data: { anuncio: a.id } }, [
           el('td', {}, [el('a', { class: 'seminegrito vg-emp-link-vaga', href: '#vaga/' + a.id }, a.funcao || a.titulo), el('span', { class: 'vg-emp-sub' }, metaLinha(a))]),
-          el('td', {}, P.status('anuncio', a.status)),
+          el('td', {}, statusVaga(a)),
           el('td', { class: 'num' }, a.publicadoEm || a.candidaturas.total ? String(a.candidaturas.total) : '—'),
           el('td', { class: 'num' + (a.candidaturas.novas ? ' seminegrito' : '') }, a.publicadoEm || a.candidaturas.novas ? String(a.candidaturas.novas) : '—'),
-          el('td', { class: 'nao-quebra' }, no && a.expiraEm ? U.dataCurta(a.expiraEm) : '—'),
+          el('td', { class: 'nao-quebra' }, no && a.expiraEm && !a.aguardaAbertura ? U.dataCurta(a.expiraEm) : '—'),
           el('td', {}, el('div', { class: 'vg-tabela__acoes' }, acaoDaLinha(a)))]);
       }))]));
   }
@@ -354,7 +359,7 @@
         enviando = false;
         rasc.apagar();
         U.ocupado(alvo, false);
-        if (x.publicada) U.avisar(x.emRevisao ? t('avisos.vaga_em_revisao') : 'Vaga publicada.', { tipo: 'ok', ms: 6000 });
+        if (x.publicada) U.avisar(x.emRevisao ? t('avisos.vaga_em_revisao') : x.anuncio && x.anuncio.aguardaAbertura ? (x.anuncio.avisoAbertura || E.avisoAbertura()) : 'Vaga publicada.', { tipo: 'ok', ms: 6000 });
         else U.avisar('Salvo', { tipo: 'ok' });
         E.irPara('vaga/' + x.anuncio.id);
       }, function (e) {
@@ -382,6 +387,7 @@
         el('div', { class: 'form-grade' }, [blocoBeneficios, confidencial.no])]),
       el('fieldset', { class: 'vg-emp-bloco' }, [el('legend', { class: 'vg-emp-bloco__titulo' }, '4. Descrição'), descricao.no]),
       erroGeral,
+      !noAr && E.preAbertura() ? el('p', { class: 'aviso', id: 'vg-vaga-pre-abertura', role: 'note' }, E.avisoAbertura()) : null,
       el('div', { class: 'vg-emp-acoes-form' }, botoes.filter(Boolean)), notaTermo
     ]);
     var lateral = el('aside', { class: 'vg-lateral', 'aria-label': 'Ajuda' }, [
@@ -416,6 +422,7 @@
     else if (a.status === 'suspenso') p.push('Fora do ar por denúncias: a operação está analisando.');
     else if (a.status === 'removido') p.push('Removida pela moderação.');
     if (a.status === 'publicado' && a.expirado) p[0] = 'O prazo acabou em ' + U.dataCurta(a.expiraEm) + '. Use "Renovar" para voltar ao ar.';
+    if (a.aguardaAbertura) p[0] = a.avisoAbertura || E.avisoAbertura(a.cidade);
     if (a.confidencial) p.push('Confidencial.');
     var c = a.candidaturas || {};
     if (a.publicadoEm || c.total) p.push((c.total === 1 ? '1 pessoa disse "Quero"' : (c.total || 0) + ' pessoas disseram "Quero"') + '; ' + (c.novas === 1 ? '1 cartão novo.' : (c.novas || 0) + ' cartões novos.'));
@@ -462,13 +469,17 @@
     var removida = a.status === 'removido' && a.statusMotivo ? E.motivo(a.statusMotivo, { vaga_titulo: a.funcao }) : null;
     var principal = [];
     if (removida) principal.push(el('div', { class: 'aviso aviso--erro', id: 'vg-vaga-motivo', role: 'note' }, [el('p', {}, removida.texto), removida.correcao ? el('p', {}, removida.correcao) : null]));
-    if (a.status === 'publicado' || a.status === 'pausado') principal.push(divulgar(a));
+    // Aguardando a abertura: o link curto e a mensagem do WhatsApp só funcionam quando a cidade abrir.
+    if (a.aguardaAbertura) principal.push(E.caixa({ id: 'vg-vaga-aguarda', titulo: 'Divulgar', classe: 'caixa--ampla' }, [
+      el('p', { class: 't-rotulo texto-medio' }, a.avisoAbertura || E.avisoAbertura(a.cidade)),
+      el('p', { class: 't-nota texto-suave vg-emp-nota' }, 'O link curto e a mensagem para o WhatsApp aparecem aqui quando a vaga entrar no ar.')]));
+    else if (a.status === 'publicado' || a.status === 'pausado') principal.push(divulgar(a));
     principal.push(E.caixa({ id: 'vg-vaga-como-aparece', titulo: 'Como aparece para as pessoas', classe: 'caixa--ampla' },
       [el('ul', { class: 'vg-vagas vg-emp-previa-vaga' }, P.cartaoVaga(comoAPessoaVe(a), { href: '#vaga/' + a.id }))]));
     var lateral = [numeros(a, n)];
     E.tela(raiz, [
       E.cabecalho({ sobre: 'Minhas vagas', titulo: a.funcao || a.titulo, idTitulo: 'vg-vaga-h1', idTexto: 'vg-vaga-situacao', texto: textoSituacao(a),
-        extra: el('p', { class: 'vg-emp-situacao' }, P.status('anuncio', a.status)) }),
+        extra: el('p', { class: 'vg-emp-situacao' }, statusVaga(a)) }),
       acoes.length ? el('div', { class: 'vg-emp-acoes-vaga', id: 'vg-vaga-acoes' }, acoes) : null,
       el('div', { class: 'vg-grade' }, [el('div', { class: 'vg-lateral' }, principal), el('aside', { class: 'vg-lateral', 'aria-label': 'Números' }, lateral)])
     ]);
@@ -538,8 +549,8 @@
         acoes: [el('a', { class: 'botao botao--claro', href: '#vaga/' + a.id, id: 'vg-cartoes-voltar' }, [U.icone('voltar'), 'Voltar para a vaga'])] });
       if (!total) {
         var vazio = el('div', { id: 'vg-cartoes-vazio' });
-        U.vazio(vazio, { texto: 'Ninguém se candidatou ainda. Compartilhe o link no WhatsApp: é por lá que as pessoas chegam.',
-          botao: a.status === 'publicado' ? { rotulo: t('botoes.compartilhar') || 'Compartilhar no WhatsApp', href: U.compartilharWhatsapp(textoWhatsapp(a)), id: 'vg-cartoes-compartilhar' } : null });
+        U.vazio(vazio, { texto: a.aguardaAbertura ? (a.avisoAbertura || E.avisoAbertura(a.cidade)) : 'Ninguém se candidatou ainda. Compartilhe o link no WhatsApp: é por lá que as pessoas chegam.',
+          botao: a.status === 'publicado' && !a.aguardaAbertura ? { rotulo: t('botoes.compartilhar') || 'Compartilhar no WhatsApp', href: U.compartilharWhatsapp(textoWhatsapp(a)), id: 'vg-cartoes-compartilhar' } : null });
         var b = vazio.querySelector('#vg-cartoes-compartilhar');
         if (b) { b.setAttribute('target', '_blank'); b.setAttribute('rel', 'noopener noreferrer'); }
         E.tela(raiz, [cab, vazio]);

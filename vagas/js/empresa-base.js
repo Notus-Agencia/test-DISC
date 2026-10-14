@@ -44,6 +44,10 @@
   function zonas() { return (ctx.cidade && ctx.cidade.zonas) || []; }
   function ativa() { return !!(ctx.empresa && ctx.empresa.status === 'ativa'); }
   function suspensa() { return !!(ctx.empresa && ctx.empresa.status === 'suspensa'); }
+  // Pré-abertura (VAGAS-SPEC §6.8): a cidade da empresa ainda está em lista de espera; as vagas entram no ar no dia da abertura.
+  function preAbertura() { return !!(ctx.cidade && ctx.cidade.preAbertura); }
+  // "Sua vaga entra no ar no dia em que {cidade} abrir." (o banco manda o mesmo texto em anuncio.avisoAbertura).
+  function avisoAbertura(c) { c = c || ctx.cidade || {}; return 'Sua vaga entra no ar no dia em que ' + (c.nome || 'a cidade') + ' abrir.'; }
   function verificada() { return !!(ctx.empresa && ctx.empresa.status === 'ativa' && ctx.empresa.cnpjConferidoEm); }
   function dono() { return !!(ctx.empresa && ctx.empresa.papel === 'dono'); }
   // Nome de quem está usando: o da conta (vagas_eu.conta.nome); sem ele, o que a pessoa digitou no cadastro neste aparelho.
@@ -244,5 +248,6 @@
   E.nomeResponsavel = nomeResponsavel; E.lembrarResponsavel = lembrarResponsavel; E.motivo = motivo; E.menu = menu; E.contarConversas = contarConversas;
   E.faixas = faixas; E.cabecalho = cabecalho; E.caixa = caixa; E.chips = chips; E.campo = campo; E.marcar = marcar; E.lista = lista; E.tela = tela;
   E.irPara = irPara; E.sair = sair; E.lembrarAnuncio = lembrarAnuncio; E.anuncioDe = anuncioDe; E.tokenDoLink = tokenDoLink; E.esquecerToken = esquecerToken;
+  E.preAbertura = preAbertura; E.avisoAbertura = avisoAbertura;
   root.VAGAS_EMPRESA = E;
 })(typeof self !== 'undefined' ? self : this);

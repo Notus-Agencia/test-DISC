@@ -115,6 +115,119 @@ test('nova vaga: campos fechados com etiquetas ao vivo, termo proibido recusado 
   expect(erros).toEqual([]);
 });
 
+// Campos fechados mínimos de uma vaga CLT (a zona só quando a cidade tem zonas).
+async function preencherVaga(page, funcao) {
+  await page.click('#vg-vaga-area');
+  await page.click('#vg-janela-area-opcoes [data-valor="caixa"]');
+  await page.fill('#vg-vaga-funcao', funcao);
+  await page.click('#vg-vaga-modalidade [data-valor="clt"]');
+  await page.fill('#vg-vaga-salario-de', '1620');
+  await page.click('#vg-vaga-turno [data-valor="comercial"]');
+  if (await page.locator('#vg-vaga-zona').count()) await page.locator('#vg-vaga-zona .vg-chip').first().click();
+  await page.fill('#vg-vaga-descricao', 'Atender no caixa, conferir o troco, embalar as compras e fechar o caixa no fim do turno.');
+}
+
+test('vaga nova: experiência só até 6 meses (CLT 442-A), "Selo sugerido"; publicar que falha sem internet não duplica a vaga (E1)', async ({ page }) => {
+  await entrar(page, 'empresa@previa.com', 'vaga/nova');
+  // Nada de "1 a 3 anos" nem "Mais de 3 anos"; o texto de ajuda cita a lei.
+  await expect(page.locator('#vg-vaga-experiencia [data-valor="nao_precisa"]')).toHaveText('Não precisa');
+  for (const id of ['ate_1', '1_a_3', 'mais_3']) await expect(page.locator('#vg-vaga-experiencia [data-valor="' + id + '"]')).toHaveCount(0);
+  await expect(page.locator('main')).toContainText('A lei não deixa exigir mais de 6 meses na mesma função (CLT, art. 442-A).');
+  await expect(page.locator('#vg-vaga-selo')).toContainText('Selo sugerido');
+  await expect(page.locator('main')).toContainText('O teste é opcional: sem selo não quer dizer que a pessoa não sabe. Sem nota mínima.');
+  const antes = await page.evaluate(async () => (await window.VAGAS_API.anunciosDaEmpresa((await window.VAGAS_API.eu()).empresas[0].id)).anuncios.length);
+  await preencherVaga(page, 'Caixa sem duplicar');
+  // 1ª tentativa: salva o rascunho no banco, mas a publicação cai (sem internet). A 2ª usa o mesmo id.
+  await page.evaluate(() => {
+    const A = window.VAGAS_API;
+    const original = A.publicarAnuncio;
+    let vez = 0;
+    A.publicarAnuncio = function (id) {
+      vez += 1;
+      if (vez === 1) { const e = new Error('Sem conexão.'); e.conexao = true; return Promise.reject(e); }
+      return original.call(A, id);
+    };
+  });
+  await page.click('#vg-vaga-publicar');
+  await expect(page.locator('#vg-vaga-publicar')).toBeEnabled();
+  await expect(page).toHaveURL(/#vaga\/nova$/);
+  await page.click('#vg-vaga-publicar');
+  await page.waitForURL(/#vaga\/[0-9a-f-]{36}$/);
+  const depois = await page.evaluate(async () => (await window.VAGAS_API.anunciosDaEmpresa((await window.VAGAS_API.eu()).empresas[0].id)).anuncios
+    .filter((a) => a.funcao === 'Caixa sem duplicar').length);
+  expect(depois).toBe(1);
+  expect(await page.evaluate(async () => (await window.VAGAS_API.anunciosDaEmpresa((await window.VAGAS_API.eu()).empresas[0].id)).anuncios.length)).toBe(antes + 1);
+});
+
+test('pré-abertura: /empresas de cidade em lista de espera → cadastrar → publicar → vaga "Aguardando a abertura"', async ({ page }) => {
+  const erros = vigiarErros(page);
+  await page.goto(BASE + 'empresas.html');
+  await page.waitForFunction(() => window.VAGAS_API && window.VAGAS_REGRAS);
+  // Uma cidade em lista de espera que já aceita empresa (achada pela situação, não pelo nome); sem nenhuma, a equipe põe uma em espera.
+  const cidade = await page.evaluate(async () => {
+    const c = (await window.VAGAS_API.cidades()).cidades.filter((x) => x.preAbertura && x.aceitaEmpresas)[0];
+    if (c) return c;
+    await window.VAGAS_API.entrar('admin@previa.com', 'previa123');
+    const todas = (await window.VAGAS_API.cidades()).cidades;
+    const alvo = todas[todas.length - 1];
+    await window.VAGAS_API.admCidadeSalvar({ slug: alvo.slug, nome: alvo.nome, uf: alvo.uf, status: 'lista_espera', ordem: 0 });
+    await window.VAGAS_API.sair();
+    return (await window.VAGAS_API.cidades()).cidades.filter((x) => x.slug === alvo.slug)[0];
+  });
+  expect([cidade.preAbertura, cidade.aceitaEmpresas]).toEqual([true, true]);
+  const aviso = 'Sua vaga entra no ar no dia em que ' + cidade.nome + ' abrir.';
+  await page.goto(BASE + 'empresas.html?cidade=' + cidade.slug);
+  await page.click('#vg-cadastrar-empresa');
+  await page.waitForURL(/entrar\.html\?tipo=empresa/);
+  await page.fill('#vg-emp-cnpj', '11.222.333/0001-81');
+  await page.fill('#vg-emp-nome', 'Loja da Abertura');
+  await page.fill('#vg-emp-responsavel', 'Marta Exemplo');
+  await page.fill('#vg-emp-email', 'marta@lojaabertura.exemplo');
+  await page.fill('#vg-emp-whatsapp', '(11) 99999-0001');
+  await page.check('#vg-emp-termos');
+  await page.click('#vg-emp-cadastrar');
+  await page.click('#vg-abrir-link-previa');
+  await page.fill('#vg-ns-senha', 'senha-boa-123');
+  await page.fill('#vg-ns-confirmar', 'senha-boa-123');
+  await page.click('#vg-ns-salvar');
+  await page.waitForURL(/empresa\.html#inicio$/);
+  // Cadastro: a cidade em espera aparece (e vem marcada), com o aviso de quando a vaga entra no ar.
+  await expect(page.locator('#vg-emp-cad-cidade [aria-checked="true"]')).toHaveText(cidade.nome + ' (' + cidade.uf + ')');
+  await expect(page.locator('#vg-emp-cad-pre-abertura')).toHaveText(aviso);
+  await expect(page.locator('#vg-emp-cad-enviar')).toBeEnabled();
+  await page.fill('#vg-emp-cad-razao', 'Loja da Abertura Ltda');
+  await page.click('#vg-emp-cad-enviar');
+  await expect(page.locator('#vg-faixa-empresa')).toContainText('Em análise.');
+  await expect(page.locator('#vg-emp-pre-abertura')).toContainText('Suas vagas entram no ar no dia em que ' + cidade.nome + ' abrir.');
+  // Publicar: o aviso fica junto do botão.
+  await page.goto(BASE + 'empresa.html#vaga/nova');
+  await preencherVaga(page, 'Caixa da abertura');
+  await expect(page.locator('#vg-vaga-pre-abertura')).toHaveText(aviso);
+  await page.click('#vg-vaga-publicar');
+  await page.waitForURL(/#vaga\/[0-9a-f-]{36}$/);
+  const anuncioId = page.url().split('#vaga/')[1];
+  const empresaId = await page.evaluate(async () => (await window.VAGAS_API.minhasEmpresas()).empresas[0].id);
+  // A operação confere o CNPJ e libera a 1ª vaga (revisão).
+  await page.evaluate(async ([e, a]) => {
+    await window.VAGAS_API.sair();
+    await window.VAGAS_API.entrar('admin@previa.com', 'previa123');
+    await window.VAGAS_API.opEmpresaDecidir(e, 'aprovar', '');
+    await window.VAGAS_API.opAnuncioDecidir(a, 'publicar', '');
+    await window.VAGAS_API.sair();
+    await window.VAGAS_API.entrar('marta@lojaabertura.exemplo', 'senha-boa-123');
+  }, [empresaId, anuncioId]);
+  await page.goto('about:blank');
+  await page.goto(BASE + 'empresa.html#vagas');
+  const linha = page.locator('#vg-emp-vagas-tabela tr', { hasText: 'Caixa da abertura' });
+  await expect(linha.locator('[data-status="aguarda_abertura"]')).toHaveText('Aguardando a abertura');
+  await linha.locator('a.vg-emp-link-vaga').click();
+  await expect(page.locator('.vg-emp-situacao .vg-status')).toHaveText('Aguardando a abertura');
+  await expect(page.locator('#vg-vaga-situacao')).toContainText(aviso);
+  await expect(page.locator('#vg-vaga-aguarda')).toContainText(aviso);
+  await expect(page.locator('#vg-vaga-link')).toHaveCount(0);
+  expect(erros).toEqual([]);
+});
+
 test('vaga publicada: pausar, retomar e encerrar (com confirmação); depois de encerrar, "Renovar"', async ({ page }) => {
   await entrar(page, 'empresa@previa.com', null);
   const id = await page.evaluate(async () => {
@@ -156,6 +269,10 @@ test('cartões cegos: ordem de chegada, só o filtro "Mostrar", sem nome nem con
   for (const quem of await page.locator('#vg-cartoes .vg-cartao__quem').allTextContents()) expect(quem).toBe('Pessoa candidata');
   expect(await page.locator('#vg-cartoes').textContent()).not.toMatch(/@|\(\d{2}\) 9/);
   for (const ref of await page.locator('#vg-cartoes .vg-ref-contagem').allTextContents()) expect(ref.trim()).toBe('Referência de empresa verificada: sim');
+  // Como ler o selo no momento da decisão, e o que a pessoa vê no "Agora não" (psicologia, revisão C 3.2 e 3.5).
+  await expect(page.locator('#vg-cartoes-selo')).toHaveText('O selo é informação, não requisito: o teste é opcional e nem toda função tem teste. Sem selo não quer dizer que a pessoa não sabe. A nota tem margem de cerca de 10 pontos e não serve para ordenar pessoas.');
+  await expect(page.locator('main')).toContainText('Quem você marca como "Agora não" vê a candidatura como encerrada, sem motivo.');
+  await expect(page.locator('main')).not.toContainText('A pessoa não é avisada');
   // Quero conversar: a mensagem passa pelo filtro (pedido de documento é bloqueado) e o cartão vira "Você chamou".
   const novo = page.locator('#vg-cartoes li.vg-cartao').filter({ has: page.locator('.vg-status--novo') }).first();
   const cand = await novo.getAttribute('data-candidatura');
@@ -164,9 +281,27 @@ test('cartões cegos: ordem de chegada, só o filtro "Mostrar", sem nome nem con
   await page.fill('#vg-chamar-texto', 'Me manda o seu cpf, por favor.');
   await page.click('#vg-chamar-enviar');
   await expect(page.locator('#vg-chamar-texto-erro')).toContainText('Mensagem bloqueada');
+  // E2: a 1ª tentativa chega ao servidor mas a resposta se perde (sem internet); o 2º toque reaproveita o id e não duplica.
+  await page.evaluate(() => {
+    const A = window.VAGAS_API;
+    const original = A.enviarMensagem;
+    window.__idsMensagem = [];
+    A.enviarMensagem = function (cand, texto, id) {
+      window.__idsMensagem.push(id);
+      const p = original.call(A, cand, texto, id);
+      if (window.__idsMensagem.length > 1) return p;
+      return p.then(() => { const e = new Error('Sem conexão.'); e.conexao = true; throw e; });
+    };
+  });
   await page.fill('#vg-chamar-texto', 'Podemos conversar amanhã às 10h na loja?');
   await page.click('#vg-chamar-enviar');
+  await expect(page.locator('#vg-chamar-texto-erro')).toContainText('Sem conexão.');
+  await page.click('#vg-chamar-enviar');
   await expect(page.locator('#vg-janela-chamar')).toHaveCount(0);
+  const ids = await page.evaluate(() => window.__idsMensagem);
+  expect(ids.length).toBe(2);
+  expect(ids[0]).toBe(ids[1]);
+  expect(await page.evaluate(async (c) => (await window.VAGAS_API.conversa(c)).mensagens.filter((m) => m.texto === 'Podemos conversar amanhã às 10h na loja?').length, cand)).toBe(1);
   const chamado = page.locator('#vg-cartoes li[data-candidatura="' + cand + '"]');
   await expect(chamado.locator('.vg-status')).toHaveText('Você chamou');
   await expect(chamado).toContainText('Esperando a pessoa aceitar.');
@@ -274,7 +409,7 @@ test('referências: dar por e-mail (até 3 pontos fortes, texto filtrado, declar
   expect(erros).toEqual([]);
 });
 
-test('referencia.html?t=: a empresa abre o pedido da pessoa e envia; link inválido mostra a mensagem do contrato; sem login vai para entrar', async ({ page }) => {
+test('referencia.html?t=: sem login vai para entrar sem o token no endereço e volta com o pedido aberto; envia; link inválido mostra a mensagem do contrato', async ({ page }) => {
   const erros = vigiarErros(page);
   await entrar(page, 'empresa@previa.com', null);
   const cnpj = await page.evaluate(async () => (await window.VAGAS_API.minhasEmpresas()).empresas[0].cnpj);
@@ -283,9 +418,17 @@ test('referencia.html?t=: a empresa abre o pedido da pessoa e envia; link invál
     const p = await window.VAGAS_API.minhaPessoa();
     return { token: r.convite.token, nome: p.pessoa.nome };
   }, cnpj);
-  await como(page, 'empresa@previa.com');
+  // Sem login: o token sai da barra antes de ir para o entrar.html (não vai no ?voltar= nem fica no aparelho).
+  await page.evaluate(() => window.VAGAS_API.sair());
   await page.goto(BASE + 'referencia.html?t=' + pedido.token);
+  await page.waitForURL(/entrar\.html\?.*voltar=referencia\.html(&|$)/);
+  expect(page.url()).not.toContain(pedido.token);
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(pedido.token);
+  // Entra e volta para referencia.html: o pedido continua aberto (memória da aba).
+  await page.evaluate(([e, s]) => window.VAGAS_API.entrar(e, s), ['empresa@previa.com', SENHA]);
+  await page.goto(BASE + 'referencia.html');
   await expect(page.locator('#vg-ref-pedido-titulo')).toHaveText('Dar referência profissional');
+  expect(page.url()).not.toContain(pedido.token);
   await expect(page.locator('#vg-ref-dar-pessoa')).toHaveValue(pedido.nome + ' (pediu a referência)');
   await expect(page.locator('#vg-emp-aba-referencias')).toHaveAttribute('href', 'empresa.html#referencias');
   await page.fill('#vg-ref-dar-funcao', 'Atendente');
@@ -298,11 +441,14 @@ test('referencia.html?t=: a empresa abre o pedido da pessoa e envia; link invál
   await page.check('#vg-ref-dar-declaro');
   await page.click('#vg-ref-dar-enviar');
   await expect(page.locator('#vg-ref-dar-ok')).toContainText('A decisão de mostrar ou não é só dela.');
+  // Enviada: o pedido sai da memória da aba.
+  await page.goto('about:blank');
+  await page.goto(BASE + 'referencia.html');
+  await expect(page.locator('main')).toContainText('Convite inválido ou vencido. Peça um link novo à pessoa.');
   await page.goto(BASE + 'referencia.html?t=' + 'a'.repeat(64));
   await expect(page.locator('main')).toContainText('Convite inválido ou vencido. Peça um link novo à pessoa.');
-  await page.evaluate(() => window.VAGAS_API.sair());
-  await page.goto(BASE + 'referencia.html?t=' + pedido.token);
-  await page.waitForURL(/entrar\.html\?.*voltar=referencia\.html%3Ft%3D[0-9a-f]{64}/);
+  await page.goto(BASE + 'referencia.html?t=link-cortado');
+  await expect(page.locator('main')).toContainText('Convite inválido ou vencido. Peça um link novo à pessoa.');
   expect(erros).toEqual([]);
 });
 
@@ -509,23 +655,48 @@ test.describe('equipe: convite pelo link, no celular', () => {
     await page.check('#vg-aceite-termos');
     await page.click('#vg-aceite-enviar');
     // O entrar.html leva direto para a tela de aceite (a pessoa não precisa achar o link de novo).
-    await page.waitForURL(new RegExp('empresa\\.html\\?convite=' + token + '$'));
     await expect(page.locator('main h1')).toHaveText('Convite para a equipe');
     await expect(page).toHaveTitle('Convite para a equipe | Vagas sem Caos');
+    // O token sai da barra de endereço assim que é lido (fica só na memória da aba).
+    await expect(page).toHaveURL(/\/vagas\/empresa\.html$/);
     await expect(page.locator('#vg-convite-texto')).toContainText(empresaNome + ' (');
-    await expect(page.locator('#vg-convite-texto')).toContainText('como recrutador(a): publicar vagas, ver os cartões e conversar com as pessoas.');
+    await expect(page.locator('#vg-convite-texto')).toContainText('como recrutador(a): publicar vagas, ver quem se candidatou e conversar com as pessoas.');
     await expect(page.locator('#vg-convite')).toContainText('Ao aceitar, quem é dono(a) da empresa vê o seu nome e o seu e-mail na lista da equipe.');
-    // Tela de uma tarefa: sem menu do painel nem botão de abrir menu.
+    await expect(page.locator('#vg-convite-regras')).toContainText('Na seleção valem as regras da casa: cartão sem nome, por ordem de chegada;');
+    // Tela de uma tarefa: sem menu do painel nem botão de abrir menu; texto de 16 px; alvos de toque de 44 px ou mais.
     await expect(page.locator('#vg-menu')).toHaveCount(0);
     await expect(page.locator('#vg-menu-abrir')).toBeHidden();
+    expect(await page.locator('#vg-convite-texto').evaluate((n) => getComputedStyle(n).fontSize)).toBe('16px');
+    expect(await page.locator('main').evaluate((m) => [...m.querySelectorAll('a, button')].filter((x) => x.offsetParent)
+      .map((x) => Math.round(x.getBoundingClientRect().height)).filter((h) => h < 44))).toEqual([]);
+    // Na ordem do código, "Aceitar" vem antes de "Agora não" (igual à tela).
+    expect(await page.locator('#vg-convite .vg-emp-acoes-coluna > *').evaluateAll((l) => l.map((x) => x.id))).toEqual(['vg-convite-aceitar', 'vg-convite-agora-nao']);
     await semRolagemLateral(page);
     await semIdsRepetidos(page);
     // "Agora não": sem empresa própria, volta para o início do Vagas sem Caos e o convite continua valendo.
     await page.click('#vg-convite-agora-nao');
     await page.waitForURL(/\/vagas\/index\.html$/);
     await page.goto(BASE + 'empresa.html?convite=' + token);
+    // Sem internet no aceite: mensagem desta tela, foco de volta no botão e nenhuma faixa genérica; na 2ª vez, aceita.
+    await page.evaluate(() => {
+      const A = window.VAGAS_API;
+      const original = A.aceitarConviteEquipe;
+      let vez = 0;
+      A.aceitarConviteEquipe = function (t) {
+        vez += 1;
+        if (vez === 1) { const e = new Error('Sem conexão.'); e.conexao = true; return Promise.reject(e); }
+        return original.call(A, t);
+      };
+    });
+    await page.click('#vg-convite-aceitar');
+    await expect(page.locator('#vg-convite-erro')).toHaveText('Sem internet: o convite ainda não foi aceito. Confira a conexão e toque de novo em "Aceitar o convite".');
+    await expect(page.locator('#vg-convite-aceitar')).toBeFocused();
+    await expect(page.locator('#vg-faixa-offline')).toHaveCount(0);
     await page.click('#vg-convite-aceitar');
     await expect(page.locator('#vg-convite-ok')).toContainText('Pronto. Agora você faz parte da equipe de ' + empresaNome + '.');
+    await expect(page.locator('#vg-convite-ok-titulo')).toBeFocused();
+    await expect(page.locator('#vg-convite-computador')).toHaveText('O painel funciona melhor no computador.');
+    await expect(page.locator('#vg-convite-erro')).toHaveCount(0);
     await page.click('#vg-convite-ir');
     await expect(page.locator('#vg-emp-saudacao')).toBeVisible();
     await expect(page.locator('#vg-menu-abrir')).toBeVisible();
@@ -550,8 +721,8 @@ test.describe('equipe: convite pelo link, no celular', () => {
     await page.fill('#vg-entrar-email', 'empresa2@previa.com');
     await page.fill('#vg-entrar-senha', SENHA);
     await page.click('#vg-entrar-enviar');
-    await page.waitForURL(new RegExp('empresa\\.html\\?convite=' + token + '$'));
     await expect(page.locator('#vg-convite-texto')).toContainText(empresaNome);
+    expect(page.url()).not.toContain(token);
     await expect(page.locator('#vg-convite-agora-nao')).toHaveAttribute('href', 'empresa.html#inicio');
     await semRolagemLateral(page);
     await page.click('#vg-convite-aceitar');
