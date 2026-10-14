@@ -308,7 +308,7 @@ const API_SUPABASE_VAGAS = `
 })();
 `;
 async function simularSupabaseVagas(page, versao) {
-  await configurar(page, { BACKEND: 'supabase', API_URL: 'https://projeto-teste.supabase.co', SUPABASE_URL: 'https://projeto-teste.supabase.co', SUPABASE_ANON_KEY: 'anon-publica' });
+  await configurar(page, { BACKEND: 'supabase', API_URL: 'https://projeto-teste.supabase.co', SUPABASE_URL: 'https://projeto-teste.supabase.co', SUPABASE_ANON_KEY: 'anon-publica', VAGAS_PAINEL: true });
   if (versao) await page.addInitScript((v) => { window.__versaoBanco = v; }, versao);
   await page.route('**/assets/vendor/supabase.js', (route) => route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: '/* sem supabase-js */' }));
   await page.route('**/js/api-supabase.js', (route) => route.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: API_SUPABASE_VAGAS }));
