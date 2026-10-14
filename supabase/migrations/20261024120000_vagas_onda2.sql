@@ -38,6 +38,11 @@
 --      vagas_op_assistidos(p_filtro) com os cadastros assistidos ainda pendentes (e-mail MASCARADO; operador(a) vê só os que
 --      criou). Nada disso devolve dado de pessoa além do que a própria operação digitou, e mascarado.
 --   7. Pedido da frente empresa: vagas_eu ganha "conta.nome" (o nome da própria conta, para a saudação), sem mudar o resto.
+--   8. Revisão de segurança da onda 2: só empresa verificada convida, e o nome de quem convida só vai no e-mail se passar no
+--      filtro de contato e link (B1); contagens pequenas de pessoas nos indicadores de cidade pequena saem "poucos" e até
+--      ontem (I1); a última pessoa dona não apaga a conta com equipe, a dona torna outra pessoa dona, a operação nomeia dona
+--      em empresa sem dona, e um gatilho promove a pessoa mais antiga se a empresa ainda assim ficar sem dona (I2); conta do
+--      convite nunca confirmada é apagada 30 dias depois do convite vencer (I3); o primeiro WhatsApp da lista de espera fica (I5).
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -460,7 +465,7 @@ $$;
 
 -- "Avise-me quando chegar" {cidade, email, perfil?, whatsapp?}. Limite: 10 por hora por origem. A resposta é a MESMA com ou
 -- sem WhatsApp e não revela se o e-mail já estava na lista (contador aproximado, sem quem entrou hoje). Repetir o e-mail não
--- duplica; um WhatsApp novo substitui o anterior daquele e-mail; sem WhatsApp, o que estava fica.
+-- duplica; o primeiro WhatsApp gravado para aquele e-mail fica (um terceiro não troca o número de ninguém).
 create or replace function public.vagas_lista_espera_entrar(p_dados jsonb)
 returns json language plpgsql volatile security definer set search_path = '' as $$
 declare
@@ -493,8 +498,10 @@ begin
   insert into public.vagas_lista_espera as l (cidade_id, email, perfil, whatsapp, whatsapp_em)
   values (c.id, v_email, v_perfil, v_whats, case when v_whats <> '' then now() end)
   on conflict (cidade_id, email) do update set
-    whatsapp = case when excluded.whatsapp <> '' then excluded.whatsapp else l.whatsapp end,
-    whatsapp_em = case when excluded.whatsapp <> '' then excluded.whatsapp_em else l.whatsapp_em end;
+    -- Revisão de segurança (I5): ninguém prova que é dono do e-mail; então o PRIMEIRO WhatsApp gravado fica (um terceiro não
+    -- troca o número de outra pessoa). Quem quiser trocar sai da lista e entra de novo. A resposta é sempre a mesma.
+    whatsapp = case when l.whatsapp = '' and excluded.whatsapp <> '' then excluded.whatsapp else l.whatsapp end,
+    whatsapp_em = case when l.whatsapp = '' and excluded.whatsapp <> '' then excluded.whatsapp_em else l.whatsapp_em end;
   return vagas_interno.ok(jsonb_build_object('cidade', c.slug, 'interessados', vagas_interno.interessados(c.id)));
 end;
 $$;
@@ -699,6 +706,13 @@ declare
   a_lista numeric;
   p3 numeric;
   v_viva jsonb;
+  -- Proteção de números pequenos (revisão de segurança, I1): em cidade pequena (ou sem porte), quem operou o mutirão sabe
+  -- quem fez a prova e quando; um contador de pessoas que sobe (ou não) em tempo real revelaria o resultado de alguém.
+  -- Então as contagens de PESSOAS (com selo, total e por teste; contratações) são "até o fim de ontem" no fuso da cidade
+  -- e, abaixo de 3, saem como null + "poucos": true.
+  v_protege boolean;
+  v_ate timestamptz;
+  selo_poucos boolean := false;
 begin
   if auth.uid() is null then return vagas_interno.erro('Sessão expirada. Entre de novo.', '{"sessaoExpirada": true}'); end if;
   select * into c from public.vagas_cidades where slug = lower(btrim(coalesce(p_cidade, '')));
@@ -713,6 +727,8 @@ begin
   v_hoje := (now() at time zone v_fuso)::date;
   v_mes := (date_trunc('month', v_hoje::timestamp)) at time zone v_fuso;
   v_janela := case (cat -> 2 -> 'janela' ->> coalesce(v_porte, '-')) when '72h' then interval '72 hours' else interval '7 days' end;
+  v_protege := v_porte is distinct from 'grande';
+  v_ate := case when v_protege then (v_hoje::timestamp) at time zone v_fuso else now() end;
 
   -- 1. Vagas no ar (total, por teste valorizado no campo "selo" e por área).
   select count(*)::int into n_vagas from public.vagas_anuncios a where a.cidade_id = any (v_cids) and vagas_interno.no_ar(a);
@@ -725,16 +741,24 @@ begin
            where a.cidade_id = any (v_cids) and vagas_interno.no_ar(a) group by a.area) x
     join public.vagas_areas ar on ar.slug = x.area;
 
-  -- 2. Pessoas da praça com selo válido (total e por teste). Sem a migração dos testes: sem dado.
+  -- 2. Pessoas da praça com selo válido (total e por teste). Sem a migração dos testes: sem dado. Cidade protegida: selo
+  --    emitido até o fim de ontem e válido ontem (não revogado até lá); abaixo de 3, null + poucos.
   if v_tem_selos then
     select count(distinct s.user_id)::int into n_selo from public.vagas_selos s
-     where not s.revogado and s.valido_ate >= v_hoje
+     where s.emitido_em < v_ate and (not s.revogado or s.revogado_em >= v_ate)
+       and s.valido_ate >= case when v_protege then v_hoje - 1 else v_hoje end
        and exists (select 1 from public.vagas_pessoas p where p.user_id = s.user_id and (p.cidade_id = any (v_cids) or p.cidade2_id = any (v_cids)));
     select coalesce(jsonb_object_agg(t.teste, (select count(distinct s.user_id) from public.vagas_selos s
-        where s.teste = t.teste and not s.revogado and s.valido_ate >= v_hoje
+        where s.teste = t.teste and s.emitido_em < v_ate and (not s.revogado or s.revogado_em >= v_ate)
+          and s.valido_ate >= case when v_protege then v_hoje - 1 else v_hoje end
           and exists (select 1 from public.vagas_pessoas p where p.user_id = s.user_id and (p.cidade_id = any (v_cids) or p.cidade2_id = any (v_cids))))),
         '{}'::jsonb)
       into selo_teste from unnest(v_testes) t(teste);
+    if v_protege then
+      selo_poucos := n_selo < 3 or exists (select 1 from jsonb_each_text(selo_teste) x where x.value::int < 3);
+      select coalesce(jsonb_object_agg(x.key, case when x.value::int < 3 then null else x.value::int end), '{}'::jsonb)
+        into selo_teste from jsonb_each_text(selo_teste) x;
+    end if;
 
     -- 3. Vagas publicadas nos últimos 30 dias (e há pelo menos a janela) com 3+ candidaturas de quem tinha selo válido
     --    no momento do Quero, dentro da janela do porte (arquivo: 7 dias na cidade pequena; sem janela no porte: 7 dias).
@@ -770,10 +794,10 @@ begin
                    where a.cidade_id = any (v_cids) and k.criado_em >= now() - interval '30 days') x
            where x.primeira is not null or (x.status <> 'retirada' and x.criado_em <= now() - interval '7 days')) y;
 
-  -- 6. Contratações (acumulado e mês, pela cidade da vaga).
+  -- 6. Contratações (acumulado e mês, pela cidade da vaga). Cidade protegida: até o fim de ontem; abaixo de 3, null + poucos.
   select count(*)::int, (count(*) filter (where k.contratada_em >= v_mes))::int into contr, contr_mes
     from public.vagas_candidaturas k join public.vagas_anuncios a on a.id = k.anuncio_id
-   where a.cidade_id = any (v_cids) and k.status = 'contratada';
+   where a.cidade_id = any (v_cids) and k.status = 'contratada' and (not v_protege or k.contratada_em < v_ate);
 
   -- 7. Empresas verificadas da praça com alguma ação no mês: publicou vaga, decidiu candidatura ou escreveu na conversa.
   --    (Renovar não guarda data própria: não conta sozinho.)
@@ -828,8 +852,8 @@ begin
   ind := jsonb_build_array(
     vagas_interno.indicador_json('vagas_ativas', v_porte, n_vagas,
       jsonb_build_object('detalhe', jsonb_build_object('porTeste', vagas_teste, 'porArea', vagas_area))),
-    vagas_interno.indicador_json('pessoas_com_selo_por_funcao', v_porte, n_selo,
-      case when v_tem_selos then jsonb_build_object('detalhe', jsonb_build_object('porTeste', selo_teste,
+    vagas_interno.indicador_json('pessoas_com_selo_por_funcao', v_porte, case when v_protege and n_selo < 3 then null else n_selo end,
+      case when v_tem_selos then jsonb_build_object('poucos', selo_poucos, 'ateOntem', v_protege, 'detalhe', jsonb_build_object('porTeste', selo_teste,
         'alvoPorTeste', cat -> 1 -> 'alvo' -> coalesce(v_porte, '-') -> 'porTeste',
         'alvoLancamentoPorTeste', cat -> 1 -> 'alvoLancamento' -> coalesce(v_porte, '-') -> 'porTeste'))
       else '{"semDado": true}'::jsonb end),
@@ -841,7 +865,9 @@ begin
       jsonb_build_object('semBase', b7 = 0, 'detalhe', jsonb_build_object('base', b7, 'comCombinou', ok7))),
     vagas_interno.indicador_json('primeira_resposta_empresa_dias', v_porte, resp_med,
       jsonb_build_object('semBase', resp_base = 0, 'detalhe', jsonb_build_object('base', resp_base, 'semRespostaEm7DiasPct', resp_sem7))),
-    vagas_interno.indicador_json('contratacoes', v_porte, contr, jsonb_build_object('detalhe', jsonb_build_object('mes', contr_mes))),
+    vagas_interno.indicador_json('contratacoes', v_porte, case when v_protege and contr < 3 then null else contr end,
+      jsonb_build_object('poucos', v_protege and (contr < 3 or contr_mes < 3), 'ateOntem', v_protege,
+        'detalhe', jsonb_build_object('mes', case when v_protege and contr_mes < 3 then null else contr_mes end))),
     vagas_interno.indicador_json('empresas_ativas_mes', v_porte, emp_mes, null),
     vagas_interno.indicador_json('empresas_buscando_semana', v_porte, null, '{"semDado": true}'::jsonb),
     vagas_interno.indicador_json('empresas_pagantes', v_porte, null, '{"semDado": true}'::jsonb),
@@ -868,14 +894,17 @@ begin
   gat := jsonb_build_array(vagas_interno.gatilho_json('antes_de_cobrar', l_vagas is not null, jsonb_build_array(
     vagas_interno.gatilho_parte(format('Vagas no ar: %s ou mais', l_vagas), n_vagas >= l_vagas),
     vagas_interno.gatilho_parte(format('Empresas ativas no mês: %s ou mais', l_emp), emp_mes >= l_emp),
-    vagas_interno.gatilho_parte(format('Pessoas com selo: %s ou mais', l_selo), n_selo >= l_selo,
+    vagas_interno.gatilho_parte(format('Pessoas com selo: %s ou mais', l_selo),
+      case when v_protege and n_selo < 3 then case when l_selo >= 3 then false end else n_selo >= l_selo end,
       case when v_tem_selos then '{}'::jsonb else '{"semDado": true}'::jsonb end),
     vagas_interno.gatilho_parte(format('Vagas com 3 interessados com selo na janela: %s%% ou mais', a3), p3 >= a3,
       case when v_tem_selos then '{}'::jsonb else '{"semDado": true}'::jsonb end),
-    vagas_interno.gatilho_parte(format('Contratações: %s ou mais', a_contr), contr >= a_contr))));
+    vagas_interno.gatilho_parte(format('Contratações: %s ou mais', a_contr),
+      case when v_protege and contr < 3 then case when a_contr >= 3 then false end else contr >= a_contr end))));
   v_viva := vagas_interno.gatilho_json('praca_viva', a_vagas is not null, jsonb_build_array(
     vagas_interno.gatilho_parte(format('Vagas no ar: %s ou mais', a_vagas), n_vagas >= a_vagas),
-    vagas_interno.gatilho_parte(format('Pessoas com selo: %s ou mais', a_selo), n_selo >= a_selo,
+    vagas_interno.gatilho_parte(format('Pessoas com selo: %s ou mais', a_selo),
+      case when v_protege and n_selo < 3 then case when a_selo >= 3 then false end else n_selo >= a_selo end,
       case when v_tem_selos then '{}'::jsonb else '{"semDado": true}'::jsonb end),
     vagas_interno.gatilho_parte(format('Empresas ativas no mês: %s ou mais', a_emp), emp_mes >= a_emp),
     vagas_interno.gatilho_parte(format('Empresas pagantes no mês: %s ou mais', a_pag), null, '{"semDado": true}'::jsonb),
@@ -973,7 +1002,8 @@ begin
              where x.empresa_id = e.id and (x.status = 'aberto' or coalesce(x.usado_em, x.encerrado_em, x.criado_em) > now() - interval '30 days')
              order by x.criado_em desc limit 50) cv), '[]'::jsonb),
     'limites', jsonb_build_object('convitesPorDia', 10, 'convitesHoje', vagas_interno.contagem('equipe_convite_empresa', e.id::text, interval '1 day'),
-      'membrosMax', 20, 'convitesAbertosMax', 20, 'validadeHoras', 72)));
+      'membrosMax', 20, 'convitesAbertosMax', 20, 'validadeHoras', 72,
+      'podeConvidar', e.status = 'ativa' and e.cnpj_conferido_em is not null)));
 end;
 $$;
 
@@ -1126,6 +1156,11 @@ begin
     return vagas_interno.erro('Só quem é dono(a) da conta da empresa pode convidar pessoas para a equipe.');
   end if;
   if e.status = 'suspensa' then return vagas_interno.erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.', '{"suspensa": true}'); end if;
+  -- Revisão de segurança (B1): o convite sai por e-mail com o domínio da plataforma; empresa ainda não verificada (em análise,
+  -- CNPJ não conferido) não convida ninguém.
+  if e.status <> 'ativa' or e.cnpj_conferido_em is null then
+    return vagas_interno.erro('Só empresa verificada pela Gestão sem Caos pode convidar pessoas para a equipe.');
+  end if;
   if v_email = '' then return vagas_interno.erro('E-mail inválido.'); end if;
   -- Quem já está na equipe aparece na lista da própria dona/do próprio dono: dizer não revela nada novo.
   if exists (select 1 from public.vagas_empresa_membros m join auth.users u on u.id = m.user_id
@@ -1152,6 +1187,7 @@ begin
   delete from public.vagas_equipe_convites x
    where (x.status <> 'aberto' and coalesce(x.usado_em, x.encerrado_em, x.criado_em) < now() - interval '30 days')
       or (x.status = 'aberto' and x.expira_em < now() - interval '30 days');
+  perform vagas_interno.contas_convite_limpar();
   update public.vagas_equipe_convites set status = 'cancelado', encerrado_em = now()
    where empresa_id = e.id and email = v_email and status = 'aberto';
   v_token := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
@@ -1171,7 +1207,142 @@ begin
   values (e.cidade_id, p_user, 'empresa', 'equipe_convidar', 'empresa', e.id, '', jsonb_build_object('papel', cv.papel));
   return vagas_interno.ok(jsonb_build_object('convite', vagas_interno.equipe_convite_json(cv), 'token', v_token, 'destino', v_destino,
     'empresaNome', e.nome_fantasia, 'cidadeNome', (select x.nome from public.vagas_cidades x where x.id = e.cidade_id),
-    'convidadoPor', (select disc_interno.limpar_texto(coalesce(u.raw_user_meta_data ->> 'nome', ''), 120) from auth.users u where u.id = p_user)));
+    'convidadoPor', (select case when vagas_interno.conferir_texto(x.nome, 'cartao') is null then x.nome else '' end
+                       from (select disc_interno.limpar_texto(coalesce(u.raw_user_meta_data ->> 'nome', ''), 120) as nome
+                               from auth.users u where u.id = p_user) x)));
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- Revisão de segurança da onda 2 (I2 e I3): empresa nunca fica sem dona; conta do convite nunca confirmada não fica para sempre
+-- -----------------------------------------------------------------------------
+
+-- I3. Conta criada pelo convite de equipe (app_metadata.convite, sem pedido da própria pessoa) que nunca confirmou o e-mail:
+-- apagada 30 dias depois de o último convite para aquele e-mail vencer (e 33 dias depois de criada, no mínimo). Só conta
+-- pendente, não assistida, sem vínculo nenhum (empresa, operação, painel DISC). Roda a cada convite novo e pode ser agendada
+-- (pg_cron: select vagas_interno.contas_convite_limpar();). Sem permissão para apagar no Auth, não faz nada (o convite segue).
+create or replace function vagas_interno.contas_convite_limpar()
+returns int language plpgsql volatile security definer set search_path = '' as $$
+declare
+  n int := 0;
+begin
+  begin
+    with velhas as (
+      select u.id from auth.users u join public.vagas_contas k on k.user_id = u.id
+       where u.email_confirmed_at is null and k.status = 'pendente' and coalesce(u.raw_app_meta_data ->> 'convite', '') = 'true'
+         and k.assistida_por is null and k.criado_em < now() - interval '33 days'
+         and not exists (select 1 from public.vagas_empresa_membros m where m.user_id = u.id)
+         and not exists (select 1 from public.vagas_operadores o where o.user_id = u.id)
+         and not exists (select 1 from public.admins a where a.user_id = u.id)
+         and not exists (select 1 from public.vagas_equipe_convites cv where cv.email = lower(u.email) and cv.expira_em > now() - interval '30 days')
+       limit 200
+    )
+    delete from auth.users u using velhas v where u.id = v.id;
+    get diagnostics n = row_count;
+  exception when insufficient_privilege then
+    n := 0;
+  end;
+  return n;
+end;
+$$;
+
+-- I2 (rede de segurança). Se a empresa ficar com equipe mas SEM pessoa dona ativa (a dona apagou a conta por fora da Edge
+-- Function, por exemplo), a pessoa mais antiga da equipe vira dona, com registro de moderação (papel 'sistema'). Pela
+-- Function a exclusão da última dona com equipe é recusada antes (vagas_conta_exclusao_conferir).
+create or replace function vagas_interno.membros_sem_dono()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  v_empresa uuid := coalesce(old.empresa_id, new.empresa_id);
+  v_novo uuid;
+begin
+  if not exists (select 1 from public.vagas_empresas e where e.id = v_empresa) then return null; end if;
+  if exists (select 1 from public.vagas_empresa_membros m where m.empresa_id = v_empresa and m.ativo and m.papel = 'dono') then return null; end if;
+  select m.user_id into v_novo from public.vagas_empresa_membros m
+   where m.empresa_id = v_empresa and m.ativo order by m.criado_em, m.user_id limit 1;
+  if v_novo is null then return null; end if;   -- sem ninguém: a regra da fundação (empresa_sem_membros) cuida
+  update public.vagas_empresa_membros set papel = 'dono' where empresa_id = v_empresa and user_id = v_novo;
+  insert into public.vagas_moderacao (cidade_id, ator, papel, acao, alvo, alvo_id, motivo, dados)
+  select e.cidade_id, null, 'sistema', 'dono_automatico', 'empresa', e.id, 'A empresa ficou sem pessoa dona.', '{}'::jsonb
+    from public.vagas_empresas e where e.id = v_empresa;
+  return null;
+end;
+$$;
+drop trigger if exists vagas_empresa_membros_sem_dono on public.vagas_empresa_membros;
+create trigger vagas_empresa_membros_sem_dono after delete or update of ativo, papel on public.vagas_empresa_membros
+  for each row execute function vagas_interno.membros_sem_dono();
+
+-- I2. Só para a Edge Function (ação "excluir"): a conta pode ser apagada? Recusa a ÚLTIMA pessoa dona de uma empresa que
+-- ainda tem outras pessoas na equipe (antes, ela torna alguém dono(a) pela aba Equipe, ou remove a equipe).
+create or replace function public.vagas_conta_exclusao_conferir(p_user uuid)
+returns json language plpgsql stable security definer set search_path = '' as $$
+begin
+  if coalesce(current_setting('role', true), '') in ('anon', 'authenticated') then return vagas_interno.erro('Sem permissão.'); end if;
+  if exists (select 1 from public.vagas_empresa_membros m
+              where m.user_id = p_user and m.ativo and m.papel = 'dono'
+                and not exists (select 1 from public.vagas_empresa_membros d
+                                 where d.empresa_id = m.empresa_id and d.ativo and d.papel = 'dono' and d.user_id <> p_user)
+                and exists (select 1 from public.vagas_empresa_membros o
+                             where o.empresa_id = m.empresa_id and o.ativo and o.user_id <> p_user)) then
+    return vagas_interno.erro('Você é a única pessoa dona de uma empresa que tem equipe. Antes de excluir a conta, torne outra pessoa da equipe dona (aba Equipe da empresa) ou remova a equipe.');
+  end if;
+  return vagas_interno.ok('{}'::jsonb);
+end;
+$$;
+
+-- I2. A dona/o dono torna outra pessoa da equipe dona também (as duas ficam donas; depois uma pode sair). Registro de moderação.
+create or replace function public.vagas_equipe_tornar_dono(p_empresa uuid, p_membro uuid)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  v_conta jsonb := vagas_interno.conta_atual('empresa');
+  m public.vagas_empresa_membros%rowtype;
+  e public.vagas_empresas%rowtype;
+begin
+  if not (v_conta ->> 'ok')::boolean then return v_conta::json; end if;
+  select * into e from public.vagas_empresas where id = p_empresa;
+  if not found or not vagas_interno.membro(p_empresa) then return vagas_interno.erro('Empresa não encontrada.'); end if;
+  if not vagas_interno.membro(p_empresa, true) then
+    return vagas_interno.erro('Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.');
+  end if;
+  if e.status = 'suspensa' then return vagas_interno.erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.', '{"suspensa": true}'); end if;
+  select * into m from public.vagas_empresa_membros where empresa_id = e.id and user_id = p_membro and ativo for update;
+  if not found then return vagas_interno.erro('Esta pessoa não está na equipe.'); end if;
+  if m.papel = 'dono' then
+    return vagas_interno.ok(jsonb_build_object('membro', jsonb_build_object('userId', m.user_id, 'papel', 'dono'), 'duplicado', true));
+  end if;
+  update public.vagas_empresa_membros set papel = 'dono' where empresa_id = e.id and user_id = p_membro;
+  perform vagas_interno.registrar(e.cidade_id, 'empresa', 'equipe_tornar_dono', 'empresa', e.id, '', jsonb_build_object('papel', 'dono'));
+  return vagas_interno.ok(jsonb_build_object('membro', jsonb_build_object('userId', m.user_id, 'papel', 'dono'), 'duplicado', false));
+end;
+$$;
+
+-- I2. A operação nomeia a nova pessoa dona de uma empresa SEM dona ativa (a equipe da Gestão sem Caos, em qualquer empresa):
+-- a pessoa precisa já estar na equipe (pelo e-mail de login dela); o motivo é obrigatório e fica no registro de moderação.
+-- Moderador(a) não nomeia. Empresa sem ninguém na equipe: vagas_op_vincular_membro.
+create or replace function public.vagas_op_empresa_dono(p_empresa uuid, p_email text, p_motivo text)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  e public.vagas_empresas%rowtype;
+  v_papel text;
+  v_user uuid;
+  v_email text := vagas_interno.email(p_email);
+  v_motivo text := coalesce(disc_interno.limpar_texto(coalesce(p_motivo, ''), 300), '');
+begin
+  if auth.uid() is null then return vagas_interno.erro('Sessão expirada. Entre de novo.', '{"sessaoExpirada": true}'); end if;
+  select * into e from public.vagas_empresas where id = p_empresa;
+  if not found then return vagas_interno.erro('Empresa não encontrada.'); end if;
+  v_papel := vagas_interno.papel_cidade(e.cidade_id);
+  if v_papel is null or v_papel = 'moderador' then return vagas_interno.erro('Sem permissão.'); end if;
+  if v_papel = 'operador' and exists (select 1 from public.vagas_empresa_membros d where d.empresa_id = e.id and d.ativo and d.papel = 'dono') then
+    return vagas_interno.erro('A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.');
+  end if;
+  if v_motivo = '' then return vagas_interno.erro('Informe o motivo.'); end if;
+  if v_email = '' then return vagas_interno.erro('E-mail inválido.'); end if;
+  select m.user_id into v_user from public.vagas_empresa_membros m join auth.users u on u.id = m.user_id
+   where m.empresa_id = e.id and m.ativo and lower(u.email) = v_email limit 1;
+  if v_user is null then return vagas_interno.erro('Esta pessoa não está na equipe da empresa.'); end if;
+  update public.vagas_empresa_membros set papel = 'dono' where empresa_id = e.id and user_id = v_user;
+  perform vagas_interno.registrar(e.cidade_id, v_papel, 'empresa_dono', 'empresa', e.id, v_motivo, jsonb_build_object('papel', 'dono'));
+  return vagas_interno.ok(jsonb_build_object('empresa', jsonb_build_object('id', e.id), 'membro', jsonb_build_object('papel', 'dono')));
 end;
 $$;
 
@@ -1356,9 +1527,9 @@ declare
     'public.vagas_equipe_convite_aceitar(text)', 'public.vagas_equipe_convite_cancelar(uuid)', 'public.vagas_equipe_remover(uuid, uuid)',
     'public.vagas_adm_cidade_salvar(jsonb)', 'public.vagas_iniciar_tentativa(text)', 'public.vagas_pessoa_salvar(jsonb)',
     'public.vagas_op_resumo()', 'public.vagas_adm_cidades()', 'public.vagas_adm_operadores(jsonb)', 'public.vagas_op_assistidos(jsonb)',
-    'public.vagas_eu()'];
+    'public.vagas_eu()', 'public.vagas_equipe_tornar_dono(uuid, uuid)', 'public.vagas_op_empresa_dono(uuid, text, text)'];
   publicas text[] := array['public.vagas_lista_espera_entrar(jsonb)', 'public.vagas_lista_espera_sair(jsonb)'];
-  servico text[] := array['public.vagas_conta_convite_equipe(uuid, uuid, text, text, text)'];
+  servico text[] := array['public.vagas_conta_convite_equipe(uuid, uuid, text, text, text)', 'public.vagas_conta_exclusao_conferir(uuid)'];
 begin
   execute 'revoke all on public.vagas_equipe_convites from public';
   foreach papel in array array['anon', 'authenticated'] loop
