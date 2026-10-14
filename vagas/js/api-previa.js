@@ -941,14 +941,12 @@
     }
     function pontosFortesIds() { return R.PONTOS_FORTES.map(function (p) { return p.id; }); }
     function referenciaVisivel(r) { var e = empresa(r.empresaId); return r.status === 'aceita' && !!e && e.status === 'ativa'; }
-    // O que a empresa autora (e a operação) vê: ocultar/remover pela pessoa não aparece (veto P2 da psicologia).
-    function referenciaStatusEmpresa(r) {
-      if (r.status === 'aceita' || r.status === 'ocultada') return 'aceita';
-      if (r.status === 'removida' && r.removidaPor === 'pessoa') return r.aceitaEm != null ? 'aceita' : 'recusada';
-      return r.status;
-    }
+    // O que a empresa autora (e a operação) vê (veto P2, 20261024120005): 'enviada' ou 'removida' (pela moderação); nada do que
+    // a pessoa fez (aceitar, recusar, ocultar, remover, publicar).
+    function referenciaStatusEmpresa(r) { return r.status === 'removida' && r.removidaPor === 'moderacao' ? 'removida' : 'enviada'; }
+    // No perfil da pessoa, a empresa vê só referência visível de OUTRA empresa (a própria nunca aparece).
     function referenciaParaEmpresa(r, empresas) {
-      return referenciaVisivel(r) || ((empresas || []).indexOf(r.empresaId) >= 0 && referenciaStatusEmpresa(r) === 'aceita');
+      return referenciaVisivel(r) && (empresas || []).indexOf(r.empresaId) < 0;
     }
     // Cartão cego: só "tem referência de empresa verificada" (veto P1).
     function temReferencia(uid, empId) {
@@ -1045,7 +1043,7 @@
         if (areas.length && areas.indexOf(a.area) < 0) return false;
         if (turnos.length && turnos.indexOf(a.turno) < 0) return false;
         if (sal != null && (a.valor.maxCentavos != null ? a.valor.maxCentavos : a.valor.minCentavos) * (mult[a.valor.unidade] || 0) < sal) return false;
-        if (semExp && a.experiencia !== 'nao_precisa') return false;
+        if (semExp && a.experiencia === '6_meses') return false;   // "ajuda" também aceita sem experiência (20261024120005)
         if (busca && R.normalizar(a.funcao + ' ' + areaJson(a.area).nome).indexOf(busca) < 0) return false;
         if (pessoaId && (st.pulos.some(function (p) { return p.pessoaId === pessoaId && p.anuncioId === a.id; }) ||
           st.candidaturas.some(function (k) { return k.pessoaId === pessoaId && k.anuncioId === a.id; }))) return false;
@@ -1431,23 +1429,39 @@
       return ok({ candidatura: candidaturaPessoa(k) });
     };
 
+    // Aceite da foto opcional (20261024120005): grava só quando muda; versão = a dos termos da conta.
+    H.vagas_foto_consentimento = function (a) {
+      var c = contaAtual('pessoa');
+      if (!c.ok) return c;
+      if (a.p_aceito !== true && a.p_aceito !== false) return erro('Dados inválidos. Confira os campos.');
+      var ultimo = st.consentimentos.filter(function (x) { return x.userId === st.sessao && x.tipo === 'foto_opcional'; }).pop();
+      var dup = !!ultimo && ultimo.aceito === a.p_aceito;
+      if (!dup) st.consentimentos.push({ userId: st.sessao, tipo: 'foto_opcional', versao: st.contas[st.sessao].termosVersao || 'sem-versao', aceito: a.p_aceito, em: agora() });
+      return ok({ fotoOpcional: a.p_aceito, duplicado: dup });
+    };
+
     H.vagas_quem_viu_meu_contato = function () {
       var c = contaAtual('pessoa');
       if (!c.ok) return c;
       var grupos = {};
       st.acessos.filter(function (x) { return x.pessoaId === st.sessao; }).forEach(function (x) {
         var g = x.candidaturaId || ('sem-' + x.em);
-        if (!grupos[g]) grupos[g] = { candidaturaId: x.candidaturaId || null, empresa: x.empresaNome, anuncio: x.anuncioTitulo, primeira: x.em, ultima: x.em, vezes: 0 };
+        if (!grupos[g]) grupos[g] = { candidaturaId: x.candidaturaId || null, empresa: x.empresaNome, anuncio: x.anuncioTitulo, primeira: x.em, ultima: x.em, vezes: 0, quem: [] };
         grupos[g].vezes += 1;
         grupos[g].primeira = Math.min(grupos[g].primeira, x.em);
         grupos[g].ultima = Math.max(grupos[g].ultima, x.em);
+        // quem abriu: o papel na empresa (dono | recrutador | null), nunca e-mail nem nome (20261024120005)
+        var q = grupos[g].quem.filter(function (y) { return y.empresa === x.empresaNome && y.papel === (x.papel || null); })[0];
+        if (!q) grupos[g].quem.push(q = { empresa: x.empresaNome, papel: x.papel || null, vezes: 0 });
+        q.vezes += 1;
       });
       return ok({ acessos: Object.keys(grupos).map(function (g) { return grupos[g]; }).sort(function (x, y) { return y.ultima - x.ultima; })
         .map(function (g) {
           var k = g.candidaturaId ? minhaCandidatura(g.candidaturaId) : null;
           return { candidaturaId: g.candidaturaId, empresa: g.empresa, anuncio: g.anuncio, primeiraVez: iso(g.primeira), ultimaVez: iso(g.ultima), vezes: g.vezes,
             cortadoEm: iso(k ? k.contatoCortadoEm : null),
-            podeCortar: !!k && (k.status === 'combinou' || k.status === 'contratada') && k.contatoCortadoEm == null };
+            podeCortar: !!k && (k.status === 'combinou' || k.status === 'contratada') && k.contatoCortadoEm == null,
+            quem: g.quem.sort(function (x, y) { return y.vezes - x.vezes || (x.papel === null) - (y.papel === null) || String(x.papel).localeCompare(String(y.papel)); }) };
         }) });
     };
 
@@ -1714,9 +1728,6 @@
       var f = obj(a.p_filtro);
       var status = R.listaEnum(f.status, ['enviada', 'conversar', 'agora_nao', 'combinou', 'contratada', 'recusada']);
       var zonas = R.listaTexto(typeof f.zona === 'string' ? [f.zona] : f.zona, 60);
-      var escIds = R.ESCOLARIDADES.map(function (x) { return x.id; });
-      var esc = escIds.indexOf(txt(f.escolaridadeMin));
-      var exp = R.inteiro(f.experienciaMinMeses);
       var turnos = R.listaEnum(f.turnos, R.TURNOS);
       var cnh = R.listaEnum(f.cnh, R.CNH);
       var pret = R.inteiro(f.pretensaoMaxCentavos);
@@ -1725,12 +1736,10 @@
         if (k.anuncioId !== an.id || k.status === 'retirada' || !p) return false;
         if (status.length && status.indexOf(k.status) < 0) return false;
         if (zonas.length && zonas.indexOf(p.zona) < 0) return false;
-        if (esc >= 0 && escIds.indexOf(p.escolaridade) < esc) return false;
-        if (exp != null && cartao(k.pessoaId).experienciaTotalMeses < exp) return false;
         if (turnos.length && !turnos.some(function (t) { return p.turnos.indexOf(t) >= 0; })) return false;
         if (cnh.length && !cnh.every(function (t) { return p.cnh.indexOf(t) >= 0; })) return false;
         if (pret != null && p.pretensaoCentavos != null && p.pretensaoCentavos > pret) return false;
-        return true;   // sem filtro por selo, nota ou referência (veto P3): "temSelo" é ignorado
+        return true;   // sem filtro por selo, nota ou referência (veto P3), escolaridade nem tempo de experiência (20261024120005)
       }).sort(function (x, y) { return x.criadoEm - y.criadoEm || (x.id < y.id ? -1 : 1); }).map(function (k) {
         var v = conversaDe(k.id);
         return { candidaturaId: k.id, status: k.status, chegouEm: iso(k.criadoEm), contatoCortado: k.contatoCortadoEm != null, cartao: cartao(k.pessoaId, k.empresaId),
@@ -1769,7 +1778,9 @@
       if (contar('contato_empresa', k.empresaId, DIA) > 300) return erro('Muitas consultas de contato hoje. Tente de novo amanhã.', { bloqueado: true });
       var an = anuncio(k.anuncioId);
       var ct = st.contatos[k.pessoaId];
-      st.acessos.push({ candidaturaId: k.id, pessoaId: k.pessoaId, empresaId: e.id, empresaNome: e.nomeFantasia, anuncioTitulo: an.titulo, userId: st.sessao, em: agora() });
+      var quemAbriu = st.membros.filter(function (m) { return m.empresaId === e.id && m.userId === st.sessao; })[0];
+      st.acessos.push({ candidaturaId: k.id, pessoaId: k.pessoaId, empresaId: e.id, empresaNome: e.nomeFantasia, anuncioTitulo: an.titulo, userId: st.sessao,
+        papel: quemAbriu ? quemAbriu.papel : null, em: agora() });
       return ok({ pessoa: { nome: ct.nome, whatsapp: ct.whatsapp, email: ct.email, sobre: st.pessoas[k.pessoaId].sobre, temFoto: temFoto(k.pessoaId),
         cartao: cartao(k.pessoaId, k.empresaId),
         referencias: st.referencias.filter(function (r) { return r.pessoaId === k.pessoaId && referenciaParaEmpresa(r, [k.empresaId]); })
@@ -1911,9 +1922,12 @@
       // Limite decidido ANTES de saber se o e-mail tem conta: mesma resposta com ou sem conta, inclusive no limite.
       var noLimite = referenciasNoMes(e.id) >= 20;
       if (neutro && noLimite) return ok({ enviada: true });
+      // Envio por e-mail conta no limite sempre (com ou sem conta): o contador não revela nada.
+      if (neutro) { if (!st.referenciaEnviosEmail) st.referenciaEnviosEmail = []; st.referenciaEnviosEmail.push({ empresaId: e.id, em: agora() }); }
       if (!pessoaId) return ok({ enviada: true });
       var r = st.referencias.filter(function (x) { return x.empresaId === e.id && x.pessoaId === pessoaId; })[0];
-      if (r && r.status !== 'pendente' && origem !== 'convite') {
+      // Mesma resposta antes e depois da resposta da pessoa (veto P2).
+      if (r && origem !== 'convite') {
         if (neutro) return ok({ enviada: true });
         return erro('Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.');
       }
@@ -1932,7 +1946,7 @@
       historico(r.id, 'oferecida', 'empresa');
       if (cv) { cv.status = 'usado'; cv.usadoEm = agora(); cv.referenciaId = r.id; }
       if (neutro) return ok({ enviada: true });
-      return ok({ referencia: Object.assign(referenciaJson(r, true), { status: r.status }) });
+      return ok({ referencia: Object.assign(referenciaJson(r, true), { status: referenciaStatusEmpresa(r) }) });
     };
 
     H.vagas_referencia_pedir = function (a) {
@@ -2008,16 +2022,15 @@
       var c = contaAtual('empresa');
       if (!c.ok) return c;
       if (!membro(a.p_empresa)) return erro('Empresa não encontrada.');
-      return ok({ referencias: st.referencias.filter(function (r) { return r.empresaId === a.p_empresa && (r.origem !== 'email' || referenciaStatusEmpresa(r) === 'aceita'); })
+      return ok({ referencias: st.referencias.filter(function (r) { return r.empresaId === a.p_empresa && r.origem !== 'email'; })
         .sort(function (x, y) { return y.criadoEm - x.criadoEm; })
-        .map(function (r) { return Object.assign(referenciaJson(r, true), { status: referenciaStatusEmpresa(r), textoMotivo: r.textoMotivo, origem: r.origem, aceitaEm: iso(r.aceitaEm) }); }),
+        .map(function (r) { return Object.assign(referenciaJson(r, true), { status: referenciaStatusEmpresa(r), textoMotivo: r.textoMotivo, origem: r.origem }); }),
         restantes30Dias: Math.max(0, 20 - referenciasNoMes(a.p_empresa)) });
     };
-    // Referências que contam no limite de 20 em 30 dias: só as que a empresa consegue ver (nunca a pendente por e-mail).
+    // Limite de 20 em 30 dias: as que não vieram por e-mail + cada envio por e-mail (tenha conta ou não; aceite ou não).
     function referenciasNoMes(empId) {
-      return st.referencias.filter(function (r) {
-        return r.empresaId === empId && r.criadoEm > agora() - 30 * DIA && (r.origem !== 'email' || referenciaStatusEmpresa(r) === 'aceita');
-      }).length;
+      return st.referencias.filter(function (r) { return r.empresaId === empId && r.criadoEm > agora() - 30 * DIA && r.origem !== 'email'; }).length +
+        (st.referenciaEnviosEmail || []).filter(function (x) { return x.empresaId === empId && x.em > agora() - 30 * DIA; }).length;
     }
 
     H.vagas_referencias_publicar = function (a) {
@@ -2074,9 +2087,11 @@
           (!busca || R.normalizar(e.nomeFantasia + ' ' + e.razaoSocial + ' ' + e.cnpj).indexOf(busca) >= 0);
       }).sort(function (p, q) { return (q.status === 'em_analise') - (p.status === 'em_analise') || q.criadoEm - p.criadoEm; }).map(function (e) {
         var as = st.anuncios.filter(function (a2) { return a2.empresaId === e.id; });
+        var ms = st.membros.filter(function (m) { return m.empresaId === e.id && m.ativo; });
+        var donos = ms.filter(function (m) { return m.papel === 'dono' && contaValida(m.userId); }).length;
         return Object.assign(empresaJson(e), { anuncios: { total: as.length, noAr: as.filter(noAr).length },
           denunciasAbertas: st.denuncias.filter(function (d) { return d.empresaId === e.id && d.status === 'aberta'; }).length,
-          membros: st.membros.filter(function (m) { return m.empresaId === e.id && m.ativo; }).length });
+          membros: ms.length, donos: donos, semDona: ms.length > 0 && donos === 0 });   // 20261024120005
       }) });
     };
 
@@ -2092,6 +2107,7 @@
         if (e.status === 'suspensa') return erro('Empresa suspensa: use "Reativar".');
         if (e.status !== 'ativa') { e.status = 'ativa'; e.statusMotivo = ''; e.cnpjConferidoEm = e.cnpjConferidoEm || agora(); }
       } else if (a.p_acao === 'suspender') {
+        if (papel === 'moderador') return erro(R.MSG.SEM_PERMISSAO);   // moderador(a) não suspende (O1, 20261024120005)
         if (!motivo) return erro('Informe o motivo.');
         e.status = 'suspensa'; e.statusMotivo = motivo;
       } else if (a.p_acao === 'recusar') {
@@ -2245,9 +2261,31 @@
       var f = obj(a.p_filtro);
       var cids = cidadesDoFiltro(f);
       var lim = R.inteiro(f.limite); lim = Math.min(Math.max(lim == null ? 100 : lim, 1), 200);
+      var equipe = eAdmin();
       return ok({ registros: st.moderacao.filter(function (m) { return cids.indexOf(m.cidade) >= 0; }).sort(function (p, q) { return q.em - p.em || q.id - p.id; })
-        .slice(0, lim).map(function (m) { return { id: m.id, em: iso(m.em), papel: m.papel, acao: m.acao, alvo: m.alvo, alvoId: m.alvoId, motivo: m.motivo, dados: clone(m.dados), cidade: m.cidade }; }) });
+        .slice(0, lim).map(function (m) {
+          var u = m.ator ? usuario(m.ator) : null;
+          return { id: m.id, em: iso(m.em), papel: m.papel, acao: m.acao, alvo: m.alvo, alvoId: m.alvoId, motivo: m.motivo, dados: clone(m.dados), cidade: m.cidade,
+            alvoNome: alvoNome(m.alvo, m.alvoId),
+            quem: { papel: m.papel, voce: !!m.ator && m.ator === st.sessao,
+              email: equipe && u && ['operador', 'moderador', 'admin'].indexOf(m.papel) >= 0 ? mascarar(u.email) : '' } };
+        }) });
     };
+    // Nome do alvo de um registro (igual a vagas_interno.moderacao_alvo_nome, 20261024120005): título da vaga, nome fantasia
+    // (também o da referência e o da denúncia), cidade ou zona. Conta e operador: '' (nunca nome de pessoa).
+    function alvoNome(alvo, id) {
+      function por(lista) { return lista.filter(function (x) { return x.id === id; })[0] || null; }
+      var x = null, nome = '';
+      if (alvo === 'anuncio') nome = (x = anuncio(id)) ? x.titulo : '';
+      else if (alvo === 'empresa') nome = (x = empresa(id)) ? x.nomeFantasia : '';
+      else if (alvo === 'cidade') nome = (x = por(st.cidades)) ? x.nome : '';
+      else if (alvo === 'zona') nome = (x = por(st.zonas)) ? x.nome + ' (' + ((cidade(x.cidade) || {}).nome || '') + ')' : '';
+      else if (alvo === 'referencia') nome = (x = por(st.referencias)) && empresa(x.empresaId) ? empresa(x.empresaId).nomeFantasia : '';
+      else if (alvo === 'denuncia' && (x = por(st.denuncias))) {
+        nome = x.anuncioId && anuncio(x.anuncioId) ? anuncio(x.anuncioId).titulo : (empresa(x.empresaId) || {}).nomeFantasia || '';
+      }
+      return nome || '';
+    }
 
     H.vagas_op_referencias = function (a) {
       var x = exigirOperacao(); if (x) return x;
@@ -3096,6 +3134,9 @@
         if (['image/jpeg', 'image/png', 'image/webp'].indexOf(txt(arq.tipo)) < 0 || !(Number(arq.tamanho) > 0) || Number(arq.tamanho) > 1048576) {
           return erro('A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.');
         }
+        // O aceite 'foto_opcional' é gravado antes da foto (como faz o cliente com vagas_foto_consentimento).
+        var aceite = H.vagas_foto_consentimento({ p_aceito: true });
+        if (!aceite.ok) return aceite;
         st.fotos = st.fotos || {};
         st.fotos[uid] = /^data:image\//.test(txt(arq.dataUrl)) && txt(arq.dataUrl).length <= 1500000 ? txt(arq.dataUrl) : FOTO_PREVIA;
         return ok({ temFoto: true });
@@ -3104,6 +3145,7 @@
         var uid = st.sessao;
         if (!uid) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
         if (st.fotos) delete st.fotos[uid];
+        if (st.contas[uid] && st.contas[uid].tipo === 'pessoa') H.vagas_foto_consentimento({ p_aceito: false });
         return ok({ temFoto: false });
       },
       fotoUrl: function (candId) {
@@ -3288,7 +3330,7 @@
         var a = { id: novoId(), codigo: '', empresaId: e.id, cidade: e.cidade, zona: v[6], area: AREA_DO_CARGO[v[2]] || 'outros', funcao: v[1],
           titulo: v[1], modalidade: v[3], descricao: 'Vaga fictícia da prévia: ' + v[1].toLowerCase() + ' em ' + e.nomeFantasia + '. Rotina de trabalho explicada na conversa.',
           turno: ['comercial', 'manha', 'tarde', 'escala', 'noite', 'a_combinar'][i % 6], fimDeSemana: i % 4 === 1, comissao: vende,
-          inicio: diaria ? 'data' : 'imediato', inicioData: diaria ? diaria.data : null, experiencia: ['nao_precisa', 'ate_1', '1_a_3'][i % 3],
+          inicio: diaria ? 'data' : 'imediato', inicioData: diaria ? diaria.data : null, experiencia: ['nao_precisa', 'ajuda', '6_meses'][i % 3],
           escolaridade: v[3] === 'estagio' || i % 4 === 0 ? 'medio' : 'nao_exigida',
           requisitos: v[2] === 'Motorista' ? ['cnh_b'] : (i % 5 === 0 ? ['disponibilidade'] : []), requisitoOutro: '',
           selo: v[2] === 'Caixa' ? 'caixa' : (v[2] === 'Recepcionista' ? 'atendimento' : null), beneficios: ben,
