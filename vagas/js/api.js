@@ -35,7 +35,7 @@
  *   convidarOperador({email, cidade, papel, cidadeNome?}), convidarEquipe(empresaId, email) (só dono(a); resposta neutra),
  *   excluirConta(), entrar(email, senha) -> resposta de eu(),
  *   sair(), sessao() -> {ok, usuario:{id, email}}, linkDoEndereco(location) -> {tokenHash, tipo} | null,
- *   conviteDoEndereco(location) -> token do convite de equipe (?convite=…) | '',
+ *   conviteDoEndereco(location) -> token do convite de equipe (?convite=…) | '', RECURSOS ({listaEsperaWhatsapp:true}),
  *   confirmarLink({tokenHash, tipo}) -> {ok, tipo, precisaSenha:true}, definirSenha(senha) -> {ok}.
  * Foto OPCIONAL da pessoa (bucket privado 'vagas-fotos' do Storage): enviarFoto(arquivo File/Blob jpg|png|webp ≤ 1 MB) -> {ok, temFoto},
  *   apagarFoto() -> {ok, temFoto:false}, fotoUrl(candidaturaId?) -> {ok, url, expiraEm} (URL assinada de 5 min pela Edge Function:
@@ -147,6 +147,10 @@
   };
   // Valores padrão quando o argumento não vem (as RPCs recebem objeto, nunca null).
   var PADRAO = { p_filtro: {}, p_dados: {}, p_motivo: '', p_id: null };
+  // O que este cliente (e o banco que ele espera) já sabe fazer, para a tela ligar o campo novo só quando existir.
+  // listaEsperaWhatsapp: listaEspera/listaEsperaSair aceitam "whatsapp" (migração 20261024; no modo supabase, publicar o site
+  // só depois de aplicá-la — antes dela o banco ignoraria o número).
+  function recursos() { return { listaEsperaWhatsapp: true }; }
 
   function erroDe(json, extra) {
     var e = new Error((json && json.erro) ? String(json.erro) : MSG_RECUSA);
@@ -427,6 +431,7 @@
     };
     api.fotoUrl = function (candidaturaId) { return funcao({ acao: 'foto', candidatura: candidaturaId || '' }, true); };
     comFotoNoContato(api);
+    api.RECURSOS = recursos();
     api.modo = 'supabase';
     return api;
   }
@@ -498,6 +503,7 @@
     comFotoNoContato(api);
     api.linkDoEndereco = linkDoEndereco;
     api.conviteDoEndereco = conviteDoEndereco;
+    api.RECURSOS = recursos();
     api.modo = 'previa';
     return api;
   }
@@ -508,7 +514,7 @@
     return criarSupabase(op);
   }
 
-  var exportado = { criar: criar, METODOS: METODOS, linkDoEndereco: linkDoEndereco, conviteDoEndereco: conviteDoEndereco, CHAVE_SESSAO: CHAVE_SESSAO,
+  var exportado = { criar: criar, METODOS: METODOS, RECURSOS: recursos(), linkDoEndereco: linkDoEndereco, conviteDoEndereco: conviteDoEndereco, CHAVE_SESSAO: CHAVE_SESSAO,
     MSG: { CONEXAO: MSG_CONEXAO, SESSAO: MSG_SESSAO, BANCO: MSG_BANCO, LOGIN: MSG_LOGIN, CONFIRMAR: MSG_CONFIRMAR, LINK: MSG_LINK, SENHA: MSG_SENHA } };
   if (typeof module !== 'undefined' && module.exports) { module.exports = exportado; return; }
   var cfg = root.VAGAS_CONFIG || {};

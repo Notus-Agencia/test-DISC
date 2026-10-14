@@ -37,6 +37,7 @@
 --      chama; null para a equipe); vagas_adm_cidades() e vagas_adm_operadores(p_filtro) para o painel da equipe;
 --      vagas_op_assistidos(p_filtro) com os cadastros assistidos ainda pendentes (e-mail MASCARADO; operador(a) vê só os que
 --      criou). Nada disso devolve dado de pessoa além do que a própria operação digitou, e mascarado.
+--   7. Pedido da frente empresa: vagas_eu ganha "conta.nome" (o nome da própria conta, para a saudação), sem mudar o resto.
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -1292,6 +1293,54 @@ begin
 end;
 $$;
 
+-- Quem está logado: IGUAL ao da 20261022 + "conta.nome" (pedido da frente empresa, para a saudação): o nome do currículo
+-- (pessoa) ou o do cadastro (metadado "nome" do Auth); '' quando não há. É o nome da própria conta, para ela mesma.
+create or replace function public.vagas_eu()
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  v_uid uuid := auth.uid();
+  v_conta jsonb;
+  c public.vagas_contas%rowtype;
+  v_email text;
+  v_nome text;
+begin
+  if v_uid is null then return vagas_interno.erro('Sessão expirada. Entre de novo.', '{"sessaoExpirada": true}'); end if;
+  v_conta := vagas_interno.conta_atual(null);
+  if not (v_conta ->> 'ok')::boolean then
+    if (v_conta ->> 'semConta') is not null and public.e_admin() then
+      return vagas_interno.ok(jsonb_build_object('conta', null, 'admin', true, 'pessoa', null, 'empresas', '[]'::jsonb,
+        'operador', coalesce((select jsonb_agg(jsonb_build_object('cidade', x.slug, 'nome', x.nome, 'papel', 'admin') order by x.ordem, x.nome)
+                                from public.vagas_cidades x), '[]'::jsonb)));
+    end if;
+    return v_conta::json;
+  end if;
+  update public.vagas_contas set ultimo_acesso_em = now() where user_id = v_uid returning * into c;
+  select u.email, disc_interno.limpar_texto(coalesce(u.raw_user_meta_data ->> 'nome', ''), 120) into v_email, v_nome
+    from auth.users u where u.id = v_uid;
+  if c.tipo = 'pessoa' then
+    select coalesce(nullif(ct.nome, ''), v_nome) into v_nome from public.vagas_pessoa_contato ct where ct.user_id = v_uid;
+  end if;
+  return vagas_interno.ok(jsonb_build_object(
+    'conta', jsonb_build_object('tipo', c.tipo, 'status', c.status, 'email', coalesce(v_email, ''), 'nome', coalesce(v_nome, ''),
+      'termosVersao', c.termos_versao, 'termosAceitosEm', disc_interno.iso(c.termos_aceitos_em), 'criadoEm', disc_interno.iso(c.criado_em)),
+    'admin', public.e_admin(),
+    'pessoa', case when c.tipo = 'pessoa' then jsonb_build_object(
+      'completo', exists (select 1 from public.vagas_pessoas p join public.vagas_pessoa_contato ct on ct.user_id = p.user_id where p.user_id = v_uid),
+      'cidades', coalesce((select to_jsonb(array_remove(array[(select x.slug from public.vagas_cidades x where x.id = p.cidade_id),
+                                                              (select x.slug from public.vagas_cidades x where x.id = p.cidade2_id)], null))
+                             from public.vagas_pessoas p where p.user_id = v_uid), '[]'::jsonb),
+      'referenciasPendentes', (select count(*)::int from public.vagas_referencias r where r.pessoa_id = v_uid and r.status = 'pendente'))
+      else null end,
+    'empresas', coalesce((select jsonb_agg(jsonb_build_object('id', e.id, 'nomeFantasia', e.nome_fantasia, 'papel', m.papel, 'status', e.status)
+                                 order by e.nome_fantasia)
+                            from public.vagas_empresa_membros m join public.vagas_empresas e on e.id = m.empresa_id
+                           where m.user_id = v_uid and m.ativo), '[]'::jsonb),
+    'operador', coalesce((select jsonb_agg(jsonb_build_object('cidade', x.slug, 'nome', x.nome, 'papel', o.papel) order by x.ordem, x.nome)
+                            from public.vagas_operadores o join public.vagas_cidades x on x.id = o.cidade_id
+                           where o.user_id = v_uid and o.ativo), '[]'::jsonb)));
+end;
+$$;
+
 -- -----------------------------------------------------------------------------
 -- RLS e permissões do que é novo (o laço da 20261022 não pega o que nasceu depois dela)
 -- -----------------------------------------------------------------------------
@@ -1306,7 +1355,8 @@ declare
   autenticadas text[] := array['public.vagas_op_indicadores(text)', 'public.vagas_equipe_empresa(uuid)', 'public.vagas_equipe_convite(text)',
     'public.vagas_equipe_convite_aceitar(text)', 'public.vagas_equipe_convite_cancelar(uuid)', 'public.vagas_equipe_remover(uuid, uuid)',
     'public.vagas_adm_cidade_salvar(jsonb)', 'public.vagas_iniciar_tentativa(text)', 'public.vagas_pessoa_salvar(jsonb)',
-    'public.vagas_op_resumo()', 'public.vagas_adm_cidades()', 'public.vagas_adm_operadores(jsonb)', 'public.vagas_op_assistidos(jsonb)'];
+    'public.vagas_op_resumo()', 'public.vagas_adm_cidades()', 'public.vagas_adm_operadores(jsonb)', 'public.vagas_op_assistidos(jsonb)',
+    'public.vagas_eu()'];
   publicas text[] := array['public.vagas_lista_espera_entrar(jsonb)', 'public.vagas_lista_espera_sair(jsonb)'];
   servico text[] := array['public.vagas_conta_convite_equipe(uuid, uuid, text, text, text)'];
 begin

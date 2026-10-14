@@ -507,7 +507,9 @@
       ct.ultimoAcessoEm = agora();
       var p = st.pessoas[uid];
       return ok({
-        conta: { tipo: ct.tipo, status: ct.status, email: usuario(uid).email, termosVersao: ct.termosVersao || '', termosAceitosEm: iso(ct.termosAceitosEm), criadoEm: iso(ct.criadoEm) },
+        conta: { tipo: ct.tipo, status: ct.status, email: usuario(uid).email,
+          nome: (ct.tipo === 'pessoa' && st.contatos[uid] && st.contatos[uid].nome) || R.limparTexto((usuario(uid).meta && usuario(uid).meta.nome) || '', 120),
+          termosVersao: ct.termosVersao || '', termosAceitosEm: iso(ct.termosAceitosEm), criadoEm: iso(ct.criadoEm) },
         admin: eAdmin(),
         pessoa: ct.tipo === 'pessoa' ? { completo: completo(uid), cidades: p ? [p.cidade].concat(p.cidade2 ? [p.cidade2] : []) : [],
           referenciasPendentes: st.referencias.filter(function (r) { return r.pessoaId === uid && r.status === 'pendente'; }).length } : null,

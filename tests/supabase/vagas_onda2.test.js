@@ -805,6 +805,15 @@ test('pedidos da operação: resumo com repasse; cidades e operadores só para a
   erro(await de(S.moderador)('vagas_op_assistidos', {}), 'Sem permissão.');
   erro(await de(S.pessoa)('vagas_op_assistidos', {}), 'Sem permissão.');
   erro(await semLogin('vagas_op_assistidos', {}), 'Sessão expirada. Entre de novo.');
+  // vagas_eu: conta.nome (pedido da frente empresa) — o do cadastro, ou o do currículo para a pessoa; o resto igual.
+  const comNome = await contaVagas('empresa', { meta: { nome: 'Maria  Souza' } });
+  const eu = ok(await de(comNome)('vagas_eu'));
+  assert.deepEqual([eu.conta.tipo, eu.conta.nome], ['empresa', 'Maria Souza']);
+  assert.deepEqual(Object.keys(eu.conta).sort(), ['criadoEm', 'email', 'nome', 'status', 'termosAceitosEm', 'termosVersao', 'tipo']);
+  assert.equal(ok(await de(S.pessoa)('vagas_eu')).conta.nome, 'Pessoa de Teste Silva');
+  assert.equal(ok(await de(S.operador)('vagas_eu')).conta.nome, '');
+  const adm = ok(await de(S.adminDisc)('vagas_eu'));
+  assert.deepEqual([adm.conta, adm.admin], [null, true]);
   // A máscara é a mesma da Edge Function.
   const { mascararEmailVagas } = await import('../../supabase/funcoes-compartilhadas/vagas-conta.js');
   for (const e of ['ana.souza@empresa.com.br', 'X@Y.CO', 'sem-arroba']) {

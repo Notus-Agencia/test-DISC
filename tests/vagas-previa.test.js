@@ -571,6 +571,7 @@ test('equipe da empresa na prévia: só a dona convida; resposta neutra; convite
 
 test('adaptador da prévia: convidarEquipe e os métodos de equipe e do painel passam pelo mesmo contrato', async () => {
   const api = API.criar({ modo: 'previa', backend: novo() });
+  assert.deepEqual(api.RECURSOS, { listaEsperaWhatsapp: true });
   for (const m of ['indicadores', 'equipeDaEmpresa', 'cancelarConvite', 'removerMembro', 'conviteEquipe', 'aceitarConviteEquipe', 'convidarEquipe', 'conviteDoEndereco']) {
     assert.equal(typeof api[m], 'function', m);
   }
@@ -615,6 +616,14 @@ test('pedidos da operação na prévia: resumo com repasse, cidades e operadores
   await erro(b.rpc('vagas_adm_operadores', { p_filtro: { cidade: 'nao-existe-go' } }), 'Cidade não encontrada.');
   assert.ok((await ok(b.rpc('vagas_op_resumo', {}))).cidades.every((c) => c.repassePercentual === null && c.papel === 'admin'));
   assert.equal((await ok(b.rpc('vagas_op_assistidos', { p_filtro: { cidade: 'uruacu-go' } }))).contas.length, 1, 'a equipe vê os de todos');
+  await ok(b.conta.sair());
+  await entrar(b, 'recrutador@previa.com');
+  assert.equal((await ok(b.rpc('vagas_eu', {}))).conta.nome, 'Rita Moraes', 'conta.nome (pedido da frente empresa)');
+  await ok(b.conta.sair());
+  await entrar(b, 'pessoa@previa.com');
+  assert.equal((await ok(b.rpc('vagas_eu', {}))).conta.nome, 'Ana Clara Ribeiro');
+  await ok(b.conta.sair());
+  await entrar(b, 'admin@previa.com');
   const api = API.criar({ modo: 'previa', backend: b });
   assert.equal(typeof api.opIndicadores, 'function');
   assert.deepEqual((await api.opIndicadores('uruacu-go')).indicadores.map((i) => i.chave), (await api.indicadores('uruacu-go')).indicadores.map((i) => i.chave));

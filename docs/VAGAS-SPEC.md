@@ -447,9 +447,10 @@ duas da 20261024 entram na lista: `20261024120000_vagas_onda2` sonda a tabela `v
 
 #### `vagas_eu()` — `VAGAS_API.eu()`
 ```json
-{"ok":true,"conta":{"tipo":"pessoa","status":"ativa","email":"ana@exemplo.com","termosVersao":"2026-10-13","termosAceitosEm":"…","criadoEm":"…"},
+{"ok":true,"conta":{"tipo":"pessoa","status":"ativa","email":"ana@exemplo.com","nome":"Ana Souza","termosVersao":"2026-10-13","termosAceitosEm":"…","criadoEm":"…"},
  "admin":false,"pessoa":{"completo":true,"cidades":["uruacu-go"],"referenciasPendentes":1},"empresas":[],"operador":[]}
 ```
+`conta.nome` (20261024): o nome da própria conta, para a saudação — o do currículo (pessoa) ou o do cadastro; `''` sem nome.
 Empresa: `"empresas":[{"id","nomeFantasia","papel":"dono","status":"ativa"}]`. Operador: `"operador":[{"cidade","nome","papel"}]`.
 Admin do DISC sem conta do Vagas: `{"conta":null,"admin":true,"operador":[todas as cidades com papel 'admin']}`.
 Conta assistida com `termosVersao:''` → a tela pede o aceite (`vagas_aceitar_termos`).
@@ -964,6 +965,8 @@ VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
   `hoje(fuso?, agora?)` (sem fuso: `America/Sao_Paulo`), `somarDias`, `meses`). Onda 2: `lerListaEspera(d)`, `corIndicador(valor,
   alvo, direcao)`, `INDICADORES`, `GATILHOS`, `PORTES`, `CORES_INDICADOR`, `PAPEIS_EMPRESA`, `STATUS_CONVITE_EQUIPE`,
   `MSG.WHATSAPP_INVALIDO`, `MSG.CONVITE_INVALIDO`.
+- `VAGAS_API.RECURSOS` = `{listaEsperaWhatsapp: true}` (20261024): a lista da cidade liga o campo opcional de WhatsApp por
+  aqui. No modo supabase, publique o site só depois de aplicar a 20261024 (antes dela o banco ignoraria o número).
 - Prévia: logins `pessoa@previa.com` (Ana Clara Ribeiro: currículo completo, conversa numa vaga confidencial, um Combinou,
   uma referência aceita e uma pendente, selo fictício `Q8V3-N2KD`), `empresa@previa.com` (Mercadinho Sol do Norte),
   `empresa6@previa.com` (Restaurante Sabor da Terra, que deu a referência), `recrutador@previa.com` (Rita Moraes,
