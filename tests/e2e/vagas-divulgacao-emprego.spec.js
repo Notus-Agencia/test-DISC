@@ -48,6 +48,8 @@ async function trocarArquivo(page, padrao, de, para) {
     await r.fulfill({ response: resp, body: corpo.replace(de, para) });
   });
 }
+// RECURSOS do banco como o cliente anuncia hoje (api.js): os testes desligam um de cada vez.
+const RECURSOS_HOJE = 'return { listaEsperaWhatsapp: true, preAberturaEmpresas: true, origemListaEspera: true };';
 async function espiarEnvios(page) {
   await page.evaluate(() => {
     window.__envios = [];
@@ -168,7 +170,7 @@ test('cidade aberta: primeiro "Ver as vagas de {cidade}", depois "Criar minha co
   expect(erros).toEqual([]);
 });
 
-test('aviso de abertura: o link do e-mail (?sair=<token>#sair) tira da lista sem pedir nada e o token some do endereço; #sair sem token abre o formulário', async ({ page }) => {
+test('aviso de abertura: o link do e-mail (?sair=<token>#sair) pede um toque e tira da lista sem pedir o e-mail; o token some do endereço; #sair sem token abre o formulário', async ({ page }) => {
   const erros = vigiarErros(page);
   const cidade = await prepararCidade(page, 'lista_espera');
   await page.goto(BASE + 'emprego.html?cidade=' + cidade.slug);
@@ -191,6 +193,13 @@ test('aviso de abertura: o link do e-mail (?sair=<token>#sair) tira da lista sem
 
   const link = BASE + 'emprego.html?cidade=' + cidade.slug + '&sair=' + token + '#sair';
   await page.goto(link);
+  // Abrir o link não tira ninguém (robôs de segurança de e-mail abrem links sozinhos): pede um toque.
+  await expect(page.locator('#vg-sair-link-titulo')).toHaveText('Quer sair da lista de espera?');
+  await expect(page.locator('#vg-sair-link')).toBeFocused();
+  expect(page.url()).not.toContain(token);
+  await expect(page.locator('#vg-chamada-titulo')).toHaveText('Já tem vaga em ' + cidade.nome);
+  expect((await listaPrevia(page, cidade.slug)).length).toBe(1);
+  await page.click('#vg-sair-link-confirmar');
   await expect(page.locator('#vg-sair-link-titulo')).toHaveText('Você saiu da lista de espera');
   await expect(page.locator('#vg-sair-link-ok')).toHaveText('Pronto. O contato que você deixou foi apagado da lista, e o aviso de abertura não vai mais para você.');
   await expect(page.locator('#vg-sair-link')).toBeFocused();
@@ -206,6 +215,7 @@ test('aviso de abertura: o link do e-mail (?sair=<token>#sair) tira da lista sem
 
   // O mesmo link de novo (já usado): a mesma resposta, sem revelar nada.
   await page.goto(link);
+  await page.click('#vg-sair-link-confirmar');
   await expect(page.locator('#vg-sair-link-ok')).toHaveText('Pronto. O contato que você deixou foi apagado da lista, e o aviso de abertura não vai mais para você.');
 
   // Token estragado (ou só #sair): abre o formulário de sair com o e-mail, e o ?sair= some do endereço.
@@ -243,7 +253,7 @@ test('sem ?cidade=: primeira cidade-polo; perguntas abrem sem script; sem conex�
   await expect(pagina.locator('#vg-chamada-titulo')).toHaveText('Entre na lista de espera de ' + cidade.nome);
 });
 
-test('erro do banco no envio: a mensagem aparece no formulário, o botão volta e nada se perde; a isca para robô não envia nada', async ({ page }) => {
+test('erro do banco no envio: a mensagem aparece no formulário, o botão volta e nada se perde; a isca "site" vai ao banco, que não grava', async ({ page }) => {
   const cidade = await prepararCidade(page, 'lista_espera');
   await page.goto(BASE + 'emprego.html?cidade=' + cidade.slug);
   await expect(page.locator('#vg-form-espera')).toBeVisible();
@@ -254,21 +264,23 @@ test('erro do banco no envio: a mensagem aparece no formulário, o botão volta 
   await expect(page.locator('#vg-espera-enviar')).toBeEnabled();
   await expect(page.locator('#vg-espera-email')).toHaveValue('alguem@exemplo.com');
 
-  // Isca: um robô que preenche o campo escondido recebe o mesmo "Pronto!" e nada vai para o banco.
+  // Isca: um robô que preenche o campo escondido "site" recebe o mesmo "Pronto!"; o banco recebe a isca e não grava nada.
   await page.goto(BASE + 'emprego.html?cidade=' + cidade.slug);
   await expect(page.locator('#vg-form-espera')).toBeVisible();
   await espiarEnvios(page);
   await expect(page.locator('#vg-espera-site')).toHaveAttribute('tabindex', '-1');
+  await expect(page.locator('#vg-espera-site')).toHaveAttribute('name', 'site');
   await page.evaluate(() => { document.getElementById('vg-espera-site').value = 'http://spam.exemplo'; });
   await page.fill('#vg-espera-email', 'robo@exemplo.com');
   await page.click('#vg-espera-enviar');
   await expect(page.locator('#vg-espera-ok')).toBeVisible();
-  expect(await page.evaluate(() => window.__envios)).toEqual([]);
+  expect(await page.evaluate(() => window.__envios)).toEqual([{ cidade: cidade.slug, email: 'robo@exemplo.com', perfil: 'pessoa', site: 'http://spam.exemplo' }]);
+  expect(await listaPrevia(page, cidade.slug)).toEqual([]);
 });
 
 test('banco sem o WhatsApp da lista (RECURSOS.listaEsperaWhatsapp falso): só o e-mail, e a nota fala só dele', async ({ page }) => {
   const cidade = await prepararCidade(page, 'lista_espera');
-  await trocarArquivo(page, '**/js/api.js', 'return { listaEsperaWhatsapp: true };', 'return { listaEsperaWhatsapp: false };');
+  await trocarArquivo(page, '**/js/api.js', RECURSOS_HOJE, RECURSOS_HOJE.replace('listaEsperaWhatsapp: true', 'listaEsperaWhatsapp: false'));
   await page.goto(BASE + 'emprego.html?cidade=' + cidade.slug);
   await expect(page.locator('#vg-espera-email')).toBeVisible();
   await expect(page.locator('#vg-espera-whatsapp')).toHaveCount(0);
@@ -280,10 +292,8 @@ test('banco sem o WhatsApp da lista (RECURSOS.listaEsperaWhatsapp falso): só o 
   expect(await page.evaluate(() => window.__envios)).toEqual([{ cidade: cidade.slug, email: 'so.email@exemplo.com', perfil: 'pessoa' }]);
 });
 
-test('origem (C3) e canal da cidade (C2): só com o recurso do banco; ?de= da lista fechada vai no envio e nunca fica no aparelho', async ({ page }) => {
+test('origem (C3, ligada no banco) e canal da cidade (C2): ?de= da lista fechada vai no envio e nunca fica no aparelho; sem o recurso, não vai', async ({ page }) => {
   const cidade = await prepararCidade(page, 'lista_espera');
-  await trocarArquivo(page, '**/js/api.js', 'return { listaEsperaWhatsapp: true };',
-    'return { listaEsperaWhatsapp: true, origemListaEspera: true };');
   await page.goto(BASE + 'emprego.html?cidade=' + cidade.slug + '&de=radio');
   await expect(page.locator('#vg-form-espera')).toBeVisible();
   await expect(page.locator('#vg-espera-canal')).toHaveCount(0);                  // a cidade não tem canal
@@ -306,18 +316,28 @@ test('origem (C3) e canal da cidade (C2): só com o recurso do banco; ?de= da li
   await expect(page.locator('#vg-espera-ok')).toBeVisible();
   expect(await page.evaluate(() => window.__envios[0].origem)).toBeUndefined();
 
-  // Canal do WhatsApp da cidade (C2): link para fora, sem coletar nada; endereço que não é canal é ignorado.
-  const p2 = await page.context().newPage();
-  await p2.route('**/js/api.js', async (r) => {
-    const resp = await r.fetch();
-    const extra = '\n;(function(){var o=window.VAGAS_API.cidades;window.VAGAS_API.cidades=function(){return o.apply(this,arguments).then(function(r){' +
-      'r.cidades.forEach(function(c){c.canalWhatsapp="https://whatsapp.com/channel/0029VaTESTE1234";});return r;});};})();';
-    await r.fulfill({ response: resp, body: (await resp.text()) + extra });
-  });
-  await p2.goto(BASE + 'emprego.html?cidade=' + cidade.slug);
-  await expect(p2.locator('#vg-canal-link')).toHaveText('Não usa e-mail? Siga o Canal do Vagas sem Caos em ' + cidade.nome + ' no WhatsApp');
-  await expect(p2.locator('#vg-canal-link')).toHaveAttribute('href', 'https://whatsapp.com/channel/0029VaTESTE1234');
-  await expect(p2.locator('#vg-canal-link')).toHaveAttribute('rel', 'noopener');
+  // Canal do WhatsApp da cidade (C2; campo canalWhatsapp da cidade, 20261024120004): link para fora, sem coletar nada.
+  await page.evaluate(async (slug) => {
+    const api = window.VAGAS_API;
+    await api.entrar('admin@previa.com', 'previa123');
+    await api.admCidadeSalvar({ slug, canalWhatsapp: 'https://whatsapp.com/channel/0029VaTESTE1234' });
+    await api.sair();
+  }, cidade.slug);
+  await page.goto(BASE + 'emprego.html?cidade=' + cidade.slug);
+  await expect(page.locator('#vg-canal-link')).toHaveText('Não usa e-mail? Siga o Canal do Vagas sem Caos em ' + cidade.nome + ' no WhatsApp');
+  await expect(page.locator('#vg-canal-link')).toHaveAttribute('href', 'https://whatsapp.com/channel/0029VaTESTE1234');
+  await expect(page.locator('#vg-canal-link')).toHaveAttribute('rel', 'noopener');
+
+  // Banco sem o recurso da origem: o ?de= não vai.
+  const p3 = await page.context().newPage();
+  await trocarArquivo(p3, '**/js/api.js', RECURSOS_HOJE, RECURSOS_HOJE.replace('origemListaEspera: true', 'origemListaEspera: false'));
+  await p3.goto(BASE + 'emprego.html?cidade=' + cidade.slug + '&de=radio');
+  await expect(p3.locator('#vg-form-espera')).toBeVisible();
+  await espiarEnvios(p3);
+  await p3.fill('#vg-espera-email', 'sem.origem@exemplo.com');
+  await p3.click('#vg-espera-enviar');
+  await expect(p3.locator('#vg-espera-ok')).toBeVisible();
+  expect(await p3.evaluate(() => window.__envios)).toEqual([{ cidade: cidade.slug, email: 'sem.origem@exemplo.com', perfil: 'pessoa' }]);
 });
 
 test('prévia "ver como": o dono vê a mesma cidade em espera e aberta, sem mudar o banco; ajuda humana com o marcador', async ({ page }) => {

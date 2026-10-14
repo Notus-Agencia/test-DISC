@@ -128,7 +128,7 @@
     "vaga_encerrada_pessoa": "A vaga \"{{vaga_titulo}}\" foi encerrada pela empresa. Sua candidatura fica no seu histórico e some do painel da empresa em 90 dias.",
     "vaga_interessados_lembrete": "Sua vaga \"{{vaga_titulo}}\" tem {{total}} pessoas esperando resposta há {{dias}} dias. Responder em até 7 dias mantém a vaga viva: marque \"Quero conversar\" ou \"Agora não\".",
     "incidente_dados_resumo": "Houve um incidente de segurança que pode ter exposto alguns dados seus. Explicamos o que aconteceu, o que fizemos e o que você pode fazer.",
-    "teste_antes_tempo": "São {{total}} questões, cerca de {{minutos}} minutos. Se a conexão cair, a tentativa continua de onde parou.",
+    "teste_antes_tempo": "São {{total}} questões e você tem {{minutos}} minutos. O relógio não para, nem se a internet cair. Se cair, entre de novo e continue de onde parou.",
     "selo_nota": "Nota {{nota}} de 100 (15 questões; margem de cerca de ±{{margem}} pontos)",
     "selo_sem_selo_competencias": "Onde você acertou menos: {{competencias}}.",
     "combinou_roteiro_entrevista": "Quer uma entrevista mais justa e mais rápida? Use o roteiro de entrevista (20 a 30 minutos): 8 perguntas iguais para todo mundo, o que não perguntar e uma ficha para anotar. A plataforma não calcula nota nem ordena.",

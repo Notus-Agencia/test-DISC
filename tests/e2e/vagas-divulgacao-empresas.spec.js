@@ -32,10 +32,17 @@ async function trocarArquivo(page, padrao, de, para) {
   });
 }
 
+// RECURSOS do banco como o cliente anuncia hoje (api.js). A pré-abertura está ligada; o caminho da lista é o do banco sem ela.
+const RECURSOS_HOJE = 'return { listaEsperaWhatsapp: true, preAberturaEmpresas: true, origemListaEspera: true };';
+async function semPreAbertura(page) {
+  await trocarArquivo(page, '**/js/api.js', RECURSOS_HOJE, RECURSOS_HOJE.replace('preAberturaEmpresas: true', 'preAberturaEmpresas: false'));
+}
+
 test('empresa, lista de espera (computador): em 10 segundos o ganho, o preço e quem está por trás; lista como empresa; WhatsApp pendente só na prévia', async ({ page }) => {
   const erros = vigiarErros(page);
   await page.setViewportSize({ width: 1280, height: 900 });
   const cidade = await prepararCidade(page, 'lista_espera');
+  await semPreAbertura(page);
   await page.goto(BASE + 'empresas.html?cidade=' + cidade.slug);
   await expect(page.locator('#vg-chamada-titulo')).toHaveText('Entre na lista de espera como empresa');
   await expect(page.locator('#vg-div-sobre')).toHaveText('Para empresas de ' + cidade.nome);
@@ -89,10 +96,11 @@ test('empresa, cidade aberta: "Cadastrar minha empresa" (topo e chamada) abre o 
   expect(erros).toEqual([]);
 });
 
-test('pré-abertura (C1, com RECURSOS.preAberturaEmpresas): em espera a empresa já se cadastra; sem a marca, lista como antes', async ({ page }) => {
+test('pré-abertura (banco 20261024120004, ligada): em espera a empresa já se cadastra e a vaga entra no ar no dia da abertura; sem o recurso, lista como antes', async ({ page }) => {
+  const erros = vigiarErros(page);
   await page.setViewportSize({ width: 390, height: 844 });
   const cidade = await prepararCidade(page, 'lista_espera');
-  await trocarArquivo(page, '**/js/api.js', 'return { listaEsperaWhatsapp: true };', 'return { listaEsperaWhatsapp: true, preAberturaEmpresas: true };');
+  expect([cidade.preAbertura, cidade.aceitaEmpresas]).toEqual([true, true]);
   await page.goto(BASE + 'empresas.html?cidade=' + cidade.slug);
   await expect(page.locator('#vg-chamada-titulo')).toHaveText('Cadastre sua empresa');
   await expect(page.locator('#vg-pre-abertura')).toHaveText('Sua vaga entra no ar no dia em que ' + cidade.nome + ' abrir. Precisa de CNPJ ou MEI. No lançamento, é grátis.');
@@ -100,20 +108,33 @@ test('pré-abertura (C1, com RECURSOS.preAberturaEmpresas): em espera a empresa 
   await expect(page.locator('#vg-cadastrar-empresa')).toHaveAttribute('href', 'entrar.html?tipo=empresa');
   await expect(page.locator('#vg-chamada')).toContainText('Prefere que a gente faça com você? Chame a Gestão sem Caos no WhatsApp.');
   await expect(page.locator('#vg-form-espera')).toHaveCount(0);
+  await expect(page.locator('#vg-barra-acao')).toHaveText('Cadastrar minha empresa');
+  // Quem entrou na lista antes da pré-abertura ainda sai por aqui (rodapé).
+  await expect(page.locator('#vg-div-rodape #vg-sair-abrir')).toHaveText('Sair da lista de espera');
+  expect(erros).toEqual([]);
+
+  // Banco sem o recurso: a lista de espera, como antes.
+  const p2 = await page.context().newPage();
+  await semPreAbertura(p2);
+  await p2.goto(BASE + 'empresas.html?cidade=' + cidade.slug);
+  await expect(p2.locator('#vg-chamada-titulo')).toHaveText('Entre na lista de espera como empresa');
+  await expect(p2.locator('#vg-topo-acao')).toHaveText('Entrar na lista de espera');
+  await expect(p2.locator('#vg-form-espera')).toBeVisible();
+  await expect(p2.locator('#vg-div-rodape #vg-sair')).toHaveCount(0);
 });
 
 test('empresa no celular do dono: sem rolagem lateral; a barra fixa aparece quando o botão do topo sai da tela e some na chamada', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const cidade = await prepararCidade(page, 'lista_espera');
   await page.goto(BASE + 'empresas.html?cidade=' + cidade.slug);
-  await expect(page.locator('#vg-chamada-titulo')).toHaveText('Entre na lista de espera como empresa');
+  await expect(page.locator('#vg-chamada-titulo')).toHaveText('Cadastre sua empresa');
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   const barra = page.locator('#vg-barra-divulgacao');
   await expect(barra).toHaveClass(/vg-div-barra--oculta/);           // o botão do topo está na tela
   await page.locator('#vg-div-ganhos-titulo').scrollIntoViewIfNeeded();
   await page.evaluate(() => window.scrollBy(0, 600));
   await expect(barra).not.toHaveClass(/vg-div-barra--oculta/);
-  await expect(page.locator('#vg-barra-acao')).toHaveText('Entrar na lista de espera');
+  await expect(page.locator('#vg-barra-acao')).toHaveText('Cadastrar minha empresa');
   await expect(page.locator('#vg-barra-divulgacao-dica')).toHaveText('Grátis no lançamento.');
   await page.locator('#vg-chamada').scrollIntoViewIfNeeded();
   await expect(barra).toHaveClass(/vg-div-barra--oculta/);
@@ -151,7 +172,7 @@ test('fora da prévia sem número: a empresa não vê botão de WhatsApp nem mar
   const cidade = await prepararCidade(page, 'lista_espera');
   await trocarArquivo(page, '**/js/api.js', "api.modo = 'previa';", "api.modo = 'previa-teste';");
   await page.goto(BASE + 'empresas.html?cidade=' + cidade.slug);
-  await expect(page.locator('#vg-chamada-titulo')).toHaveText('Entre na lista de espera como empresa');
+  await expect(page.locator('#vg-chamada-titulo')).toHaveText('Cadastre sua empresa');
   await expect(page.locator('#vg-topo-whatsapp')).toHaveCount(0);
   await expect(page.locator('#vg-chamada-whatsapp')).toHaveCount(0);
   await expect(page.locator('.vg-div-humano')).toHaveCount(0);
@@ -159,21 +180,19 @@ test('fora da prévia sem número: a empresa não vê botão de WhatsApp nem mar
   await expect(page.locator('body')).not.toContainText('[RAZÃO SOCIAL');
 });
 
-test('empresa: #sair abre o formulário de sair com o e-mail; o link do e-mail do aviso (?sair=<token>) tira a empresa da lista', async ({ page }) => {
+test('empresa: #sair abre o formulário de sair (no rodapé, na pré-abertura); o link do e-mail do aviso (?sair=<token>) pede um toque e tira a empresa da lista', async ({ page }) => {
   const erros = vigiarErros(page);
   await page.setViewportSize({ width: 390, height: 844 });
   const cidade = await prepararCidade(page, 'lista_espera');
   await page.goto(BASE + 'empresas.html?cidade=' + cidade.slug + '#sair');
-  await expect(page.locator('#vg-chamada #vg-sair')).toHaveAttribute('open', '');
+  await expect(page.locator('#vg-chamada-titulo')).toHaveText('Cadastre sua empresa');
+  await expect(page.locator('#vg-div-rodape #vg-sair')).toHaveAttribute('open', '');
   await expect(page.locator('#vg-sair-email')).toBeFocused();
-  await expect(page.locator('#vg-espera-lgpd')).toContainText('depois do aviso, ou 30 dias após a abertura, apagamos.');
-  await page.fill('#vg-espera-email', 'loja@exemplo.com');
-  await page.fill('#vg-espera-whatsapp', '(62) 98888-3434');
-  await page.click('#vg-espera-enviar');
-  await expect(page.locator('#vg-espera-ok')).toBeVisible();
-  // A equipe abre a cidade e manda o e-mail do aviso; com o WhatsApp ainda por avisar, a linha fica com o token do e-mail.
+  // Uma empresa que entrou na lista antes da pré-abertura; a equipe abre a cidade e manda o e-mail do aviso (com o WhatsApp
+  // ainda por avisar, a linha fica com o token do e-mail).
   const linhas = await page.evaluate(async (slug) => {
     const api = window.VAGAS_API;
+    await api.listaEspera({ cidade: slug, email: 'loja@exemplo.com', whatsapp: '62988883434', perfil: 'empresa' });
     await api.entrar('admin@previa.com', 'previa123');
     await api.admCidadeSalvar({ slug, status: 'ativa' });
     await api.avisarListaEspera(slug, 50);
@@ -183,9 +202,11 @@ test('empresa: #sair abre o formulário de sair com o e-mail; o link do e-mail d
   }, cidade.slug);
   expect(linhas.map((l) => l.perfil)).toEqual(['empresa']);
   await page.goto(BASE + 'empresas.html?cidade=' + cidade.slug + '&sair=' + linhas[0].sairToken + '#sair');
+  await expect(page.locator('#vg-sair-link-titulo')).toHaveText('Quer sair da lista de espera?');
+  expect(new URL(page.url()).search).toBe('?cidade=' + cidade.slug);
+  await page.click('#vg-sair-link-confirmar');
   await expect(page.locator('#vg-sair-link-titulo')).toHaveText('Você saiu da lista de espera');
   await expect(page.locator('#vg-sair-link')).toBeFocused();
-  expect(new URL(page.url()).search).toBe('?cidade=' + cidade.slug);
   const resta = await page.evaluate((slug) => {
     const k = Object.keys(localStorage).filter((x) => /^vagas_previa_v\d+$/.test(x)).sort().pop();
     return JSON.parse(localStorage.getItem(k)).listaEspera.filter((l) => l.cidade === slug);
