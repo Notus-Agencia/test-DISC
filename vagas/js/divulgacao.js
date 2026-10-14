@@ -8,8 +8,9 @@
  *   - monta a chamada: lista de espera (e-mail obrigatório + WhatsApp opcional quando RECURSOS.listaEsperaWhatsapp) ou cidade
  *     aberta ("Ver as vagas de {cidade}" / "Cadastrar minha empresa");
  *   - "Mandar no WhatsApp" (texto pronto), o WhatsApp da Gestão sem Caos e a barra fixa com a ação principal;
- *   - sair da lista: ?sair=<token>#sair (link do e-mail do aviso de abertura) chama VAGAS_API.listaEsperaSairLink(token) e
- *     confirma, com a resposta sempre igual; o token sai da barra de endereço na hora (history.replaceState) e nunca é guardado.
+ *   - sair da lista: ?sair=<token>#sair (link do e-mail do aviso de abertura) pergunta "Quer sair da lista de espera?" e só no
+ *     toque em "Sair da lista de espera" chama VAGAS_API.listaEsperaSairLink(token) (robôs de segurança de e-mail abrem os links
+ *     sozinhos); a resposta é sempre igual. O token sai da barra de endereço na hora (history.replaceState) e nunca é guardado.
  *     "#sair" sem token abre o formulário de sair com o e-mail (listaEsperaSair).
  * Recursos opcionais do banco, todos atrás de VAGAS_API.RECURSOS (sem a marca, a página faz como antes):
  *   preAberturaEmpresas (empresa cadastra antes de a cidade abrir) · origemListaEspera (manda ?de= como "origem") ·
@@ -91,7 +92,10 @@
     // Link "Sair da lista de espera" do e-mail do aviso de abertura (?sair=<token>): resposta do banco sempre igual.
     saiuTitulo: 'Você saiu da lista de espera',
     saiuTexto: 'Pronto. O contato que você deixou foi apagado da lista, e o aviso de abertura não vai mais para você.',
-    saindoTitulo: 'Sair da lista de espera',
+    // Pede UM toque antes de sair: robôs de segurança de e-mail abrem os links sozinhos (revisão de código, fase C).
+    sairPedirTitulo: 'Quer sair da lista de espera?',
+    sairPedirTexto: 'Toque no botão para confirmar. O contato que você deixou é apagado da lista, e o aviso de abertura não vai mais para você.',
+    sairConfirmar: 'Sair da lista de espera',
     ativaTitulo: 'Já tem vaga em {{cidade}}',
     ativaTexto: 'Veja as vagas. Para se candidatar, você cria a conta e faz o currículo em 5 passos, pelo celular.',
     ativaEmpresaTitulo: 'Cadastre sua empresa',
@@ -184,7 +188,13 @@
     var copia = {};
     Object.keys(c).forEach(function (k) { copia[k] = c[k]; });
     copia.status = visao === 'ativa' ? 'ativa' : 'lista_espera';
+    copia.preAbertura = visao === 'espera';
     return copia;
+  }
+  // Pré-abertura (C1; banco 20261024120004, SPEC §6.8): na cidade em lista de espera a empresa já se cadastra e anuncia. Vale
+  // com RECURSOS.preAberturaEmpresas e a cidade em espera; uma cidade que venha com preAbertura:false explícito fica com a lista.
+  function preAbertura(c, recursos) {
+    return !!(c && situacao(c) === 'espera' && recursos && recursos.preAberturaEmpresas === true && c.preAbertura !== false);
   }
 
   // Texto do convite da lista: com o total só quando o banco devolve 10 ou mais (o número é aproximado, em dezenas).
@@ -216,8 +226,8 @@
   // Ações do topo (a 1ª é a principal; é também a da barra fixa). recursos = VAGAS_API.RECURSOS.
   function acoesTopo(tipo, sit, c, recursos) {
     var d = destinos(tipo, c);
-    var pre = !!(recursos && recursos.preAberturaEmpresas === true);
     if (sit === 'sem_cidade' || !c) return [{ rotulo: FRASES.comecar, href: '#vg-chamada' }];
+    var pre = sit === 'espera' && preAbertura(c, recursos);
     if (tipo === 'empresa') {
       if (sit === 'ativa' || pre) return [{ rotulo: FRASES.cadastrarEmpresa, href: d.criar, lembrar: true }];
       return [{ rotulo: FRASES.esperaEmpresa, href: '#vg-chamada' }];
@@ -298,7 +308,7 @@
     lerOrigem: lerOrigem, lerEspera: lerEspera, escolherCidade: escolherCidade, outrasCidades: outrasCidades, situacao: situacao,
     visaoPrevia: visaoPrevia, aplicarVisao: aplicarVisao, textoEspera: textoEspera, textosTopo: textosTopo, destinos: destinos, acoesTopo: acoesTopo,
     linkPagina: linkPagina, textoAmigo: textoAmigo, textoContato: textoContato, numeroGestao: numeroGestao, mostrarWhatsapp: mostrarWhatsapp,
-    canalValido: canalValido, lerTokenSair: lerTokenSair, pedidoSair: pedidoSair, buscaSemSair: buscaSemSair
+    canalValido: canalValido, preAbertura: preAbertura, lerTokenSair: lerTokenSair, pedidoSair: pedidoSair, buscaSemSair: buscaSemSair
   };
   if (typeof module !== 'undefined' && module.exports) { module.exports = PURO; return; }
 
@@ -416,7 +426,8 @@
       { type: 'email', autocomplete: 'email', inputmode: 'email', required: 'required', 'aria-describedby': 'vg-espera-email-ajuda', placeholder: 'nome@exemplo.com' });
     var whats = comWhatsapp ? campo('vg-espera-whatsapp', 'Seu WhatsApp', true, FRASES.ajudaWhatsapp,
       { type: 'tel', autocomplete: 'tel-national', inputmode: 'tel', 'aria-describedby': 'vg-espera-whatsapp-ajuda', placeholder: '(DDD) 9 0000-0000' }) : null;
-    // Isca para robô: fora da tela e fora do Tab; quem preenche recebe o mesmo "Pronto!" e nada é enviado.
+    // Isca para robô ("site", 20261024120004): fora da tela e fora do Tab. Preenchida, vai para o banco, que responde igual ao
+    // sucesso e não grava nada; a tela mostra o mesmo "Pronto!" aconteça o que acontecer.
     var isca = el('div', { class: 'vg-div-isca', 'aria-hidden': 'true' }, [el('label', { for: 'vg-espera-site' }, 'Não preencha'),
       el('input', { type: 'text', id: 'vg-espera-site', name: 'site', tabindex: '-1', autocomplete: 'off' })]);
     var erro = el('p', { class: 'aviso aviso--erro', id: 'vg-espera-erro', role: 'alert', hidden: true });
@@ -436,7 +447,12 @@
         focar(l.campo === 'whatsapp' && cWhats ? cWhats : cEmail);
         return;
       }
-      if (porId('vg-espera-site').value) { sucessoEspera(c, form, !!l.dados.whatsapp); return; }
+      var site = porId('vg-espera-site').value;
+      if (site) {
+        var fim = function () { sucessoEspera(c, form, !!l.dados.whatsapp); };
+        API.listaEspera(Object.assign({}, l.dados, { site: site.slice(0, 300) })).then(fim, fim);
+        return;
+      }
       U.ocupado(enviar, true, FRASES.enviando);
       API.listaEspera(l.dados).then(function () {
         sucessoEspera(c, form, !!l.dados.whatsapp);
@@ -506,7 +522,7 @@
 
   // ---- chamada por situação
   function chamadaEspera(c) {
-    if (tipo === 'empresa' && RECURSOS.preAberturaEmpresas === true) return chamadaPreAbertura(c);
+    if (tipo === 'empresa' && preAbertura(c, RECURSOS)) return chamadaPreAbertura(c);
     var filhos = [
       el('h2', { class: 'vg-div-chamada__titulo', id: 'vg-chamada-titulo' }, tipo === 'empresa' ? FRASES.esperaTituloEmpresa : preencher(FRASES.esperaTitulo, { cidade: c.nome })),
       el('p', { class: 'vg-div-chamada__texto', id: 'vg-espera-texto' }, tipo === 'empresa' ? preencher(TEXTOS.cidade_lista_espera_vazia, { cidade: c.nome }) : textoEspera(c)),
@@ -681,32 +697,45 @@
     var extra = porId('vg-div-rodape-extra');
     if (!extra) { extra = el('div', { class: 'vg-div-rodape__extra', id: 'vg-div-rodape-extra' }); rodape.appendChild(extra); }
     U.trocar(extra, [
-      // Cidade aberta: "sair da lista" sai da chamada (quem chega agora nunca entrou em lista) e fica aqui embaixo.
-      estado.sit === 'ativa' && estado.cidade ? blocoSair(estado.cidade, FRASES.sairAbrirAtiva) : null,
+      // Cidade aberta (ou empresa na pré-abertura): a chamada não tem a lista, e "sair da lista" fica aqui embaixo para quem já entrou.
+      estado.cidade && (estado.sit === 'ativa' || (tipo === 'empresa' && preAbertura(estado.cidade, RECURSOS))) ? blocoSair(estado.cidade, FRASES.sairAbrirAtiva) : null,
       previa ? el('p', { class: 'vg-div-marcador', id: 'vg-marcador-empresa' }, MARCADOR_EMPRESA) : null
     ]);
   }
 
-  // ---- sair da lista: pelo link do e-mail (token, sem pedir nada) ou abrindo o formulário com o e-mail (#sair)
+  // ---- sair da lista: pelo link do e-mail (token + um toque, sem pedir o e-mail) ou abrindo o formulário com o e-mail (#sair)
+  // O link do e-mail só abre a pergunta; a saída acontece no toque em "Sair da lista de espera" (robôs de segurança de e-mail
+  // abrem os links sozinhos). O token já saiu da barra de endereço e fica só nesta variável até o toque.
   function sairPeloLink() {
     var principal = porId('conteudo');
-    if (!tokenSair || !principal) return Promise.resolve();
-    if (typeof API.listaEsperaSairLink !== 'function') { tokenSair = ''; abrirSair = true; return Promise.resolve(); }
-    var caixa = porId('vg-sair-link');
-    if (!caixa) {
-      caixa = el('section', { class: 'caixa vg-div-saiu', id: 'vg-sair-link', 'aria-labelledby': 'vg-sair-link-titulo', tabindex: '-1' });
-      principal.insertBefore(caixa, principal.querySelector('.vg-div-hero') || principal.firstChild);
+    if (!tokenSair || !principal) return;
+    if (typeof API.listaEsperaSairLink !== 'function') { tokenSair = ''; abrirSair = true; return; }
+    var caixa = el('section', { class: 'caixa vg-div-saiu', id: 'vg-sair-link', 'aria-labelledby': 'vg-sair-link-titulo', tabindex: '-1' });
+    var botao = el('button', { type: 'button', class: 'botao botao--laranja botao--grande', id: 'vg-sair-link-confirmar' }, FRASES.sairConfirmar);
+    var erro = el('p', { class: 'aviso aviso--erro', id: 'vg-sair-link-erro', role: 'alert', hidden: true });
+    var corpo = el('div', { class: 'vg-div-saiu__corpo' }, [el('p', { class: 'vg-div-chamada__texto', id: 'vg-sair-link-texto' }, FRASES.sairPedirTexto),
+      erro, el('div', { class: 'acoes' }, botao)]);
+    U.trocar(caixa, [el('h2', { class: 'vg-div-chamada__titulo', id: 'vg-sair-link-titulo' }, FRASES.sairPedirTitulo), corpo]);
+    principal.insertBefore(caixa, principal.querySelector('.vg-div-hero') || principal.firstChild);
+    function confirmar() {
+      if (!tokenSair) return;
+      erro.hidden = true;
+      U.ocupado(botao, true, FRASES.saindo);
+      garantirRegras().then(function () { return API.listaEsperaSairLink(tokenSair); }).then(function () {
+        tokenSair = '';
+        caixa.classList.add('vg-div-saiu--ok');
+        U.trocar(caixa, [el('h2', { class: 'vg-div-chamada__titulo', id: 'vg-sair-link-titulo' }, FRASES.saiuTitulo),
+          el('p', { class: 'vg-div-chamada__texto', id: 'vg-sair-link-ok' }, FRASES.saiuTexto)]);
+        U.anunciar(FRASES.saiuTitulo + '. ' + FRASES.saiuTexto);
+        focar(caixa);
+      }).catch(function (e) {
+        U.ocupado(botao, false);
+        erro.textContent = (e && e.message) || FRASES.naoEnviou;
+        erro.hidden = false;
+      });
     }
-    var corpo = el('div', { class: 'vg-div-saiu__corpo' });
-    U.trocar(caixa, [el('h2', { class: 'vg-div-chamada__titulo', id: 'vg-sair-link-titulo' }, FRASES.saindoTitulo), corpo]);
-    U.carregando(corpo, FRASES.saindo);
-    return garantirRegras().then(function () { return API.listaEsperaSairLink(tokenSair); }).then(function () {
-      tokenSair = '';
-      U.trocar(caixa, [el('h2', { class: 'vg-div-chamada__titulo', id: 'vg-sair-link-titulo' }, FRASES.saiuTitulo),
-        el('p', { class: 'vg-div-chamada__texto', id: 'vg-sair-link-ok' }, FRASES.saiuTexto)]);
-      U.anunciar(FRASES.saiuTitulo + '. ' + FRASES.saiuTexto);
-      focar(caixa);
-    }).catch(function (e) { U.tratarErro(e, { raiz: corpo, aoTentar: sairPeloLink }); });
+    botao.addEventListener('click', confirmar);
+    focar(caixa);
   }
   function abrirFormularioSair() {
     var bloco = porId('vg-sair');
