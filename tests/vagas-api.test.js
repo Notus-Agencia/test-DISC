@@ -13,6 +13,7 @@ const CHAVE = 'sb_publishable_teste';
 // A 20261024120002 acrescenta o aviso de abertura da lista de espera (painel da equipe e o link público de saída).
 const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql']
   .map((f) => fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', f), 'utf8')).join('\n');
+const SQL_FUNDACAO = SQL;   // o teste de contrato junta a migração dos testes (20261023) a esta
 
 function memoria() {
   const m = {};
@@ -43,6 +44,10 @@ const criar = (rotas, arm) => {
 };
 
 test('contrato: todo método aponta para uma RPC que existe na migração (ou nas dos testes/DISC)', () => {
+  // As RPCs da prova (testesCatalogo, iniciarTentativa…) são da migração dos testes (20261023); o anon só executa o catálogo e o selo.
+  const SQL_TESTES = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', '20261023120000_vagas_testes.sql'), 'utf8');
+  const SQL = SQL_FUNDACAO + '\n' + SQL_TESTES;
+  const anonTestes = /grant execute on function public\.vagas_testes_catalogo\(\), public\.vagas_selo_publico\(text\) to %I/.test(SQL_TESTES) ? ['vagas_testes_catalogo'] : [];
   const doBanco = new Set([...SQL.matchAll(/create or replace function public\.([a-z_0-9]+)/g)].map((m) => m[1]));
   for (const [nome, def] of Object.entries(API.METODOS)) {
     assert.ok(doBanco.has(def.rpc) || ['vagas_selo_publico'].includes(def.rpc), nome + ' -> ' + def.rpc);
@@ -60,7 +65,7 @@ test('contrato: todo método aponta para uma RPC que existe na migração (ou na
     .flatMap((m) => [...m[1].matchAll(/'(?:public\.)?([a-z_]+)(?:\([^)]*\))?'/g)].map((x) => x[1])))].sort();
   const publicos = Object.values(API.METODOS).filter((d) => d.publico).map((d) => d.rpc)
     .filter((r) => r !== 'vagas_selo_publico' && r !== 'versao_banco').sort();
-  assert.deepEqual(publicos, anon);
+  assert.deepEqual(publicos, anon.concat(anonTestes).sort());
 });
 
 test('RPC pública sem sessão: só apikey (sem Authorization), POST com os parâmetros nomeados', async () => {

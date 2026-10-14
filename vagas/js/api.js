@@ -42,6 +42,9 @@
  *   apagarFoto() -> {ok, temFoto:false}, fotoUrl(candidaturaId?) -> {ok, url, expiraEm} (URL assinada de 5 min pela Edge Function:
  *   sem candidatura = a própria; com candidatura = só a empresa daquela candidatura, depois do Combinou). contatoPessoa(candId)
  *   já devolve pessoa.fotoUrl ('' quando não há foto ou não deu para assinar).
+ * Testes de habilidade (docs/VAGAS-TESTES.md): testesCatalogo() (público), iniciarTentativa(teste), proximaQuestao(tentativa),
+ *   responder(tentativa, numero 1..total, posição mostrada 0..3), registrarSinal(tentativa, 'troca_aba'|'copiar'),
+ *   finalizar(tentativa), meusSelos(); a conferência pública é seloPublico(codigo). Na prévia, a prova usa questões de DEMONSTRAÇÃO.
  *
  * No Node (testes): require('./vagas/js/api.js').criar({modo:'supabase', url, chave, fetch, armazenamento, agora}) ou
  *   criar({modo:'previa', backend: require('./vagas/js/api-previa.js').criarBackend({...})}).
@@ -76,6 +79,15 @@
     anuncio: { rpc: 'vagas_anuncio_publico', p: ['p_codigo'], publico: true },
     anuncioVista: { rpc: 'vagas_anuncio_vista', p: ['p_codigo'], publico: true },
     seloPublico: { rpc: 'vagas_selo_publico', p: ['p_codigo'], publico: true },
+    // Testes de habilidade (migração 20261023120000_vagas_testes.sql; contrato em docs/VAGAS-TESTES.md). O catálogo é público
+    // (com login traz "minha" em cada teste); o resto é da pessoa logada. Erro de regra vem com {codigo, fim?, podeIniciarEm?}.
+    testesCatalogo: { rpc: 'vagas_testes_catalogo', p: [], publico: true },
+    iniciarTentativa: { rpc: 'vagas_iniciar_tentativa', p: ['p_teste'] },
+    proximaQuestao: { rpc: 'vagas_proxima_questao', p: ['p_tentativa'] },
+    responder: { rpc: 'vagas_responder', p: ['p_tentativa', 'p_questao', 'p_alternativa'] },
+    registrarSinal: { rpc: 'vagas_registrar_sinal', p: ['p_tentativa', 'p_tipo'] },
+    finalizar: { rpc: 'vagas_finalizar', p: ['p_tentativa'] },
+    meusSelos: { rpc: 'vagas_meus_selos', p: [] },
     listaEspera: { rpc: 'vagas_lista_espera_entrar', p: ['p_dados'], publico: true },
     listaEsperaSair: { rpc: 'vagas_lista_espera_sair', p: ['p_dados'], publico: true },
     listaEsperaSairLink: { rpc: 'vagas_lista_espera_sair_link', p: ['p_token'], publico: true },

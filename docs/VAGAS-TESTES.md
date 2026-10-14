@@ -18,7 +18,11 @@ numa situação de trabalho, nunca "o que você faria".
 | Banco FICTÍCIO para os testes automáticos (gerado, determinístico, rotulado "FICTÍCIO") | `tests/fixtures/vagas-testes/` |
 | Validador e gerador (SQL de carga, RELATORIO.md, caderno de revisão, banco fictício) | `scripts/montar-testes.mjs` (`--checar` roda no `npm test`) |
 | Textos e formatação nas telas (módulo puro, sem rede) | `vagas/js/testes.js` (`window.VAGAS_TESTES`) |
-| Testes | `tests/vagas-testes.test.js`, `tests/vagas-testes-conteudo.test.js`, `tests/supabase/vagas_testes.test.js` |
+| Telas da pessoa (onda 2): catálogo, instruções, prova, resultado e vagas que pedem o selo | `vagas/testes.html` + `vagas/js/testes-tela.js` |
+| Conferência pública do selo (onda 2) | `vagas/selo.html` + `vagas/js/selo.js` |
+| Cliente das RPCs (`testesCatalogo`, `iniciarTentativa`, `proximaQuestao`, `responder`, `registrarSinal`, `finalizar`, `meusSelos`, `seloPublico`) | `vagas/js/api.js` (`METODOS`) |
+| Prévia: as mesmas RPCs com um banco de **DEMONSTRAÇÃO** (18 questões por teste, escritas só para a prévia; nunca as reais) | `vagas/js/api-previa.js` (`TESTES_DEMONSTRACAO`) |
+| Testes | `tests/vagas-testes.test.js`, `tests/vagas-testes-conteudo.test.js`, `tests/supabase/vagas_testes.test.js`, `tests/vagas-testes-tela.test.js`, `tests/e2e/vagas-pessoa-testes.spec.js` |
 
 ## Os 5 testes
 
@@ -254,6 +258,8 @@ para que o vazamento de uma versão não valha para sempre.
 - Painel de revisão da equipe: função só para `e_admin` com os agregados por questão (vezes mostrada, % de acerto,
   escolha de cada alternativa original, tempo mediano, correlação item-total), sem pessoa; e a lista de tentativas com
   alertas para decidir revogação. Os dados já são guardados (`vagas_tentativa_respostas`).
-- Telas (catálogo, prova, resultado, selo público e painel de revisão da equipe): fora deste pacote.
+- Telas: catálogo, prova, resultado e selo público prontos na onda 2 (`vagas/testes.html`, `vagas/selo.html`); falta o painel de
+  revisão da equipe. Na prévia, a prova usa o banco de demonstração e a tela mostra "Questões de demonstração (a prova real usa
+  outro banco)". O texto "o que estudar" por competência (padroes.md §5.8) ainda não existe: a tela mostra só "Onde você acertou menos".
 - Agendamento que fecha tentativas vencidas sem esperar a próxima chamada (`vagas_interno.teste_fechar_vencidas(null)`
   pela `service_role`): opcional, o fechamento já acontece em qualquer consulta da pessoa.
