@@ -135,7 +135,7 @@ test('WhatsApp: os textos são os de conteudo/vagas-textos/whatsapp.json, palavr
   const link = ER.linkCurto('k7m2qx', 'https://vagas.gestaosemcaos.com.br/');
   assert.equal(link, 'https://vagas.gestaosemcaos.com.br/v/K7M2QX');
   assert.equal(ER.textoWhatsappVaga({ titulo: 'Operador(a) de caixa', confidencial: true, empresaNome: 'Mercado X', zona: 'Centro', valor: 'R$ 1.620', link }),
-    'Vaga de Operador(a) de caixa · Empresa confidencial · Centro · R$ 1.620. Candidatura grátis pelo celular: https://vagas.gestaosemcaos.com.br/v/K7M2QX (Vagas sem Caos, uma ferramenta da Gestão sem Caos)');
+    'Vaga de Operador(a) de caixa · Empresa confidencial · Centro · R$ 1.620. Candidatura grátis pelo celular: https://vagas.gestaosemcaos.com.br/v/K7M2QX (Vagas sem Caos, uma empresa do grupo Gestão sem Caos)');
   assert.match(ER.textoWhatsappVaga({ titulo: 'Caixa', empresaNome: 'Mercado X', zona: 'Centro', valor: 'R$ 1.620', link }), / · Mercado X · /);
   assert.match(ER.textoWhatsappCombinou({ pessoaNome: 'Ana Clara Ribeiro', responsavelNome: 'Marcos', empresaNome: 'Mercado X', vagaTitulo: 'Caixa' }),
     /^Oi, Ana! Aqui é Marcos, da Mercado X\. Vi a sua candidatura à vaga de Caixa no Vagas sem Caos e deu Combinou\./);

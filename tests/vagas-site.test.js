@@ -11,11 +11,11 @@ const END = require('../vagas/js/endereco.js');
 const VAGAS = path.join(__dirname, '..', 'vagas');
 const ler = (rel) => fs.readFileSync(path.join(VAGAS, rel), 'utf8');
 
-test('index.html: marca Gestão sem Caos, nada de Notus em tela, frase anti-golpe, só arquivos do próprio site', () => {
+test('index.html: marca Vagas sem Caos com endosso da Gestão sem Caos, nada de Notus em tela, frase anti-golpe, só arquivos do próprio site', () => {
   const html = ler('index.html');
   assert.match(html, /<html lang="pt-BR">/);
-  assert.match(html, /Vagas sem Caos · uma ferramenta da Gestão sem Caos/);
-  assert.match(html, /alt="Gestão sem Caos"/);
+  assert.match(html, /<header[^]*src="comum\/marca\/vsc-logo\.svg" alt="Vagas sem Caos"[^]*<\/header>/);
+  assert.match(html, /<footer[^]*Uma empresa do grupo <img class="logo-gsc" src="comum\/marca\/gsc-logo\.svg" alt="Gestão sem Caos" width="142" height="20">[^]*<\/footer>/);
   assert.match(html, /Nunca pague para se candidatar\.<\/strong> Se alguém pedir em nosso nome, é golpe\./);
   const visivel = html.replace(/<link[^>]*>/g, '').replace(/<script[^>]*><\/script>/g, '');
   assert.ok(!/notus/i.test(visivel), 'nenhum "Notus" em texto da página');
@@ -34,10 +34,10 @@ test('index.html: CSP fechada, sem script inline, redirecionamento antes de tudo
   m[1].split(';').map((x) => x.trim()).filter(Boolean).forEach((x) => { const p = x.split(/\s+/); dir[p[0]] = p.slice(1); });
   assert.deepEqual(dir['script-src'], ["'self'"]);
   assert.deepEqual(dir['object-src'], ["'none'"]);
-  // No modo supabase a tela fala com o projeto (fetch) e mostra a foto assinada (img): a meta libera só o domínio do Supabase;
-  // o _headers da hospedagem pode apertar para o projeto exato (meta + cabeçalho = interseção), nunca precisa abrir mais.
-  assert.deepEqual(dir['connect-src'], ["'self'", 'https://*.supabase.co']);
-  assert.ok(dir['img-src'].includes('https://*.supabase.co') && dir['img-src'].includes('blob:'));
+  // No modo supabase a tela fala com o projeto (fetch) e mostra a foto assinada (img): a meta libera só o projeto exato (o mesmo
+  // do _headers), nunca qualquer *.supabase.co (onde a meta é a única CSP: cópia do GitHub Pages e servidor local).
+  assert.deepEqual(dir['connect-src'], ["'self'", 'https://tevpqngqzxcswmticjnr.supabase.co']);
+  assert.ok(dir['img-src'].includes('https://tevpqngqzxcswmticjnr.supabase.co') && dir['img-src'].includes('blob:'));
   assert.equal([...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>/g)].length, 0, 'sem <script> inline');
   assert.ok(!/\son[a-z]+=/.test(html), 'sem atributos on*');
   assert.ok(html.indexOf('js/endereco.js') < html.indexOf('<link rel="stylesheet"'), 'o redirecionamento vem antes do CSS');
@@ -63,6 +63,7 @@ test('vagas/comum/ em dia com assets/ (scripts/montar-vagas.mjs) e logos que a P
   const { conferir } = await import('../scripts/montar-vagas.mjs');
   assert.deepEqual(conferir(), []);
   for (const f of ['marca/gsc-logo-negativo.svg', 'marca/gsc-logo-email.png', 'marca/gsc-favicon.svg', 'marca/gsc-logo.svg',
+    'marca/vsc-logo.svg', 'marca/vsc-logo-negativo.svg', 'marca/vsc-logo-preto.svg', 'marca/vsc-logo-email.png',
     'fonts/plus-jakarta-sans-latin-wght-normal.woff2', 'fonts/OFL.txt']) {
     assert.ok(fs.existsSync(path.join(VAGAS, 'comum', f)), f);
   }

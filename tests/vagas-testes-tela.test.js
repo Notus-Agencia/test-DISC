@@ -560,12 +560,14 @@ test('resultado: barras por competência ("5 de 6"), linhas sem data fixa, onde 
   // Diretriz da psicologia (2.9, com dois-pontos): opcional e a empresa só vê o selo — no catálogo, nas instruções e nas vagas
   // que sugerem o teste; nunca dentro da prova (leitura a mais em cada questão). No resultado sem selo, só a frase curta (2.8);
   // com selo, nada.
-  assert.equal(TELA.TXT.OPCIONAL, 'O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo: ela só vê o selo, se você ganhar.');
+  const TEXTOS = require('../vagas/js/textos.js');
+  assert.equal(TEXTOS.t('avisos.teste_opcional'), 'O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo: ela só vê o selo, se você ganhar.');
   assert.equal(TELA.TXT.OPCIONAL_CURTO, 'O teste é opcional: você pode se candidatar sem ele.');
   const tela = fs.readFileSync(path.join(CONF.VAGAS, 'js', 'testes-tela.js'), 'utf8');
   for (const id of ['vg-testes-opcional', 'vg-instrucoes-opcional', 'vg-testes-vagas-opcional']) {
-    assert.ok(new RegExp("id: '" + id + "' \\}, TXT\\.OPCIONAL\\)").test(tela), id);
+    assert.ok(tela.includes("id: '" + id + "' }, U.t('avisos.teste_opcional'))"), id);
   }
+  assert.equal(tela.split("U.t('avisos.teste_opcional')").length - 1, 3, 'só nessas três telas');
   assert.ok(/temSelo \? null : el\('p', \{ class: 'texto-medio', id: 'vg-resultado-opcional' \}, TXT\.OPCIONAL_CURTO\)/.test(tela));
   assert.ok(!/vg-prova-opcional/.test(tela), 'nada de "opcional" embaixo de cada questão');
   // Psicologia 2.3 e 2.10: "tente o selo" (não "ganhe"); a margem no subtítulo; grátis e ninguém cobra.
@@ -606,7 +608,8 @@ test('conferência do selo: código no formato (com ou sem hífen); situação v
     texto: 'Este selo não vale mais. Se quiser, peça à pessoa para fazer o teste de novo.' });
   // Psicologia 2.1 e 2.10: a frase para quem contrata (margem, não ordena, sem selo ≠ não sabe, a decisão é sua) e o nome só
   // para a empresa com quem a pessoa combinou de conversar.
-  assert.equal(SELO.TXT.EMPRESA, 'Para quem contrata: a nota tem margem de cerca de 10 pontos, para mais ou para menos, e não serve para ordenar pessoas. Sem selo não quer dizer que a pessoa não sabe: o teste é opcional. A decisão de contratar continua sendo sua.');
+  assert.equal(require('../vagas/js/textos.js').t('avisos.selo_conferir_empresa'), 'Para quem contrata: a nota tem margem de cerca de 10 pontos, para mais ou para menos, e não serve para ordenar pessoas. Sem selo não quer dizer que a pessoa não sabe: o teste é opcional. A decisão de contratar continua sendo sua.');
+  assert.ok(fs.readFileSync(path.join(CONF.VAGAS, 'js', 'selo.js'), 'utf8').includes("id: 'vg-conferir-empresa' }, U.t('avisos.selo_conferir_empresa'))"));
   assert.ok(SELO.TXT.EMITIDO.endsWith('o nome dela só aparece para a empresa com quem ela combinou de conversar.'));
   const seloJs = CONF.semComentarios(fs.readFileSync(path.join(CONF.VAGAS, 'js', 'selo.js'), 'utf8'));
   assert.ok(!/provou|Selo cancelado|Q8V3N2KD|K7M2QX9A/.test(seloJs));

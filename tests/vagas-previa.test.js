@@ -209,7 +209,9 @@ test('conta na prévia: cadastro sem senha → link → criar senha → entrar; 
   const eu = await ok(b.conta.entrar('nova@exemplo.com', 'senha-boa-123'));
   assert.equal(eu.conta.tipo, 'pessoa');
   await erro(b.conta.confirmarLink(link), 'O link expirou ou já foi usado. Peça outro na tela de entrada.');
-  const selo = await ok(b.rpc('vagas_selo_publico', { p_codigo: 'q8v3-n2kd' }));
+  // Código sorteado na semente (nunca fixo: o exemplo da tela, Q8V3N2KD, não confere); minúsculo e com hífen também vale.
+  const codigoSemente = Object.values(b.estado().selos).flat().find((s) => s.teste === 'atendimento').codigo;
+  const selo = await ok(b.rpc('vagas_selo_publico', { p_codigo: (codigoSemente.slice(0, 4) + '-' + codigoSemente.slice(4)).toLowerCase() }));
   assert.deepEqual([selo.selo.teste, selo.selo.situacao, selo.selo.supervisao], ['atendimento', 'valido', 'online']);
   assert.ok(!('nomePessoa' in selo.selo) && !JSON.stringify(selo).includes('Ana'));
   await erro(b.rpc('vagas_selo_publico', { p_codigo: 'AAAA-AAAA' }), 'Selo não encontrado. Confira o código.');
@@ -725,8 +727,8 @@ test('aviso de abertura (20261024120002): só a equipe; e-mail em lotes só com 
     .find((m) => m.chave === 'lista_espera_cidade_abriu').texto;
   const fila = await ok(b.rpc('vagas_adm_aviso_whatsapp', { p_cidade: cid }));
   const texto = W.replace('{{cidade}}', 'Niquelândia').replace('{{link_cidade}}', 'https://vagas.gestaosemcaos.com.br/cidade.html?cidade=' + cid);
-  assert.deepEqual(fila.contato, { id: fila.contato.id, whatsapp: '5562988887777', perfil: 'pessoa', texto,
-    link: 'https://wa.me/5562988887777?text=' + encodeURIComponent(texto) });
+  assert.deepEqual(fila.contato, { id: fila.contato.id, whatsapp: '5523988887777', perfil: 'pessoa', texto,
+    link: 'https://wa.me/5523988887777?text=' + encodeURIComponent(texto) });
   assert.deepEqual(fila.contagens, { naLista: 1, aAvisarEmail: 0, avisadosEmail: 1, emEnvio: 0, semEmail: 0, aAvisarWhatsapp: 1 });
   assert.ok(st.moderacao.some((m) => m.acao === 'aviso_whatsapp_ver'));
   assert.deepEqual(await ok(b.rpc('vagas_adm_aviso_whatsapp_feito', { p_id: fila.contato.id })), { ok: true, duplicado: false,

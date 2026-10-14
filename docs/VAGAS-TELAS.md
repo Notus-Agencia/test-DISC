@@ -8,8 +8,13 @@ referência profissional) e `docs/IDENTIDADE-VISUAL.md`. Mockups estáticos (HTM
 
 Regras que valem para TODAS as telas (não repetidas em cada uma):
 
-- **Marca:** "Vagas sem Caos" por inteiro; rodapé "uma ferramenta da Gestão sem Caos". Logo oficial `assets/marca/gsc-logo.svg`
-  (claro), `gsc-logo-preto.svg` (moldura laranja), `gsc-logo-negativo.svg` (azul-escuro). Nunca "Notus", nunca a estrela.
+- **Marca:** o Vagas sem Caos tem marca própria. **Topo** de toda tela: só o logo do Vagas sem Caos (`vsc-logo.svg` no claro,
+  `vsc-logo-preto.svg` na moldura laranja, `vsc-logo-negativo.svg` no azul-escuro; `alt="Vagas sem Caos"`, 24 px no topo, nunca
+  abaixo de 20 px), sem o nome escrito ao lado (o nome já está no logo). A Gestão sem Caos aparece só como **endosso**, no rodapé:
+  "Uma empresa do grupo" + `gsc-logo.svg` a 20 px (`.vg-grupo`); na lista pública (`cidade.html`, limite de peso) o endosso é só
+  texto, "Uma empresa do grupo Gestão sem Caos". Em frase: "uma empresa do grupo Gestão sem Caos" (nunca "uma ferramenta da
+  Gestão sem Caos"). Textos legais continuam com a Gestão sem Caos como responsável e controladora. Regras e arquivos:
+  `docs/IDENTIDADE-VISUAL.md`, "Logo (Vagas sem Caos)". Nunca "Notus", nunca a estrela.
 - **Palavras proibidas em tela:** "Tinder", "swipe", "match", "aprovado/reprovado" (no selo e na prova), "perfil ideal",
   "compatibilidade", "o teste prevê", "currículo verificado", "ranking", "DISC" (fora da tela "contratada" da empresa).
   O nome público do interesse mútuo é **Combinou**. A pessoa usa **Quero** / **Pular**; a empresa **Quero conversar** / **Agora não**.
@@ -31,11 +36,13 @@ Regras que valem para TODAS as telas (não repetidas em cada uma):
   `max-width: 720px`. Barra fixa inferior (`.barra-nav`, do teste) para a ação principal e `.vg-nav` (4 destinos) quando a pessoa
   está logada; nunca as duas na mesma tela.
 - **Computador (empresa, operador, painel):** 1280 px de referência, menu lateral igual ao de `admin.html` (`.menu-lateral`,
-  `.aba`, grupos), cabeçalho `.cabecalho` + `.resumo`, tabelas `.vg-tabela`. Abaixo de 900 px o menu some e vira o botão "Menu"
-  (gaveta, como no painel): precisa funcionar para a empresa pequena no celular, sem prioridade.
+  `.aba`, grupos; no alto, o logo do Vagas sem Caos a 22 px + o nome da área, "Painel da empresa" ou "Operação da praça"),
+  cabeçalho `.cabecalho` + `.resumo`, tabelas `.vg-tabela`. Abaixo de 900 px o menu some e vira o botão "Menu" ao lado do logo
+  no topo (gaveta, como no painel): precisa funcionar para a empresa pequena no celular, sem prioridade. O painel da Gestão sem
+  Caos (`admin.html`, inclusive a aba Vagas) continua com o logo da Gestão sem Caos.
 - **Estados padrão (todas as telas com dado remoto):** `carregando` (`.giro` + "Carregando…"), `vazio` (`.vazio` com uma frase
   e um botão), `erro` (`.aviso--erro` com "Não deu para carregar. Tentar de novo."), `offline` (`.vg-faixa--offline` + último
-  conteúdo em cache do aparelho), `sessaoExpirada` (flag das RPCs → volta para `entrar.html` com `?voltar=`), `confirmar`
+  conteúdo em cache do aparelho; a faixa sai sozinha quando a conexão volta ou o servidor responde de novo), `sessaoExpirada` (flag das RPCs → volta para `entrar.html` com `?voltar=`), `confirmar`
   (flag → tela "Confirme seu e-mail" com "Reenviar"), `suspensa` (flag → aviso fixo "Sua conta está suspensa. Fale com a praça.").
 - **Rascunho no aparelho:** currículo, nova vaga, mensagem e resposta da prova ficam em `localStorage` (`vg.rascunho.<tela>`)
   a cada mudança; a tela mostra "Rascunho salvo neste aparelho às HH:MM" (`.vg-rascunho`). Ids de envio gerados no aparelho
@@ -77,7 +84,7 @@ Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `v
 ### 2.1 Início da cidade (`cidade.html`) — mockup `pessoa-inicio.png`
 - **Objetivo:** ver as vagas de hoje da cidade e filtrar em 1 toque; entender que é grátis e seguro.
 - **Quem/estado:** anônimo ou logado (logado ganha `.vg-nav`). Cidade lembrada em `localStorage` (`vg.cidade`), sem GPS.
-- **Elementos:** `topo` (logo, "Vagas sem Caos", `#vg-cidade` → janela `#vg-janela-cidade` com a lista de `vagas_cidades_publicas()`:
+- **Elementos:** `topo` (logo do Vagas sem Caos, `#vg-cidade` → janela `#vg-janela-cidade` com a lista de `vagas_cidades_publicas()`:
   ativas clicáveis, lista de espera com "Avise-me", pausadas com etiqueta); `.sobretitulo` com o nome da cidade vindo do banco (e "e região" só se houver entorno); `h1#vg-titulo`
   "Vagas de hoje"; subtítulo "Empresas daqui, conferidas uma a uma. Candidatar-se é grátis, sempre."; busca `#vg-busca`
   (`type="search"`, placeholder "Buscar por função (ex.: caixa, vendedor)", envia ao parar de digitar 400 ms; busca no título da
@@ -86,7 +93,8 @@ Convenção de ids: prefixo `vg-`, tela abreviada, elemento: `vg-cv-avancar`, `v
   2.1a) + `#vg-filtros-ativos` (chips roláveis do que está ativo, cada um com "✕" e `data-filtro`/`data-valor` para tirar em 1 toque:
   "Vendas em loja ✕", "Caixa ✕", "Comercial ✕", "a partir de R$ 1.600 ✕"); `#vg-contagem` ("12 vagas nas suas áreas" ou "37 vagas em
   <cidade>" + `#vg-limpar-filtros`); `ul#vg-lista` de `.vg-vaga` (com o nome da área na linha de meta); `#vg-mais` "Ver mais N vagas";
-  nota "Você recebe aviso por e-mail quando entra vaga nova em <áreas> · Mudar minhas áreas"; `#vg-aviso-golpe`; rodapé.
+  nota "Você recebe aviso por e-mail quando entra vaga nova em <áreas> · Mudar minhas áreas"; `#vg-aviso-golpe`; rodapé ("Uma empresa
+  do grupo Gestão sem Caos", só texto, · Termos · Privacidade).
 - **Padrão ao abrir:** pessoa logada com áreas no currículo → a lista já abre filtrada nas suas áreas (até 3) e o aviso de vaga nova
   por e-mail segue as mesmas áreas; anônimo → sem filtro, cidade lembrada. Filtros ficam salvos no aparelho (`vg.filtros.<cidade>`) e na
   URL (`?areas=vendas-loja,caixa&turno=comercial&salarioMin=160000`) para compartilhar e voltar.
@@ -172,7 +180,7 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   "Sem internet. Vamos enviar assim que voltar.").
 
 ### 2.5 Entrar, criar conta, esqueci, confirmação (`entrar.html`) — `pessoa-entrar.png`, `pessoa-esqueci.png`
-- **Moldura:** card `moldura-laranja` com `gsc-logo-preto.svg`, "Vagas sem Caos" e "Vagas da sua cidade com habilidade testada.
+- **Moldura:** card `moldura-laranja` com `vsc-logo-preto.svg` (36 px) e "Vagas da sua cidade com habilidade testada.
   Grátis para quem procura emprego." (no computador, metade laranja / metade azul-escura como o login do painel).
 - **Segmento `#vg-aba-entrar` / `#vg-aba-criar`.** Criar (`form#vg-form-criar`): `#vg-criar-nome` ("Como quer ser chamada(o)",
   obrigatório, 2–60 caracteres; erro "Escreva o seu nome"), `#vg-criar-email` (obrigatório; erro "Esse e-mail parece incompleto.
@@ -246,8 +254,8 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   nacionalidade, saúde, antecedentes, CPF/RG.
 
 ### 2.7 Testes de habilidade (`testes.html`) — `pessoa-testes.png`, `pessoa-prova-instrucoes.png`, `pessoa-prova.png`, `pessoa-resultado.png`
-- **"O teste é opcional" (psicologia, revisão C 2.9, com dois-pontos):** "O teste é opcional: você pode se candidatar sem ele. Se não
-  for bem, a empresa não fica sabendo: ela só vê o selo, se você ganhar." no catálogo (`#vg-testes-opcional`), nas instruções
+- **"O teste é opcional" (psicologia, revisão C 2.9, com dois-pontos; `avisos.teste_opcional`):** "O teste é opcional: você pode se
+  candidatar sem ele. Se não for bem, a empresa não fica sabendo: ela só vê o selo, se você ganhar." no catálogo (`#vg-testes-opcional`), nas instruções
   (`#vg-instrucoes-opcional`) e em "Vagas que sugerem este teste" (`#vg-testes-vagas-opcional`). **Não** aparece dentro da prova
   (leitura a mais em cada questão) nem no resultado com selo; no resultado sem selo vai só a frase curta (ver Resultado). Na prévia,
   faixa `#vg-faixa-demo` "Questões de demonstração (a prova real usa outro banco)".
@@ -320,11 +328,12 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   código.") + componente `.vg-selo` completo (teste, nota, data, validade, "Online, sem supervisão") + `#vg-conferir-emitido`
   "Emitido pelo Vagas sem Caos, uma ferramenta da Gestão sem Caos. O selo pertence a uma pessoa cadastrada; o nome dela só aparece
   para a empresa com quem ela combinou de conversar.". Nunca mostra nome, e-mail ou cidade da pessoa. Avisos fixos:
-  `avisos.selo_empresa` (`#vg-conferir-aviso`) e, para quem contrata (psicologia 2.1), `#vg-conferir-empresa` "Para quem contrata:
+  `avisos.selo_empresa` (`#vg-conferir-aviso`) e, para quem contrata (psicologia 2.1, `avisos.selo_conferir_empresa`),
+  `#vg-conferir-empresa` "Para quem contrata:
   a nota tem margem de cerca de 10 pontos, para mais ou para menos, e não serve para ordenar pessoas. Sem selo não quer dizer que
   a pessoa não sabe: o teste é opcional. A decisão de contratar continua sendo sua." Erro técnico do banco nunca chega a quem
-  confere (fica `avisos.erro_generico`). Na prévia, faixa `#vg-faixa-demo` "Prévia com selos de demonstração: nenhum selo desta
-  página vale de verdade." (não aparece se a faixa geral da prévia, `#vg-faixa-previa`, já estiver na página).
+  confere (fica `avisos.erro_generico`). Na prévia, a faixa geral `#vg-faixa-previa` e, no resultado, `#vg-conferir-demo` "Selo de
+  demonstração. Este é um selo da prévia, com dados de exemplo: não vale como selo de verdade."
   Limite de consultas por IP (resposta "Muitas consultas. Tente em alguns minutos.").
 
 ### 2.9 Minhas candidaturas (`eu.html#candidaturas`) — `pessoa-candidaturas.png`
@@ -404,7 +413,7 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
 ## 3. Telas da empresa (computador, 1280 px; funciona no celular)
 
 ### 3.1 Cadastro CNPJ/MEI e entrar (`entrar.html?tipo=empresa`) — `empresa-cadastro.png`
-- Metade laranja: logo preto, frase "Vagas da sua cidade com quem fez o teste da função.", apoio, 3 passos (cadastre o CNPJ ou
+- Metade laranja: logo preto do Vagas sem Caos (`vsc-logo-preto.svg`, 36 px), frase "Vagas da sua cidade com quem fez o teste da função.", apoio, 3 passos (cadastre o CNPJ ou
   MEI; publique com salário; chame para conversar), "Já é cliente da consultoria? A gente cadastra para você."
 - Metade azul-escura (`form#vg-emp-form-cadastro`): `#vg-emp-cnpj` (máscara 00.000.000/0001-00; validação de dígitos de
   `regras.js`; erro "CNPJ inválido. Confira os 14 números."; MEI é CNPJ normal), `#vg-emp-nome` (nome como aparece; 2–60),
@@ -552,7 +561,7 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
 
 ## 4. Telas do operador da praça (`operador.html`, computador)
 
-Cabeçalho do menu: "Vagas sem Caos · Operação" + cidade(s) do operador (`minhas_cidades()`); selo fixo "Cada ato fica registrado".
+Cabeçalho do menu: logo do Vagas sem Caos + "Operação da praça" + cidade(s) do operador (`minhas_cidades()`); selo fixo "Cada ato fica registrado".
 O operador **nunca** vê currículo, selos, candidaturas, conversas nem contato de pessoas: nas telas só aparecem e-mail de cadastro
 (assistido), conteúdo denunciado, vagas e empresas.
 
@@ -692,7 +701,7 @@ Grupo "Vagas" no menu lateral (entre Empresas e Vendas): **Cidades e praças** (
 
 CSS completo proposto (só tokens do `notus.css`) está em `scratchpad/vagas/telas-src/casca.mjs` (`VAGAS_CSS`) e
 `telas-referencia.mjs` (`REF_CSS`); o agente das telas copia para `vagas/assets/vagas.css` e ajusta. Peças do teste reaproveitadas
-sem mudar: `.topo/.topo-interno/.topo-nome`, `.conteudo`, `.acoes`, `.progresso-*`, `.barra-nav/.barra-dica/.barra-botoes`,
+sem mudar: `.topo/.topo-interno`, `.conteudo`, `.acoes`, `.progresso-*`, `.barra-nav/.barra-dica/.barra-botoes`,
 `.retrato/.escolha-marca`, `.codigo`, `.rodape`; do painel: `.menu-lateral/.aba/.menu-grupo`, `.cabecalho`, `.resumo`, `.filtros/.escolha`,
 `.segmento`, `.vazio`, `.confirmar/.janela__caixa`, `.form-grade`, `.login*`.
 

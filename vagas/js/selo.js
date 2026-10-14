@@ -13,15 +13,12 @@
   var T = nodeJs ? require('./testes.js') : root.VAGAS_TESTES;
   var U = nodeJs ? require('./ui.js') : root.VAGAS_UI;
 
-  // O exemplo do código não é de nenhum selo da semente da prévia. EMPRESA: a frase própria para quem contrata (psicologia,
-  // revisão C 2.1: margem, não ordena pessoas, sem selo não quer dizer que não sabe, a decisão é da empresa); fica aqui, e não
-  // em avisos.json, porque textos.js vai na lista pública, que está no limite de 100 KB.
+  // O exemplo do código não é de nenhum selo da semente da prévia. A frase para quem contrata é avisos.selo_conferir_empresa
+  // (psicologia, revisão C 2.1: margem, não ordena pessoas, sem selo não quer dizer que não sabe, a decisão é da empresa).
   var TXT = {
-    EMPRESA: 'Para quem contrata: a nota tem margem de cerca de 10 pontos, para mais ou para menos, e não serve para ordenar pessoas. Sem selo não quer dizer que a pessoa não sabe: o teste é opcional. A decisão de contratar continua sendo sua.',
     FORMATO: 'O código tem 8 letras e números, como H4TR9WXE',                                                 // VAGAS-TELAS §2.8
-    EMITIDO: 'Emitido pelo Vagas sem Caos, uma ferramenta da Gestão sem Caos. O selo pertence a uma pessoa cadastrada; o nome dela só aparece para a empresa com quem ela combinou de conversar.',
-    SEM_VALIDADE: 'Este selo não vale mais. Se quiser, peça à pessoa para fazer o teste de novo.',            // psicologia 2.6
-    DEMONSTRACAO: 'Prévia com selos de demonstração: nenhum selo desta página vale de verdade.'
+    EMITIDO: 'Emitido pelo Vagas sem Caos, uma empresa do grupo Gestão sem Caos. O selo pertence a uma pessoa cadastrada; o nome dela só aparece para a empresa com quem ela combinou de conversar.',
+    SEM_VALIDADE: 'Este selo não vale mais. Se quiser, peça à pessoa para fazer o teste de novo.'             // psicologia 2.6
   };
 
   // '' quando o código está no formato (8 letras e números do alfabeto do selo, com ou sem hífen/espaço); senão a mensagem do campo.
@@ -66,6 +63,8 @@
         el('span', { class: s.tipo === 'valido' ? 'vg-conferir__ok' : 'vg-iniciais' }, U.icone(s.icone)),
         el('h2', { class: 't-titulo seminegrito', id: 'vg-conferir-titulo', tabindex: '-1' }, s.titulo),
         s.texto ? el('p', { class: 'texto-medio', id: 'vg-conferir-texto' }, s.texto) : null]),
+      A && A.modo === 'previa' ? el('p', { class: 'aviso', id: 'vg-conferir-demo', role: 'note' }, [el('strong', {}, 'Selo de demonstração.'),
+        ' Este é um selo da prévia, com dados de exemplo: não vale como selo de verdade.']) : null,
       el('div', { id: 'vg-selo' }, P.selo(selo)),
       el('p', { class: 'texto-medio', id: 'vg-conferir-emitido' }, TXT.EMITIDO)
     ]);
@@ -98,17 +97,8 @@
     });
   }
 
-  // Prévia: os selos são de demonstração (a faixa geral da prévia, quando existir, já diz isso).
-  function marcarDemonstracao() {
-    if (!A || A.modo !== 'previa' || doc.getElementById('vg-faixa-previa') || doc.getElementById('vg-faixa-demo')) return;
-    var faixa = el('div', { class: 'faixa-demo', id: 'vg-faixa-demo', role: 'note' }, el('strong', {}, TXT.DEMONSTRACAO));
-    var pular = doc.querySelector('.pular');
-    doc.body.insertBefore(faixa, pular ? pular.nextSibling : doc.body.firstChild);
-  }
-
   function iniciar() {
     U.topo({});
-    marcarDemonstracao();
     var form = el('form', { class: 'formulario', id: 'vg-form-conferir', novalidate: 'novalidate', onsubmit: function (ev) { ev.preventDefault(); conferir(); } }, [
       el('div', { class: 'campo' }, [el('label', { class: 'campo__rotulo', for: 'vg-conferir-codigo' }, 'Código do selo'),
         el('span', { class: 'campo__ajuda', id: 'vg-conferir-ajuda' }, 'São 8 letras e números. Pode ser com ou sem hífen.'), campo]),
@@ -120,7 +110,7 @@
       form,
       resultado,
       el('p', { class: 'aviso', id: 'vg-conferir-aviso' }, U.t('avisos.selo_empresa')),
-      el('p', { class: 'texto-medio', id: 'vg-conferir-empresa' }, TXT.EMPRESA)
+      el('p', { class: 'texto-medio', id: 'vg-conferir-empresa' }, U.t('avisos.selo_conferir_empresa'))
     ]));
     var inicial = U.parametro('codigo');
     if (inicial) { campo.value = String(inicial).toUpperCase().slice(0, 12); conferir(); } else U.focarTitulo(app);

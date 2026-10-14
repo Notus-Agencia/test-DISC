@@ -78,7 +78,7 @@
       }) };
     });
     grupos[1].itens.push({ id: 'vg-emp-sair', rotulo: 'Sair', icone: 'sair', aoClicar: sair });
-    var aside = U.menuLateral({ id: 'vg-menu', produto: 'Vagas sem Caos · Empresa', grupos: grupos,
+    var aside = U.menuLateral({ id: 'vg-menu', produto: 'Painel da empresa', grupos: grupos,
       usuario: e ? { nome: nome || e.nomeFantasia, papel: nome ? e.nomeFantasia : (e.papel === 'dono' ? 'Dono(a)' : 'Recrutador(a)') } : null });
     var antigo = root.document.getElementById('vg-menu');
     var principal = root.document.querySelector('main');

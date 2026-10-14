@@ -108,8 +108,8 @@
     op = op || {};
     var u = op.usuario || {};
     return el('aside', { class: 'menu-lateral', id: op.id || 'vg-menu', 'aria-label': 'Menu' }, [
-      el('img', { class: 'logo-gsc menu-lateral__logo', src: 'comum/marca/gsc-logo.svg', alt: 'Gestão sem Caos', width: '156', height: '22' }),
-      el('p', { class: 'menu-lateral__produto' }, op.produto || 'Vagas sem Caos'),
+      el('img', { class: 'logo-gsc menu-lateral__logo', src: 'comum/marca/vsc-logo.svg', alt: 'Vagas sem Caos', width: '147', height: '22' }),
+      op.produto ? el('p', { class: 'menu-lateral__produto' }, op.produto) : null,
       el('nav', { class: 'menu-lateral__nav', 'aria-label': 'Seções' }, (op.grupos || []).map(function (g) {
         return el('div', { class: 'menu-grupo' }, [g.titulo ? el('p', { class: 'menu-grupo__titulo' }, g.titulo) : null].concat((g.itens || []).map(function (i) {
           return el(i.href ? 'a' : 'button', { class: 'aba', id: i.id, href: i.href, type: i.href ? null : 'button', data: { rota: i.rota }, onclick: i.aoClicar }, [

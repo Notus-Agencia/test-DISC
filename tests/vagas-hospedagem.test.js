@@ -136,11 +136,11 @@ test('montarPaginaVaga: Open Graph completo, sem JavaScript, texto escapado', ()
   assert.ok(html.startsWith('<!doctype html>'));
   assert.ok(html.includes('<html lang="pt-BR">'));
   assert.ok(!/<script/i.test(html), 'a página abre sem JavaScript');
-  assert.ok(html.includes('<meta property="og:title" content="Atendente de loja &lt;turno da tarde&gt; · Vagas · Gestão sem Caos">'));
+  assert.ok(html.includes('<meta property="og:title" content="Atendente de loja &lt;turno da tarde&gt; · Vagas sem Caos">'));
   assert.ok(html.includes('<meta property="og:description" content="Mercado &amp; Cia · verificada · Boa Vista · Zona Oeste · CLT · R$ 1.600 a R$ 1.850,50">'));
   assert.ok(html.includes('<meta property="og:url" content="https://vagas.gestaosemcaos.com.br/v/K7M2QX">'));
-  assert.ok(html.includes('<meta property="og:image" content="https://vagas.gestaosemcaos.com.br/comum/marca/gsc-logo-email.png">'));
-  assert.ok(html.includes('<meta property="og:site_name" content="Vagas · Gestão sem Caos">'));
+  assert.ok(html.includes('<meta property="og:image" content="https://vagas.gestaosemcaos.com.br/comum/marca/vsc-logo-email.png">'));
+  assert.ok(html.includes('<meta property="og:site_name" content="Vagas sem Caos">'));
   assert.ok(html.includes('<h1>Atendente de loja &lt;turno da tarde&gt;</h1>'));
   assert.ok(!html.includes('<turno da tarde>'), 'nada de HTML cru vindo do anúncio');
   assert.ok(html.includes('href="/vaga.html?vaga=K7M2QX"'), 'botão leva direto para a tela da vaga com o código');

@@ -2,7 +2,7 @@
 
 # Termos de uso · Vagas sem Caos
 
-Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos
+Versão 1.0 · minuta de 13/10/2026 · uma empresa do grupo Gestão sem Caos [REVISÃO JURÍDICA: confirmar a estrutura societária de "empresa do grupo"]
 
 ## Resumo em 10 linhas (aparece na tela antes do texto completo)
 

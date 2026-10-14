@@ -7,7 +7,7 @@
  *
  *   golpe({id?, aoDenunciar?}) -> aviso anti-golpe com a frase fixa (docs/VAGAS-TELAS.md, regras transversais)
  *   iniciais(nome, {confidencial?, grande?}) · verificada(texto?) · modalidadeCurta(id)
- *   valorVaga(anuncio) -> 'R$ 1.620 + comissão' · metaVaga(anuncio, {cidadeAtual?}) -> ['Caixa e operação de loja', 'CLT', …]
+ *   valorVaga(anuncio) -> 'R$ 1.620 + comissão' · metaVaga(anuncio, {cidadeAtual?}) -> ['Caixa e operação de loja', 'CLT', 'Centro', …]
  *   etiquetasVaga(anuncio) -> [Element] · cartaoVaga(anuncio, {href?, agora?, cidadeAtual?}) -> <li> (lista e prévia na empresa)
  *   status(tipo: 'candidatura'|'anuncio'|'empresa', chave, {lado?: 'empresa'}) -> .vg-status
  *   janelaDenuncia({alvo: 'anuncio'|'mensagem'|'referencia', id, aoEnviada?}) -> janela com os motivos de VAGAS_REGRAS

@@ -33,11 +33,10 @@
   var FORA_AVISAR_SEG = 30;          // fora da prova por mais que isto: na volta, a barra diz que o relógio continuou
 
   // Textos desta tela. Os fixos vêm de padroes.md §6, da revisão da psicologia (revisao-c-psicologia-1, bloco 2) e de
-  // avisos.json (VAGAS_UI.t: teste_antes, selo_sem_selo…); os demais estão listados no relatório para a revisão. Os que só estas
-  // telas usam ficam aqui, e não em avisos.json: textos.js vai na lista pública, que está no limite de 100 KB.
+  // avisos.json (VAGAS_UI.t: teste_opcional, teste_antes, selo_sem_selo…); os demais estão listados no relatório para a revisão.
+  // avisos.teste_opcional (psicologia 2.9, com dois-pontos) vai no catálogo, nas instruções e em "Vagas que sugerem este teste";
+  // nunca dentro da prova.
   var TXT = {
-    // Psicologia 2.9 (com dois-pontos): catálogo, instruções e "Vagas que sugerem este teste"; nunca dentro da prova.
-    OPCIONAL: 'O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo: ela só vê o selo, se você ganhar.',
     FRASE_PESSOA: 'Se quiser, faça o teste da sua função no celular e tente o selo de habilidade testada.',   // psicologia 2.3
     LIMITES: 'O teste mede conhecimento prático. Não mede inteligência, personalidade nem caráter, e não garante desempenho.',  // padroes §6
     DEMONSTRACAO: 'Questões de demonstração (a prova real usa outro banco)',
@@ -216,9 +215,12 @@
   function hrefVagas() { return ctx.cidade ? 'cidade.html?cidade=' + encodeURIComponent(ctx.cidade.slug) : 'index.html'; }
   function demonstracao() { return A && A.modo === 'previa'; }
 
-  // Faixa da prévia: as questões são de demonstração (nunca as da prova real).
+  // Faixa da prévia: as questões são de demonstração (nunca as da prova real). Uma faixa só por tela: com a faixa geral da prévia
+  // (VAGAS_UI.faixaPrevia), o aviso das questões entra dentro dela.
   function marcarDemonstracao() {
     if (!demonstracao() || doc.getElementById('vg-faixa-demo')) return;
+    var geral = doc.getElementById('vg-faixa-previa');
+    if (geral) { geral.appendChild(doc.createTextNode(' ')); geral.appendChild(el('strong', { id: 'vg-faixa-demo' }, TXT.DEMONSTRACAO)); return; }
     var faixa = el('div', { class: 'faixa-demo', id: 'vg-faixa-demo', role: 'note' }, el('strong', {}, TXT.DEMONSTRACAO));
     var pular = doc.querySelector('.pular');
     doc.body.insertBefore(faixa, pular ? pular.nextSibling : doc.body.firstChild);
@@ -300,7 +302,7 @@
         el('p', { class: 'subtitulo' }, TXT.FRASE_PESSOA),
         el('p', { class: 'subtitulo', id: 'vg-testes-subtitulo' }, 'Grátis, no celular' + (faixaDeMinutos(r.testes) ? ', ' + faixaDeMinutos(r.testes) + ' cada' : '') +
           '. O selo mostra o teste, a nota com a margem e a data, e vale ' + validade + ' meses. Pode refazer depois de ' + (regras.intervaloDias || 30) + ' dias.'),
-        el('p', { class: 'aviso', id: 'vg-testes-opcional' }, TXT.OPCIONAL),
+        el('p', { class: 'aviso', id: 'vg-testes-opcional' }, U.t('avisos.teste_opcional')),
         ctx.logado ? null : el('div', { class: 'aviso', id: 'vg-testes-entrar-aviso' }, [el('p', {}, T.MENSAGENS.login),
           el('div', { class: 'acoes' }, el('a', { class: 'botao botao--claro', id: 'vg-testes-entrar', href: U.linkEntrar('testes.html') }, 'Entrar'))]),
         lista,
@@ -352,7 +354,7 @@
           return el('li', { class: 'vg-item' }, [U.icone(l.icone), el('span', { class: 'vg-item__texto t-corpo' }, l.texto)]);
         })),
         el('p', { class: 'aviso', id: 'vg-instrucoes-sozinho' }, U.t('avisos.teste_antes')),
-        el('p', { class: 'aviso', id: 'vg-instrucoes-opcional' }, TXT.OPCIONAL),
+        el('p', { class: 'aviso', id: 'vg-instrucoes-opcional' }, U.t('avisos.teste_opcional')),
         a.tipo === 'aguardar' && ctx.logado ? el('p', { class: 'aviso', id: 'vg-instrucoes-aguardar' }, 'Você pode fazer de novo a partir de ' + data(a.quando) + '.') : null,
         erro,
         el('div', { class: 'acoes' }, [principal, el('a', { class: 'botao botao--link', href: '#catalogo', id: 'vg-prova-depois' }, 'Deixar para depois')])
@@ -744,7 +746,7 @@
     op = op || {};
     var temSelo = !!res.selo;
     var refazer = textoRefazer(res, data);
-    var menos = ondeAcertouMenos(res, { respondidas: op.respondidas });
+    var menos = temSelo ? '' : ondeAcertouMenos(res, { respondidas: op.respondidas });
     var partes = partesDoResultado(res);
     var subtitulo = temSelo
       ? (op.cartao == null ? null : el('p', { class: 'subtitulo', id: 'vg-resultado-cartao' }, op.cartao ? TXT.NO_CARTAO : TXT.NO_CARTAO_OUTRO))
@@ -790,7 +792,7 @@
       var cab = [el('p', { class: 'sobretitulo' }, t ? t.nome : 'Habilidade testada'),
         el('h1', { id: 'vg-testes-vagas-titulo', class: 'titulo-pagina', tabindex: '-1' }, 'Vagas que sugerem este teste'),
         el('p', { class: 'subtitulo' }, ctx.cidade ? 'Vagas de ' + ctx.cidade.nome + '.' : ''),
-        el('p', { class: 'aviso', id: 'vg-testes-vagas-opcional' }, TXT.OPCIONAL)];
+        el('p', { class: 'aviso', id: 'vg-testes-vagas-opcional' }, U.t('avisos.teste_opcional'))];
       var corpo = vagas.length
         ? el('ul', { class: 'vg-vagas', id: 'vg-testes-vagas' }, vagas.map(function (a) { return P.cartaoVaga(a, { cidadeAtual: ctx.cidade && ctx.cidade.slug }); }))
         : el('div', { id: 'vg-testes-vagas-vazio' });

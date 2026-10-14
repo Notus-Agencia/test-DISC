@@ -1,5 +1,5 @@
 /*
- * Vagas sem Caos — PRÉVIA: um "banco" de mentira guardado só neste navegador (chave 'vagas_previa_v3'), com as MESMAS
+ * Vagas sem Caos — PRÉVIA: um "banco" de mentira guardado só neste navegador (chave 'vagas_previa_v4'), com as MESMAS
  * RPCs, regras e mensagens das migrações 20261022120000_vagas.sql e 20261024120000_vagas_onda2.sql. Carregado sob demanda por
  * vagas/js/api.js quando VAGAS_CONFIG.MODO = 'previa' (precisa de vagas/js/regras.js carregado antes). Nada sai do navegador;
  * nenhum e-mail é enviado.
@@ -28,8 +28,13 @@
 (function (root) {
   'use strict';
   var R = (typeof module !== 'undefined' && module.exports) ? require('./regras.js') : root.VAGAS_REGRAS;
-  var CHAVE = 'vagas_previa_v3';   // v3: semente da praça piloto (a v2, de exemplo antigo, fica esquecida no navegador)
-  var SENHA_PREVIA = 'previa123';
+  // v4: telefones de exemplo com DDD que não existe (23) e códigos de selo sorteados (revisão G4); a v3 (com senha em texto
+  // puro) é apagada ao abrir.
+  var CHAVE = 'vagas_previa_v4';
+  var CHAVES_ANTIGAS = ['vagas_previa_v3'];
+  var SENHA_PREVIA = 'previa123';   // senha PÚBLICA das contas da semente (está neste comentário e na tela de entrar da prévia)
+  // Conta criada na prévia: nenhuma senha fica guardada no navegador (revisão G3); qualquer senha de 8 a 72 caracteres entra.
+  var SENHA_NAO_GUARDADA = '*';
   var DIA = 86400000;
   var ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -760,6 +765,7 @@
     function iso(ms) { return ms == null ? '' : new Date(ms).toISOString(); }
     function clone(x) { return x == null ? x : JSON.parse(JSON.stringify(x)); }
     function salvar() { try { if (arm) arm.setItem(CHAVE, JSON.stringify(st)); } catch (e) { /* sem armazenamento */ } }
+    CHAVES_ANTIGAS.forEach(function (k) { try { if (arm) arm.removeItem(k); } catch (e) { /* sem armazenamento */ } });
     function novoId() {
       st.seq += 1;
       var h = st.seq.toString(16);
@@ -3118,7 +3124,9 @@
       },
       entrar: function (email, senha) {
         var u = usuarioPorEmail(R.normalizarEmail(email));
-        if (!u || !u.senha || u.senha !== String(senha || '')) return erro('E-mail ou senha não conferem.');
+        var s = String(senha || '');
+        var confere = !!u && (u.senha === SENHA_NAO_GUARDADA ? s.length >= 8 && s.length <= 72 : !!u.senha && u.senha === s);
+        if (!confere) return erro('E-mail ou senha não conferem.');
         if (!u.confirmada) return erro(R.MSG.CONFIRMAR, { confirmar: true });
         st.sessao = u.id;
         return H.vagas_eu({});
@@ -3145,7 +3153,7 @@
         if (s.length < 8 || s.length > 72) return erro('A senha precisa ter de 8 a 72 caracteres.');
         var u = usuario(st.sessao);
         if (!u) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
-        u.senha = s;
+        u.senha = SENHA_NAO_GUARDADA;   // a senha digitada nunca fica no navegador
         return ok();
       }
     };
@@ -3178,7 +3186,7 @@
         ['niquelandia-go', 'cidade-toda', 'Niquelândia (cidade toda)', [], 1]].forEach(function (z) {
         st.zonas.push({ id: novoId(), cidade: z[0], slug: z[1], nome: z[2], bairros: z[3], ordem: z[4], ativa: true });
       });
-      st.listaEspera.push({ cidade: 'niquelandia-go', email: 'interessada@previa.com', perfil: 'pessoa', whatsapp: '5562988887777', whatsappEm: t0 - 3 * DIA,
+      st.listaEspera.push({ cidade: 'niquelandia-go', email: 'interessada@previa.com', perfil: 'pessoa', whatsapp: '5523988887777', whatsappEm: t0 - 3 * DIA,
         criadoEm: t0 - 3 * DIA });
 
       function usuarioSemente(email, tipo, extra) {
@@ -3193,14 +3201,14 @@
 
       // 15 empresas (fictícias, nomes neutros). A primeira é a da empresa@previa.com. A 14ª fica na vizinha (entorno).
       var EMP = [
-        ['Mercadinho Sol do Norte', 'Supermercado', 'centro', '556233571001'], ['Padaria Trigo Dourado', 'Padaria', 'regiao-oeste', '556233571002'],
-        ['Farmácia Bem Viver', 'Farmácia', 'regiao-sul', '556233571003'], ['Loja Casa & Cor', 'Material de construção', 'regiao-norte', '556233571004'],
-        ['Auto Peças Rodovia', 'Autopeças', 'regiao-oeste', '556233571005'], ['Restaurante Sabor da Terra', 'Restaurante', 'centro', '556233571006'],
-        ['Clínica Cuidar Bem', 'Saúde', 'centro', '556233571007'], ['Construtora Alicerce Forte', 'Construção civil', 'regiao-sul', '556233571008'],
-        ['Pousada Lago Azul', 'Hotelaria', 'zona-rural', '556233571009'], ['Ótica Visão Clara', 'Varejo', 'centro', '556233571010'],
-        ['Distribuidora Norte Frio', 'Distribuição', 'regiao-norte', '556233571011'], ['Escola de Idiomas Ponte', 'Educação', 'regiao-norte', '556233571012'],
-        ['Pet Shop Amigo Fiel', 'Pet shop', 'regiao-oeste', '556233571013'], ['Eventos Festa Boa', 'Eventos', 'regiao-sul', '556233571014'],
-        ['Lava-Jato Brilho Total', 'Serviços automotivos', 'regiao-oeste', '556233571015']];
+        ['Mercadinho Sol do Norte', 'Supermercado', 'centro', '552333571001'], ['Padaria Trigo Dourado', 'Padaria', 'regiao-oeste', '552333571002'],
+        ['Farmácia Bem Viver', 'Farmácia', 'regiao-sul', '552333571003'], ['Loja Casa & Cor', 'Material de construção', 'regiao-norte', '552333571004'],
+        ['Auto Peças Rodovia', 'Autopeças', 'regiao-oeste', '552333571005'], ['Restaurante Sabor da Terra', 'Restaurante', 'centro', '552333571006'],
+        ['Clínica Cuidar Bem', 'Saúde', 'centro', '552333571007'], ['Construtora Alicerce Forte', 'Construção civil', 'regiao-sul', '552333571008'],
+        ['Pousada Lago Azul', 'Hotelaria', 'zona-rural', '552333571009'], ['Ótica Visão Clara', 'Varejo', 'centro', '552333571010'],
+        ['Distribuidora Norte Frio', 'Distribuição', 'regiao-norte', '552333571011'], ['Escola de Idiomas Ponte', 'Educação', 'regiao-norte', '552333571012'],
+        ['Pet Shop Amigo Fiel', 'Pet shop', 'regiao-oeste', '552333571013'], ['Eventos Festa Boa', 'Eventos', 'regiao-sul', '552333571014'],
+        ['Lava-Jato Brilho Total', 'Serviços automotivos', 'regiao-oeste', '552333571015']];
       var empresas = EMP.map(function (x, i) {
         var base = 'PV' + ('0000000000' + (i + 1)).slice(-10);
         var cnpj = base;
@@ -3244,7 +3252,7 @@
           areas: [['caixa', 'atendimento'], ['logistica'], ['atendimento'], ['vendas-loja', 'atendimento'], ['administrativo'], ['cozinha'],
             ['limpeza'], ['construcao'], ['hotelaria', 'cozinha'], ['motorista', 'logistica']][i % 10],
           criadoEm: t0 - (30 - i % 20) * DIA, atualizadoEm: t0 - (10 - i % 10) * DIA };
-        st.contatos[u.id] = { nome: nome, whatsapp: '55629' + ('8' + ('0000000' + (1000000 + i * 137)).slice(-7)), email: u.email };
+        st.contatos[u.id] = { nome: nome, whatsapp: '55239' + ('8' + ('0000000' + (1000000 + i * 137)).slice(-7)), email: u.email };
         st.experiencias.push({ id: novoId(), userId: u.id, funcao: cg[0], empregador: 'Empregador fictício ' + (i + 1), inicio: '2023-0' + (1 + i % 9), fim: i % 3 === 0 ? null : '2025-0' + (1 + i % 9), informal: i % 4 === 3, ordem: 1 });
         return u.id;
       });
@@ -3339,9 +3347,11 @@
       st.referencias.forEach(function (r) { historico(r.id, 'oferecida', 'empresa'); if (r.status === 'aceita') historico(r.id, 'aceita', 'pessoa'); });
       // Selos fictícios (o formato do gancho vagas_interno.selos_cartao da migração dos testes).
       var umAno = R.somarDias(hojeBV, 355);
-      st.selos[pessoas[0]] = [{ teste: 'atendimento', nome: 'Atendimento e recepção', nota: 80, data: R.somarDias(hojeBV, -10), codigo: 'Q8V3N2KD',
+      // Códigos sorteados (nunca fixos): o código de exemplo das telas não confere como selo válido (revisão G4).
+      var codigoSemente = function () { var c; do { c = ''; for (var i = 0; i < 8; i++) c += ALFABETO.charAt(Math.floor(Math.random() * 32)); } while (c === 'Q8V3N2KD'); return c; };
+      st.selos[pessoas[0]] = [{ teste: 'atendimento', nome: 'Atendimento e recepção', nota: 80, data: R.somarDias(hojeBV, -10), codigo: codigoSemente(),
         validoAte: umAno, supervisao: 'online' }];
-      st.selos[pessoas[4]] = [{ teste: 'caixa', nome: 'Caixa e matemática prática', nota: 73, data: R.somarDias(hojeBV, -10), codigo: 'K7M2QX9A',
+      st.selos[pessoas[4]] = [{ teste: 'caixa', nome: 'Caixa e matemática prática', nota: 73, data: R.somarDias(hojeBV, -10), codigo: codigoSemente(),
         validoAte: umAno, supervisao: 'online' }];
       st.sessao = null;
     }
