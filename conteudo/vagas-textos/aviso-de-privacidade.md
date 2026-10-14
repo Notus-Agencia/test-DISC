@@ -57,6 +57,15 @@ Idade (só a declaração "18 anos ou mais"), data de nascimento, gênero, estad
 
 Na prova presencial (fase 2), o operador confere o seu documento na hora, para dizer que foi você quem fez a prova, e **não guarda cópia nem o número**.
 
+### 2.5. Se você entrou na lista de espera de uma cidade
+[REVISÃO JURÍDICA] Quando a plataforma ainda não abriu na sua cidade, você pode deixar o contato para ser avisado(a) da abertura (páginas "emprego" e "empresas" do site). Guardamos só:
+- **e-mail** (obrigatório) e **WhatsApp** (opcional), para o aviso;
+- a **cidade** e se você procura trabalho ou representa uma empresa;
+- de onde você veio, quando o link tiver a marca de uma campanha (rádio, cartaz, grupo, canal, escola, mutirão, indicação), só para sabermos que canal funciona;
+- a data em que entrou e, se deixou o WhatsApp, a data em que o informou.
+
+O WhatsApp não é confirmado por código: confira o número. Se alguém deixar o seu contato sem você pedir, use "Quero sair da lista" (item 6) e ele sai.
+
 ## 3. Para que usamos e com que base legal
 
 | Para quê | Dados | Base legal (LGPD) |
@@ -72,6 +81,7 @@ Na prova presencial (fase 2), o operador confere o seu documento na hora, para d
 | Publicar uma referência profissional que uma empresa deixou sobre você (com o nome da empresa, só depois do Combinou; no cartão, só "Referência de empresa verificada: sim") | referências | **consentimento específico e revogável** (art. 7º, I e art. 8º); a empresa responde pelo que declara |
 | Enviar e-mails de serviço (confirmar conta, Combinou, selo, referência, aviso de exclusão) | e-mail | execução de contrato (art. 7º, V) |
 | Enviar novidades da plataforma | e-mail | consentimento (art. 7º, I), com descadastro em um clique |
+| Avisar quando a plataforma abrir na sua cidade (lista de espera) e contar quantas pessoas e empresas esperam, sem identificar ninguém | e-mail, WhatsApp (opcional), cidade, perfil, origem da campanha | **consentimento** (art. 7º, I), dado ao tocar no botão do formulário, que diz para que serve cada dado; você sai quando quiser [REVISÃO JURÍDICA] |
 | Números gerais da cidade (vagas, selos, contratações), sem identificar ninguém | dados anonimizados | não são dados pessoais (art. 12) |
 
 Não usamos os seus dados para decisão automatizada que afete você: não há ordem do melhor para o pior, nota mínima nem filtro automático de pessoa. Quem decide é sempre alguém da empresa (art. 20).
@@ -108,6 +118,7 @@ Você vê, na tela "Quem viu meu contato", cada empresa que abriu o seu contato 
 | Registros de acesso (IP, data) | 6 meses (Marco Civil, art. 15) |
 | Compras e notas fiscais | 5 anos (legislação fiscal) |
 | Aceites de termos e consentimentos | enquanto a conta existir e por 5 anos depois, como prova |
+| Lista de espera (e-mail, WhatsApp, cidade, perfil, origem) | até a cidade abrir e mais 90 dias, ou até você pedir para sair, o que vier primeiro [REVISÃO JURÍDICA: confirmar se os 90 dias depois do aviso se justificam] |
 
 Quando você apaga a conta, os dados pessoais são eliminados. Ficam só o que a lei obriga a guardar (acima) e dados anonimizados.
 
@@ -126,6 +137,8 @@ Na tela **"Meus dados"** você faz sozinho(a), na hora:
 
 Para o que não dá para fazer na tela (por exemplo, pedir revisão de uma decisão ou reclamar), escreva para o(a) encarregado(a). Respondemos em até 15 dias. Se não ficar satisfeito(a), você pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).
 
+**Lista de espera:** para sair, abra a página de onde entrou (`/emprego` ou `/empresas`), toque em "Quero sair da lista" e escreva o e-mail que você deixou: ele sai na hora, com o WhatsApp. A resposta é sempre a mesma, para ninguém descobrir se um e-mail estava na lista. Também dá para pedir pelo contato da seção 12. A lista de espera não cria conta: nada dela aparece para empresas, e a operação da cidade vê só a contagem.
+
 ## 7. Com quem compartilhamos
 
 Não vendemos nem alugamos dados. Compartilhamos só com:
@@ -140,6 +153,8 @@ Não vendemos nem alugamos dados. Compartilhamos só com:
 - **Autoridades**, quando a lei obrigar ou por ordem judicial, e para apurar crime (golpe, assédio).
 
 Quando o dado sai do Brasil (hospedagem), isso é feito com base no art. 33 da LGPD, com cláusulas contratuais de proteção.
+
+[REVISÃO JURÍDICA: se o aviso da lista de espera for enviado pela API oficial do WhatsApp, incluir a Meta entre os prestadores, com a transferência internacional (art. 33) e a opção "não pedi / sair" na primeira mensagem.]
 
 ## 8. Segurança
 
