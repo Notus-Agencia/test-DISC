@@ -416,7 +416,16 @@
     // Sem empresa própria, "Agora não" e a saída voltam para o início do Vagas sem Caos (o painel abriria o cadastro de empresa).
     var saida = ctx.empresa ? 'empresa.html#inicio' : 'index.html';
     function esquecer() { E.esquecerToken(CHAVE_CONVITE); }
-    var painel = el('a', { class: 'botao botao--claro botao--grande', href: saida, id: 'vg-convite-painel', onclick: esquecer }, ctx.empresa ? 'Ir para o painel' : 'Ir para o início');
+    // O endereço desta tela já é empresa.html (o token saiu da barra): ir para empresa.html#inicio só trocaria a âncora, então recarrega.
+    function sairPara(ev) {
+      esquecer();
+      var href = ev.currentTarget.getAttribute('href') || '';
+      if (href.indexOf('empresa.html#') !== 0) return;
+      ev.preventDefault();
+      root.location.hash = href.split('#')[1];
+      root.location.reload();
+    }
+    var painel = el('a', { class: 'botao botao--claro botao--grande', href: saida, id: 'vg-convite-painel', onclick: sairPara }, ctx.empresa ? 'Ir para o painel' : 'Ir para o início');
     if (typeof A.conviteEquipe !== 'function') {
       E.tela(raiz, [cab, el('p', { class: 'aviso', role: 'note', id: 'vg-convite-em-breve' }, 'Em breve: aceitar o convite para a equipe por aqui.'), el('div', { class: 'vg-emp-acoes-coluna' }, painel)]);
       return Promise.resolve();
@@ -432,7 +441,7 @@
         return;
       }
       var aceitar = el('button', { type: 'button', class: 'botao botao--laranja botao--grande', id: 'vg-convite-aceitar' }, 'Aceitar o convite');
-      var agoraNao = el('a', { class: 'botao botao--claro botao--grande', href: saida, id: 'vg-convite-agora-nao', onclick: esquecer }, 'Agora não');
+      var agoraNao = el('a', { class: 'botao botao--claro botao--grande', href: saida, id: 'vg-convite-agora-nao', onclick: sairPara }, 'Agora não');
       var erro = el('p', { class: 'aviso aviso--erro', id: 'vg-convite-erro', role: 'alert', hidden: true });
       // A ordem no código é a mesma da tela: primeiro "Aceitar", depois "Agora não".
       var caixaConvite = E.caixa({ id: 'vg-convite', classe: 'caixa--ampla caixa--destaque' }, [
@@ -451,7 +460,7 @@
           var titulo = el('h2', { class: 't-titulo', tabindex: '-1', id: 'vg-convite-ok-titulo' }, 'Pronto. Agora você faz parte da equipe de ' + x.empresa.nomeFantasia + '.');
           E.tela(raiz, [cab, el('section', { class: 'caixa caixa--ampla', id: 'vg-convite-ok', role: 'status', 'aria-labelledby': 'vg-convite-ok-titulo' }, [el('div', { class: 'vg-ok-icone' }, U.icone('check')),
             titulo, el('p', { class: 't-rotulo texto-medio', id: 'vg-convite-computador' }, 'O painel funciona melhor no computador.'),
-            el('div', { class: 'vg-emp-acoes-coluna' }, el('a', { class: 'botao botao--principal botao--grande', href: 'empresa.html#inicio', id: 'vg-convite-ir' }, 'Ir para o painel'))])]);
+            el('div', { class: 'vg-emp-acoes-coluna' }, el('a', { class: 'botao botao--principal botao--grande', href: 'empresa.html#inicio', id: 'vg-convite-ir', onclick: sairPara }, 'Ir para o painel'))])]);
           titulo.focus();
         }, function (e) {
           U.ocupado(aceitar, false);

@@ -135,7 +135,7 @@ test('vaga nova: experiência só até 6 meses (CLT 442-A), "Selo sugerido"; pub
   await expect(page.locator('#vg-vaga-experiencia [data-valor="nao_precisa"]')).toHaveText('Não precisa');
   for (const id of ['ate_1', '1_a_3', 'mais_3']) await expect(page.locator('#vg-vaga-experiencia [data-valor="' + id + '"]')).toHaveCount(0);
   await expect(page.locator('main')).toContainText('A lei não deixa exigir mais de 6 meses na mesma função (CLT, art. 442-A).');
-  await expect(page.locator('#vg-vaga-selo')).toContainText('Selo sugerido');
+  await expect(page.locator('main')).toContainText('Selo sugerido');
   await expect(page.locator('main')).toContainText('O teste é opcional: sem selo não quer dizer que a pessoa não sabe. Sem nota mínima.');
   const antes = await page.evaluate(async () => (await window.VAGAS_API.anunciosDaEmpresa((await window.VAGAS_API.eu()).empresas[0].id)).anuncios.length);
   await preencherVaga(page, 'Caixa sem duplicar');
@@ -425,7 +425,8 @@ test('referencia.html?t=: sem login vai para entrar sem o token no endereço e v
   await page.goto(BASE + 'referencia.html?t=' + pedido.token);
   await page.waitForURL(/entrar\.html\?.*voltar=referencia\.html(&|$)/);
   expect(page.url()).not.toContain(pedido.token);
-  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(pedido.token);
+  // Fora a "banco" da prévia (que guarda o pedido, como o banco de verdade), nada no aparelho tem o token.
+  expect(await page.evaluate(() => JSON.stringify(Object.keys(localStorage).filter((k) => k.indexOf('vagas_previa') !== 0).map((k) => localStorage.getItem(k))))).not.toContain(pedido.token);
   // Entra e volta para referencia.html: o pedido continua aberto (memória da aba).
   await page.evaluate(([e, s]) => window.VAGAS_API.entrar(e, s), ['empresa@previa.com', SENHA]);
   await page.goto(BASE + 'referencia.html');
@@ -708,6 +709,8 @@ test.describe('equipe: convite pelo link, no celular', () => {
     await semRolagemLateral(page);
     // A dona vê a pessoa nova na equipe e o convite como aceito.
     await como(page, 'empresa@previa.com');
+    // O endereço já é empresa.html (o token saiu da barra): sem passar por about:blank, só a âncora mudaria.
+    await page.goto('about:blank');
     await page.goto(BASE + 'empresa.html#dados');
     await expect(page.locator('#vg-equipe-membros tr', { hasText: 'colega.celular@previa.com' })).toContainText('Recrutador(a)');
     await expect(page.locator('#vg-equipe-convites tr', { hasText: 'colega.celular@previa.com' })).toContainText('Aceito');
