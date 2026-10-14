@@ -26,7 +26,10 @@
 --   7. 4ª REVISÃO DE SEGURANÇA: R4-1 denúncia de referência com resposta única (veto P2); R4-2 teto da lista de espera por
 --      cidade e só para pedido válido; R4-3 com lista_espera_captcha = 'sim' o banco exige o Turnstile também na Function;
 --      R4-4 pré-abertura marcada só na 1ª publicação; R4-5 nenhuma referência das empresas de quem vê; R4-6 um lote do
---      aviso por vez; R4-7 a empresa só lê a foto com o aceite 'foto_opcional' em vigor.
+--      aviso por vez; R4-7 a empresa só lê a foto com o aceite 'foto_opcional' em vigor. 5ª revisão: R5-1 quem denunciou não
+--      lê a fila de denúncias e a exportação mostra toda tentativa de denunciar referência do mesmo jeito (registro
+--      vagas_interno.denuncias_referencia); R5-2 o texto copiado na denúncia nunca volta para quem denunciou; R5-3 temFoto
+--      do contato só com o aceite da foto.
 --
 -- Rodar a 20261022 ou a 20261024120000 de novo DEPOIS desta volta as funções redefinidas aqui à versão antiga: rode esta em
 -- seguida.
@@ -942,11 +945,38 @@ $$;
 
 
 -- -----------------------------------------------------------------------------
--- 7. 4ª revisão de segurança (R4-1 a R4-7)
+-- 7. 4ª e 5ª revisões de segurança (R4-1 a R4-7, R5-1 a R5-3)
 -- -----------------------------------------------------------------------------
 
--- R4-1 (veto P2). Denúncia: IGUAL à da 20261022, mas a de referência responde sempre {recebida:true} (sem "duplicado"),
--- para qualquer id, e só grava quando quem denuncia vê a referência.
+-- R5-1 (veto P2). Registro de TODA tentativa de denunciar uma referência (id em formato UUID), igual para qualquer estado
+-- dela: quem denunciou, o id informado, o motivo, o detalhe e quando. Sem chave estrangeira para a referência (apagar a
+-- referência não muda nada aqui) e sem andamento. É daqui que sai a exportação de quem denunciou; a fila da moderação
+-- continua em vagas_denuncias (só referência que quem denuncia vê) e quem denunciou não lê a fila (política mais abaixo).
+-- Sai com a conta (cascata). Nenhum acesso pela API.
+create table if not exists vagas_interno.denuncias_referencia (
+  id             bigint generated always as identity primary key,
+  autor          uuid not null references public.vagas_contas (user_id) on delete cascade,
+  referencia_id  uuid not null,
+  motivo         text not null check (char_length(motivo) <= 40),
+  detalhe        text not null default '' check (char_length(detalhe) <= 600),
+  em             timestamptz not null default now()
+);
+create index if not exists denuncias_referencia_autor_idx on vagas_interno.denuncias_referencia (autor, em);
+revoke all on vagas_interno.denuncias_referencia from public;
+do $$
+declare
+  papel text;
+begin
+  foreach papel in array array['anon', 'authenticated'] loop
+    if exists (select 1 from pg_roles where rolname = papel) then
+      execute format('revoke all on vagas_interno.denuncias_referencia from %I', papel);
+    end if;
+  end loop;
+end $$;
+
+-- R4-1 e R5-1 (veto P2). Denúncia: IGUAL à da 20261022, mas a de referência responde sempre {recebida:true} (sem
+-- "duplicado"), para qualquer id; toda tentativa entra no registro acima e a fila da moderação só recebe a referência que
+-- quem denuncia vê.
 create or replace function public.vagas_denunciar(p_dados jsonb)
 returns json language plpgsql volatile security definer set search_path = '' as $$
 declare
@@ -1019,6 +1049,8 @@ begin
     -- R4-1 (veto P2): a resposta é SEMPRE {recebida:true}, sem "duplicado", para qualquer id. Grava só quando quem denuncia
     -- vê a referência (a própria pessoa, ou visível e de outra empresa que não as dele) e ainda não a denunciou. Antes, uma
     -- segunda conta da empresa autora distinguia "não encontrada" (pendente, recusada, ocultada) de "recebida" (aceita).
+    -- R5-1: toda tentativa vai para o registro de quem denunciou (é dele que sai a exportação), seja qual for a referência.
+    insert into vagas_interno.denuncias_referencia (autor, referencia_id, motivo, detalhe) values (v_uid, v_id::uuid, v_motivo, v_detalhe);
     select * into r from public.vagas_referencias where id = v_id::uuid and status <> 'removida';
     if found and not (r.empresa_id in (select public.vagas_ids_minhas_empresas()))
        and (r.pessoa_id = v_uid or vagas_interno.referencia_visivel(r))
@@ -1267,6 +1299,72 @@ end;
 $$;
 
 
+-- R5-1 e R5-2. Quem denunciou NÃO lê a fila de denúncias (nem a linha da referência, que só existe quando a referência está
+-- visível, nem o texto copiado em texto_denunciado). Ficam a operação da cidade e a equipe (que leem pelas RPCs). Nenhuma tela
+-- lia as próprias denúncias direto; a exportação usa vagas_interno.denuncias_feitas.
+drop policy if exists vagas_denuncias_ver on public.vagas_denuncias;
+create policy vagas_denuncias_ver on public.vagas_denuncias for select to authenticated
+  using (cidade_id in (select public.vagas_ids_minhas_cidades()) or (select public.e_admin()));
+
+-- R5-1. "Denúncias feitas" da exportação (LGPD): as de vaga e de mensagem como antes (com o andamento); as de referência
+-- vêm do registro de tentativas — iguais para referência pendente, aceita, ocultada, removida ou inexistente, sem o texto e
+-- sem andamento (status null).
+create or replace function vagas_interno.denuncias_feitas(p_user uuid)
+returns jsonb language sql stable security definer set search_path = '' as $$
+  select coalesce((select jsonb_agg(d.j order by d.em, d.ordem, d.id) from (
+      select jsonb_build_object('alvo', x.alvo, 'motivo', x.motivo, 'detalhe', x.detalhe, 'status', x.status,
+               'em', disc_interno.iso(x.criado_em)) as j, x.criado_em as em, 0 as ordem, 0::bigint as id
+        from public.vagas_denuncias x where x.autor = p_user and x.alvo <> 'referencia'
+      union all
+      select jsonb_build_object('alvo', 'referencia', 'motivo', r.motivo, 'detalhe', r.detalhe, 'status', null,
+               'em', disc_interno.iso(r.em)), r.em, 1, r.id
+        from vagas_interno.denuncias_referencia r where r.autor = p_user) d), '[]'::jsonb);
+$$;
+
+-- R5-3. Contato depois do Combinou: IGUAL ao da 20261022, com temFoto só quando o último aceite 'foto_opcional' é true
+-- (senão a empresa saberia que há foto sem autorização).
+create or replace function public.vagas_contato_pessoa(p_candidatura uuid)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  v_conta jsonb := vagas_interno.conta_atual('empresa');
+  k public.vagas_candidaturas%rowtype;
+  a public.vagas_anuncios%rowtype;
+  e public.vagas_empresas%rowtype;
+  ct public.vagas_pessoa_contato%rowtype;
+  p public.vagas_pessoas%rowtype;
+begin
+  if not (v_conta ->> 'ok')::boolean then return v_conta::json; end if;
+  k := vagas_interno.candidatura_da_empresa(p_candidatura);
+  if k.id is null then return vagas_interno.erro('Candidatura não encontrada.'); end if;
+  if k.status not in ('combinou', 'contratada') then
+    return vagas_interno.erro('O contato só aparece depois do Combinou.', '{"semCombinou": true}');
+  end if;
+  if k.contato_cortado_em is not null then
+    return vagas_interno.erro('A pessoa deixou de compartilhar o contato com a sua empresa.', '{"contatoCortado": true}');
+  end if;
+  select * into e from public.vagas_empresas where id = k.empresa_id;
+  -- Empresa suspensa pela moderação não lê mais o contato (a pessoa não sabe da suspensão para cortar o acesso).
+  if e.status <> 'ativa' then return vagas_interno.erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.', '{"suspensa": true}'); end if;
+  if vagas_interno.contar('contato_empresa', k.empresa_id::text, interval '1 day') > 300 then
+    return vagas_interno.erro('Muitas consultas de contato hoje. Tente de novo amanhã.', '{"bloqueado": true}');
+  end if;
+  select * into a from public.vagas_anuncios where id = k.anuncio_id;
+  select * into ct from public.vagas_pessoa_contato where user_id = k.pessoa_id;
+  select * into p from public.vagas_pessoas where user_id = k.pessoa_id;
+  insert into public.vagas_acessos_contato (candidatura_id, pessoa_id, empresa_id, empresa_nome, anuncio_titulo, user_id)
+  values (k.id, k.pessoa_id, k.empresa_id, e.nome_fantasia, a.titulo, auth.uid());
+  return vagas_interno.ok(jsonb_build_object('pessoa', jsonb_build_object('nome', ct.nome, 'whatsapp', ct.whatsapp, 'email', ct.email,
+    -- R5-3: temFoto só com o aceite 'foto_opcional' em vigor (a mesma regra da foto em vagas_conta_foto).
+    'sobre', p.sobre, 'temFoto', vagas_interno.tem_foto(k.pessoa_id) and vagas_interno.foto_aceita(k.pessoa_id),
+    'cartao', vagas_interno.cartao(k.pessoa_id, k.empresa_id),
+    'referencias', coalesce((select jsonb_agg(vagas_interno.referencia_json(r, false) order by coalesce(r.fim, current_date) desc, r.inicio desc)
+      from public.vagas_referencias r where r.pessoa_id = k.pessoa_id and vagas_interno.referencia_para_empresa(r, array[k.empresa_id])), '[]'::jsonb),
+    'experiencias', coalesce((select jsonb_agg(jsonb_build_object('funcao', x.funcao, 'empregador', x.empregador,
+        'inicio', to_char(x.inicio, 'YYYY-MM'), 'fim', coalesce(to_char(x.fim, 'YYYY-MM'), ''), 'informal', x.informal) order by x.ordem)
+      from public.vagas_experiencias x where x.user_id = k.pessoa_id), '[]'::jsonb))));
+end;
+$$;
+
 -- -----------------------------------------------------------------------------
 -- Permissões do que é novo (e do que foi recriado)
 -- -----------------------------------------------------------------------------
@@ -1277,7 +1375,7 @@ declare
   f text;
   autenticadas text[] := array['public.vagas_referencias_empresa(uuid)', 'public.vagas_referencia_oferecer(jsonb)',
     'public.vagas_cartoes(uuid, jsonb)', 'public.vagas_op_empresas(jsonb)', 'public.vagas_op_empresa_decidir(uuid, text, text)', 'public.vagas_op_moderacao(jsonb)', 'public.vagas_foto_consentimento(boolean)',
-    'public.vagas_quem_viu_meu_contato()', 'public.vagas_pessoa_salvar(jsonb)'];
+    'public.vagas_quem_viu_meu_contato()', 'public.vagas_pessoa_salvar(jsonb)', 'public.vagas_contato_pessoa(uuid)'];
   servico text[] := array[]::text[] || array['public.vagas_conta_limite(text, text, text, text, uuid)', 'public.vagas_conta_consultar(text)',
     'public.vagas_conta_lista_espera(jsonb, text, text, boolean)', 'public.vagas_conta_aviso_lote(uuid, text, integer)',
     'public.vagas_conta_foto(uuid, uuid)'];
@@ -1399,7 +1497,8 @@ begin
                                  and exists (select 1 from pg_catalog.pg_attribute a
                                               where a.attrelid = to_regclass('public.vagas_acessos_contato')
                                                 and a.attname = 'papel' and not a.attisdropped)
-                                 and to_regprocedure('vagas_interno.foto_aceita(uuid)') is not null)
+                                 and to_regprocedure('vagas_interno.foto_aceita(uuid)') is not null
+                                 and to_regclass('vagas_interno.denuncias_referencia') is not null)
     ) as t(ordem, nome, ok)
     order by ordem
   loop
@@ -1470,8 +1569,7 @@ begin
                                where k.pessoa_id = v_uid), '[]'::jsonb),
     'pulos', coalesce((select jsonb_agg(jsonb_build_object('anuncio', jsonb_build_object('codigo', a.codigo, 'titulo', a.titulo), 'em', disc_interno.iso(p.em))
                          order by p.em) from public.vagas_pulos p join public.vagas_anuncios a on a.id = p.anuncio_id where p.pessoa_id = v_uid), '[]'::jsonb),
-    'denunciasFeitas', coalesce((select jsonb_agg(jsonb_build_object('alvo', x.alvo, 'motivo', x.motivo, 'detalhe', x.detalhe, 'status', x.status,
-                                   'em', disc_interno.iso(x.criado_em)) order by x.criado_em) from public.vagas_denuncias x where x.autor = v_uid), '[]'::jsonb),
+    'denunciasFeitas', vagas_interno.denuncias_feitas(v_uid),   -- R5-1 (seção 7): a de referência não depende da visibilidade
     'mensagensEnviadas', coalesce((select jsonb_agg(jsonb_build_object('em', disc_interno.iso(m.criado_em), 'texto', m.texto) order by m.criado_em)
                                      from public.vagas_mensagens m where m.autor_user = v_uid), '[]'::jsonb),
     'acessosAoContato', coalesce((select jsonb_agg(jsonb_build_object('empresa', l.empresa_nome, 'anuncio', l.anuncio_titulo, 'em', disc_interno.iso(l.em))

@@ -1011,3 +1011,42 @@ test('4ª revisão na prévia (20261024120005): denúncia de referência com res
   await api.entrar('empresa6@previa.com', PREVIA.SENHA_PREVIA);
   await assert.rejects(api.fotoUrl(comb.candidaturaId), (e) => e.semFoto === true && e.message === 'Esta pessoa não pôs foto.');
 });
+
+test('5ª revisão na prévia (20261024120005): a exportação mostra toda denúncia de referência do mesmo jeito; temFoto do contato segue o aceite', async () => {
+  const b = novo();
+  const st = b.estado();
+  const ana = st.usuarios.find((u) => u.email === 'pessoa@previa.com');
+  const ref = st.referencias.find((r) => r.pessoaId === ana.id);
+  // R5-1: a mesma linha na exportação para a referência visível, a mesma ocultada e um id inexistente; nada do texto.
+  await entrar(b, 'empresa6@previa.com');
+  const feitas = async () => (await ok(b.rpc('vagas_exportar_meus_dados', {}))).denunciasFeitas
+    .filter((d) => d.alvo === 'referencia').map(({ em, ...resto }) => resto);
+  const LINHA = { alvo: 'referencia', motivo: 'outro', detalhe: 'sonda', status: null };
+  await ok(b.rpc('vagas_denunciar', { p_dados: { alvo: 'referencia', id: ref.id, motivo: 'outro', detalhe: 'sonda' } }));
+  const status = ref.status;
+  ref.status = 'ocultada';
+  await ok(b.rpc('vagas_denunciar', { p_dados: { alvo: 'referencia', id: ref.id, motivo: 'outro', detalhe: 'sonda' } }));
+  ref.status = status;
+  await ok(b.rpc('vagas_denunciar', { p_dados: { alvo: 'referencia', id: '11111111-2222-3333-4444-555555555555', motivo: 'outro', detalhe: 'sonda' } }));
+  assert.deepEqual(await feitas(), [LINHA, LINHA, LINHA]);
+  const exp = JSON.stringify(await ok(b.rpc('vagas_exportar_meus_dados', {})));
+  assert.ok(!ref.texto || !exp.includes(ref.texto), 'o texto da referência não vai na exportação');
+  await ok(b.conta.sair());
+  // R5-3: com a foto guardada e o aceite retirado, o contato diz temFoto:false (como a foto, que não sai).
+  const api = API.criar({ modo: 'previa', backend: b });
+  await api.entrar('pessoa@previa.com', PREVIA.SENHA_PREVIA);
+  await api.enviarFoto({ type: 'image/jpeg', size: 120000, dataUrl: 'data:image/jpeg;base64,AAAA' });
+  await api.sair();
+  await api.entrar('empresa6@previa.com', PREVIA.SENHA_PREVIA);
+  const rest = (await api.minhasEmpresas()).empresas[0];
+  const comb = (await api.conversasDaEmpresa(rest.id)).conversas.find((c) => c.status === 'combinou');
+  assert.equal((await api.contatoPessoa(comb.candidaturaId)).pessoa.temFoto, true);
+  await api.sair();
+  await api.entrar('pessoa@previa.com', PREVIA.SENHA_PREVIA);
+  await api.fotoConsentimento(false);
+  assert.equal((await api.minhaPessoa()).pessoa.temFoto, true, 'a pessoa continua vendo a própria foto');
+  await api.sair();
+  await api.entrar('empresa6@previa.com', PREVIA.SENHA_PREVIA);
+  const ct = await api.contatoPessoa(comb.candidaturaId);
+  assert.deepEqual([ct.pessoa.temFoto, ct.pessoa.fotoUrl], [false, '']);
+});

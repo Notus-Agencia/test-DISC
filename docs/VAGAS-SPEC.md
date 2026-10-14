@@ -375,7 +375,8 @@ Na cidade em **lista de espera** a empresa já entra antes de a cidade abrir, pa
 | `vagas_pulos` | pessoa_id, anuncio_id |
 | `vagas_candidaturas` | anuncio_id, pessoa_id, empresa_id, status, criado_em, empresa_decidiu_em, empresa_revelada_em, combinou_em, contratada_em, pessoa_decidiu_em, contato_cortado_em |
 | `vagas_conversas` / `vagas_mensagens` | uma conversa por candidatura; mensagens com autor `empresa|pessoa|sistema` (id gerado no aparelho) |
-| `vagas_denuncias` / `vagas_moderacao` | denúncias (alvo anuncio/mensagem/referencia) e registro de moderação (só inclusão; papel `empresa` para as ações de equipe) |
+| `vagas_denuncias` / `vagas_moderacao` | denúncias (alvo anuncio/mensagem/referencia) e registro de moderação (só inclusão; papel `empresa` para as ações de equipe). Leitura direta só da operação da cidade e da equipe (quem denunciou não lê; R5-1, 20261024120005) |
+| `vagas_interno.denuncias_referencia` | autor, referencia_id (o id informado, sem chave estrangeira), motivo, detalhe, em — toda tentativa de denunciar referência, para a exportação de quem denunciou (R5-1, 20261024120005; sem acesso pela API) |
 | `vagas_operadores` | user_id, cidade_id, papel `operador|moderador`, ativo, repasse_percentual, contrato_versao |
 | `vagas_lista_espera` | cidade_id, email, perfil, whatsapp (`''` ou celular `55DD9XXXXXXXX`), whatsapp_em (quando foi dado); aviso de abertura (20261024120002): avisado_em (reserva do e-mail), whatsapp_avisado_em, sair_token_hash (sha256 do token do link "sair" do e-mail); reforço (20261024120003): aviso_enviado_em (envio confirmado), aviso_tentativas (falhas; 3 = desiste do e-mail; 99 = e-mail recusado), aviso_devolvido (o lote interrompido já voltou uma vez); origem (lista fechada ou null; 20261024120004) |
 | `vagas_equipe_convites` | empresa_id, email, papel `recrutador`, token_hash (sha256 do token; o token nunca fica no banco), status `aberto|aceito|cancelado`, criado_por, criado_em, expira_em (72 h), usado_por, usado_em, encerrado_em (sem acesso direto: só pelas RPCs) |
@@ -397,6 +398,7 @@ da decisão. Até lá, tudo fica enquanto a conta existir.
 | Candidaturas, conversas e mensagens | 12 meses depois do fim da vaga (encerrada/expirada) | job mensal; a pessoa apaga tudo excluindo a conta |
 | Contas inativas (sem acesso) | aviso aos 18 meses, exclusão aos 24 meses | job mensal + e-mail pela `vagas-conta` |
 | Denúncias (com `autor`, `origem`) | decididas: 12 meses; `origem` (chave do IP) apagada em 30 dias | job mensal |
+| Tentativas de denunciar referência (`vagas_interno.denuncias_referencia`) | enquanto a conta de quem denunciou existir (proposta: 12 meses, como as denúncias) | cascata da conta |
 | Registro de moderação (`vagas_moderacao`) | 5 anos (defesa em disputa) | só inclusão; limpeza anual |
 | `vagas_acessos_contato` ("quem viu meu contato") | enquanto a candidatura existir | cascata da candidatura |
 | Lista de espera (`vagas_lista_espera`) | até a pessoa ser avisada da abertura por tudo o que pediu (§6.7), ou 30 dias depois da abertura da cidade, o que vier primeiro; antes, a pedido (`vagas_lista_espera_sair`, ou o link com token do e-mail do aviso: `vagas_lista_espera_sair_link`) | `vagas_conta_aviso_marcar` e `vagas_adm_aviso_whatsapp_feito` apagam quem terminou; `vagas_interno.lista_espera_limpar()` roda a cada lote e a cada contato da fila, e é agendável (`pg_cron`, uma vez por dia); reserva de e-mail sem confirmação (a Function caiu) volta para a fila UMA vez depois de 1 hora (20261024120003) |
@@ -531,6 +533,9 @@ O link "sair da lista de espera" do e-mail do aviso de abertura (§6.7): `…/em
 `{"ok":true,"recebida":true}` (repetida pela mesma conta: `+ "duplicado":true`, menos referência). Referência (R4-1,
 20261024120005, veto P2): SEMPRE `{"ok":true,"recebida":true}`, sem `duplicado`, para qualquer id (UUID); só é gravada quando
 quem denuncia vê a referência (a própria pessoa, ou visível e de outra empresa que não as dele) e ainda não a denunciou.
+Quem denunciou não lê as próprias denúncias direto da tabela (R5-1/R5-2, 20261024120005: a política de `vagas_denuncias`
+deixa só a operação da cidade e a equipe); para ver o que denunciou, use a exportação. Toda tentativa de denunciar referência
+fica em `vagas_interno.denuncias_referencia` (quem, id informado, motivo, detalhe, quando; sem acesso pela API).
 Erros: `Escolha o motivo da denúncia.` · `Muitas denúncias em pouco tempo. Tente de novo amanhã.` (`bloqueado`; 20/dia por
 conta, 5/dia por origem sem login) · `Vaga não encontrada ou já encerrada.` · `Entre na sua conta para denunciar uma
 mensagem.` (`sessaoExpirada`) · `Mensagem não encontrada.` (só quem participa da conversa denuncia mensagem do outro lado) ·
@@ -576,7 +581,9 @@ Erro: `Versão dos termos inválida.`
 Tudo da conta (LGPD): conta, consentimentos, pessoa, testes/selos (`testes`, pela migração dos testes), aviso da foto,
 candidaturas, `pulos` (`[{anuncio:{codigo, titulo}, em}]`), `denunciasFeitas` (`[{alvo, motivo, detalhe, status, em}]`),
 mensagens enviadas, acessos ao contato, empresas, operador, referências recebidas (com histórico) e pedidos de referência.
-`geradoEm` ISO.
+`geradoEm` ISO. Conta suspensa também baixa (LGPD, art. 18; 20261024120005). Em `denunciasFeitas`, a denúncia de referência
+(R5-1, 20261024120005) vem do registro de tentativas: uma linha por tentativa com id UUID, sempre `status: null` e igual
+para referência pendente, aceita, ocultada, removida ou inexistente (sem o texto da referência).
 
 Excluir a conta é pela Edge Function (`VAGAS_API.excluirConta()`, §9).
 
@@ -793,7 +800,8 @@ Erros: `Candidatura não encontrada.` · `Decisão inválida.` · `O Combinou j�
 encerrou esta candidatura.`
 
 #### `vagas_contato_pessoa(p_candidatura)` — `VAGAS_API.contatoPessoa(id)`
-Só depois do Combinou; cada chamada fica registrada para a pessoa ("quem viu").
+Só depois do Combinou; cada chamada fica registrada para a pessoa ("quem viu"). `temFoto` só é `true` com a foto guardada E o
+último aceite `foto_opcional` = true (R5-3, 20261024120005; a mesma regra de `vagas_conta_foto`).
 ```json
 {"ok":true,"pessoa":{"nome":"Maria Fernanda Souza","whatsapp":"5595991234567","email":"…","sobre":"…","temFoto":true,
   "fotoUrl":"https://…supabase.co/storage/v1/object/sign/vagas-fotos/…?token=… (acrescentada pelo VAGAS_API; '' sem foto)","cartao":<cartão>,
