@@ -195,7 +195,7 @@
         el('div', { class: 'vg-link-curto vg-emp-pedido' }, [campo, abrir]),
         el('p', { class: 't-nota texto-suave vg-emp-nota' }, 'Não lembra da pessoa ou não quer recomendar? Só não responda; ela não é avisada de recusa.')]),
       E.caixa({ id: 'vg-ref-porque', titulo: 'Por que vale a pena' }, [el('p', { class: 't-rotulo texto-medio' },
-        'Boas pessoas muitas vezes não são vistas. Uma referência pública e verificada ajuda quem trabalhou bem com você a ser chamada para conversar.'),
+        'Boas pessoas muitas vezes não são vistas. Uma referência pública e verificada ajuda a pessoa que trabalhou bem com você a ser chamada para conversar.'),
         el('p', { class: 't-nota texto-suave vg-emp-nota' }, t('avisos.referencia_sem_ordem'))])
     ]);
   }
