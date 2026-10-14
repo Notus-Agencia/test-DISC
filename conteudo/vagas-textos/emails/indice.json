@@ -264,6 +264,36 @@
       },
       "anti_golpe": true,
       "revisao_psicologia": false
+    },
+    {
+      "arquivo": "convite-equipe.html",
+      "para": "pessoa convidada para a equipe de uma empresa (recrutador(a))",
+      "assunto": "Convite para a equipe de {{empresa_nome}} · Vagas sem Caos",
+      "quando": "quem é dono(a) da empresa convida por e-mail (Edge Function vagas-conta, ação convite_equipe; migração 20261024120000_vagas_onda2). Vai para e-mail sem conta (a conta de empresa nasce pendente) e para conta de empresa (confirmada ou não). O convite vale 72 h, funciona uma vez e só para este e-mail; a pessoa só entra na equipe depois de confirmar o e-mail e aceitar.",
+      "variaveis": {
+        "quem_convidou": "nome de quem é dono(a) e convidou (do cadastro); sem nome, a frase começa por \"A empresa {{empresa_nome}} convidou você\"",
+        "empresa_nome": "nome fantasia da empresa",
+        "cidade": "nome da cidade da empresa",
+        "email": "e-mail do destinatário (o convidado)",
+        "link": "…/entrar.html?token_hash=…&type=invite&convite=<token> (conta nova ou pendente: confirma o e-mail e cria a senha) ou …/entrar.html?convite=<token> (já tem conta de empresa)"
+      },
+      "anti_golpe": false,
+      "revisao_psicologia": true
+    },
+    {
+      "arquivo": "convite-equipe-outra-conta.html",
+      "para": "pessoa convidada para a equipe cujo e-mail já tem conta de outro tipo (procura de emprego ou operação)",
+      "assunto": "Convite para a equipe de {{empresa_nome}} · Vagas sem Caos",
+      "quando": "mesmo convite (ação convite_equipe), quando o e-mail já é de uma conta de pessoa ou de operação: não há convite que funcione; o e-mail explica que é preciso outro e-mail. Quem convidou recebe a MESMA resposta neutra de sempre (não fica sabendo do tipo da conta). Conta só do painel DISC ou suspensa: nada é enviado.",
+      "variaveis": {
+        "quem_convidou": "nome de quem é dono(a) e convidou (do cadastro); sem nome, a frase começa por \"A empresa {{empresa_nome}} convidou você\"",
+        "empresa_nome": "nome fantasia da empresa",
+        "cidade": "nome da cidade da empresa",
+        "email": "e-mail do destinatário (o convidado)",
+        "link": "…/entrar.html"
+      },
+      "anti_golpe": false,
+      "revisao_psicologia": true
     }
   ]
 }

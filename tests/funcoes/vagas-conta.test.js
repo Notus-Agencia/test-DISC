@@ -5,7 +5,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   atenderVagasConta, montarEmailVagas, mascararEmailVagas, linkVagas, vagasCors, lerEnvVagasConta, criarBaseVagasConta,
-  VAGAS_MSG_ENVIADO, VAGAS_MSG_EMAIL_NAO_CONFIGURADO, VAGAS_MSG_CAPTCHA, VAGAS_MSG_TERMOS, VAGAS_MSG_JA_EXISTE
+  VAGAS_MSG_ENVIADO, VAGAS_MSG_EMAIL_NAO_CONFIGURADO, VAGAS_MSG_CAPTCHA, VAGAS_MSG_TERMOS, VAGAS_MSG_JA_EXISTE, VAGAS_MSG_CONVITE_EQUIPE,
+  linkConviteEquipe
 } from '../../supabase/funcoes-compartilhadas/vagas-conta.js';
 
 const SITE = 'https://vagas.gestaosemcaos.com.br';
@@ -23,6 +24,7 @@ function preparar(op) {
   const fotosPedidas = [];
   const assinadas = [];
   const removidos = [];
+  const convites = [];
   let n = 0;
   (op.usuarios || []).forEach((u) => { usuarios.push(u); if (u.conta) contas[u.id] = u.conta; if (u.operador) operadores[u.id] = u.operador; });
   const db = {
@@ -56,6 +58,10 @@ function preparar(op) {
     async foto(userId, candidatura) {
       fotosPedidas.push({ userId, candidatura });
       return op.foto ? op.foto(userId, candidatura) : { ok: false, erro: 'Sem foto.', semFoto: true };
+    },
+    async conviteEquipe(userId, empresaId, email, cf, xff) {
+      convites.push({ userId, empresaId, email, cf, xff });
+      return op.convite ? op.convite(userId, empresaId, email) : { ok: false, erro: 'Empresa não encontrada.' };
     }
   };
   const storage = {
@@ -99,7 +105,7 @@ function preparar(op) {
   }
   const env = Object.assign({ VAGAS_SITE_URL: SITE + '/', RESEND_API_KEY: 're_teste', VAGAS_EMAIL_REMETENTE: 'Vagas sem Caos <vagas@gestaosemcaos.com.br>' }, op.env);
   const base = { env, fetch, db, auth, storage, aleatorio: () => 'senha-aleatoria-' + (n + 1) };
-  return { base, usuarios, contas, operadores, links, enviados, captchas, chamadasLimite, excluidos, fotosPedidas, assinadas, removidos, apps };
+  return { base, usuarios, contas, operadores, links, enviados, captchas, chamadasLimite, excluidos, fotosPedidas, assinadas, removidos, apps, convites };
 }
 
 async function chamar(base, corpo, op) {
@@ -315,11 +321,93 @@ test('foto: só com JWT; o banco decide (vagas_conta_foto); URL assinada de 5 mi
     ['emp', '11111111-2222-3333-4444-555555555555'], ['p', null]]);
 });
 
-test('HTTP: CORS só do site do Vagas e localhost, OPTIONS, método, corpo, ação desconhecida e erro interno sem detalhes', async () => {
+// Convite de equipe: o banco (vagas_conta_convite_equipe) decide e diz o destino; aqui, o banco falso responde como ele.
+const EMPRESA = '11111111-2222-4333-8444-555555555555';
+const TOKEN = 'ab'.repeat(32);
+const CONVITE = { id: '99999999-2222-4333-8444-555555555555', email: 'x', papel: 'recrutador', status: 'pendente',
+  criadoEm: '2026-10-14T12:00:00.000Z', expiraEm: '2026-10-17T12:00:00.000Z' };
+const respostaBanco = (destino, email) => ({ ok: true, convite: Object.assign({}, CONVITE, { email }), token: TOKEN, destino,
+  empresaNome: 'Loja <Teste>', cidadeNome: 'Cidade Exemplo', convidadoPor: 'Dona Exemplo' });
+
+test('convite_equipe: só com JWT; e-mail e empresa conferidos antes; o banco decide a permissão e o erro dele volta só com a mensagem', async () => {
+  const w = preparar({ jwts: { 'jwt-dono': 'dono', 'jwt-rec': 'rec' }, convite: (u) => (u === 'rec'
+    ? { ok: false, erro: 'Só quem é dono(a) da conta da empresa pode convidar pessoas para a equipe.', token: TOKEN, destino: 'nova' }
+    : { ok: false, erro: 'Muitos convites hoje. Tente de novo amanhã.', bloqueado: true }) });
+  const corpo = { acao: 'convite_equipe', empresaId: EMPRESA, email: 'nova@x.com' };
+  assert.deepEqual((await chamar(w.base, corpo)).json, { ok: false, erro: 'Sessão expirada. Entre de novo.', sessaoExpirada: true });
+  assert.deepEqual((await chamar(w.base, Object.assign({}, corpo, { email: 'x' }), { jwt: 'jwt-dono' })).json, { ok: false, erro: 'E-mail inválido.' });
+  assert.deepEqual((await chamar(w.base, Object.assign({}, corpo, { empresaId: '1; drop' }), { jwt: 'jwt-dono' })).json, { ok: false, erro: 'Empresa não encontrada.' });
+  assert.deepEqual(w.convites, [], 'nada chega ao banco sem login, e-mail e empresa válidos');
+  const rec = (await chamar(w.base, corpo, { jwt: 'jwt-rec' })).json;
+  assert.deepEqual(rec, { ok: false, erro: 'Só quem é dono(a) da conta da empresa pode convidar pessoas para a equipe.' }, 'token e destino nunca saem');
+  assert.deepEqual((await chamar(w.base, corpo, { jwt: 'jwt-dono' })).json, { ok: false, erro: 'Muitos convites hoje. Tente de novo amanhã.', bloqueado: true });
+  assert.deepEqual(w.convites[0], { userId: 'rec', empresaId: EMPRESA, email: 'nova@x.com', cf: '', xff: '203.0.113.9, 10.0.0.1' });
+  assert.equal(w.enviados.length, 0);
+  const sem = preparar({ env: { RESEND_API_KEY: '' }, jwts: { 'jwt-dono': 'dono' } });
+  assert.deepEqual((await chamar(sem.base, corpo, { jwt: 'jwt-dono' })).json, { ok: false, erro: VAGAS_MSG_EMAIL_NAO_CONFIGURADO, naoConfigurado: true });
+  assert.deepEqual(sem.convites, [], 'sem e-mail configurado, nenhum convite é criado');
+});
+
+test('convite_equipe: resposta NEUTRA (igual para conta nova, de empresa, pendente, de outro tipo ou do painel); e-mail certo para cada caso; token só no e-mail', async () => {
+  const destinos = { 'nova@x.com': 'nova', 'empresa@x.com': 'empresa', 'pendente@x.com': 'empresa_pendente', 'pessoa@x.com': 'outro_tipo',
+    'dono@gestaosemcaos.com.br': 'nenhum' };
+  const w = preparar({ jwts: { 'jwt-dono': 'dono' }, convite: (u, e, email) => respostaBanco(destinos[email], email),
+    usuarios: [{ id: 'emp', email: 'empresa@x.com', confirmada: true, app: { produto: 'vagas' }, conta: { tipo: 'empresa', status: 'ativa' } },
+      { id: 'pen', email: 'pendente@x.com', confirmada: false, app: { produto: 'vagas' }, conta: { tipo: 'empresa' } }] });
+  const respostas = [];
+  for (const email of Object.keys(destinos)) {
+    const r = (await chamar(w.base, { acao: 'convite_equipe', empresaId: EMPRESA, email: ' ' + email.toUpperCase() + ' ' }, { jwt: 'jwt-dono' })).json;
+    assert.ok(!JSON.stringify(r).includes(TOKEN), 'o token nunca vai para o navegador');
+    assert.ok(!/"destino"|outro_tipo|empresa_pendente|"nenhum"|"nova"/.test(JSON.stringify(r)), 'nem o destino');
+    respostas.push(Object.assign({}, r, { email: 'x', convite: Object.assign({}, r.convite, { email: 'x' }) }));
+  }
+  for (const r of respostas) assert.deepEqual(r, respostas[0]);
+  assert.deepEqual(respostas[0], { ok: true, enviado: true, mensagem: VAGAS_MSG_CONVITE_EQUIPE, email: 'x', convite: Object.assign({}, CONVITE, { email: 'x' }) });
+  // Conta nova: nasce pendente, de empresa, sem senha conhecida; o link confirma o e-mail, cria a senha e leva o convite.
+  const nova = w.usuarios.find((u) => u.email === 'nova@x.com');
+  assert.deepEqual(nova.app, { produto: 'vagas', tipo: 'empresa', convite: true });
+  assert.deepEqual(w.contas[nova.id], { status: 'pendente', tipo: 'empresa' });
+  assert.deepEqual(w.links, [{ tipo: 'invite', email: 'nova@x.com' }, { tipo: 'invite', email: 'pendente@x.com' }]);
+  const porPara = Object.fromEntries(w.enviados.map((e) => [e.to[0], e]));
+  assert.deepEqual(Object.keys(porPara).sort(), ['empresa@x.com', 'nova@x.com', 'pendente@x.com', 'pessoa@x.com'], 'conta só do painel: nada é enviado');
+  assert.ok(porPara['nova@x.com'].text.includes(SITE + '/entrar.html?token_hash=hash1abcdefghijklmnop&type=invite&convite=' + TOKEN));
+  assert.ok(porPara['pendente@x.com'].text.includes(SITE + '/entrar.html?token_hash=hash2abcdefghijklmnop&type=invite&convite=' + TOKEN));
+  assert.ok(porPara['empresa@x.com'].text.includes(SITE + '/entrar.html?convite=' + TOKEN));
+  assert.ok(!porPara['empresa@x.com'].text.includes('token_hash'), 'quem já tem conta só entra e aceita');
+  assert.ok(!porPara['pessoa@x.com'].text.includes(TOKEN), 'conta de outro tipo: sem convite que funcione, só a explicação');
+  assert.match(porPara['pessoa@x.com'].text, /outro tipo/);
+  for (const e of Object.values(porPara)) {
+    assert.equal(e.subject, 'Convite para a equipe de Loja <Teste> — Vagas sem Caos');
+    assert.match(e.text, /Dona Exemplo, da empresa Loja <Teste>, convidou você para a equipe dela no Vagas sem Caos, em Cidade Exemplo\./);
+    assert.ok(e.html.includes('Loja &lt;Teste&gt;') && !e.html.includes('Loja <Teste>'), 'nome da empresa escapado');
+    assert.ok(!/notus/i.test(e.html + e.text));
+  }
+  assert.match(porPara['nova@x.com'].text, /vale por 3 dias e funciona uma vez só/);
+});
+
+test('convite_equipe: erro genérico quando o envio ou o registro falham (sem detalhe, sem conta pela metade)', async () => {
+  const resend = preparar({ jwts: { 'jwt-dono': 'dono' }, resendFalha: true, convite: (u, e, email) => respostaBanco('empresa', email) });
+  assert.deepEqual((await chamar(resend.base, { acao: 'convite_equipe', empresaId: EMPRESA, email: 'a@x.com' }, { jwt: 'jwt-dono' })).json,
+    { ok: false, erro: 'Erro interno no servidor. Tente novamente em instantes.' });
+  const reg = preparar({ jwts: { 'jwt-dono': 'dono' }, registroFalha: true, convite: (u, e, email) => respostaBanco('nova', email) });
+  assert.deepEqual((await chamar(reg.base, { acao: 'convite_equipe', empresaId: EMPRESA, email: 'b@x.com' }, { jwt: 'jwt-dono' })).json,
+    { ok: false, erro: 'Erro interno no servidor. Tente novamente em instantes.' });
+  assert.deepEqual(reg.excluidos, ['novo-1'], 'o usuário criado pela metade é apagado');
+  assert.equal(reg.enviados.length, 0);
+  const semToken = preparar({ jwts: { 'jwt-dono': 'dono' }, convite: () => ({ ok: true, convite: CONVITE, token: '', destino: 'empresa' }) });
+  assert.deepEqual((await chamar(semToken.base, { acao: 'convite_equipe', empresaId: EMPRESA, email: 'c@x.com' }, { jwt: 'jwt-dono' })).json,
+    { ok: false, erro: 'Erro interno no servidor. Tente novamente em instantes.' });
+  assert.equal(linkConviteEquipe({}, TOKEN, null), SITE + '/entrar.html?convite=' + TOKEN);
+  assert.equal(linkConviteEquipe({}, TOKEN, { hash: 'h1', tipo: 'magiclink' }), SITE + '/entrar.html?token_hash=h1&type=magiclink&convite=' + TOKEN);
+});
+
+test('HTTP: CORS só do site do Vagas, do painel do DISC e localhost, OPTIONS, método, corpo, ação desconhecida e erro interno sem detalhes', async () => {
   const w = preparar();
   assert.equal((await chamar(w.base, { acao: 'x' }, { origem: 'https://golpe.example' })).cors, null);
   assert.equal((await chamar(w.base, { acao: 'x' }, { origem: 'http://localhost:4321' })).cors, 'http://localhost:4321');
-  assert.equal((await chamar(w.base, { acao: 'x' }, { origem: 'https://disc.gestaosemcaos.com.br' })).cors, null);
+  // Pedido da operação (onda 2): o painel do DISC convida operador pela aba "Vagas"; o token da equipe continua obrigatório.
+  assert.equal((await chamar(w.base, { acao: 'x' }, { origem: 'https://disc.gestaosemcaos.com.br' })).cors, 'https://disc.gestaosemcaos.com.br');
+  assert.equal((await chamar(w.base, { acao: 'x' }, { origem: 'https://disc.gestaosemcaos.com.br.golpe.example' })).cors, null);
   const opt = await chamar(w.base, null, { metodo: 'OPTIONS' });
   assert.equal(opt.status, 204);
   assert.equal((await chamar(w.base, null, { metodo: 'GET' })).status, 405);
@@ -334,10 +422,10 @@ test('HTTP: CORS só do site do Vagas e localhost, OPTIONS, método, corpo, aç�
 });
 
 test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador do supabase-js', async () => {
-  for (const tipo of ['confirmar', 'jaTemConta', 'senha', 'assistido', 'operador']) {
-    const m = montarEmailVagas(tipo, { url: SITE + '/entrar.html?x=<y>', nome: '<b>Ana</b>' });
+  for (const tipo of ['confirmar', 'jaTemConta', 'senha', 'assistido', 'operador', 'conviteEquipe', 'conviteEquipeOutraConta']) {
+    const m = montarEmailVagas(tipo, { url: SITE + '/entrar.html?x=<y>', nome: '<b>Ana</b>', empresa: '<i>Loja</i>', quem: '<s>Bia</s>' });
     assert.match(m.assunto, /— Vagas sem Caos$/);
-    assert.ok(!m.html.includes('<b>Ana</b>'), 'nome escapado');
+    assert.ok(!m.html.includes('<b>Ana</b>') && !m.html.includes('<i>Loja</i>') && !m.html.includes('<s>Bia</s>'), 'nome escapado');
     assert.ok(m.html.includes('Gestão sem Caos'));
     assert.ok(!/notus/i.test(m.html + m.texto));
   }
@@ -345,7 +433,14 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
   assert.equal(linkVagas({}, 'abc', 'recovery'), SITE + '/entrar.html?token_hash=abc&type=recovery');
   assert.equal(linkVagas({ VAGAS_SITE_URL: 'https://vagas-gestaosemcaos.pages.dev/' }, 'abc', 'invite'), 'https://vagas-gestaosemcaos.pages.dev/entrar.html?token_hash=abc&type=invite');
   assert.equal(vagasCors(new Request('https://x', { headers: { origin: SITE } }), {})['Access-Control-Allow-Origin'], SITE);
-  assert.deepEqual(Object.keys(lerEnvVagasConta(() => ' v ')).sort(), ['EMAIL_REMETENTE', 'RESEND_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL',
+  // O painel do DISC (convite de operador pela aba "Vagas") também lê a resposta; qualquer outra origem, não.
+  const cors = (origin, env) => vagasCors(new Request('https://x', { headers: { origin } }), env || {})['Access-Control-Allow-Origin'];
+  assert.equal(cors('https://disc.gestaosemcaos.com.br'), 'https://disc.gestaosemcaos.com.br');
+  assert.equal(cors('https://painel.exemplo.com', { SITE_URL: 'https://painel.exemplo.com/' }), 'https://painel.exemplo.com');
+  assert.equal(cors('https://disc.gestaosemcaos.com.br', { SITE_URL: 'https://painel.exemplo.com' }), undefined);
+  assert.equal(cors('https://golpe.exemplo.com'), undefined);
+  assert.equal(cors('http://localhost:4315'), 'http://localhost:4315');
+  assert.deepEqual(Object.keys(lerEnvVagasConta(() => ' v ')).sort(), ['EMAIL_REMETENTE', 'RESEND_API_KEY', 'SITE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL',
     'TURNSTILE_SECRET', 'VAGAS_EMAIL_REMETENTE', 'VAGAS_SITE_URL']);
   // Adaptador real com um supabase-js falso: chama as RPCs certas e o admin do Auth com os parâmetros certos.
   const chamadas = [];
@@ -379,8 +474,10 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
   await b.db.foto('u1', null);
   assert.equal(await b.storage.assinar('vagas-fotos', 'u1/foto.jpg', 300), 'https://u');
   await b.storage.remover('vagas-fotos', ['u1/foto.jpg']);
+  await b.db.conviteEquipe('u1', EMPRESA, 'a@b.com', '1.2.3.4', '');
   assert.deepEqual(chamadas.map((c) => c[0] === 'rpc' ? c[1] : c[0]), ['vagas_conta_limite', 'vagas_conta_consultar', 'vagas_conta_registrar',
-    'vagas_conta_quem', 'createUser', 'generateLink', 'deleteUser', 'vagas_conta_foto', 'assinar', 'remover']);
+    'vagas_conta_quem', 'createUser', 'generateLink', 'deleteUser', 'vagas_conta_foto', 'assinar', 'remover', 'vagas_conta_convite_equipe']);
+  assert.deepEqual(chamadas[10][2], { p_user: 'u1', p_empresa: EMPRESA, p_email: 'a@b.com', p_cf: '1.2.3.4', p_xff: '' });
   assert.deepEqual(chamadas[7][2], { p_user: 'u1', p_candidatura: null });
   assert.deepEqual(chamadas[8], ['assinar', 'vagas-fotos', 'u1/foto.jpg', 300]);
   assert.deepEqual(chamadas[0][2], { p_acao: 'cadastrar', p_cf: '1.2.3.4', p_xff: '', p_email: 'a@b.com', p_ator: null });

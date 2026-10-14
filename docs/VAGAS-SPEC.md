@@ -9,14 +9,16 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
 | Peça | Arquivo |
 |---|---|
 | Migração (tabelas, RLS, RPCs, cidades iniciais) | `supabase/migrations/20261022120000_vagas.sql` |
+| Onda 2 do banco (painel da praça, equipe da empresa, WhatsApp na lista de espera, fuso da cidade) | `supabase/migrations/20261024120000_vagas_onda2.sql` |
+| Praça piloto Uruaçu (GO) — dados | `supabase/migrations/20261024120001_vagas_piloto_uruacu.sql` |
 | Edge Function de contas (cadastro, links por e-mail) | `supabase/funcoes-fonte/vagas-conta/index.ts` + `supabase/funcoes-compartilhadas/vagas-conta.js` (montada por `scripts/montar-funcoes.mjs`) |
 | Cliente das telas (contrato único) | `vagas/js/api.js` (`VAGAS_API`) |
-| Prévia sem banco (dados fictícios de Boa Vista) | `vagas/js/api-previa.js` (`VAGAS_PREVIA`) |
+| Prévia sem banco (dados fictícios de Uruaçu, GO) | `vagas/js/api-previa.js` (`VAGAS_PREVIA`) |
 | Regras compartilhadas (listas, filtro de textos, CNPJ, WhatsApp, mensagens) | `vagas/js/regras.js` (`VAGAS_REGRAS`) |
 | Configuração (modo prévia/supabase, URL e chave PÚBLICA) | `vagas/js/config.js` (`VAGAS_CONFIG`) |
 | Endereço certo (disc…/vagas/ → vagas.gestaosemcaos.com.br) | `vagas/js/endereco.js` |
 | Peças da marca copiadas para o site | `vagas/comum/` (gerado por `scripts/montar-vagas.mjs`; nunca editar à mão) |
-| Testes | `tests/supabase/vagas.test.js` (banco), `tests/vagas-*.test.js`, `tests/funcoes/vagas-conta.test.js` |
+| Testes | `tests/supabase/vagas.test.js` e `tests/supabase/vagas_onda2.test.js` (banco), `tests/vagas-*.test.js`, `tests/funcoes/vagas-conta.test.js` |
 
 ---
 
@@ -64,11 +66,11 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
   e-mail não publicados), `linkExpirado`, `captcha`. Toda marca chega em `e.<marca>` (teste em `tests/vagas-api.test.js`).
 - **Dinheiro sempre em CENTAVOS** (inteiro): `162100` = R$ 1.621,00. `VAGAS_REGRAS.reais(c)` e `formatarValor(valor)` formatam.
 - **Datas-hora** ISO UTC (`2026-10-13T15:00:00.000Z`); vazio = `''`. **Datas** `AAAA-MM-DD` (no fuso da cidade:
-  `America/Boa_Vista`, UTC−4). **Horas** `HH:MM`. **Mês de experiência/referência** `AAAA-MM`.
+  coluna `vagas_cidades.fuso`; sem cidade ou sem fuso, `America/Sao_Paulo`, UTC−3 — nada fixo em uma cidade). **Horas** `HH:MM`. **Mês de experiência/referência** `AAAA-MM`.
 - **Chaves do JSON em camelCase** (como em todo o contrato). As RPCs de vaga também aceitam, na ENTRADA, as chaves em
   snake_case usadas no `docs/VAGAS-TELAS.md` (`salario_de`, `fim_de_semana`, `inicio_data`, `requisito_outro`, `hora_inicio`,
   `prazo_horas`, `horas_dia`…); a resposta vem sempre em camelCase.
-- **Cidade, zona e área sempre pelo slug** (`boa-vista-rr`, `zona-oeste`, `caixa`). Anúncio: `id` (uuid) nas RPCs internas e `codigo`
+- **Cidade, zona e área sempre pelo slug** (`uruacu-go`, `regiao-oeste`, `caixa`). Anúncio: `id` (uuid) nas RPCs internas e `codigo`
   (6 letras/algarismos sem ambíguos, ex.: `K7M2QX`) no link curto `/v/K7M2QX`.
 - **Erros de conta** (valem para TODAS as RPCs que exigem login; vêm de `vagas_interno.conta_atual`):
 
@@ -91,7 +93,7 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
 |---|---|---|---|
 | Visitante (anon) | qualquer um | cidades, mural de vagas no ar, vaga pelo código, página pública de referências (com o link), conferência de selo | pessoas, empresas por dentro |
 | Pessoa | conta `tipo='pessoa'` | o próprio currículo e cartão, as próprias candidaturas, conversas, quem viu o contato, referências recebidas | dados de outras pessoas |
-| Empresa | conta `tipo='empresa'`, membro (`dono` ou `recrutador`) de uma ou mais empresas | as próprias empresas e vagas, **cartões cegos** de quem disse Quero, conversa pela plataforma, contato só depois do Combinou, referências que deu | nome/contato/"sobre"/empregadores antes do Combinou; referências pendentes ou ocultas de outras empresas |
+| Empresa | conta `tipo='empresa'`, membro (`dono` ou `recrutador`) de uma ou mais empresas; quem é `dono` convida e remove a equipe (§8.4a) | as próprias empresas e vagas, **cartões cegos** de quem disse Quero, conversa pela plataforma, contato só depois do Combinou, referências que deu | nome/contato/"sobre"/empregadores antes do Combinou; referências pendentes ou ocultas de outras empresas |
 | Operador / moderador | conta `tipo='operador'` + linha em `vagas_operadores` (por cidade). Moderador só modera (não aprova empresa, não suspende, não cadastra) | empresas, vagas, denúncias (com o texto denunciado, sem saber quem denunciou), textos de referência a moderar, registro de moderação, contagens | **pessoa, contato, currículo, candidaturas** (nem pela API nem pelas RPCs) |
 | Equipe da Gestão sem Caos | `public.e_admin()` (admins do painel DISC) | tudo o que o operador vê, em todas as cidades; cria cidades/zonas/operadores | pessoa e contato pela API (o mesmo bloqueio do operador) |
 
@@ -101,9 +103,15 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
 
 - **Cidade** `rascunho | lista_espera | ativa | pausada`. Só `ativa` mostra vagas e aceita cadastro de pessoa/empresa/vaga;
   `lista_espera` mostra "Ainda não chegamos" + contador; `pausada` mostra aviso; `rascunho` não aparece. Entorno: cidade com
-  `praca` = outra cidade (Mucajaí e Cantá → Boa Vista) entra no mural da praça (`entorno` padrão `true`).
-  Semente: `boa-vista-rr` (ativa, zonas `centro-leste`, `zona-norte`, `zona-sul`, `zona-oeste`), `mucajai-rr` e `canta-rr`
-  (ativas, entorno de Boa Vista, zona `cidade-toda`), `rorainopolis-rr` (lista de espera).
+  `praca` = outra cidade entra no mural da praça (`entorno` padrão `true`). **Porte** (20261024): `pequena` | `grande` |
+  `null` (não cadastrado) — escolhe o alvo de cada indicador do painel da praça (§8.7); sem porte, sem alvo nem cor.
+  **Praça piloto (20261024120001):** `uruacu-go` (Uruaçu, GO, IBGE 5221601, fuso `America/Sao_Paulo`, porte `pequena`,
+  ordem 1) nasce em `lista_espera`, com as 6 zonas da operação: `centro` (Centro, Setor Central, Vila Santana, Loteamento
+  Santana), `regiao-norte` (Francisco Martins), `regiao-sul` (Setor Sul, Setor Sul I), `regiao-leste` e `regiao-oeste`
+  (ainda sem bairros), `zona-rural` "Zona rural e lago" (Zona rural, Geriaçu, Beira do Lago de Serra da Mesa). A equipe abre
+  pelo painel (`admCidadeSalvar({slug:'uruacu-go', status:'ativa'})`). A semente fictícia da fundação (20261022: Boa Vista,
+  Mucajaí, Cantá, Rorainópolis) passa a `rascunho` UMA vez (marca `piloto_definido` em `vagas_moderacao`; nada é apagado e
+  rodar de novo não desfaz o que o painel mudou). Os exemplos JSON abaixo usam a praça piloto.
 - **Conta** `pendente` (criada, e-mail não confirmado) → `ativa` (no 1º uso depois de confirmar) | `suspensa`.
   Guarda `termos_versao` + `termos_aceitos_em` (histórico em `vagas_consentimentos`). **O consentimento só é gravado quando a
   conta passa de pendente a ativa (o clique no link)**: antes disso só a versão fica anotada, sem data e sem linha de
@@ -129,6 +137,8 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
   Rótulos para a pessoa (`VAGAS_REGRAS.STATUS_CANDIDATURA`): Enviada · Responder · Encerrada (agora_nao; nunca "a empresa
   disse não") · Combinou · Contratada · Você recusou · Retirada.
 - **Conversa** `aberta | encerrada` (uma por candidatura; aberta pela empresa).
+- **Convite de equipe** (20261024) `pendente` (aberto, no prazo) | `vencido` (72 h) | `aceito` | `cancelado` (pela dona/pelo dono,
+  por um convite novo para o mesmo e-mail ou porque quem convidou saiu da equipe). Rótulos em `VAGAS_REGRAS.STATUS_CONVITE_EQUIPE`.
 - **Referência** (visão da pessoa) `pendente → aceita ⇄ ocultada`, `pendente → recusada`, qualquer → `removida`.
   Visão da EMPRESA AUTORA (veto P2): `pendente | aceita | recusada | removida` — ocultada e removida pela pessoa depois do
   aceite aparecem como **aceita**; removida antes do aceite = **recusada**; `removida` só quando foi a moderação.
@@ -265,12 +275,16 @@ código. Mensagem e referência só com login.
 Cadastro (`cadastrar`, sem senha) → e-mail com link `…/entrar.html?token_hash=…&type=invite` → `confirmarLink` →
 "Crie sua senha" (`definirSenha`) → `entrar`. Esqueci: `esqueci` → link `type=recovery` → mesma tela. Cadastro assistido
 (operador, no mutirão): `assistido` → a pessoa recebe o link e cria a senha; no 1º acesso aceita os termos.
+Convite de equipe (20261024): a dona/o dono chama `convidarEquipe(empresaId, email)` → e-mail com `…/entrar.html?convite=<token>`
+(quem já tem conta de empresa) ou `…/entrar.html?token_hash=…&type=invite&convite=<token>` (quem não tem conta: o mesmo link
+confirma o e-mail e cria a senha) → a tela lê `conviteDoEndereco(location)`, mostra `conviteEquipe(token)` e só depois do
+clique em "Aceitar" chama `aceitarConviteEquipe(token)` (§8.4a).
 
 ## 7. Tabelas (resumo; detalhes e restrições na migração)
 
 | Tabela | Principais colunas |
 |---|---|
-| `vagas_cidades` | slug, nome, uf, ibge, fuso, status, praca_id, meta_lista_espera, ordem |
+| `vagas_cidades` | slug, nome, uf, ibge, fuso (padrão `America/Sao_Paulo`), status, porte `pequena|grande|null`, praca_id, meta_lista_espera, ordem |
 | `vagas_zonas` | cidade_id, slug, nome, bairros[], ordem, ativa |
 | `vagas_areas` | slug, nome, ordem, ativa (24 áreas; leitura pública) |
 | `vagas_contas` | user_id (PK → auth.users), tipo `pessoa|empresa|operador`, status, termos_versao, termos_aceitos_em, assistida_por, assistida_cidade_id, codigo_evento, confirmada_em, ultimo_acesso_em |
@@ -285,9 +299,10 @@ Cadastro (`cadastrar`, sem senha) → e-mail com link `…/entrar.html?token_has
 | `vagas_pulos` | pessoa_id, anuncio_id |
 | `vagas_candidaturas` | anuncio_id, pessoa_id, empresa_id, status, criado_em, empresa_decidiu_em, empresa_revelada_em, combinou_em, contratada_em, pessoa_decidiu_em, contato_cortado_em |
 | `vagas_conversas` / `vagas_mensagens` | uma conversa por candidatura; mensagens com autor `empresa|pessoa|sistema` (id gerado no aparelho) |
-| `vagas_denuncias` / `vagas_moderacao` | denúncias (alvo anuncio/mensagem/referencia) e registro de moderação (só inclusão) |
+| `vagas_denuncias` / `vagas_moderacao` | denúncias (alvo anuncio/mensagem/referencia) e registro de moderação (só inclusão; papel `empresa` para as ações de equipe) |
 | `vagas_operadores` | user_id, cidade_id, papel `operador|moderador`, ativo, repasse_percentual, contrato_versao |
-| `vagas_lista_espera` | cidade_id, email, perfil |
+| `vagas_lista_espera` | cidade_id, email, perfil, whatsapp (`''` ou celular `55DD9XXXXXXXX`), whatsapp_em (quando foi dado) |
+| `vagas_equipe_convites` | empresa_id, email, papel `recrutador`, token_hash (sha256 do token; o token nunca fica no banco), status `aberto|aceito|cancelado`, criado_por, criado_em, expira_em (72 h), usado_por, usado_em, encerrado_em (sem acesso direto: só pelas RPCs) |
 | `vagas_acessos_contato` | candidatura, pessoa, empresa (nome guardado), anúncio (título guardado), quem abriu, quando |
 | `vagas_referencias` / `vagas_referencia_convites` / `vagas_referencia_historico` | referência profissional (§6.5) |
 | `vagas_limites` | contador dos limites anti-abuso (limpa sozinho em 8 dias) |
@@ -308,6 +323,8 @@ da decisão. Até lá, tudo fica enquanto a conta existir.
 | Registro de moderação (`vagas_moderacao`) | 5 anos (defesa em disputa) | só inclusão; limpeza anual |
 | `vagas_acessos_contato` ("quem viu meu contato") | enquanto a candidatura existir | cascata da candidatura |
 | Lista de espera (`vagas_lista_espera`) | até a cidade abrir + 90 dias, ou a pedido (`vagas_lista_espera_sair`) | RPC pública + job |
+| WhatsApp da lista de espera (opcional) | o mesmo da linha; sai antes se a pessoa pedir (sair pelo e-mail apaga a linha toda; sair pelo WhatsApp apaga só o número). Consentimento implícito: o campo diz para que serve ("só para avisar quando abrir") e `whatsapp_em` guarda quando foi dado | RPC pública + job; operação e equipe veem só contagens |
+| Convites de equipe (`vagas_equipe_convites`) | aberto: 72 h; encerrado ou vencido: apagado depois de 30 dias | a própria `vagas_conta_convite_equipe` limpa a cada convite novo; cascata da empresa |
 | Referências profissionais | enquanto a conta da pessoa existir (ela remove quando quiser) | cascata / `vagas_referencia_responder('remover')` |
 | Foto (Storage) | enquanto a conta existir | **só pela ação `excluir` da Function** (apaga o arquivo antes da conta) |
 | Contadores (`vagas_limites`, `vagas_anuncio_vistas`) | 8 dias / só totais por dia | automático |
@@ -328,10 +345,10 @@ exemplo · erros (texto exato). Os erros de conta da §2 não são repetidos.
 
 #### `vagas_cidades_publicas()` — `VAGAS_API.cidades()`
 ```json
-{"ok":true,"cidades":[{"id":"…","slug":"boa-vista-rr","nome":"Boa Vista","uf":"RR","status":"ativa","fuso":"America/Boa_Vista",
-  "praca":null,"zonas":[{"id":"…","slug":"centro-leste","nome":"Centro e Zona Leste","bairros":["Centro","São Pedro","…"]}],
+{"ok":true,"cidades":[{"id":"…","slug":"uruacu-go","nome":"Uruaçu","uf":"GO","status":"ativa","fuso":"America/Sao_Paulo",
+  "praca":null,"zonas":[{"id":"…","slug":"centro","nome":"Centro","bairros":["Centro","Setor Central","…"]}],
   "interessados":null,"metaListaEspera":null},
- {"slug":"rorainopolis-rr","status":"lista_espera","praca":null,"zonas":[…],"interessados":10,"metaListaEspera":null}]}
+ {"slug":"outra-cidade-go","status":"lista_espera","praca":null,"zonas":[…],"interessados":10,"metaListaEspera":null}]}
 ```
 Sem erros. `interessados` é APROXIMADO: quem entrou até o dia anterior, arredondado para baixo em dezenas (0 nos primeiros
 dias) — a tela mostra "mais de 10 pessoas" ou esconde quando 0; nunca "N pessoas" exato.
@@ -356,12 +373,12 @@ da página anterior; `somenteTotal: true` devolve só `{ok, cidade, total, areas
 sem a chave `areas`, usa as áreas do currículo (`areasPadrao: true`); `areas: []` mostra todas. Qualquer outra chave é
 ignorada (nada de nota, selo, referência, idade, sexo). "3 parecidas" (vaga fora do ar): `{cidade, areas: [<área>], limite: 3}`.
 ```json
-{"ok":true,"cidade":{"slug":"boa-vista-rr","nome":"Boa Vista"},"proximo":"2026-10-12T14:00:00.000000Z_6f1c…",
+{"ok":true,"cidade":{"slug":"uruacu-go","nome":"Uruaçu"},"proximo":"2026-10-12T14:00:00.000000Z_6f1c…",
  "areasAplicadas":["caixa"],"areasPadrao":true,
  "anuncios":[{"id":"…","codigo":"K7M2QX","titulo":"Operador(a) de caixa","funcao":"Operador(a) de caixa","modalidade":"clt",
    "area":{"slug":"caixa","nome":"Caixa e operação de loja"},"turno":"manha","fimDeSemana":false,"experiencia":"nao_precisa",
    "comissao":false,"selo":"caixa","valor":{"minCentavos":162100,"maxCentavos":180000,"unidade":"mes"},
-   "cidade":{"slug":"boa-vista-rr","nome":"Boa Vista"},"zona":{"slug":"centro-leste","nome":"Centro e Zona Leste"},
+   "cidade":{"slug":"uruacu-go","nome":"Uruaçu"},"zona":{"slug":"centro","nome":"Centro"},
    "empresa":{"nome":"Mercadinho Sol do Norte","iniciais":"MS","confidencial":false,"conferida":true},
    "diaria":null,"paraHoje":false,"quantidade":2,"publicadoEm":"…","expiraEm":"…"}]}
 ```
@@ -384,15 +401,21 @@ A TELA chama quando uma pessoa abre a vaga (não chamar na prévia de link do Wh
 anúncio por dia; membro da própria empresa não conta. `{"ok":true,"contada":true}` · erro `Vaga não encontrada ou já
 encerrada.` (`naoEncontrada`).
 
-#### `vagas_lista_espera_entrar(p_dados)` — `VAGAS_API.listaEspera({cidade, email, perfil:'pessoa'|'empresa'})`
-`{"ok":true,"cidade":"rorainopolis-rr","interessados":10}` (repetir o e-mail não duplica; `interessados` aproximado como em
-`vagas_cidades_publicas` — a resposta não revela se o e-mail já estava na lista).
+#### `vagas_lista_espera_entrar(p_dados)` — `VAGAS_API.listaEspera({cidade, email, perfil:'pessoa'|'empresa', whatsapp?})`
+`{"ok":true,"cidade":"uruacu-go","interessados":10}` (repetir o e-mail não duplica; `interessados` aproximado como em
+`vagas_cidades_publicas` — a resposta não revela se o e-mail já estava na lista, nem se veio WhatsApp).
+`whatsapp` (20261024) é OPCIONAL: celular com DDD (`(62) 98888-1111`, `62988881111` ou `5562988881111`; guardado como
+`5562988881111`); veio → substitui o da linha; não veio → o que estava fica. A tela explica no campo para que serve
+("só para avisar quando abrir"). Validação igual na tela: `VAGAS_REGRAS.lerListaEspera(d)`.
 Erros: `Cidade não encontrada.` · `Esta cidade já está aberta: faça o seu cadastro.` (`ativa`) · `E-mail inválido.` ·
+`WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).` ·
 `Muitas tentativas. Tente de novo mais tarde.` (`bloqueado`; 10 por hora por origem).
 
-#### `vagas_lista_espera_sair(p_dados)` — `VAGAS_API.listaEsperaSair({cidade, email})`
-Sair da lista (LGPD; link "não quero mais receber" do e-mail de aviso). `{"ok":true,"cidade":"rorainopolis-rr","removido":true}`
-sempre, exista ou não o e-mail na lista. Erros: `Cidade não encontrada.` · `E-mail inválido.` · `Muitas tentativas…` (`bloqueado`).
+#### `vagas_lista_espera_sair(p_dados)` — `VAGAS_API.listaEsperaSair({cidade, email?, whatsapp?})`
+Sair da lista (LGPD; link "não quero mais receber" do aviso). Com `email`: apaga a linha (com o WhatsApp dela). Só com
+`whatsapp`: tira esse número de todas as linhas da cidade (o e-mail continua na lista). `{"ok":true,"cidade":"uruacu-go","removido":true}`
+sempre, exista ou não na lista. Erros: `Cidade não encontrada.` · `E-mail inválido.` (e-mail inválido, ou nem e-mail nem
+WhatsApp) · `WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).` · `Muitas tentativas…` (`bloqueado`).
 
 #### `vagas_denunciar(p_dados)` — `VAGAS_API.denunciar({alvo, id, motivo, detalhe?})`
 `{"ok":true,"recebida":true}` (repetida pela mesma conta: `+ "duplicado":true`).
@@ -405,7 +428,7 @@ quem vê a referência; a empresa autora nunca) · `Denúncia inválida.`
 #### `vagas_referencias_publicas(p_token)` — `VAGAS_API.referenciasPublicas(token)`
 ```json
 {"ok":true,"pessoa":{"nomeExibicao":"Ana S."},"referencias":[{"id":"…","empresa":{"nome":"Mercado Bom Dia","conferida":true,
-  "cidade":"Boa Vista"},"funcao":"Atendente","vinculo":"clt","inicio":"2024-01","fim":"2025-06","atual":false,
+  "cidade":"Uruaçu"},"funcao":"Atendente","vinculo":"clt","inicio":"2024-01","fim":"2025-06","atual":false,
   "pontosFortes":["pontualidade","caixa_certo"],"recomendaPara":["Atendente","Caixa"],"texto":"(só se aprovado)",
   "textoStatus":"aprovado","criadoEm":"…"}]}
 ```
@@ -415,15 +438,19 @@ Erro: `Página não encontrada.` (token inválido, página desligada ou conta su
 Da migração dos testes (20261023; contrato em `docs/VAGAS-TESTES.md`). Sem nome da pessoa. A prévia simula.
 
 #### `versao_banco()` — `VAGAS_API.versaoBanco()`
-`{"ok":true,"versao":20261022120000,"migracoes":[…],"faltando":[…]}` (do DISC; a 20261022 entra na lista).
+`{"ok":true,"versao":20261024120001,"migracoes":[…],"faltando":[…]}` (do DISC; a 20261022, as duas da 20261023 e as
+duas da 20261024 entram na lista: `20261024120000_vagas_onda2` sonda a tabela `vagas_equipe_convites`, a função
+`vagas_op_indicadores(text)` e a coluna `vagas_lista_espera.whatsapp`; `20261024120001_vagas_piloto_uruacu` sonda a cidade
+`uruacu-go`).
 
 ### 8.2 Conta (qualquer tipo, logado)
 
 #### `vagas_eu()` — `VAGAS_API.eu()`
 ```json
-{"ok":true,"conta":{"tipo":"pessoa","status":"ativa","email":"ana@exemplo.com","termosVersao":"2026-10-13","termosAceitosEm":"…","criadoEm":"…"},
- "admin":false,"pessoa":{"completo":true,"cidades":["boa-vista-rr"],"referenciasPendentes":1},"empresas":[],"operador":[]}
+{"ok":true,"conta":{"tipo":"pessoa","status":"ativa","email":"ana@exemplo.com","nome":"Ana Souza","termosVersao":"2026-10-13","termosAceitosEm":"…","criadoEm":"…"},
+ "admin":false,"pessoa":{"completo":true,"cidades":["uruacu-go"],"referenciasPendentes":1},"empresas":[],"operador":[]}
 ```
+`conta.nome` (20261024): o nome da própria conta, para a saudação — o do currículo (pessoa) ou o do cadastro; `''` sem nome.
 Empresa: `"empresas":[{"id","nomeFantasia","papel":"dono","status":"ativa"}]`. Operador: `"operador":[{"cidade","nome","papel"}]`.
 Admin do DISC sem conta do Vagas: `{"conta":null,"admin":true,"operador":[todas as cidades com papel 'admin']}`.
 Conta assistida com `termosVersao:''` → a tela pede o aceite (`vagas_aceitar_termos`).
@@ -451,7 +478,7 @@ cursos, areas (até 3 slugs), sobre, temFoto, nome, whatsapp, email, experiencia
 bancoTalentosAte, atualizadoEm}`.
 Cartão cego:
 ```json
-{"cidade":{"slug":"boa-vista-rr","nome":"Boa Vista"},"zona":{"slug":"zona-oeste","nome":"Zona Oeste"},"cargos":["Atendente","Caixa"],
+{"cidade":{"slug":"uruacu-go","nome":"Uruaçu"},"zona":{"slug":"regiao-oeste","nome":"Região Oeste"},"cargos":["Atendente","Caixa"],
  "experiencias":[{"funcao":"Atendente","meses":18,"atual":false,"informal":false}],"experienciaTotalMeses":33,
  "escolaridade":"medio","turnos":["manha","tarde"],"cnh":["B"],"modalidades":["clt","diaria"],"pretensaoCentavos":180000,
  "cursos":["Atendimento ao cliente (Senac)"],"selos":[],"temReferencia":false}
@@ -470,7 +497,7 @@ você mora.` · `Escolha uma zona da sua cidade.` · `Para se cadastrar é preci
 funções que você procura.` · `Escolha a sua escolaridade.` · `Marque pelo menos um turno em que pode trabalhar.` · `Escolha até 3 áreas de interesse.` ·
 `Marque pelo menos um tipo de vaga (CLT, temporário, diária, freelancer ou estágio).` · `Pretensão salarial inválida.` ·
 `Informe até 10 cursos.` · `O texto "Sobre você" pode ter até 600 caracteres.` · `Informe seu nome e sobrenome.` ·
-`WhatsApp inválido. Use DDD + número de celular (ex.: 95 99123-4567).` · `E-mail de contato inválido.` ·
+`WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).` (20261024; sem DDD de exemplo) · `E-mail de contato inválido.` ·
 `Experiências inválidas.` · `Informe até 10 experiências.` · `Informe a função de cada experiência.` · `Informe o mês de
 início de cada experiência (AAAA-MM).` · `O início de uma experiência não pode estar no futuro.` · `Mês de saída inválido
 (AAAA-MM).` · `A saída não pode ser antes do início.` · `A saída não pode estar no futuro.` · `Ainda não chegamos a esta
@@ -506,7 +533,7 @@ Erros: `Candidatura não encontrada.` · `O contato já foi liberado. Avise a em
 #### `vagas_ver_empresa(p_candidatura)` — `VAGAS_API.verEmpresa(id)`
 ```json
 {"ok":true,"empresa":{"nome":"Mercado Bom Dia","razaoSocial":"…","cnpjFormatado":"11.222.333/0001-81","setor":"…","descricao":"…",
-  "cidade":"Boa Vista","conferidaEm":"…"},"candidatura":…}
+  "cidade":"Uruaçu","conferidaEm":"…"},"candidatura":…}
 ```
 Erros: `Candidatura não encontrada.` · `A empresa ainda não pediu para conversar.`
 
@@ -655,6 +682,50 @@ compartilhar o contato com a sua empresa.` (`contatoCortado`) · `Esta empresa e
 `{"ok":true,"candidaturaId":"…","status":"contratada"}` · erros `Candidatura não encontrada.` · `Só dá para marcar como
 contratada depois do Combinou.`
 
+### 8.4a Equipe da empresa (20261024; só conta de empresa)
+
+Quem é **dono(a)** convida por e-mail (papel `recrutador`), vê a equipe, cancela convite e remove membro; nunca a última
+pessoa dona. Recrutador(a) vê e usa a empresa (vagas, cartões, conversas), mas não vê nem muda a equipe; pode sair sozinho(a).
+O convite (`convidarEquipe`, ação `convite_equipe` da `vagas-conta`, §9) é um token de 64 algarismos hexadecimais, de uso
+único, que vale 72 h, só para a conta com AQUELE e-mail, confirmada, e só vira membro depois do aceite. No banco fica só o
+sha256 do token. Limites: 10 convites por empresa por dia, 3 por dia para o mesmo e-mail, 30 por hora por origem; até 20
+pessoas na equipe e 20 convites abertos. Tudo vai para `vagas_moderacao` (papel `empresa`, ações `equipe_convidar`,
+`equipe_convite_cancelar`, `equipe_aceitar`, `equipe_remover`, `equipe_sair`; sem e-mail no registro).
+Erros comuns: os de conta (§2; conta de pessoa → `Esta área é para empresas.`) · `Empresa não encontrada.` (não é membro) ·
+`Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.`
+
+#### `vagas_equipe_empresa(p_empresa)` — `VAGAS_API.equipeDaEmpresa(empresaId)`
+Só dono(a). Membros ativos (donos primeiro) e convites (abertos + os encerrados nos últimos 30 dias, até 50):
+```json
+{"ok":true,"empresa":{"id":"…","nomeFantasia":"Mercadinho Sol do Norte","status":"ativa"},
+ "membros":[{"userId":"…","email":"dona@exemplo.com","nome":"Maria Souza","papel":"dono","desde":"…","eu":true,"podeRemover":false},
+            {"userId":"…","email":"rita@exemplo.com","nome":"Rita Moraes","papel":"recrutador","desde":"…","eu":false,"podeRemover":true}],
+ "convites":[{"id":"…","email":"nova@exemplo.com","papel":"recrutador","status":"pendente","criadoEm":"…","expiraEm":"…"}],
+ "limites":{"convitesPorDia":10,"convitesHoje":1,"membrosMax":20,"convitesAbertosMax":20,"validadeHoras":72}}
+```
+`podeRemover:false` só para a única pessoa dona. O token nunca volta.
+
+#### `vagas_equipe_convite_cancelar(p_convite)` — `VAGAS_API.cancelarConvite(conviteId)`
+Só dono(a). `{"ok":true,"convite":{…,"status":"cancelado"}}` (de novo: `+ "duplicado":true`).
+Erros: `Convite não encontrado.` · `Este convite já foi aceito. Para tirar o acesso, remova a pessoa da equipe.`
+
+#### `vagas_equipe_remover(p_empresa, p_membro)` — `VAGAS_API.removerMembro(empresaId, userId)`
+Dono(a) remove qualquer membro; qualquer membro pode sair (`p_membro` = o próprio id). Os convites abertos de quem sai são
+cancelados. `{"ok":true,"removido":true,"saiu":false}` (`saiu:true` quando foi a própria pessoa).
+Erros: `Esta pessoa não está na equipe.` · `A empresa precisa ter pelo menos uma pessoa como dona. Esta pessoa não pode sair da equipe.`
+
+#### `vagas_equipe_convite(p_token)` — `VAGAS_API.conviteEquipe(token)`
+A tela de aceite (logada com o e-mail convidado) mostra de quem é o convite ANTES do aceite:
+`{"ok":true,"convite":{"empresa":{"id":"…","nomeFantasia":"Mercadinho Sol do Norte","cidade":{"slug":"uruacu-go","nome":"Uruaçu"}},"papel":"recrutador","expiraEm":"…","jaMembro":false}}`.
+Erro (token errado, usado, cancelado, vencido, de outro e-mail, ou quem convidou deixou de ser dono(a)) — sempre o mesmo:
+`Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.`
+
+#### `vagas_equipe_convite_aceitar(p_token)` — `VAGAS_API.aceitarConviteEquipe(token)`
+Só depois do clique em "Aceitar" (conta de empresa, e-mail confirmado). `{"ok":true,"empresa":{"id":"…","nomeFantasia":"…","papel":"recrutador","status":"ativa"},"duplicado":false}`
+(já era membro: `duplicado:true`, papel mantido). O token não vale de novo.
+Erros: `Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.` · `Esta empresa está suspensa. Fale com a
+Gestão sem Caos.` (`suspensa`) · `A equipe desta empresa está completa. Fale com quem convidou.`
+
 ### 8.5 Conversa (pessoa e empresa)
 
 #### `vagas_conversa(p_candidatura)` — `VAGAS_API.conversa(id)`
@@ -743,7 +814,8 @@ Filtro comum `{cidade?}` (slug, dentro das cidades que a pessoa opera). Erros co
 
 | RPC (VAGAS_API) | Entrada | Resposta |
 |---|---|---|
-| `vagas_op_resumo()` (`opResumo`) | — | `{cidades:[{id, slug, nome, status, papel, contagens:{empresasEmAnalise, empresasAtivas, anunciosEmRevisao, anunciosSuspensos, anunciosNoAr, denunciasAbertas, pessoas, listaEspera}}]}` |
+| `vagas_op_resumo()` (`opResumo`) | — | `{cidades:[{id, slug, nome, status, papel, repassePercentual, contagens:{empresasEmAnalise, empresasAtivas, anunciosEmRevisao, anunciosSuspensos, anunciosNoAr, denunciasAbertas, pessoas, listaEspera}}]}` — `repassePercentual` (20261024): o da linha de quem chama em `vagas_operadores` (> 0: praça com parceiro; 0: operação própria); `null` para a equipe |
+| `vagas_op_assistidos(p_filtro)` (`opAssistidos`; 20261024) | `{cidade?}` | `{contas:[{email:'r***@e***.com', tipo:'pessoa'|'empresa', cidade, codigoEvento, criadoEm}]}` — cadastros assistidos ainda pendentes (e-mail não confirmado) dos últimos 30 dias, até 200, mais novos primeiro. Operador(a) vê só os que criou; equipe, todos. E-mail MASCARADO (a operação nunca lê contato de pessoa): para mandar o link de novo, a tela pede o e-mail completo (`cadastroAssistido` / `reenviarConfirmacao`). Sem `expiraEm` (a validade do link é do Auth, não do banco). Erros `Sem permissão.` (moderador(a), ou cidade fora das operadas) |
 | `vagas_op_empresas(p_filtro)` (`opEmpresas`) | `{cidade?, status?[], busca?}` | `{empresas:[<empresa> + anuncios:{total,noAr}, denunciasAbertas, membros]}` (em análise primeiro) |
 | `vagas_op_empresa_decidir(p_empresa, p_acao, p_motivo)` (`opEmpresaDecidir`) | `'aprovar'|'recusar'|'suspender'|'reativar'` (`recusar`: continua `em_analise` com `statusMotivo` = chave de `moderacao.json`, para a empresa corrigir) | `{empresa}` · erros `Empresa não encontrada.` · `Sem permissão.` (moderador não aprova/recusa/reativa) · `Empresa suspensa: use "Reativar".` · `Informe o motivo.` · `Só dá para recusar uma empresa em análise.` · `Esta empresa não está suspensa.` · `Ação inválida.` |
 | `vagas_op_empresa_cadastrar(p_dados)` (`opEmpresaCadastrar`) | como `vagas_empresa_cadastrar` | `{empresa}` já `ativa` (CNPJ conferido na hora) |
@@ -757,12 +829,50 @@ Filtro comum `{cidade?}` (slug, dentro das cidades que a pessoa opera). Erros co
 | `vagas_op_referencias(p_filtro)` (`opReferencias`) | `{cidade?, textoStatus?[]}` (padrão `pendente`) | `{referencias:[{id, empresa:{id, nomeFantasia}, funcao, vinculo, texto, textoStatus, textoMotivo, status, criadoEm}]}` (nada da pessoa) |
 | `vagas_op_referencia_decidir(p_referencia, p_acao, p_motivo)` (`opReferenciaDecidir`) | `'aprovar_texto'|'recusar_texto'|'remover'` | `{referencia:{id, status, textoStatus}}` · erros `Referência não encontrada.` · `Este texto não está esperando a moderação.` · `Informe o motivo.` · `Ação inválida.` |
 
+#### `vagas_op_indicadores(p_cidade)` — `VAGAS_API.indicadores('uruacu-go')` (20261024; painel da praça)
+Operador(a)/moderador(a) só da própria cidade; equipe em todas (até `rascunho`). Lê só (stable). A praça = a cidade pedida +
+as cidades do entorno dela. Os 15 indicadores e 5 gatilhos de `conteudo/vagas-operacao/indicadores.json` (versão 2; o mesmo
+catálogo em `vagas_interno.indicadores_catalogo()` e em `VAGAS_REGRAS.INDICADORES`/`GATILHOS`). **Só agregados**: contagens,
+porcentagens, medianas e totais por teste/área/mutirão — nenhum nome, contato, e-mail ou id de pessoa ou empresa.
+`alvo` vem do **porte** da cidade (`pequena` = `alvo.cidadePequena` do arquivo; `grande` e `null` ficam sem alvo e sem cor);
+`cor` pela regra do arquivo (`VAGAS_REGRAS.corIndicador`): maior é melhor — `ok` ≥ alvo, `atencao` ≥ 70% do alvo, `alerta`;
+menor é melhor — `ok` ≤ alvo, `atencao` ≤ 1,3 × alvo, `alerta`; sem valor ou sem alvo, `null`. O que o banco ainda não guarda
+(empresas buscando, pagantes, receita, e-mails) volta `valor:null, semDado:true`. `hipotese:true` = alvo ainda a confirmar na operação.
+```json
+{"ok":true,"cidade":{"slug":"uruacu-go","nome":"Uruaçu","uf":"GO","status":"ativa","porte":"pequena","fuso":"America/Sao_Paulo"},
+ "praca":[{"slug":"uruacu-go","nome":"Uruaçu","status":"ativa"}],"mes":"2026-10","geradoEm":"…",
+ "indicadores":[
+  {"chave":"vagas_ativas","nome":"Vagas ativas","unidade":"vagas","periodo":"agora","direcao":"maior_melhor","hipotese":false,
+   "valor":28,"alvo":20,"alvoLancamento":15,"cor":"ok","semDado":false,
+   "detalhe":{"porTeste":{"atendimento":3,"vendas":0,"administrativo":0,"caixa":1,"portugues":0},"porArea":[{"area":"atendimento","nome":"Atendimento e recepção","valor":6}]}},
+  {"chave":"vagas_3_interessados_72h","valor":0,"alvo":70,"cor":"alerta","semBase":false,"detalhe":{"base":8,"comTres":0,"janelaHoras":168}, "…":"…"},
+  {"chave":"empresas_pagantes","valor":null,"alvo":5,"cor":null,"semDado":true, "…":"…"},
+  {"chave":"lista_espera","valor":0,"detalhe":{"pessoa":0,"empresa":0,"comWhatsapp":0}, "…":"…"}],
+ "gatilhos":[
+  {"chave":"antes_de_cobrar","nome":"…","hipotese":true,"aplica":true,"atingido":false,
+   "partes":[{"descricao":"Vagas no ar: 15 ou mais","ok":true},{"descricao":"Contratações: 3 ou mais","ok":false}]},
+  {"chave":"pessoa_nao_paga","aplica":true,"atingido":true,"partes":[{"descricao":"Quem procura emprego não paga nada: não existe produto pago para a pessoa","ok":true,"fixa":true}], "…":"…"}]}
+```
+Detalhes por indicador: `vagas_ativas` {porTeste, porArea}; `pessoas_com_selo_por_funcao` {porTeste, alvoPorTeste,
+alvoLancamentoPorTeste}; `vagas_3_interessados_72h` {base, comTres, janelaHoras} (janela do arquivo pelo porte: 7 dias na cidade
+pequena); `vagas_combinou_7d` {base, comCombinou}; `primeira_resposta_empresa_dias` (mediana em dias; candidatura sem resposta
+há 7+ dias conta a espera) {base, semRespostaEm7DiasPct}; `contratacoes` (acumulado) {mes}; `denuncia_tempo_decisao_h` (mediana
+das últimas 30 decididas) {base, abertasMais24h}; `fila_moderacao` (parados há mais de 24 h) {anuncios, empresas, referencias};
+`lista_espera` {pessoa, empresa, comWhatsapp}; `cadastros_assistidos_confirmados` (no mês) {porMutirao:[{codigoEvento, criadas,
+confirmadas, cor}]} (90 dias, até 20). `semBase:true` = sem vaga/candidatura no período (valor `null`). Gatilho: `aplica:false`
+quando a cidade não tem porte com alvo; `atingido` = `false` se alguma parte é `false`, `null` se falta conferir alguma
+(`manual:true` = decisão do dono/operação; `semDado:true`), `true` só com todas `true`.
+Erros: `Sessão expirada. Entre de novo.` (`sessaoExpirada`) · `Sem permissão.` (sem papel na cidade, ou cidade que não existe
+para quem não é da equipe) · `Cidade não encontrada.` (só para a equipe).
+
 ### 8.8 Equipe da Gestão sem Caos (`public.e_admin()`; zona também operador da cidade)
 
 | RPC | Entrada | Resposta / erros |
 |---|---|---|
-| `vagas_adm_cidade_salvar(p_dados)` (`admCidadeSalvar`) | `{slug:'nova-cidade-uf', nome, uf, ibge, fuso?, status?, praca?, metaListaEspera?, ordem?}` (cria ou altera só o que vier) | `{cidade}` · `Sem permissão.` · `Endereço da cidade inválido (ex.: boa-vista-rr).` · `Status da cidade inválido.` · `Cidade-polo não encontrada.` · `Fuso horário inválido.` · `Dados da cidade inválidos. Confira nome, UF e IBGE.` |
+| `vagas_adm_cidade_salvar(p_dados)` (`admCidadeSalvar`) | `{slug:'nova-cidade-uf', nome, uf, ibge, fuso?, status?, porte?, praca?, metaListaEspera?, ordem?}` (cria ou altera só o que vier; cidade nova sem `fuso` fica `America/Sao_Paulo`; `porte`: `pequena`, `grande` ou `''`/`null` para tirar — 20261024) | `{cidade}` (+ `porte`) · `Sem permissão.` · `Endereço da cidade inválido (ex.: nome-da-cidade-uf).` · `Status da cidade inválido.` · `Porte da cidade inválido (grande ou pequena).` · `Cidade-polo não encontrada.` · `Fuso horário inválido.` · `Dados da cidade inválidos. Confira nome, UF e IBGE.` |
 | `vagas_adm_zona_salvar(p_dados)` (`admZonaSalvar`) | `{cidade, slug, nome, bairros[], ordem?, ativa?}` | `{zona:{id, slug, nome, bairros, ordem, ativa}}` · `Cidade não encontrada.` · `Sem permissão.` · `Endereço da zona inválido (ex.: zona-oeste).` · `Dados da zona inválidos. Confira o nome.` |
+| `vagas_adm_cidades()` (`admCidades`; 20261024) | — | `{cidades:[{id, slug, nome, uf, ibge, fuso, status, porte, praca, metaListaEspera, ordem, zonas:[{id, slug, nome, bairros, ordem, ativa}], operadoresAtivos}]}` — TODAS as cidades (inclusive `rascunho` e `pausada`) e todas as zonas (inclusive desligadas) · `Sem permissão.` |
+| `vagas_adm_operadores(p_filtro)` (`admOperadores`; 20261024) | `{cidade?}` | `{operadores:[{email, cidade:{slug, nome}, papel, ativo, repassePercentual, contratoVersao, contaStatus:'pendente'|'ativa'|'suspensa', contratoAceitoEm, criadoEm, ultimoAto:{acao, em}|null}]}` (`pendente` = ainda não confirmou o e-mail do convite; `contratoAceitoEm` = aceite do 1º acesso da conta de operação; `ultimoAto` = último registro dela na moderação daquela cidade) · `Sem permissão.` · `Cidade não encontrada.` |
 | `vagas_adm_operador_salvar(p_dados)` (`admOperadorSalvar`) | `{cidade, email, papel:'operador'|'moderador', ativo?, repassePercentual?, contratoVersao?}` (a conta vem do convite da Edge Function) | `{operador:{cidade, papel, ativo, repassePercentual, contratoVersao}}` · `Sem permissão.` · `Cidade não encontrada.` · `Papel inválido.` · `Não há conta de operação com este e-mail. Use o convite de operador.` · `Percentual de repasse inválido (0 a 100).` |
 
 ### 8.9 Só para a Edge Function (service_role; nem anon nem authenticated executam)
@@ -775,12 +885,22 @@ a foto? sem candidatura = a própria; com candidatura = membro ativo da empresa 
 aparece depois do Combinou.` (`semCombinou`) · `A pessoa deixou de compartilhar o contato com a sua empresa.`
 (`contatoCortado`) · `Esta empresa está suspensa. Fale com a Gestão sem Caos.` (`suspensa`) · `Esta pessoa não pôs foto.` /
 `Sem foto.` (`semFoto`)).
+`vagas_conta_convite_equipe(p_user, p_empresa, p_email, p_cf, p_xff)` (20261024; confere por dentro que quem chama não é
+anon/authenticated): decide tudo do convite de equipe e devolve à Function `{ok, convite, token, destino, empresaNome,
+cidadeNome, convidadoPor}`, com `destino` = `nova` (e-mail sem conta: a Function cria a conta de empresa pendente) |
+`empresa_pendente` | `empresa` | `outro_tipo` (conta de pessoa/operação: e-mail que explica, sem convite que funcione) |
+`nenhum` (conta só do painel DISC ou suspensa: nada é enviado). Erros: os de conta · `Empresa não encontrada.` · `Só quem é
+dono(a) da conta da empresa pode convidar pessoas para a equipe.` · `Esta empresa está suspensa. Fale com a Gestão sem Caos.`
+(`suspensa`) · `E-mail inválido.` · `Esta pessoa já faz parte da equipe.` · `Muitos convites hoje. Tente de novo amanhã.`
+(`bloqueado`) · `A equipe já tem 20 pessoas. Remova alguém antes de convidar outra.` · `Sua empresa já tem 20 convites
+abertos. Cancele algum antes de convidar outra pessoa.` · `Sem permissão.`
 
 ## 9. Edge Function `vagas-conta`
 
 `POST /functions/v1/vagas-conta` (Verify JWT **desligado**; quem precisa de login manda `Authorization: Bearer <token>` e a
 função confere). Corpo `{acao, ...}`; resposta sempre HTTP 200 com `{ok, ...}` (405 para outro método). CORS só para
-`VAGAS_SITE_URL` e localhost.
+`VAGAS_SITE_URL`, o painel do DISC (`SITE_URL`; sem ele, `https://disc.gestaosemcaos.com.br` — 20261024, para o convite de
+operador pela aba "Vagas") e localhost. CORS não é a proteção: as ações com login continuam exigindo o token.
 
 | Ação (`VAGAS_API`) | Corpo | Resposta |
 |---|---|---|
@@ -791,6 +911,7 @@ função confere). Corpo `{acao, ...}`; resposta sempre HTTP 200 com `{ok, ...}`
 | `operador` (`convidarOperador({...})`, JWT da equipe) | `{email, cidade, papel, cidadeNome?}` | `{ok:true, enviado:true, email}` ou `{ok:true, existente:true}` · `Este e-mail já tem outra conta. Use um e-mail só para a operação.` |
 | `excluir` (`excluirConta()`, JWT) | `{confirmar:'EXCLUIR'}` | `{ok:true, excluida:true}` (apaga também a foto) · `Para excluir, digite EXCLUIR.` · `Esta conta também acessa o painel DISC. Fale com a Gestão sem Caos para excluir.` · `Conta não encontrada.` |
 | `foto` (`fotoUrl(candidaturaId?)`, JWT) | `{candidatura?}` | `{ok:true, url:'<URL assinada de 5 min>', expiraEm}` · erros de `vagas_conta_foto` (§8.9) |
+| `convite_equipe` (`convidarEquipe(empresaId, email)`, JWT de quem é dono(a); 20261024) | `{acao:'convite_equipe', empresaId, email}` | sempre a MESMA resposta para qualquer e-mail (tenha conta ou não, de qualquer tipo): `{ok:true, enviado:true, mensagem:'Pronto. Se este e-mail puder entrar na equipe, a pessoa recebe o convite em instantes. O convite vale por 3 dias.', email:'n***@e***.com', convite:{id, email, papel, status:'pendente', criadoEm, expiraEm}}` · erros de `vagas_conta_convite_equipe` (§8.9; só `erro` e as marcas) · `Empresa não encontrada.` (id inválido) |
 
 Erros comuns: `E-mail inválido.` · `Escolha se a conta é para procurar emprego ou para uma empresa.` · `Para criar a conta,
 aceite os termos de uso e o aviso de privacidade.` · `Confirme que você não é um robô e tente de novo.` (`captcha`; só com
@@ -808,6 +929,11 @@ não conferem.` ou `Confirme seu e-mail pelo link que enviamos antes de continua
 Cadastro de e-mail já pendente (não confirmado): o link vai de novo e o `tipo` passa a ser o pedido agora (banco +
 `app_metadata`); o consentimento só é gravado no clique do link (§4, Conta).
 
+Convite de equipe: e-mail `conteudo/vagas-textos/emails/convite-equipe.html` com `…/entrar.html?convite=<token>` (conta de
+empresa confirmada) ou `…/entrar.html?token_hash=<hash>&type=invite&convite=<token>` (sem conta: a Function cria a conta de
+empresa pendente, com `app_metadata.convite = true`; conta de empresa pendente: link novo); conta de outro tipo recebe
+`convite-equipe-outra-conta.html` (sem convite que funcione). A tela lê o token com `VAGAS_API.conviteDoEndereco(location)`.
+
 Segredos (Supabase → Edge Functions → Secrets): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`
 (`https://vagas.gestaosemcaos.com.br`), `VAGAS_EMAIL_REMETENTE` (sugestão: `Vagas · Gestão sem Caos
 <vagas@gestaosemcaos.com.br>`; sem ele, usa o `EMAIL_REMETENTE` do DISC), `TURNSTILE_SECRET` (opcional). Detalhes em `docs/SUPABASE.md`.
@@ -823,7 +949,7 @@ Segredos (Supabase → Edge Functions → Secrets): `RESEND_API_KEY` (o mesmo do
 ```
 
 ```js
-VAGAS_API.anuncios({ cidade: 'boa-vista-rr', paraHoje: true })
+VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
   .then(function (r) { /* r.anuncios, r.proximo */ })
   .catch(function (e) {
     if (e.sessaoExpirada) return irPara('entrar.html');
@@ -836,12 +962,19 @@ VAGAS_API.anuncios({ cidade: 'boa-vista-rr', paraHoje: true })
   `PONTOS_FORTES`, `MOTIVOS_DENUNCIA`, `STATUS_*`), `VERSAO_TERMOS`, `MSG` (inclui `NUNCA_PAGUE`), validação igual à do
   banco para mostrar o erro antes de enviar (`lerPessoa`, `lerEmpresa`, `lerAnuncio(d, hojeIso)`, `lerReferencia`,
   `conferirTexto(texto, contexto)`), formatação (`reais`, `formatarValor`, `formatarCnpj`, `nomeExibicao`, `iniciais`,
-  `hoje`, `somarDias`, `meses`).
+  `hoje(fuso?, agora?)` (sem fuso: `America/Sao_Paulo`), `somarDias`, `meses`). Onda 2: `lerListaEspera(d)`, `corIndicador(valor,
+  alvo, direcao)`, `INDICADORES`, `GATILHOS`, `PORTES`, `CORES_INDICADOR`, `PAPEIS_EMPRESA`, `STATUS_CONVITE_EQUIPE`,
+  `MSG.WHATSAPP_INVALIDO`, `MSG.CONVITE_INVALIDO`.
+- `VAGAS_API.RECURSOS` = `{listaEsperaWhatsapp: true}` (20261024): a lista da cidade liga o campo opcional de WhatsApp por
+  aqui. No modo supabase, publique o site só depois de aplicar a 20261024 (antes dela o banco ignoraria o número).
 - Prévia: logins `pessoa@previa.com` (Ana Clara Ribeiro: currículo completo, conversa numa vaga confidencial, um Combinou,
   uma referência aceita e uma pendente, selo fictício `Q8V3-N2KD`), `empresa@previa.com` (Mercadinho Sol do Norte),
-  `empresa6@previa.com` (Restaurante Sabor da Terra, que deu a referência), `operador@previa.com` (Boa Vista),
-  `admin@previa.com` (equipe) — senha `previa123`. Na prévia, `cadastrar`/`esqueciSenha` devolvem `linkPrevia` (a tela
-  abre o link em vez de esperar o e-mail). Nada sai do navegador.
+  `empresa6@previa.com` (Restaurante Sabor da Terra, que deu a referência), `recrutador@previa.com` (Rita Moraes,
+  recrutadora do Mercadinho: não vê a equipe), `operador@previa.com` (Uruaçu), `admin@previa.com` (equipe) — senha
+  `previa123`. Cidades da prévia: `uruacu-go` (ATIVA na prévia, porte pequena, as 6 zonas), `campinorte-go` (entorno) e
+  `niquelandia-go` (lista de espera) — as duas vizinhas existem só na prévia. O Mercadinho tem um convite de equipe aberto
+  (`convidada@previa.com`). Na prévia, `cadastrar`/`esqueciSenha`/`convidarEquipe` devolvem `linkPrevia` (a tela abre o link
+  em vez de esperar o e-mail; no convite vem `''` quando, no real, nenhum convite que funcione seria enviado). Nada sai do navegador.
 - Foto: `VAGAS_API.enviarFoto(arquivo)` (File/Blob jpg|png|webp ≤ 1 MB, gravado direto no Storage com o login da pessoa;
   a tela reduz para ~512 px antes) → `{ok, temFoto:true}`; `apagarFoto()`; `fotoUrl(candidaturaId?)`. Erro de arquivo:
   `A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.`; falha no envio: `Não foi possível guardar a foto. Tente de novo.`
@@ -853,15 +986,15 @@ VAGAS_API.anuncios({ cidade: 'boa-vista-rr', paraHoje: true })
 | Tela | Para | RPCs principais |
 |---|---|---|
 | `index.html` (hoje: "em construção") → escolha/lembrança da cidade | todos | `cidades` |
-| `cidade.html` (`/boa-vista-rr/`, abre `?vaga=<código>`) | pessoa no celular | `anuncios`, `anuncio`, `anuncioVista`, `quero`, `pular`, `listaEspera`, `denunciar` |
+| `cidade.html` (`/uruacu-go/`, abre `?vaga=<código>`) | pessoa no celular | `anuncios`, `anuncio`, `anuncioVista`, `quero`, `pular`, `listaEspera`, `denunciar` |
 | `vaga.html` (`/v/<código>`, montada pela Pages Function) | todos | `anuncio` |
-| `entrar.html` (pessoa e `?tipo=empresa`; volta do link do e-mail) | todos | `cadastrar`, `entrar`, `esqueciSenha`, `reenviarConfirmacao`, `linkDoEndereco`, `confirmarLink`, `definirSenha`, `aceitarTermos` |
+| `entrar.html` (pessoa e `?tipo=empresa`; volta do link do e-mail; `?convite=` do convite de equipe) | todos | `cadastrar`, `entrar`, `esqueciSenha`, `reenviarConfirmacao`, `linkDoEndereco`, `confirmarLink`, `definirSenha`, `aceitarTermos`, `conviteDoEndereco`, `conviteEquipe`, `aceitarConviteEquipe` |
 | `eu.html` (currículo, candidaturas, conversa, quem viu, dados, referências) | pessoa no celular | `minhaPessoa`, `salvarPessoa`, `feed`, `minhasCandidaturas`, `verEmpresa`, `combinar`, `recusar`, `retirar`, `conversa`, `enviarMensagem`, `quemViuMeuContato`, `cortarAcesso`, `minhasReferencias`, `pedirReferencia`, `responderReferencia`, `publicarReferencias`, `exportarMeusDados`, `excluirConta` |
 | `testes.html`, `selo.html` | pessoa / todos | RPCs da 20261023 (`docs/VAGAS-TESTES.md`), `seloPublico` |
 | `referencia.html?t=` (empresa abre o pedido) e `referencias.html?t=` (página pública) | empresa / todos | `conviteReferencia`, `oferecerReferencia`, `referenciasPublicas` |
-| `empresa.html` (vagas, cartões, conversas, referências, dados) | empresa no computador | `minhasEmpresas`, `cadastrarEmpresa`, `salvarEmpresa`, `salvarAnuncio`, `publicarAnuncio`, `acaoAnuncio`, `anunciosDaEmpresa`, `anuncioNumeros`, `cartoes`, `decidir`, `contatoPessoa`, `marcarContratada`, `conversasDaEmpresa`, `oferecerReferencia`, `referenciasDaEmpresa` |
-| `operador.html` (fila, denúncias, empresas, cadastro assistido, zonas) | operador no computador | `opResumo`, `opEmpresas`, `opEmpresaDecidir`, `opEmpresaCadastrar`, `opVincularMembro`, `opAnuncios`, `opAnuncioDecidir`, `opDenuncias`, `opDenunciaDecidir`, `opModeracao`, `opReferencias`, `opReferenciaDecidir`, `cadastroAssistido`, `admZonaSalvar` |
-| `admin.html` (painel DISC) grupo "Vagas" | equipe | `admCidadeSalvar`, `admZonaSalvar`, `admOperadorSalvar`, `convidarOperador`, `op*` |
+| `empresa.html` (vagas, cartões, conversas, referências, dados) | empresa no computador | `minhasEmpresas`, `cadastrarEmpresa`, `salvarEmpresa`, `salvarAnuncio`, `publicarAnuncio`, `acaoAnuncio`, `anunciosDaEmpresa`, `anuncioNumeros`, `cartoes`, `decidir`, `contatoPessoa`, `marcarContratada`, `conversasDaEmpresa`, `oferecerReferencia`, `referenciasDaEmpresa`; aba Equipe (só dono(a)): `equipeDaEmpresa`, `convidarEquipe`, `cancelarConvite`, `removerMembro` (e "Sair da equipe" para recrutador(a)) |
+| `operador.html` (fila, denúncias, empresas, cadastro assistido, zonas) | operador no computador | `opResumo`, `opEmpresas`, `opEmpresaDecidir`, `opEmpresaCadastrar`, `opVincularMembro`, `opAnuncios`, `opAnuncioDecidir`, `opDenuncias`, `opDenunciaDecidir`, `opModeracao`, `opReferencias`, `opReferenciaDecidir`, `cadastroAssistido`, `opAssistidos`, `admZonaSalvar`; painel da praça: `indicadores` (= `opIndicadores`) |
+| `admin.html` (painel DISC) grupo "Vagas" | equipe | `admCidades`, `admCidadeSalvar` (com `porte`), `admZonaSalvar`, `admOperadores`, `admOperadorSalvar`, `convidarOperador`, `indicadores` (qualquer cidade), `op*` |
 
 ## 12. Ganchos e combinados com outras partes
 
@@ -892,6 +1025,25 @@ VAGAS_API.anuncios({ cidade: 'boa-vista-rr', paraHoje: true })
   `assets/marca/` para `vagas/comum/`; `npm test` falha se a cópia estiver desatualizada.
 - **Textos:** termos/privacidade/consentimentos/e-mails/WhatsApp vêm de `conteudo/vagas-textos/` (versão =
   `termos_versao`). As mensagens de erro desta especificação são fixas no banco (as telas mostram `e.message`).
+- **Onda 2 (20261024):**
+  - **Aviso de "a cidade abriu":** ainda NÃO existe caminho que leia a lista de espera para avisar (nem por e-mail nem por
+    WhatsApp; `avisado_em` não é usado) e nenhuma RPC devolve e-mail ou WhatsApp da lista. Quando o aviso entrar (Edge
+    Function com service_role, um envio por cidade aberta, marcando `avisado_em`), o WhatsApp guardado aqui é o canal
+    opcional; até lá a operação e a equipe veem só contagens (`opResumo.listaEspera` e o indicador
+    `lista_espera.detalhe.comWhatsapp`).
+  - **Indicadores aproximados:** "primeira resposta" usa `empresa_decidiu_em` (a ÚLTIMA decisão da empresa) ou a abertura da
+    conversa, o que vier antes; vaga renovada conta pela `publicado_em` atual; pessoas com selo contam por `vagas_pessoas.cidade_id`
+    ou `cidade2_id` na praça. Empresas buscando, pagantes, receita e e-mails do mês: `semDado` até existir a fonte.
+  - **Operação do entorno:** o painel de uma cidade do entorno só abre para quem opera aquela cidade (linha própria em
+    `vagas_operadores`) ou para a equipe; o operador da cidade-polo vê o entorno dentro do painel da praça dele.
+  - **Fuso:** testes de habilidade (20261023) passam a usar `vagas_interno.fuso_conta(user)` (cidade da pessoa → da empresa →
+    da operação → da conta assistida → `America/Sao_Paulo`); `vagas/js/testes.js` (`hoje(agora, fuso?)`, `dataDoIso(iso, fuso?)`)
+    faz a mesma conta na tela, com a mesma reserva.
+  - **Ordem:** rodar a 20261022 ou a 20261023 de novo depois da 20261024 volta as funções redefinidas à versão antiga
+    (inclusive `vagas_op_resumo` sem `repassePercentual`); rode a 20261024 em seguida.
+  - **Pedidos da operação ainda abertos:** "reverter um ato" (`vagas_op_reverter`) precisa de regra por ação (o que volta, quem
+    pode, se avisa a empresa) decidida com a operação/psicologia antes de existir; textos locais da cidade (WhatsApp da praça,
+    endereço do balcão, horário do mutirão) ficam para a fase 2 (coluna/tabela nova).
 
 ## 13. Para colocar no ar (depende do dono)
 
@@ -902,6 +1054,11 @@ VAGAS_API.anuncios({ cidade: 'boa-vista-rr', paraHoje: true })
 4. Resend: o domínio `gestaosemcaos.com.br` já verificado serve (remetente `vagas@…`).
 5. Turnstile (opcional, recomendado): chave pública em `vagas/js/config.js` (`TURNSTILE_SITE_KEY`) e `TURNSTILE_SECRET`.
 6. DNS + Cloudflare Pages (guia em `docs/VAGAS-HOSPEDAGEM.md`) e, na semana de abrir, plano Pro do Supabase.
-7. Trocar `MODO: 'previa'` por `'supabase'` em `vagas/js/config.js`.
-8. Revisar: zonas/bairros de Boa Vista e códigos IBGE da semente; textos jurídicos com advogado(a); lista de pontos fortes
-   e textos com a psicologia.
+7. Aplicar `20261024120000_vagas_onda2.sql` e `20261024120001_vagas_piloto_uruacu.sql` (nesta ordem, depois das 20261023;
+   idempotentes) e publicar de novo a Edge Function `vagas-conta` (ação `convite_equipe`). Conferir em `versao_banco()`.
+8. Abrir a praça piloto quando for a hora: `admCidadeSalvar({slug:'uruacu-go', status:'ativa'})` (nasce em `lista_espera`).
+   Bairros das zonas `regiao-leste` e `regiao-oeste` com a operação (`admZonaSalvar`).
+9. Trocar `MODO: 'previa'` por `'supabase'` em `vagas/js/config.js`.
+10. Revisar: zonas/bairros de Uruaçu com a operação; textos jurídicos com advogado(a) (inclusive o WhatsApp opcional da lista
+   de espera e a retenção dos convites, §7.1); lista de pontos fortes e textos com a psicologia (inclusive os e-mails
+   `convite-equipe.html` e `convite-equipe-outra-conta.html`).

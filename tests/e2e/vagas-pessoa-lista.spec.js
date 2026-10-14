@@ -130,7 +130,9 @@ test('cidade em lista de espera: e-mail obrigatório, resposta de sucesso e "Enq
   await expect(page.locator('#vg-espera-titulo')).toHaveText('Ainda não chegamos aqui');
   await expect(page.locator('#vg-espera-texto')).toContainText(espera.nome);
   await expect(page.locator('#vg-espera-texto')).not.toContainText(/\d+ pessoas/);
-  await expect(page.locator('#vg-espera-whatsapp')).toHaveCount(0);   // o banco ainda não aceita WhatsApp
+  // WhatsApp opcional: o campo aparece quando o cliente anuncia o recurso (banco-onda2, migração 20261024).
+  const comWhats = await page.evaluate(() => !!(window.VAGAS_API.RECURSOS && window.VAGAS_API.RECURSOS.listaEsperaWhatsapp));
+  await expect(page.locator('#vg-espera-whatsapp')).toHaveCount(comWhats ? 1 : 0);
   await expect(page.locator('#vg-espera-outra')).toHaveText('Ver as vagas de ' + ativa.nome);
   await page.click('#vg-espera-enviar');
   await expect(page.locator('#vg-espera-email-erro')).toHaveText('Digite um e-mail válido, como nome@exemplo.com');

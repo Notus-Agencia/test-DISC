@@ -1,7 +1,7 @@
 /*
  * Vagas sem Caos — configuração do site (vagas.gestaosemcaos.com.br). Edite aqui antes de publicar.
  *
- *   MODO                'previa'   — dados fictícios de Boa Vista guardados só neste navegador (vagas/js/api-previa.js);
+ *   MODO                'previa'   — dados fictícios de Uruaçu (GO) guardados só neste navegador (vagas/js/api-previa.js);
  *                       'supabase' — banco real. Só troque depois de aplicar a migração 20261022120000_vagas.sql e publicar a
  *                                    Edge Function vagas-conta (docs/SUPABASE.md, seção "Vagas sem Caos").
  *                       Na página: ?previa=1 liga a prévia para a aba toda; ?previa=0 desliga.
