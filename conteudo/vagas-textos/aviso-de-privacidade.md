@@ -9,7 +9,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma ferramenta da Gestão sem Caos · seg
 1. Quem cuida dos seus dados é a Gestão sem Caos. O operador da sua cidade trabalha por instrução dela e não vê o seu currículo.
 2. Pedimos só o que a vaga precisa: nome, e-mail, WhatsApp, cidade e zona, experiência, escolaridade, turnos, CNH, pretensão e os seus testes.
 3. Não pedimos, não guardamos e não existe campo para: idade, gênero, estado civil, filhos, gravidez, cor, religião, nacionalidade, saúde ou antecedentes. Foto é opcional e só aparece depois do Combinou.
-4. Até o Combinou, a empresa vê só um cartão sem nome e sem contato. O seu nome e o seu WhatsApp só aparecem quando você aceita conversar.
+4. Até o Combinou, a empresa vê só um cartão sem nome e sem contato. [REVISÃO JURÍDICA] Quando você toca em Combinou, a empresa passa a ver o seu nome, WhatsApp e e-mail (e a foto, se você enviou) e você passa a ver os da empresa. Você pode cortar o acesso depois.
 5. Candidatar-se usa a base legal de "procedimento preliminar de contrato" (LGPD, art. 7º, V). Não é preciso consentir de novo a cada vaga.
 6. Entrar no banco de talentos é opcional, separado e com prazo. Você pode sair quando quiser.
 7. Você vê quem abriu o seu contato, exporta os seus dados e apaga a conta na tela "Meus dados", sem pedir a ninguém.
@@ -75,7 +75,7 @@ O WhatsApp não é confirmado por código: confira o número. Se alguém deixar 
 |---|---|---|
 | Criar e manter a sua conta, entrar, recuperar senha | conta, contato, técnico | execução de contrato (art. 7º, V) |
 | Montar o seu cartão e enviar a sua candidatura à empresa que você escolheu | currículo, selos, cidade e zona | procedimento preliminar de contrato a pedido do titular (art. 7º, V) |
-| Mostrar o seu nome e contato à empresa depois do Combinou | nome, WhatsApp, currículo completo | execução de contrato / procedimento preliminar (art. 7º, V), com a sua confirmação na tela |
+| [REVISÃO JURÍDICA] Liberar o seu nome e contato à empresa quando você toca em Combinou (e o nome, o WhatsApp e o e-mail dela para você) | nome, WhatsApp, e-mail, currículo completo (a foto, se você enviou, tem a linha própria abaixo) | execução de contrato / procedimento preliminar (art. 7º, V), com a sua confirmação na tela |
 | Deixar o seu cartão visível na busca das empresas (banco de talentos) | cartão cego | **consentimento específico, com prazo** (art. 7º, I e art. 8º) |
 | Aplicar testes e emitir selo | respostas, nota, data | execução de contrato (art. 7º, V) |
 | Bloquear pedidos de dinheiro e documento, apurar denúncias, evitar fraude e golpe | conversas, técnico, registros | legítimo interesse (art. 7º, IX) e exercício regular de direitos (art. 7º, VI), com a proteção da pessoa como prioridade |
@@ -94,7 +94,7 @@ Não usamos os seus dados para decisão automatizada que afete você: não há o
 | Quem | Vê | Não vê |
 |---|---|---|
 | Empresa, antes do Combinou | cartão cego: zona, experiência, escolaridade, turnos, CNH, pretensão, selos (nota com margem) e "Referência de empresa verificada: sim" | nome, foto, contato, e-mail, currículo completo, nome da empresa que deu referência, pontos fortes e texto da referência, qualquer dado que não existe (seção 2.4) |
-| Empresa, depois do Combinou | nome, WhatsApp, currículo completo, as referências que você aceitou (com o nome da empresa) e a conversa | o que você escreveu para outras empresas; as suas outras candidaturas |
+| Empresa, depois do Combinou | [REVISÃO JURÍDICA] nome, WhatsApp, e-mail, currículo completo, a foto (se você enviou; linha abaixo), as referências que você aceitou (com o nome da empresa) e a conversa. Em troca, você vê o nome, o WhatsApp e o e-mail da empresa. Se você cortar o acesso, ela deixa de ver o seu contato | o que você escreveu para outras empresas; as suas outras candidaturas |
 | Empresa, depois do Combinou, se você enviou foto | a sua foto, enquanto a conversa daquela vaga estiver aberta | a foto em qualquer outra tela (cartão cego, busca, perfil público) |
 | Empresa que deixou uma referência | o que ela mesma escreveu | se você aceitou, recusou, ocultou ou excluiu (ela não é avisada); o resto da sua conta |
 | Quem tem o link do seu perfil público (só se você ligar) | primeiro nome, funções, selos e as referências que você aceitou | contato, zona, pretensão, candidaturas |

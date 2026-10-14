@@ -150,7 +150,7 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   (faixa salarial ou "R$ 120 por dia"), `dl#vg-vaga-dados` (Onde, Horário, Começa, Publicada/fica no ar até; diária: Data,
   Horário, Valor do dia, "Pagamento combinado direto com a empresa"), "O que a pessoa vai fazer" `#vg-vaga-descricao`,
   "O que precisa" `#vg-vaga-requisitos`, bloco do selo pedido (`.vg-selo--mini`: "Você já tem o selo de …" com nota e data, ou
-  "Você ainda não tem o selo de …" + `#vg-vaga-fazer-teste` "Fazer o teste agora (de 20 a 25 min)"; quem não tem o selo **pode**
+  "Você ainda não tem o selo de …" + `#vg-vaga-fazer-teste` "Fazer o teste agora (de 20 a 25 minutos)"; quem não tem o selo **pode**
   se candidatar), `#vg-aviso-golpe`, links "Denunciar esta vaga" (janela `#vg-janela-denuncia`: motivo em pílulas geradas de
   `VAGAS_REGRAS.MOTIVOS_DENUNCIA` (lista `{chave, texto}`: `golpe`, `documento`/`cobranca`, `discriminacao`, `falsa`, `ofensa`,
   `contato`, `outro` — a tela usa as chaves e textos de `regras.js`, nunca uma lista própria) + `#vg-denuncia-detalhe` ≤ 300 +

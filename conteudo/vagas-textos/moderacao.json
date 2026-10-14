@@ -197,7 +197,7 @@
       "alvo": "denuncia",
       "acao": "acatar",
       "titulo": "Denúncia revisada e acatada",
-      "texto_empresa": "Revisamos a denúncia sobre \"{{alvo_descricao}}\" e tomamos uma providência ({{detalhe}}). Quem foi denunciado não sabe quem denunciou. Obrigado.",
+      "texto_empresa": "Revisamos a denúncia sobre \"{{alvo_descricao}}\" e tomamos uma providência ({{detalhe}}). Não mostramos a quem foi denunciado quem denunciou. Obrigado.",
       "correcao": "",
       "lei": ""
     },
@@ -286,7 +286,7 @@
       "alvo": "denuncia",
       "acao": "acatar",
       "titulo": "Golpe confirmado: resposta a quem denunciou",
-      "texto_empresa": "Obrigado por denunciar. Confirmamos o problema: a vaga saiu do ar e a empresa foi suspensa. Se você mandou dinheiro ou documento, registre um boletim de ocorrência (pode ser online) e, se quiser, fale com a gente para orientação. Quem foi denunciado não sabe quem denunciou.",
+      "texto_empresa": "Obrigado por denunciar. Confirmamos o problema: a vaga saiu do ar e a empresa foi suspensa. Se você mandou dinheiro ou documento, registre um boletim de ocorrência (pode ser online) e, se quiser, fale com a gente para orientação. Não mostramos a quem foi denunciado quem denunciou.",
       "correcao": "",
       "lei": "termos de uso, seção 10.5; protocolo de golpe em docs/VAGAS-OPERACAO.md"
     },
