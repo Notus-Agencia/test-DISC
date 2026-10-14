@@ -401,7 +401,8 @@
         supervisao: achado.supervisao || 'online', situacao: achado.validoAte >= hoje() ? 'valido' : 'vencido' } });
     };
 
-    // WhatsApp opcional (celular com DDD); a resposta é a mesma com ou sem ele e não revela se o e-mail já estava.
+    // WhatsApp opcional (celular com DDD); a resposta é a mesma com ou sem ele e não revela se o e-mail já estava; o primeiro
+    // número gravado para o e-mail fica.
     H.vagas_lista_espera_entrar = function (a) {
       var d = obj(a.p_dados);
       var c = cidade(txt(d.cidade).trim().toLowerCase());
@@ -414,7 +415,8 @@
         linha = { cidade: c.slug, email: l.campos.email, perfil: l.campos.perfil, whatsapp: '', whatsappEm: null, criadoEm: agora() };
         st.listaEspera.push(linha);
       }
-      if (l.campos.whatsapp) { linha.whatsapp = l.campos.whatsapp; linha.whatsappEm = agora(); }
+      // Sem prova de dono do e-mail, o primeiro WhatsApp gravado fica (revisão de segurança, I5).
+      if (l.campos.whatsapp && !linha.whatsapp) { linha.whatsapp = l.campos.whatsapp; linha.whatsappEm = agora(); }
       return ok({ cidade: c.slug, interessados: interessados(c.slug) });
     };
 
@@ -1770,6 +1772,10 @@
       var janelaTxt = (R.INDICADORES[2].janela || {})[porte];
       var janela = janelaTxt === '72h' ? 72 * 3600000 : 7 * DIA;
       var testes = R.TESTES_SELO.map(function (x) { return x.id; });
+      // Números pequenos de PESSOAS protegidos (revisão de segurança, I1): até o fim de ontem no fuso; abaixo de 3, null + poucos.
+      var protege = porte !== 'grande';
+      var ate = protege ? Date.parse(hj + 'T00:00:00Z') - deslocamento(Date.parse(hj + 'T00:00:00Z'), fuso) : t;
+      var ontem = R.somarDias(hj, -1);
       // 1. Vagas no ar.
       var noArLista = st.anuncios.filter(function (an) { return naPraca(an.cidade) && noAr(an); });
       var porTesteVagas = {};
@@ -1780,10 +1786,17 @@
         .sort(function (p, q) { return q.valor - p.valor || R.AREAS.findIndex(function (x) { return x.id === p.area; }) - R.AREAS.findIndex(function (x) { return x.id === q.area; }); });
       // 2. Pessoas da praça com selo válido.
       var daPraca = Object.keys(st.pessoas).filter(function (uid) { var p = st.pessoas[uid]; return naPraca(p.cidade) || (p.cidade2 && naPraca(p.cidade2)); });
-      var comSelo = function (uid, teste) { return selos(uid).some(function (x) { return x.validoAte >= hj && (!teste || x.teste === teste); }); };
+      var comSelo = function (uid, teste) {
+        return selos(uid).some(function (x) {
+          var emitido = x.emitidoEm != null ? x.emitidoEm : Date.parse(x.data + 'T12:00:00Z');
+          return (!teste || x.teste === teste) && (protege ? emitido < ate && x.validoAte >= ontem : x.validoAte >= hj);
+        });
+      };
       var nSelo = daPraca.filter(function (uid) { return comSelo(uid); }).length;
       var porTesteSelo = {};
       testes.forEach(function (x) { porTesteSelo[x] = daPraca.filter(function (uid) { return comSelo(uid, x); }).length; });
+      var seloPoucos = protege && (nSelo < 3 || testes.some(function (x) { return porTesteSelo[x] < 3; }));
+      if (protege) testes.forEach(function (x) { if (porTesteSelo[x] < 3) porTesteSelo[x] = null; });
       // 3 e 4. Vagas publicadas nos últimos 30 dias (e há pelo menos a janela / 7 dias).
       var base = function (min) {
         return st.anuncios.filter(function (an) { return naPraca(an.cidade) && an.publicadoEm != null && an.status !== 'removido' && an.publicadoEm >= t - 30 * DIA && an.publicadoEm <= t - min; });
@@ -1810,7 +1823,11 @@
         dias.push(((primeira === null ? t : primeira) - k.criadoEm) / DIA);
       });
       // 6. Contratações. 7. Empresas ativas no mês.
-      var contratadas = st.candidaturas.filter(function (k) { var an = anuncio(k.anuncioId); return an && naPraca(an.cidade) && k.status === 'contratada'; });
+      var contratadas = st.candidaturas.filter(function (k) {
+        var an = anuncio(k.anuncioId);
+        return an && naPraca(an.cidade) && k.status === 'contratada' && (!protege || (k.contratadaEm != null && k.contratadaEm < ate));
+      });
+      var contrMes = contratadas.filter(function (k) { return k.contratadaEm >= mes; }).length;
       var empMes = st.empresas.filter(function (e) {
         if (!naPraca(e.cidade) || e.status !== 'ativa') return false;
         if (st.anuncios.some(function (an) { return an.empresaId === e.id && an.publicadoEm != null && an.publicadoEm >= mes; })) return true;
@@ -1849,7 +1866,7 @@
       var lancSelo = ((R.INDICADORES[1].alvo || {})[porte] || {});
       var ind = [
         indicadorJson('vagas_ativas', porte, noArLista.length, { detalhe: { porTeste: porTesteVagas, porArea: porArea } }),
-        indicadorJson('pessoas_com_selo_por_funcao', porte, nSelo, { detalhe: { porTeste: porTesteSelo,
+        indicadorJson('pessoas_com_selo_por_funcao', porte, protege && nSelo < 3 ? null : nSelo, { poucos: seloPoucos, ateOntem: protege, detalhe: { porTeste: porTesteSelo,
           alvoPorTeste: lancSelo.porTeste === undefined ? null : lancSelo.porTeste,
           alvoLancamentoPorTeste: (((R.INDICADORES[1].alvoLancamento || {})[porte] || {}).porTeste === undefined ? null : R.INDICADORES[1].alvoLancamento[porte].porTeste) } }),
         indicadorJson('vagas_3_interessados_72h', porte, p3, { semBase: b3.length === 0,
@@ -1858,7 +1875,9 @@
           detalhe: { base: b7.length, comCombinou: ok7 } }),
         indicadorJson('primeira_resposta_empresa_dias', porte, resp, { semBase: dias.length === 0, detalhe: { base: dias.length,
           semRespostaEm7DiasPct: dias.length ? Math.round(100 * dias.filter(function (x) { return x > 7; }).length / dias.length) : null } }),
-        indicadorJson('contratacoes', porte, contratadas.length, { detalhe: { mes: contratadas.filter(function (k) { return k.contratadaEm >= mes; }).length } }),
+        indicadorJson('contratacoes', porte, protege && contratadas.length < 3 ? null : contratadas.length, {
+          poucos: protege && (contratadas.length < 3 || contrMes < 3), ateOntem: protege,
+          detalhe: { mes: protege && contrMes < 3 ? null : contrMes } }),
         indicadorJson('empresas_ativas_mes', porte, empMes, null),
         indicadorJson('empresas_buscando_semana', porte, null, { semDado: true }),
         indicadorJson('empresas_pagantes', porte, null, { semDado: true }),
@@ -1874,15 +1893,16 @@
       var al = function (i) { return ind[i].alvo; };
       var lanc = function (i) { return ind[i].alvoLancamento; };
       var semDadoSelo = {};
+      var protegido = function (n, alvo) { return protege && n < 3 ? (alvo !== null && alvo !== undefined && alvo >= 3 ? false : null) : maiorIgual(n, alvo); };
       var gat = [gatilhoJson('antes_de_cobrar', lanc(0) !== null, [
         parteGatilho('Vagas no ar: ' + lanc(0) + ' ou mais', maiorIgual(noArLista.length, lanc(0))),
         parteGatilho('Empresas ativas no mês: ' + lanc(6) + ' ou mais', maiorIgual(empMes, lanc(6))),
-        parteGatilho('Pessoas com selo: ' + lanc(1) + ' ou mais', maiorIgual(nSelo, lanc(1)), semDadoSelo),
+        parteGatilho('Pessoas com selo: ' + lanc(1) + ' ou mais', protegido(nSelo, lanc(1)), semDadoSelo),
         parteGatilho('Vagas com 3 interessados com selo na janela: ' + al(2) + '% ou mais', maiorIgual(p3, al(2)), semDadoSelo),
-        parteGatilho('Contratações: ' + al(5) + ' ou mais', maiorIgual(contratadas.length, al(5)))])];
+        parteGatilho('Contratações: ' + al(5) + ' ou mais', protegido(contratadas.length, al(5)))])];
       var viva = gatilhoJson('praca_viva', al(0) !== null, [
         parteGatilho('Vagas no ar: ' + al(0) + ' ou mais', maiorIgual(noArLista.length, al(0))),
-        parteGatilho('Pessoas com selo: ' + al(1) + ' ou mais', maiorIgual(nSelo, al(1)), semDadoSelo),
+        parteGatilho('Pessoas com selo: ' + al(1) + ' ou mais', protegido(nSelo, al(1)), semDadoSelo),
         parteGatilho('Empresas ativas no mês: ' + al(6) + ' ou mais', maiorIgual(empMes, al(6))),
         parteGatilho('Empresas pagantes no mês: ' + al(8) + ' ou mais', null, { semDado: true }),
         parteGatilho('Primeira resposta da empresa: até ' + al(4) + ' dias', menorIgual(resp, al(4)))]);
@@ -1940,7 +1960,7 @@
           return cv.empresaId === e.id && (cv.status === 'aberto' || (cv.usadoEm || cv.encerradoEm || cv.criadoEm) > agora() - 30 * DIA);
         }).sort(function (p, q) { return q.criadoEm - p.criadoEm; }).slice(0, 50).map(conviteEquipeJson),
         limites: { convitesPorDia: 10, convitesHoje: (st.limites['equipe_convite_empresa|' + e.id] || []).filter(function (x) { return x > agora() - DIA; }).length,
-          membrosMax: 20, convitesAbertosMax: 20, validadeHoras: 72 } });
+          membrosMax: 20, convitesAbertosMax: 20, validadeHoras: 72, podeConvidar: e.status === 'ativa' && !!e.cnpjConferidoEm } });
     };
 
     H.vagas_equipe_convite_cancelar = function (a) {
@@ -1969,6 +1989,40 @@
       convitesEquipe().forEach(function (cv) { if (cv.empresaId === e.id && cv.criadoPor === m.userId && cv.status === 'aberto') { cv.status = 'cancelado'; cv.encerradoEm = agora(); } });
       registrar(e.cidade, 'empresa', a.p_membro === uid ? 'equipe_sair' : 'equipe_remover', 'empresa', e.id, '', { papel: m.papel });
       return ok({ removido: true, saiu: a.p_membro === uid });
+    };
+
+    H.vagas_equipe_tornar_dono = function (a) {
+      var c = contaAtual('empresa'); if (!c.ok) return c;
+      var e = empresa(a.p_empresa);
+      if (!e || !membro(e.id)) return erro('Empresa não encontrada.');
+      if (!membro(e.id, true)) return erro(SO_DONO_EQUIPE);
+      if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.', { suspensa: true });
+      var m = membroAtivo(e.id, a.p_membro);
+      if (!m) return erro('Esta pessoa não está na equipe.');
+      if (m.papel === 'dono') return ok({ membro: { userId: m.userId, papel: 'dono' }, duplicado: true });
+      m.papel = 'dono';
+      registrar(e.cidade, 'empresa', 'equipe_tornar_dono', 'empresa', e.id, '', { papel: 'dono' });
+      return ok({ membro: { userId: m.userId, papel: 'dono' }, duplicado: false });
+    };
+
+    H.vagas_op_empresa_dono = function (a) {
+      if (!st.sessao) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
+      var e = empresa(a.p_empresa);
+      if (!e) return erro('Empresa não encontrada.');
+      var papel = papelCidade(e.cidade);
+      if (!papel || papel === 'moderador') return erro(R.MSG.SEM_PERMISSAO);
+      if (papel === 'operador' && st.membros.some(function (d) { return d.empresaId === e.id && d.ativo && d.papel === 'dono'; })) {
+        return erro('A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.');
+      }
+      var motivo = R.limparTexto(txt(a.p_motivo), 300);
+      if (!motivo) return erro('Informe o motivo.');
+      var em = R.normalizarEmail(a.p_email);
+      if (!em) return erro('E-mail inválido.');
+      var m = st.membros.filter(function (x) { var u = usuario(x.userId); return x.empresaId === e.id && x.ativo && u && u.email === em; })[0];
+      if (!m) return erro('Esta pessoa não está na equipe da empresa.');
+      m.papel = 'dono';
+      registrar(e.cidade, papel, 'empresa_dono', 'empresa', e.id, motivo, { papel: 'dono' });
+      return ok({ empresa: { id: e.id }, membro: { papel: 'dono' } });
     };
 
     H.vagas_equipe_convite = function (a) {
@@ -2109,6 +2163,7 @@
         if (!e || !membro(e.id)) return erro('Empresa não encontrada.');
         if (!membro(e.id, true)) return erro('Só quem é dono(a) da conta da empresa pode convidar pessoas para a equipe.');
         if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.', { suspensa: true });
+        if (e.status !== 'ativa' || !e.cnpjConferidoEm) return erro('Só empresa verificada pela Gestão sem Caos pode convidar pessoas para a equipe.');
         if (st.membros.some(function (m) { var u = usuario(m.userId); return m.empresaId === e.id && m.ativo && u && u.email === em; })) {
           return erro('Esta pessoa já faz parte da equipe.');
         }
@@ -2144,6 +2199,14 @@
         if (!uid) return erro(R.MSG.SESSAO, { sessaoExpirada: true });
         if (eAdmin()) return erro('Esta conta também acessa o painel DISC. Fale com a Gestão sem Caos para excluir.');
         if (!st.contas[uid]) return erro('Conta não encontrada.');
+        var donaUnica = st.membros.some(function (m) {
+          return m.userId === uid && m.ativo && m.papel === 'dono' &&
+            !st.membros.some(function (d) { return d.empresaId === m.empresaId && d.ativo && d.papel === 'dono' && d.userId !== uid; }) &&
+            st.membros.some(function (o) { return o.empresaId === m.empresaId && o.ativo && o.userId !== uid; });
+        });
+        if (donaUnica) {
+          return erro('Você é a única pessoa dona de uma empresa que tem equipe. Antes de excluir a conta, torne outra pessoa da equipe dona (aba Equipe da empresa) ou remova a equipe.');
+        }
         var cands = st.candidaturas.filter(function (k) { return k.pessoaId === uid; }).map(function (k) { return k.id; });
         var convs = st.conversas.filter(function (v) { return cands.indexOf(v.candidaturaId) >= 0; }).map(function (v) { return v.id; });
         st.mensagens = st.mensagens.filter(function (m) { return convs.indexOf(m.conversaId) < 0; });

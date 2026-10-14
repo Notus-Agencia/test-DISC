@@ -227,7 +227,8 @@ test('guardas: tabela nova com RLS e sem acesso direto; funções novas com a li
     'vagas_selo_publico', 'vagas_testes_catalogo']);
   for (const fn of ['vagas_op_indicadores', 'vagas_equipe_empresa', 'vagas_equipe_convite', 'vagas_equipe_convite_aceitar',
     'vagas_equipe_convite_cancelar', 'vagas_equipe_remover', 'vagas_adm_cidade_salvar', 'vagas_pessoa_salvar', 'vagas_iniciar_tentativa',
-    'vagas_op_resumo', 'vagas_adm_cidades', 'vagas_adm_operadores', 'vagas_op_assistidos']) {
+    'vagas_op_resumo', 'vagas_adm_cidades', 'vagas_adm_operadores', 'vagas_op_assistidos', 'vagas_eu', 'vagas_equipe_tornar_dono',
+    'vagas_op_empresa_dono']) {
     const r = (await db.query(`select bool_and(has_function_privilege('authenticated', p.oid, 'execute')) a, bool_or(has_function_privilege('anon', p.oid, 'execute')) b
       from pg_proc p where p.proname = $1 and p.pronamespace = 'public'::regnamespace`, [fn])).rows[0];
     assert.deepEqual(r, { a: true, b: false }, fn);
@@ -235,6 +236,9 @@ test('guardas: tabela nova com RLS e sem acesso direto; funções novas com a li
   const srv = (await db.query(`select bool_or(has_function_privilege('authenticated', p.oid, 'execute')) a, bool_or(has_function_privilege('anon', p.oid, 'execute')) b,
     bool_and(has_function_privilege('service_role', p.oid, 'execute')) s from pg_proc p where p.proname = 'vagas_conta_convite_equipe'`)).rows[0];
   assert.deepEqual(srv, { a: false, b: false, s: true });
+  const srv2 = (await db.query(`select bool_or(has_function_privilege('authenticated', p.oid, 'execute')) a, bool_or(has_function_privilege('anon', p.oid, 'execute')) b,
+    bool_and(has_function_privilege('service_role', p.oid, 'execute')) s from pg_proc p where p.proname = 'vagas_conta_exclusao_conferir'`)).rows[0];
+  assert.deepEqual(srv2, { a: false, b: false, s: true });
   // Mesmo que alguém dê EXECUTE a authenticated (ex.: aplicar a 20261022 de novo), a função de serviço recusa por dentro.
   await db.query(`grant execute on function public.vagas_conta_convite_equipe(uuid, uuid, text, text, text) to authenticated`);
   erro(await de(S.adminDisc)('vagas_conta_convite_equipe', S.adminDisc, crypto.randomUUID(), 'x@y.com', '', ''), 'Sem permissão.');
@@ -284,10 +288,12 @@ test('piloto: Uruaçu (GO) em lista de espera, pequena, fuso de Brasília, com a
   assert.equal((await db.query(`select status from public.vagas_cidades where slug = 'boa-vista-rr'`)).rows[0].status, 'ativa');
   await db.query(`update public.vagas_cidades set status = 'rascunho' where slug = 'boa-vista-rr'`);
   assert.equal((await db.query(`select count(*)::int n from public.vagas_moderacao where acao = 'piloto_definido'`)).rows[0].n, 1);
-  // A troca da lista de zonas pelo gancho: zona com o mesmo slug recebe os bairros do arquivo.
-  await db.query(`update public.vagas_zonas set bairros = '{}' where slug = 'centro' and cidade_id = (select id from public.vagas_cidades where slug = 'uruacu-go')`);
+  // Rodar a semente de novo NÃO desfaz o que o painel mudou numa zona (revisão de segurança: só acrescenta zona nova).
+  const centro = `slug = 'centro' and cidade_id = (select id from public.vagas_cidades where slug = 'uruacu-go')`;
+  await db.query(`update public.vagas_zonas set bairros = '{Bairro do Painel}' where ` + centro);
   await db.query(ler(DADOS));
-  assert.ok(ok(await anon('vagas_cidades_publicas')).cidades[0].zonas[0].bairros.includes('Centro'));
+  assert.deepEqual(ok(await anon('vagas_cidades_publicas')).cidades[0].zonas[0].bairros, ['Bairro do Painel']);
+  await db.query(`update public.vagas_zonas set bairros = '{Centro,Setor Central,Vila Santana,Loteamento Santana}' where ` + centro);
 
   // A equipe abre Uruaçu pelo painel (só o status muda: porte, fuso e zonas ficam).
   const aberta = ok(await de(S.adminDisc)('vagas_adm_cidade_salvar', { slug: 'uruacu-go', status: 'ativa' })).cidade;
@@ -340,8 +346,10 @@ test('lista de espera: WhatsApp opcional (celular com DDD), resposta neutra, sa�
   assert.deepEqual([r1, r2, r3, r4], Array(4).fill({ ok: true, cidade: 'espera-go', interessados: 0 }));
   assert.deepEqual(await linha('ana@exemplo.com'), { whatsapp: '5562991234567', tem_em: true }, 'só algarismos; sem WhatsApp de novo, o que estava fica');
   assert.deepEqual(await linha('beto@exemplo.com'), { whatsapp: '', tem_em: false });
-  ok(await ip('vagas_lista_espera_entrar', { cidade: 'espera-go', email: 'ana@exemplo.com', whatsapp: '62 97777-6666' }));
-  assert.equal((await linha('ana@exemplo.com')).whatsapp, '5562977776666', 'um WhatsApp novo substitui o anterior');
+  // Revisão de segurança (I5): ninguém prova ser dono do e-mail; um terceiro não troca o número já gravado (resposta igual).
+  assert.deepEqual(ok(await ip('vagas_lista_espera_entrar', { cidade: 'espera-go', email: 'ana@exemplo.com', whatsapp: '62 97777-6666' })),
+    { ok: true, cidade: 'espera-go', interessados: 0 });
+  assert.equal((await linha('ana@exemplo.com')).whatsapp, '5562991234567', 'o primeiro WhatsApp gravado fica');
   // Ninguém lê a lista direto (nem a equipe pela API).
   await rejeita(como('authenticated', S.adminDisc, `select whatsapp from public.vagas_lista_espera`), /permission denied/);
   await rejeita(como('anon', null, `select email from public.vagas_lista_espera`), /permission denied/);
@@ -501,15 +509,18 @@ test('indicadores: só a própria cidade (operador), todas (equipe); valores da 
   assert.equal(v.vagas_ativas.cor, 'alerta');
   assert.deepEqual(v.vagas_ativas.detalhe.porTeste, { atendimento: 1, vendas: 0, administrativo: 0, caixa: 1, portugues: 0 });
   assert.deepEqual(v.vagas_ativas.detalhe.porArea.map((x) => [x.area, x.valor]).sort(), [['atendimento', 1], ['caixa', 1], ['logistica', 1]]);
+  // Cidade pequena (revisão de segurança, I1): contagens de pessoas até ontem; abaixo de 3, null + poucos.
   assert.equal(v.pessoas_com_selo_por_funcao.valor, 3);
-  assert.equal(v.pessoas_com_selo_por_funcao.detalhe.porTeste.atendimento, 3);
+  assert.deepEqual(v.pessoas_com_selo_por_funcao.detalhe.porTeste, { atendimento: 3, vendas: null, administrativo: null, caixa: null, portugues: null });
+  assert.deepEqual([v.pessoas_com_selo_por_funcao.poucos, v.pessoas_com_selo_por_funcao.ateOntem], [true, true]);
   assert.deepEqual([v.pessoas_com_selo_por_funcao.alvo, v.pessoas_com_selo_por_funcao.alvoLancamento], [400, 150]);
   assert.deepEqual([v.vagas_3_interessados_72h.valor, v.vagas_3_interessados_72h.detalhe],
     [50, { base: 2, comTres: 1, janelaHoras: 168 }], 'a1 teve 3 interessados com selo dentro de 7 dias; a2, 1');
   assert.equal(v.vagas_3_interessados_72h.cor, 'atencao', '50 é 70% ou mais do alvo de 70');
   assert.deepEqual([v.vagas_combinou_7d.valor, v.vagas_combinou_7d.detalhe], [50, { base: 2, comCombinou: 1 }]);
   assert.equal(v.vagas_combinou_7d.hipotese, true);
-  assert.deepEqual([v.contratacoes.valor, v.contratacoes.detalhe], [1, { mes: 1 }]);
+  assert.deepEqual([v.contratacoes.valor, v.contratacoes.detalhe, v.contratacoes.poucos, v.contratacoes.cor], [null, { mes: null }, true, null],
+    '1 contratação (e de hoje): não aparece');
   assert.equal(v.empresas_ativas_mes.valor, 1);
   assert.equal(typeof v.primeira_resposta_empresa_dias.valor, 'number');
   assert.equal(v.primeira_resposta_empresa_dias.detalhe.base, 4, '1 respondida + 3 sem resposta há 7 dias ou mais');
@@ -640,7 +651,8 @@ test('equipe: lista para quem é dono(a); remover nunca deixa a empresa sem dono
   assert.equal(porEmail['nova-pessoa@onda2.teste'], 'pendente');
   assert.ok(lista.convites.some((c) => c.email === 'tardia@onda2.teste' && c.status === 'cancelado'));
   assert.equal(porEmail['vence@onda2.teste'], 'vencido');
-  assert.deepEqual(Object.keys(lista.limites).sort(), ['convitesAbertosMax', 'convitesHoje', 'convitesPorDia', 'membrosMax', 'validadeHoras']);
+  assert.deepEqual(Object.keys(lista.limites).sort(), ['convitesAbertosMax', 'convitesHoje', 'convitesPorDia', 'membrosMax', 'podeConvidar', 'validadeHoras']);
+  assert.equal(lista.limites.podeConvidar, true, 'empresa verificada');
   erro(await de(S.pessoa)('vagas_equipe_empresa', S.empresa), 'Esta área é para empresas.');
   // A última pessoa dona não sai nem é removida; com duas donas, uma pode sair.
   erro(await de(S.dono)('vagas_equipe_remover', S.empresa, S.dono), 'A empresa precisa ter pelo menos uma pessoa como dona. Esta pessoa não pode sair da equipe.');
@@ -673,6 +685,7 @@ test('equipe: lista para quem é dono(a); remover nunca deixa a empresa sem dono
   // Limites: 3 por e-mail por empresa por dia; 10 por empresa por dia (as tentativas contam).
   const dona2 = await contaVagas('empresa');
   const emp2 = ok(await de(dona2)('vagas_empresa_cadastrar', { cnpj: cnpjCom('321654980003'), razaoSocial: 'Limites Ltda', cidade: 'uruacu-go' })).empresa.id;
+  ok(await de(S.operador)('vagas_op_empresa_decidir', emp2, 'aprovar', 'CNPJ conferido'));   // só empresa verificada convida
   for (let i = 0; i < 3; i++) ok(await servico('vagas_conta_convite_equipe', dona2, emp2, 'mesmo@onda2.teste', '', ''));
   assert.equal((await servico('vagas_conta_convite_equipe', dona2, emp2, 'mesmo@onda2.teste', '', '')).bloqueado, true);
   for (let i = 0; i < 6; i++) ok(await servico('vagas_conta_convite_equipe', dona2, emp2, 'outro' + i + '@onda2.teste', '', ''));
@@ -819,4 +832,134 @@ test('pedidos da operação: resumo com repasse; cidades e operadores só para a
   for (const e of ['ana.souza@empresa.com.br', 'X@Y.CO', 'sem-arroba']) {
     assert.equal((await db.query(`select vagas_interno.mascarar_email($1) m`, [e])).rows[0].m, mascararEmailVagas(e.toLowerCase()), e);
   }
+});
+
+test('revisão de segurança (B1): empresa não verificada não convida; nome com telefone/link não vai no e-mail', async () => {
+  exigirBanco();
+  await db.query(`delete from public.vagas_limites where tipo like 'equipe\\_convite%'`);
+  const convidar = (uid, empresa, email) => servico('vagas_conta_convite_equipe', uid, empresa, email, '', '203.0.113.77');
+  // A sonda da revisão: empresa em análise, nome do cadastro com telefone e site.
+  const golpista = await contaVagas('empresa', { meta: { nome: 'Ligue 62 99999-0000 ou acesse vagas-premium.com' } });
+  const emp = ok(await de(golpista)('vagas_empresa_cadastrar', { cnpj: cnpjCom('555444333001'), razaoSocial: 'Recrutamento Rapido Ltda',
+    cidade: 'uruacu-go' })).empresa;
+  assert.equal(emp.status, 'em_analise');
+  const r = erro(await convidar(golpista, emp.id, 'vitima-qualquer@gmail.com'), 'Só empresa verificada pela Gestão sem Caos pode convidar pessoas para a equipe.');
+  assert.deepEqual(Object.keys(r).sort(), ['erro', 'ok'], 'sem token, destino nem nome');
+  assert.equal((await db.query(`select count(*)::int n from public.vagas_equipe_convites where email = 'vitima-qualquer@gmail.com'`)).rows[0].n, 0);
+  assert.equal(ok(await de(golpista)('vagas_equipe_empresa', emp.id)).limites.podeConvidar, false);
+  // Verificada pela operação: convida, mas o nome com contato/link não vai para o e-mail (só o nome da empresa).
+  ok(await de(S.operador)('vagas_op_empresa_decidir', emp.id, 'aprovar', 'CNPJ conferido'));
+  assert.equal(ok(await de(golpista)('vagas_equipe_empresa', emp.id)).limites.podeConvidar, true);
+  const c = ok(await convidar(golpista, emp.id, 'vitima-qualquer@gmail.com'));
+  assert.equal(c.convidadoPor, '', 'nome barrado pelo filtro de contato e link');
+  assert.ok(!/99999|premium|Ligue/.test(JSON.stringify(c)));
+  // Nome comum passa.
+  const limpo = await contaVagas('empresa', { meta: { nome: 'Maria Souza' } });
+  const emp2 = ok(await de(limpo)('vagas_empresa_cadastrar', { cnpj: cnpjCom('555444333002'), razaoSocial: 'Loja Limpa Ltda', cidade: 'uruacu-go' })).empresa;
+  ok(await de(S.operador)('vagas_op_empresa_decidir', emp2.id, 'aprovar', 'CNPJ conferido'));
+  assert.equal(ok(await convidar(limpo, emp2.id, 'colega@exemplo.com')).convidadoPor, 'Maria Souza');
+  S.golpista = golpista;
+  S.empresaGolpe = emp.id;
+});
+
+test('revisão de segurança (I1): em cidade pequena a contagem de pessoas com selo é de ontem (não sobe na hora); em cidade grande, na hora', async () => {
+  exigirBanco();
+  const selo = (p, quando) => db.query(`insert into public.vagas_selos (codigo, user_id, teste, nota, emitido_em, valido_ate)
+    values ($1, $2, 'administrativo', 80, ${quando}, (now() + interval '300 days')::date)`,
+  [Array.from({ length: 8 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[crypto.randomInt(32)]).join(''), p]);
+  const novas = [];
+  for (let i = 0; i < 3; i++) {
+    const p = await contaVagas('pessoa');
+    ok(await de(p)('vagas_pessoa_salvar', pessoaDados({ nome: 'Pessoa Selo Hoje' + i, whatsapp: '62 9911' + (20000 + i) })));
+    novas.push(p);
+  }
+  const ind = async (uid, cidade) => Object.fromEntries(ok(await de(uid)('vagas_op_indicadores', cidade)).indicadores.map((i) => [i.chave, i]));
+  const antes = await ind(S.operador, 'uruacu-go');
+  await selo(novas[0], 'now()');   // a sonda: 1 selo de "administrativo" HOJE
+  const depois = await ind(S.operador, 'uruacu-go');
+  assert.deepEqual(depois.pessoas_com_selo_por_funcao, antes.pessoas_com_selo_por_funcao, 'nada muda no mesmo dia');
+  assert.equal(depois.pessoas_com_selo_por_funcao.detalhe.porTeste.administrativo, null);
+  // No dia seguinte (selos de ontem): 1 e 2 continuam "poucos"; com 3, o número aparece.
+  await db.query(`update public.vagas_selos set emitido_em = now() - interval '1 day' where user_id = $1`, [novas[0]]);
+  await selo(novas[1], `now() - interval '1 day'`);
+  assert.equal((await ind(S.operador, 'uruacu-go')).pessoas_com_selo_por_funcao.detalhe.porTeste.administrativo, null);
+  await selo(novas[2], `now() - interval '1 day'`);
+  const tres = await ind(S.operador, 'uruacu-go');
+  assert.equal(tres.pessoas_com_selo_por_funcao.detalhe.porTeste.administrativo, 3);
+  assert.equal(tres.pessoas_com_selo_por_funcao.valor, antes.pessoas_com_selo_por_funcao.valor + 3);
+  // Cidade grande: na hora e sem esconder (lá ninguém sabe quem fez a prova).
+  const p = await contaVagas('pessoa');
+  ok(await de(p)('vagas_pessoa_salvar', pessoaDados({ cidade: 'capital-go', zona: 'centro', nome: 'Pessoa Capital Teste', whatsapp: '62 99112-0000' })));
+  await selo(p, 'now()');
+  const cap = await ind(S.operadorCapital, 'capital-go');
+  assert.deepEqual([cap.pessoas_com_selo_por_funcao.valor, cap.pessoas_com_selo_por_funcao.poucos, cap.pessoas_com_selo_por_funcao.ateOntem], [1, false, false]);
+});
+
+test('revisão de segurança (I2): a última dona com equipe não apaga a conta; dona torna outra pessoa dona; operação nomeia; gatilho evita empresa sem dona', async () => {
+  exigirBanco();
+  await db.query(`delete from public.vagas_limites where tipo like 'equipe\\_convite%'`);
+  // Empresa verificada com dona + recrutadora (pelo convite).
+  const dona = await contaVagas('empresa', { meta: { nome: 'Dona Unica' } });
+  const emp = ok(await de(dona)('vagas_empresa_cadastrar', { cnpj: cnpjCom('555444333003'), razaoSocial: 'Empresa Dona Ltda', cidade: 'uruacu-go' })).empresa.id;
+  ok(await de(S.operador)('vagas_op_empresa_decidir', emp, 'aprovar', 'CNPJ conferido'));
+  const recrut = await contaVagas('empresa', { email: 'recrutadora-dona@onda2.teste' });
+  const cv = ok(await servico('vagas_conta_convite_equipe', dona, emp, 'recrutadora-dona@onda2.teste', '', '203.0.113.78'));
+  ok(await de(recrut)('vagas_equipe_convite_aceitar', cv.token));
+  const conferir = (uid) => servico('vagas_conta_exclusao_conferir', uid);
+  erro(await conferir(dona), /^Você é a única pessoa dona de uma empresa que tem equipe/);
+  ok(await conferir(recrut));
+  await rejeita(rpcComo('authenticated', dona, 'vagas_conta_exclusao_conferir', [dona]), /permission denied/);
+  // A dona torna a recrutadora dona; aí pode sair.
+  erro(await de(recrut)('vagas_equipe_tornar_dono', emp, dona), 'Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.');
+  erro(await de(dona)('vagas_equipe_tornar_dono', emp, crypto.randomUUID()), 'Esta pessoa não está na equipe.');
+  assert.equal(ok(await de(dona)('vagas_equipe_tornar_dono', emp, recrut)).duplicado, false);
+  assert.equal(ok(await de(dona)('vagas_equipe_tornar_dono', emp, recrut)).duplicado, true);
+  ok(await conferir(dona));
+  // Operação nomeia dona: operador só em empresa SEM dona; equipe sempre; motivo obrigatório; só quem já está na equipe.
+  erro(await de(S.operador)('vagas_op_empresa_dono', emp, 'recrutadora-dona@onda2.teste', 'pedido'),
+    'A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.');
+  erro(await de(S.moderador)('vagas_op_empresa_dono', emp, 'x@y.com', 'm'), 'Sem permissão.');
+  erro(await de(S.operadorCapital)('vagas_op_empresa_dono', emp, 'x@y.com', 'm'), 'Sem permissão.');
+  erro(await de(S.adminDisc)('vagas_op_empresa_dono', emp, 'recrutadora-dona@onda2.teste', ''), 'Informe o motivo.');
+  erro(await de(S.adminDisc)('vagas_op_empresa_dono', emp, 'ninguem@onda2.teste', 'conferido por telefone'), 'Esta pessoa não está na equipe da empresa.');
+  ok(await de(S.adminDisc)('vagas_op_empresa_dono', emp, 'recrutadora-dona@onda2.teste', 'conferido por telefone'));
+  const reg = (await db.query(`select acao, motivo from public.vagas_moderacao where alvo_id = $1 and acao in ('equipe_tornar_dono', 'empresa_dono') order by id`, [emp])).rows;
+  assert.deepEqual(reg.map((x) => x.acao), ['equipe_tornar_dono', 'empresa_dono']);
+  assert.equal(reg[1].motivo, 'conferido por telefone');
+  // Rede de segurança: a conta da dona some por fora da Function (painel do Supabase) deixando a equipe sem dona:
+  // a pessoa mais antiga que restou vira dona, com registro.
+  const dona2 = await contaVagas('empresa');
+  const emp3 = ok(await de(dona2)('vagas_empresa_cadastrar', { cnpj: cnpjCom('555444333004'), razaoSocial: 'Empresa Gatilho Ltda', cidade: 'uruacu-go' })).empresa.id;
+  ok(await de(S.operador)('vagas_op_empresa_decidir', emp3, 'aprovar', 'CNPJ conferido'));
+  const r2 = await contaVagas('empresa', { email: 'r2-gatilho@onda2.teste' });
+  ok(await de(r2)('vagas_equipe_convite_aceitar', ok(await servico('vagas_conta_convite_equipe', dona2, emp3, 'r2-gatilho@onda2.teste', '', '203.0.113.79')).token));
+  await db.query(`delete from auth.users where id = $1`, [dona2]);
+  assert.deepEqual((await db.query(`select papel, ativo from public.vagas_empresa_membros where empresa_id = $1`, [emp3])).rows, [{ papel: 'dono', ativo: true }]);
+  assert.equal((await db.query(`select count(*)::int n from public.vagas_moderacao where alvo_id = $1 and acao = 'dono_automatico'`, [emp3])).rows[0].n, 1);
+});
+
+test('revisão de segurança (I3): conta criada pelo convite e nunca confirmada some 30 dias depois do convite vencer', async () => {
+  exigirBanco();
+  await db.query(`delete from public.vagas_limites where tipo like 'equipe\\_convite%'`);
+  const conviteConta = async (email, confirmada) => {
+    const id = await usuarioAuth(email, { app: { produto: 'vagas', tipo: 'empresa', convite: true }, confirmado: confirmada });
+    ok(await servico('vagas_conta_registrar', id, { tipo: 'empresa' }));
+    return id;
+  };
+  const velha = await conviteConta('velha-convite@onda2.teste', false);
+  const recente = await conviteConta('recente-convite@onda2.teste', false);
+  const confirmou = await conviteConta('confirmou-convite@onda2.teste', true);
+  const comConvite = await conviteConta('aberto-convite@onda2.teste', false);
+  await db.query(`set session_replication_role = replica`);
+  await db.query(`update public.vagas_contas set criado_em = now() - interval '40 days' where user_id = any ($1)`, [[velha, confirmou, comConvite]]);
+  await db.query(`set session_replication_role = origin`);
+  // A "aberto-convite" tem um convite ainda no prazo: fica. Um convite qualquer dispara a limpeza.
+  await db.query(`insert into public.vagas_equipe_convites (empresa_id, email, token_hash, criado_por, expira_em)
+    values ($1, 'aberto-convite@onda2.teste', $2, $3, now() + interval '2 days')`, [S.empresa, crypto.randomBytes(32).toString('hex'), S.dono]);
+  ok(await servico('vagas_conta_convite_equipe', S.dono, S.empresa, 'outra-pessoa-limpeza@onda2.teste', '', '203.0.113.80'));
+  const existe = async (id) => (await db.query(`select count(*)::int n from auth.users where id = $1`, [id])).rows[0].n === 1;
+  assert.deepEqual([await existe(velha), await existe(recente), await existe(confirmou), await existe(comConvite)], [false, true, true, true]);
+  assert.equal((await db.query(`select count(*)::int n from public.vagas_contas where user_id = $1`, [velha])).rows[0].n, 0, 'a conta do Vagas some junto');
+  // Rodar de novo (ou agendado) não apaga mais nada.
+  assert.equal((await db.query(`select vagas_interno.contas_convite_limpar() n`)).rows[0].n, 0);
 });
