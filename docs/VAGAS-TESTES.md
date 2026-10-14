@@ -18,7 +18,7 @@ numa situação de trabalho, nunca "o que você faria".
 | Banco FICTÍCIO para os testes automáticos (gerado, determinístico, rotulado "FICTÍCIO") | `tests/fixtures/vagas-testes/` |
 | Validador e gerador (SQL de carga, RELATORIO.md, caderno de revisão, banco fictício) | `scripts/montar-testes.mjs` (`--checar` roda no `npm test`) |
 | Textos e formatação nas telas (módulo puro, sem rede) | `vagas/js/testes.js` (`window.VAGAS_TESTES`) |
-| Telas da pessoa (onda 2): catálogo, instruções, prova, resultado e vagas que pedem o selo | `vagas/testes.html` + `vagas/js/testes-tela.js` |
+| Telas da pessoa (onda 2): catálogo, instruções, prova, resultado e vagas que sugerem o teste | `vagas/testes.html` + `vagas/js/testes-tela.js` |
 | Conferência pública do selo (onda 2) | `vagas/selo.html` + `vagas/js/selo.js` |
 | Cliente das RPCs (`testesCatalogo`, `iniciarTentativa`, `proximaQuestao`, `responder`, `registrarSinal`, `finalizar`, `meusSelos`, `seloPublico`) | `vagas/js/api.js` (`METODOS`) |
 | Prévia: as mesmas RPCs com um banco de **DEMONSTRAÇÃO** (18 questões por teste, escritas só para a prévia; nunca as reais) | `vagas/js/api-previa.js` (`TESTES_DEMONSTRACAO`) |
@@ -65,8 +65,9 @@ privada (gerado pelo validador; não tem gabarito, mas também fica fora do repo
 - **Nota** = arredonda(100 × acertos ÷ total), de 0 a 100. A tela mostra os acertos por competência, **nunca quais
   questões a pessoa errou** (isso entregaria o gabarito).
 - **Selo** com nota ≥ **60** (ver [Nota de corte](#nota-de-corte-60-provisória)), válido por **12 meses**, sempre com a
-  margem: **"Nota 82 (±10)"**. Nunca "aprovado" ou "reprovado"; abaixo do corte a tela diz o que estudar e quando pode
-  refazer. A nota mínima e o nº de questões vêm do banco (`notaMinima` no catálogo, `questoes` no selo): quando o Angoff
+  margem: **"Nota 82 (±10)"** (no resultado, por extenso: "Nota 82 (margem de cerca de 10 pontos, para mais ou para menos)").
+  Nunca "aprovado" ou "reprovado"; abaixo do corte a tela diz onde a pessoa acertou menos (como pista, não medida: cada parte
+  tem 3 ou 4 questões) e quando pode refazer. A nota mínima e o nº de questões vêm do banco (`notaMinima` no catálogo, `questoes` no selo): quando o Angoff
   mudar `vagas_testes.nota_minima`, as telas acompanham sem mexer no JS.
 - **Sinais de fraude** são só registrados (não anulam nada sozinhos): resposta em menos de 3 s depois de mostrada; troca
   de aba e cópia de texto informadas pelo aparelho. Alertas: `respostas_rapidas` (≥ 1/3 das questões), `troca_aba`
@@ -110,6 +111,8 @@ texto pronto para a tela (os mesmos textos em `VAGAS_TESTES.MENSAGENS`, conferid
 validoAte: 'AAAA-MM-DD', supervisao: 'online' | 'presencial', situacao: 'valido' | 'vencido' | 'revogado'}` (`questoes`
 = quantas questões a prova daquele selo teve). Código: 8 caracteres de `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (sem I, O, 0,
 1), mostrado como `K7M2-QX9A` (`formatarCodigo`). Texto na tela: `exibirSelo(selo)` → `linhaNota: 'Nota 82 (±10)'`,
+`rotuloSituacao` "Válido" / "Vencido" / "Sem validade" (revogado; a descrição diz "Este selo não vale mais. Se quiser, peça à
+pessoa para fazer o teste de novo." e nunca "cancelado", revisão C da psicologia, 2.6),
 `TEXTO_SELO: 'Habilidade testada · online, sem supervisão'` e a descrição "Teste sobre o básico de …, feito em
 DD/MM/AAAA, online e sem supervisão. Nota N de 100 (15 questões; margem de cerca de ±10 pontos)." (texto fixo da
 psicologia para a nota; o nº de questões e a margem vêm do selo).
@@ -133,8 +136,8 @@ psicologia para a nota; o nº de questões e a margem vêm do selo).
 | `selo_inexistente` | código inexistente, mal formado ou origem bloqueada | Selo não encontrado. Confira o código. |
 | `sem_permissao` / `motivo` | revogar sem ser da equipe / sem motivo | Só a equipe da Gestão sem Caos pode revogar um selo. / Escreva o motivo da revogação. |
 
-**Fluxo da tela:** catálogo → instruções (`instrucoes(teste)`, com o aviso do que a prova registra e de que encerrar
-cedo conta) → `vagas_iniciar_tentativa` → `vagas_proxima_questao` → `vagas_responder` em laço (mostra `proxima`; com
+**Fluxo da tela:** catálogo → instruções (`instrucoes(teste)`, com o aviso do que a prova registra, dito de forma informativa
+e lembrando que o relógio continua quando a pessoa sai, e de que encerrar cedo conta) → `vagas_iniciar_tentativa` → `vagas_proxima_questao` → `vagas_responder` em laço (mostra `proxima`; com
 `fim: true` chama `vagas_finalizar`) → resultado (`textoResultado`). O botão "Encerrar" pede confirmação antes de
 `vagas_finalizar`. O cronômetro conta a partir de `segundosRestantes` do servidor (`segundosRestantes(estado, agora)`);
 ao recarregar a página, `vagas_iniciar_tentativa` retoma (`retomada: true`). Eventos `visibilitychange` (escondeu) e
