@@ -11,8 +11,8 @@ const API = require('../vagas/js/api.js');
 const R = require('../vagas/js/regras.js');
 
 const RAIZ = path.join(__dirname, '..');
-const SQL = fs.readFileSync(path.join(RAIZ, 'supabase', 'migrations', '20261022120000_vagas.sql'), 'utf8') +
-  fs.readFileSync(path.join(RAIZ, 'supabase', 'migrations', '20261024120000_vagas_onda2.sql'), 'utf8');
+const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql']
+  .map((f) => fs.readFileSync(path.join(RAIZ, 'supabase', 'migrations', f), 'utf8')).join('\n');
 const AGORA = Date.parse('2026-10-13T15:00:00Z');
 
 function memoria() {
@@ -66,7 +66,7 @@ test('a prévia tem TODAS as RPCs públicas da migração (e as do contrato de v
   const doBanco = [...SQL.matchAll(/create or replace function public\.(vagas_[a-z_0-9]+)/g)].map((m) => m[1])
     .filter((f) => !['vagas_ids_minhas_empresas', 'vagas_ids_minhas_cidades', 'vagas_sou_pessoa', 'vagas_conta_limite', 'vagas_conta_consultar',
       'vagas_conta_registrar', 'vagas_conta_quem', 'vagas_conta_foto', 'vagas_conta_convite_equipe', 'vagas_conta_exclusao_conferir',
-      'vagas_iniciar_tentativa'].includes(f));
+      'vagas_conta_aviso_lote', 'vagas_conta_aviso_marcar', 'vagas_iniciar_tentativa'].includes(f));
   for (const f of doBanco) assert.ok(b.RPCS.includes(f), 'falta na prévia: ' + f);
   for (const def of Object.values(API.METODOS)) assert.ok(b.RPCS.includes(def.rpc), 'falta na prévia (api.js): ' + def.rpc);
   // Mensagens: cada erro da prévia existe igual no banco, na Edge Function ou no cliente (exceto o do selo, que é da 20261023).
@@ -669,4 +669,72 @@ test('revisão de segurança na prévia: empresa não verificada não convida; n
   await entrar(b, 'empresa@previa.com');
   assert.equal((await ok(b.conta.excluirConta())).excluida, true, 'com outra dona na equipe, a conta sai');
   assert.ok(st.moderacao.some((m) => m.acao === 'equipe_tornar_dono') && st.moderacao.some((m) => m.acao === 'empresa_dono' && m.motivo === 'pedido'));
+});
+
+test('aviso de abertura (20261024120002): só a equipe; e-mail em lotes só com contagens; fila do WhatsApp um por vez; link de saída; retenção', async () => {
+  const b = novo();
+  const st = b.estado();
+  const cid = 'niquelandia-go';
+  const FECHADA = 'A cidade ainda não está aberta. Abra a cidade antes de avisar a lista de espera.';
+  for (const [email, whatsapp, perfil] of [['bia@exemplo.com', '', 'pessoa'], ['loja@exemplo.com', '62 98888-2222', 'empresa'], ['caio@exemplo.com', '', 'pessoa']]) {
+    await ok(b.rpc('vagas_lista_espera_entrar', { p_dados: { cidade: cid, email, whatsapp, perfil } }));
+  }
+  // Sem sessão / sem ser da equipe: nada.
+  await erro(b.conta.avisarListaEspera(cid), 'Sessão expirada. Entre de novo.');
+  await entrar(b, 'operador@previa.com');
+  await erro(b.conta.avisarListaEspera(cid), 'Sem permissão.');
+  await erro(b.rpc('vagas_adm_aviso_resumo', { p_cidade: cid }), 'Sem permissão.');
+  await erro(b.rpc('vagas_adm_aviso_whatsapp', { p_cidade: cid }), 'Sem permissão.');
+  await ok(b.conta.sair());
+  await entrar(b, 'admin@previa.com');
+  const r0 = await ok(b.rpc('vagas_adm_aviso_resumo', { p_cidade: cid }));
+  assert.deepEqual(r0, { ok: true, cidade: { slug: cid, nome: 'Niquelândia', status: 'lista_espera', abertaEm: '', listaAte: '' },
+    contagens: { naLista: 4, aAvisarEmail: 4, avisadosEmail: 0, aAvisarWhatsapp: 2 } });
+  await erro(b.conta.avisarListaEspera(cid), FECHADA);
+  await erro(b.rpc('vagas_adm_aviso_whatsapp', { p_cidade: cid }), FECHADA);
+  await erro(b.conta.avisarListaEspera('nao-existe-go'), 'Cidade não encontrada.');
+  // A cidade abre: abertaEm marcado; a lista fica até 30 dias depois.
+  await ok(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: cid, status: 'ativa' } }));
+  const r1 = await ok(b.rpc('vagas_adm_aviso_resumo', { p_cidade: cid }));
+  assert.ok(r1.cidade.abertaEm && Date.parse(r1.cidade.listaAte) - Date.parse(r1.cidade.abertaEm) === 30 * 86400000);
+  // E-mail em lotes: a tela recebe só contagens.
+  const l1 = await ok(b.conta.avisarListaEspera(cid, 3));
+  assert.deepEqual(l1, { ok: true, cidade: { slug: cid, nome: 'Niquelândia' }, enviados: 3, falhas: 0, restantes: 1, aAvisarWhatsapp: 2, terminou: false });
+  assert.ok(!JSON.stringify(l1).includes('@'));
+  assert.deepEqual(await ok(b.conta.avisarListaEspera(cid, 3)), { ok: true, cidade: { slug: cid, nome: 'Niquelândia' }, enviados: 1, falhas: 0, restantes: 0,
+    aAvisarWhatsapp: 2, terminou: true });
+  assert.equal((await ok(b.conta.avisarListaEspera(cid))).enviados, 0, 'rodar de novo não avisa ninguém duas vezes');
+  // Quem deixou só o e-mail já saiu; quem deixou o WhatsApp fica até a equipe avisar por lá.
+  const daCidade = () => st.listaEspera.filter((l) => l.cidade === cid);
+  assert.deepEqual(daCidade().map((l) => l.email).sort(), ['interessada@previa.com', 'loja@exemplo.com']);
+  // Link "sair" do e-mail: token certo tira a linha; qualquer outro, mesma resposta e nada muda.
+  const tokenLoja = daCidade().find((l) => l.email === 'loja@exemplo.com').sairToken;
+  assert.match(tokenLoja, /^[0-9a-f]{64}$/);
+  for (const t of ['x', 'f'.repeat(64), '']) assert.deepEqual(await ok(b.rpc('vagas_lista_espera_sair_link', { p_token: t })), { ok: true, removido: true });
+  assert.equal(daCidade().length, 2);
+  assert.deepEqual(await ok(b.rpc('vagas_lista_espera_sair_link', { p_token: tokenLoja.toUpperCase() })), { ok: true, removido: true });
+  assert.deepEqual(daCidade().map((l) => l.email), ['interessada@previa.com']);
+  // Fila do WhatsApp: um contato por vez, com o texto do whatsapp.json e o link wa.me prontos.
+  const W = JSON.parse(fs.readFileSync(path.join(RAIZ, 'conteudo', 'vagas-textos', 'whatsapp.json'), 'utf8')).mensagens
+    .find((m) => m.chave === 'lista_espera_cidade_abriu').texto;
+  const fila = await ok(b.rpc('vagas_adm_aviso_whatsapp', { p_cidade: cid }));
+  const texto = W.replace('{{cidade}}', 'Niquelândia').replace('{{link_cidade}}', 'https://vagas.gestaosemcaos.com.br/cidade.html?cidade=' + cid);
+  assert.deepEqual(fila.contato, { id: fila.contato.id, whatsapp: '5562988887777', perfil: 'pessoa', texto,
+    link: 'https://wa.me/5562988887777?text=' + encodeURIComponent(texto) });
+  assert.deepEqual(fila.contagens, { naLista: 1, aAvisarEmail: 0, avisadosEmail: 1, aAvisarWhatsapp: 1 });
+  assert.ok(st.moderacao.some((m) => m.acao === 'aviso_whatsapp_ver'));
+  assert.deepEqual(await ok(b.rpc('vagas_adm_aviso_whatsapp_feito', { p_id: fila.contato.id })), { ok: true, duplicado: false,
+    contagens: { naLista: 0, aAvisarEmail: 0, avisadosEmail: 0, aAvisarWhatsapp: 0 } });
+  await erro(b.rpc('vagas_adm_aviso_whatsapp_feito', { p_id: fila.contato.id }), 'Contato não encontrado.');
+  assert.equal((await ok(b.rpc('vagas_adm_aviso_whatsapp', { p_cidade: cid }))).contato, null);
+  assert.deepEqual(daCidade(), [], 'avisada pelo que pediu, a linha some');
+  // Retenção: 30 dias depois da abertura, o que sobrou some (mesmo sem aviso).
+  st.listaEspera.push({ cidade: cid, email: 'tarde@exemplo.com', perfil: 'pessoa', whatsapp: '5562977776666', whatsappEm: AGORA, criadoEm: AGORA });
+  st.cidades.find((c) => c.slug === cid).abertaEm = AGORA - 31 * 86400000;
+  assert.equal((await ok(b.rpc('vagas_adm_aviso_whatsapp', { p_cidade: cid }))).contato, null);
+  assert.deepEqual(daCidade(), []);
+  // O cliente (modo prévia) tem o método; cidade aberta sem lista: nada a avisar.
+  const api = API.criar({ modo: 'previa', backend: b });
+  assert.deepEqual(await api.avisarListaEspera('uruacu-go'), { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 0, falhas: 0, restantes: 0,
+    aAvisarWhatsapp: 0, terminou: true });
 });

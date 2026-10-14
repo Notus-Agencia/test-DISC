@@ -1846,7 +1846,8 @@
     stripe: 'pagamento pelo Stripe', minimo_cobranca: 'conferência do preço mínimo dos cupons e pacotes no servidor',
     vagas: 'Vagas sem Caos (nada do DISC deixa de funcionar)',
     vagas_onda2: 'Vagas sem Caos: painel da praça e equipe da empresa (nada do DISC deixa de funcionar)',
-    vagas_piloto_uruacu: 'Vagas sem Caos: praça piloto Uruaçu (nada do DISC deixa de funcionar)'
+    vagas_piloto_uruacu: 'Vagas sem Caos: praça piloto Uruaçu (nada do DISC deixa de funcionar)',
+    vagas_aviso_abertura: 'Vagas sem Caos: aviso de abertura para a lista de espera (nada do DISC deixa de funcionar)'
   };
   function impactoBanco(resp) {
     var falt = resp && Array.isArray(resp.faltando) ? resp.faltando.map(String) : [];

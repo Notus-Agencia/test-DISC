@@ -375,6 +375,13 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
    para rodar também sem convites, agende no `pg_cron` (Database → Cron) `select vagas_interno.contas_convite_limpar();`
    uma vez por dia. Confira uma vez no SQL Editor que ela roda sem erro de permissão no `auth.users` (sem permissão ela só
    devolve 0 e o convite continua funcionando).
+1c. **Aviso de abertura da lista de espera:** aplique
+   [`20261024120002_vagas_aviso_abertura.sql`](../supabase/migrations/20261024120002_vagas_aviso_abertura.sql) depois da
+   20261024120001 (idempotente; só acrescenta colunas, um gatilho e funções). Confira: `versao_banco()` com
+   `versao: 20261024120002`. **Publique de novo a função `vagas-conta`** (ação nova `avisar_lista_espera`: só a equipe, em
+   lotes de até 50 e-mails). Agende no `pg_cron` (Database → Cron), uma vez por dia, `select vagas_interno.lista_espera_limpar();`
+   (tira da lista quem já foi avisado e, 30 dias depois da abertura, a lista inteira da cidade). Como avisar, passo a passo:
+   [VAGAS-SPEC.md §6.7](VAGAS-SPEC.md).
 2. **Função `vagas-conta`:** crie como no passo 8 (arquivo `dist/funcoes/vagas-conta/index.ts`) com **Verify JWT
    desligado** (o cadastro é feito por quem ainda não tem login; as ações que exigem login conferem o token sozinhas).
 3. **Segredos** (passo 9): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`, e os opcionais `VAGAS_EMAIL_REMETENTE` e
@@ -403,6 +410,7 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
 | "O cadastro ainda não está disponível…" | função `vagas-conta` não publicada | item 2 |
 | Painel da praça, equipe da empresa ou WhatsApp da lista de espera: "O banco de dados ainda não tem o Vagas sem Caos…" | 20261024120000 não aplicada | item 1b |
 | Convite de equipe: "Ação desconhecida." | `vagas-conta` publicada antes da onda 2 | item 1b (publicar a função de novo) |
+| "Avisar por e-mail" (lista de espera): "Ação desconhecida." ou "O banco de dados ainda não tem…" | `vagas-conta` antiga ou 20261024120002 não aplicada | item 1c |
 | "O envio de e-mail ainda não está configurado…" | falta `RESEND_API_KEY` | item 3 |
 | Link do e-mail abre o DISC ou dá "link expirou" | Redirect URL ou `VAGAS_SITE_URL` faltando | itens 3 e 4; peça um link novo |
 

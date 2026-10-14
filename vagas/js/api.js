@@ -29,7 +29,8 @@
  *   equipe da empresa (20261024) — equipeDaEmpresa(empresaId), cancelarConvite(conviteId), removerMembro(empresaId, userId),
  *   tornarDono(empresaId, userId), conviteEquipe(token), aceitarConviteEquipe(token); operação: opEmpresaDono(empresaId, email, motivo);
  *   equipe da Gestão sem Caos — admCidadeSalvar(dados), admZonaSalvar(dados), admOperadorSalvar(dados), admCidades(),
- *   admOperadores(filtro) (as duas da 20261024).
+ *   admOperadores(filtro) (as duas da 20261024); aviso de abertura (SPEC §6.7) — admAvisoResumo(cidade),
+ *   admAvisoWhatsapp(cidade), admAvisoWhatsappFeito(id), avisarListaEspera(cidade, limite?), listaEsperaSairLink(token).
  * Conta e sessão: cadastrar({email, tipo, nome?, termosVersao?, captcha?}), reenviarConfirmacao(email, captcha?),
  *   esqueciSenha(email, captcha?), cadastroAssistido({email, tipo, cidade, empresaId?, nome?, codigoEvento?}),
  *   convidarOperador({email, cidade, papel, cidadeNome?}), convidarEquipe(empresaId, email) (só dono(a); resposta neutra),
@@ -77,6 +78,7 @@
     seloPublico: { rpc: 'vagas_selo_publico', p: ['p_codigo'], publico: true },
     listaEspera: { rpc: 'vagas_lista_espera_entrar', p: ['p_dados'], publico: true },
     listaEsperaSair: { rpc: 'vagas_lista_espera_sair', p: ['p_dados'], publico: true },
+    listaEsperaSairLink: { rpc: 'vagas_lista_espera_sair_link', p: ['p_token'], publico: true },
     denunciar: { rpc: 'vagas_denunciar', p: ['p_dados'], publico: true },
     referenciasPublicas: { rpc: 'vagas_referencias_publicas', p: ['p_token'], publico: true },
     versaoBanco: { rpc: 'versao_banco', p: [], publico: true },
@@ -136,6 +138,9 @@
     opAssistidos: { rpc: 'vagas_op_assistidos', p: ['p_filtro'] },
     admCidades: { rpc: 'vagas_adm_cidades', p: [] },
     admOperadores: { rpc: 'vagas_adm_operadores', p: ['p_filtro'] },
+    admAvisoResumo: { rpc: 'vagas_adm_aviso_resumo', p: ['p_cidade'] },
+    admAvisoWhatsapp: { rpc: 'vagas_adm_aviso_whatsapp', p: ['p_cidade'] },
+    admAvisoWhatsappFeito: { rpc: 'vagas_adm_aviso_whatsapp_feito', p: ['p_id'] },
     equipeDaEmpresa: { rpc: 'vagas_equipe_empresa', p: ['p_empresa'] },
     cancelarConvite: { rpc: 'vagas_equipe_convite_cancelar', p: ['p_convite'] },
     removerMembro: { rpc: 'vagas_equipe_remover', p: ['p_empresa', 'p_membro'] },
@@ -362,6 +367,7 @@
     api.cadastroAssistido = function (d) { return funcao(Object.assign({ acao: 'assistido' }, d || {}), true); };
     api.convidarOperador = function (d) { return funcao(Object.assign({ acao: 'operador' }, d || {}), true); };
     api.convidarEquipe = function (empresaId, email) { return funcao({ acao: 'convite_equipe', empresaId: empresaId || '', email: email || '' }, true); };
+    api.avisarListaEspera = function (cidade, limite) { return funcao({ acao: 'avisar_lista_espera', cidade: cidade || '', limite: limite || 25 }, true); };
     api.excluirConta = function () {
       return funcao({ acao: 'excluir', confirmar: 'EXCLUIR' }, true).then(function (r) { guardarSessao(null); return r; });
     };
@@ -483,7 +489,7 @@
         return backend().then(function (b) { return b.rpc(def.rpc, args); }).then(resultado);
       };
     });
-    ['cadastrar', 'reenviarConfirmacao', 'esqueciSenha', 'cadastroAssistido', 'convidarOperador', 'convidarEquipe', 'excluirConta', 'entrar', 'sair', 'sessao',
+    ['cadastrar', 'reenviarConfirmacao', 'esqueciSenha', 'cadastroAssistido', 'convidarOperador', 'convidarEquipe', 'avisarListaEspera', 'excluirConta', 'entrar', 'sair', 'sessao',
       'confirmarLink', 'definirSenha', 'apagarFoto', 'fotoUrl'].forEach(function (m) {
       api[m] = function () {
         var args = Array.prototype.slice.call(arguments);
