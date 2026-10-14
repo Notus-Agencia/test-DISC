@@ -78,16 +78,18 @@ body.vg-so-leitura .vg-so-escrita { display: none !important; }
 .vg-emp-ancoras dd { margin: 0; }
 
 /* Equipe e referências */
-.vg-emp-equipe-form { margin-top: 16px; display: grid; gap: 6px; }
+.vg-emp-equipe-form { margin-top: 16px; display: grid; gap: 6px; max-width: 640px; }
+.vg-emp-equipe { margin-top: 16px; }
 .vg-emp-equipe-tabela + .vg-emp-equipe-tabela { margin-top: 16px; }
 .vg-emp-equipe-tabela .vg-tabela td:first-child { min-width: 0; }
 .vg-emp-pedido { margin-top: 10px; }
 .vg-emp-faixa-fase2 { border-radius: 16px; margin-bottom: 8px; }
 
-/* Convite para a equipe (empresa.html?convite=): tela de uma tarefa só, pensada para o celular; sem menu do painel, só o logo no topo */
-body.vg-emp-convite .vg-pc__topo { display: block; }
-body.vg-emp-convite #vg-menu-abrir { display: none; }
-body.vg-emp-convite .vg-pc__conteudo { margin: 0 auto; max-width: 640px; padding: 24px 16px 48px; }
+/* Tela de uma tarefa só (convite para a equipe em empresa.html?convite=, pensado para o celular; conta excluída):
+   sem menu do painel, só o logo no topo */
+body.vg-emp-tarefa .vg-pc__topo { display: block; }
+body.vg-emp-tarefa #vg-menu-abrir { display: none; }
+body.vg-emp-tarefa .vg-pc__conteudo { margin: 0 auto; max-width: 640px; padding: 24px 16px 48px; }
 
 @media print {
   .menu-lateral, .vg-pc__topo, #vg-conversa-lateral, .vg-escrever { display: none !important; }

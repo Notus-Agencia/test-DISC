@@ -386,16 +386,47 @@ test('equipe (computador): a dona vê a equipe e os convites, convida com respos
   await linha.locator('[data-acao="cancelar"]').click();
   await expect(page.locator('#vg-equipe-convites tr', { hasText: 'colega.nova@previa.com' })).toContainText('Cancelado');
   await expect(page.locator('#vg-equipe-convites tr', { hasText: 'colega.nova@previa.com' }).locator('[data-acao="cancelar"]')).toHaveCount(0);
-  // Remover a recrutadora (com confirmação): ela some da lista e perde o acesso ao painel da empresa.
+  // Tornar a recrutadora dona (com confirmação): com duas donas, quem está logada também pode sair da equipe.
+  await expect(page.locator('#vg-equipe-sair')).toHaveCount(0);
+  await rita.locator('[data-acao="tornar-dono"]').click();
+  await page.click('#vg-confirmar-dono-sim');
+  await expect(page.locator('#vg-aviso-geral')).toContainText('Rita Moraes agora é dono(a) da empresa.');
+  await expect(rita).toContainText('Dono(a)');
+  await expect(rita.locator('[data-acao="tornar-dono"]')).toHaveCount(0);
+  await expect(page.locator('#vg-equipe-sair')).toBeVisible();
+  // Remover (com confirmação): ela some da lista e perde o acesso ao painel da empresa.
   await rita.locator('[data-acao="remover"]').click();
   await expect(page.locator('#vg-confirmar-remover')).toContainText('Rita Moraes');
   await page.click('#vg-confirmar-remover-sim');
   await expect(page.locator('#vg-aviso-geral')).toContainText('Pessoa removida da equipe.');
   await expect(membros.locator('tr', { hasText: 'recrutador@previa.com' })).toHaveCount(0);
+  await expect(page.locator('#vg-equipe-sair')).toHaveCount(0);
   await como(page, 'recrutador@previa.com');
   await page.goto('about:blank');
   await page.goto(BASE + 'empresa.html#inicio');
   await expect(page.locator('#vg-emp-cad-titulo')).toHaveText('Complete o cadastro da empresa');
+  expect(erros).toEqual([]);
+});
+
+test('equipe (computador): empresa em análise vê a equipe, mas só convida depois de verificada', async ({ page }) => {
+  const erros = vigiarErros(page);
+  await page.goto(BASE + 'entrar.html?tipo=empresa');
+  // A empresa em análise da semente da prévia (achada pela situação, não pelo nome).
+  const email = await page.evaluate(async () => {
+    for (let i = 2; i <= 20; i += 1) {
+      const e = 'empresa' + i + '@previa.com';
+      try { await window.VAGAS_API.entrar(e, 'previa123'); } catch (x) { continue; }
+      const emp = (await window.VAGAS_API.minhasEmpresas()).empresas[0];
+      if (emp && emp.status === 'em_analise') return e;
+      await window.VAGAS_API.sair();
+    }
+    return '';
+  });
+  expect(email).not.toBe('');
+  await page.goto(BASE + 'empresa.html#dados');
+  await expect(page.locator('#vg-equipe-membros')).toContainText('Dono(a)');
+  await expect(page.locator('#vg-equipe-so-verificada')).toHaveText('Só empresa verificada pela Gestão sem Caos pode convidar pessoas para a equipe.');
+  await expect(page.locator('#vg-equipe-email')).toHaveCount(0);
   expect(erros).toEqual([]);
 });
 
@@ -411,6 +442,39 @@ test('equipe (computador): a recrutadora vê o nome da conta, não convida e pod
   await page.click('#vg-equipe-sair');
   await page.click('#vg-confirmar-sair-equipe-sim');
   await expect(page.locator('#vg-emp-cad-titulo')).toHaveText('Complete o cadastro da empresa');
+  expect(erros).toEqual([]);
+});
+
+test('excluir a conta: a única dona de empresa com equipe é recusada e levada à equipe; depois de tornar outra pessoa dona, exclui', async ({ page }) => {
+  const erros = vigiarErros(page);
+  await entrar(page, 'empresa@previa.com', 'dados');
+  await expect(page.locator('#vg-emp-conta')).toContainText('Conta: empresa@previa.com');
+  await page.click('#vg-emp-excluir');
+  await expect(page.locator('#vg-confirmar-excluir')).toContainText('Excluir a conta de vez?');
+  await expect(page.locator('#vg-confirmar-excluir-sim')).toBeDisabled();
+  await page.fill('#vg-confirmar-excluir-texto', 'excluir');
+  await expect(page.locator('#vg-confirmar-excluir-sim')).toBeEnabled();
+  await page.click('#vg-confirmar-excluir-sim');
+  await expect(page.locator('#vg-confirmar-excluir-erro')).toContainText('Você é a única pessoa dona de uma empresa que tem equipe. Antes de excluir a conta, torne outra pessoa da equipe dona');
+  await page.click('#vg-confirmar-excluir-equipe');
+  await expect(page.locator('#vg-confirmar-excluir')).toHaveCount(0);
+  await expect(page.locator('#vg-equipe-titulo')).toBeFocused();
+  // Passa a posse (Rita fica dona também) e exclui.
+  await page.locator('#vg-equipe-membros tr', { hasText: 'recrutador@previa.com' }).locator('[data-acao="tornar-dono"]').click();
+  await page.click('#vg-confirmar-dono-sim');
+  await expect(page.locator('#vg-equipe-membros tr', { hasText: 'recrutador@previa.com' })).toContainText('Dono(a)');
+  await page.click('#vg-emp-excluir');
+  await page.fill('#vg-confirmar-excluir-texto', 'EXCLUIR');
+  await page.click('#vg-confirmar-excluir-sim');
+  await expect(page.locator('main h1')).toHaveText('Conta excluída.');
+  await expect(page.locator('#vg-menu')).toHaveCount(0);
+  await expect(page.locator('#vg-emp-excluida-inicio')).toHaveAttribute('href', 'index.html');
+  // A empresa continua com a Rita, agora dona.
+  await como(page, 'recrutador@previa.com');
+  await page.goto('about:blank');
+  await page.goto(BASE + 'empresa.html#dados');
+  await expect(page.locator('#vg-equipe-membros')).toBeVisible();
+  await expect(page.locator('#vg-equipe-membros tr', { hasText: 'empresa@previa.com' })).toHaveCount(0);
   expect(erros).toEqual([]);
 });
 

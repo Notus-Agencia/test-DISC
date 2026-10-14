@@ -168,7 +168,7 @@
       el('dt', {}, 'Cidade'), el('dd', {}, e.cidade ? e.cidade.nome : ''),
       el('dt', {}, 'Situação'), el('dd', {}, [P.status('empresa', e.status), e.cnpjConferidoEm ? ' CNPJ conferido em ' + U.data(e.cnpjConferidoEm) : ''])]),
       el('p', { class: 't-nota texto-suave vg-emp-nota' }, 'CNPJ e razão social não mudam por aqui. Para corrigir, fale com a operação da praça.')]);
-    var principal = [cad, formDados(podeEditar), equipe()];
+    var principal = [cad, formDados(podeEditar)];
     var lateral = [];
     if (ctx.empresas.length > 1) {
       var troca = E.chips({ id: 'vg-emp-trocar', rotulo: 'Empresa que você está usando', opcoes: ctx.empresas.map(function (x) { return { id: x.id, rotulo: x.nomeFantasia }; }), valor: e.id,
@@ -177,8 +177,60 @@
     }
     lateral.push(E.caixa({ id: 'vg-emp-dados-ajuda', titulo: 'Quem vê o quê' }, [E.lista(['Nome, setor e descrição aparecem na vaga (menos na confidencial).',
       'WhatsApp e e-mail aparecem para a pessoa só depois do Combinou.'])]));
+    lateral.push(caixaConta(raiz));
     E.tela(raiz, [E.cabecalho({ sobre: 'Dados da empresa', titulo: e.nomeFantasia, idTitulo: 'vg-emp-dados-h1' }),
-      el('div', { class: 'vg-grade' }, [el('div', { class: 'vg-lateral' }, principal), el('aside', { class: 'vg-lateral' }, lateral)])]);
+      el('div', { class: 'vg-grade' }, [el('div', { class: 'vg-lateral' }, principal), el('aside', { class: 'vg-lateral' }, lateral)]),
+      // Equipe na largura toda: a tabela tem nome, papel, data e até duas ações por linha.
+      el('div', { class: 'vg-emp-equipe' }, equipe())]);
+  }
+  // Sua conta: excluir o acesso (LGPD). A última pessoa dona de empresa com equipe não exclui: o banco recusa e a janela
+  // leva para a Equipe, onde ela torna outra pessoa dona antes (§8.4a, §9 "excluir").
+  function caixaConta(raiz) {
+    var email = ctx.eu && ctx.eu.conta && ctx.eu.conta.email;
+    return E.caixa({ id: 'vg-emp-conta', titulo: 'Sua conta' }, [
+      email ? el('p', { class: 't-rotulo texto-medio' }, 'Conta: ' + email) : null,
+      el('button', { type: 'button', class: 'botao botao--perigo vg-emp-nota', id: 'vg-emp-excluir', onclick: function () { excluirConta(raiz); } }, 'Excluir a conta')]);
+  }
+  function excluirConta(raiz) {
+    var texto = el('input', { id: 'vg-confirmar-excluir-texto', class: 'entrada', type: 'text', autocomplete: 'off', autocapitalize: 'characters', 'aria-describedby': 'vg-confirmar-excluir-ajuda' });
+    var erro = el('div', { class: 'aviso aviso--erro vg-emp-nota', id: 'vg-confirmar-excluir-erro', role: 'alert', hidden: true });
+    var sim = el('button', { type: 'button', class: 'botao botao--perigo', id: 'vg-confirmar-excluir-sim', disabled: true }, 'Excluir a conta');
+    var j = null;
+    var cancelar = el('button', { type: 'button', class: 'botao botao--claro', id: 'vg-confirmar-excluir-cancelar', onclick: function () { j.fechar('nao'); } }, 'Cancelar');
+    texto.addEventListener('input', function () { sim.disabled = texto.value.trim().toUpperCase() !== 'EXCLUIR'; });
+    sim.addEventListener('click', function () {
+      erro.hidden = true;
+      U.ocupado(sim, true, 'Excluindo…');
+      A.excluirConta().then(function () {
+        j.fechar('sim');
+        ['vg.empresa.atual', 'vg.empresa.responsavel'].forEach(function (k) { U.armazenamento.apagar(k); });
+        var menuLateral = root.document.getElementById('vg-menu');
+        if (menuLateral) menuLateral.parentNode.removeChild(menuLateral);
+        E.faixas();
+        root.document.body.classList.add('vg-emp-tarefa');
+        root.document.title = 'Conta excluída | Vagas sem Caos';
+        E.tela(raiz, [E.cabecalho({ titulo: 'Conta excluída.', texto: 'Obrigado por usar o Vagas sem Caos.', idTitulo: 'vg-emp-excluida' }),
+          el('div', { class: 'acoes' }, el('a', { class: 'botao botao--principal botao--grande', href: 'index.html', id: 'vg-emp-excluida-inicio' }, 'Ir para o início'))]);
+        U.focarTitulo(raiz);
+      }, function (e) {
+        U.ocupado(sim, false);
+        if (e.sessaoExpirada || e.conexao) { j.fechar('erro'); U.tratarErro(e); return; }
+        // Única pessoa dona com equipe: a mensagem do banco já diz o que fazer; o botão leva até a equipe.
+        var donaUnica = /única pessoa dona/.test(e.message || '');
+        U.trocar(erro, [el('p', {}, e.message), donaUnica ? el('button', { type: 'button', class: 'botao botao--claro vg-emp-nota', id: 'vg-confirmar-excluir-equipe', onclick: function () {
+          j.fechar('equipe');
+          var alvo = root.document.getElementById('vg-equipe-titulo');
+          if (alvo) { alvo.setAttribute('tabindex', '-1'); alvo.scrollIntoView({ block: 'start' }); alvo.focus({ preventScroll: true }); }
+        } }, 'Ir para a equipe') : null]);
+        erro.hidden = false;
+      });
+    });
+    j = U.janela({ id: 'vg-confirmar-excluir', titulo: 'Excluir a conta de vez?', alerta: true, foco: '#vg-confirmar-excluir-texto', corpo: [
+      E.lista(['Apaga o seu acesso (e-mail e senha) e o seu lugar na equipe da empresa.', 'As vagas e as conversas são da empresa: ficam com quem continua na equipe.',
+        'Não dá para desfazer.']),
+      el('label', { class: 'campo__rotulo vg-emp-nota', for: 'vg-confirmar-excluir-texto' }, 'Para confirmar, digite EXCLUIR'),
+      texto, el('span', { class: 'visualmente-oculto', id: 'vg-confirmar-excluir-ajuda' }, 'O botão Excluir a conta fica liberado quando a palavra estiver certa.'), erro],
+      acoes: [cancelar, sim] });
   }
   function formDados(podeEditar) {
     var e = ctx.empresa;
@@ -261,9 +313,11 @@
       var convites = r.convites || [];
       var lim = r.limites || {};
       var so = E.suspensa();
+      // Só empresa verificada (ativa, CNPJ conferido) convida (§8.4a, limites.podeConvidar); a lista e o remover seguem valendo.
+      var podeConvidar = lim.podeConvidar !== false;
       var email = el('input', { id: 'vg-equipe-email', class: 'entrada', type: 'email', inputmode: 'email', autocomplete: 'off', placeholder: 'colega@empresa.com', 'aria-describedby': 'vg-equipe-ajuda' });
       var convidar = el('button', { type: 'submit', class: 'botao botao--principal', id: 'vg-equipe-convidar' }, 'Convidar');
-      var form = so ? null : el('form', { class: 'vg-emp-equipe-form', id: 'vg-equipe-form', novalidate: true }, [
+      var form = so || !podeConvidar ? null : el('form', { class: 'vg-emp-equipe-form', id: 'vg-equipe-form', novalidate: true }, [
         el('label', { class: 'campo__rotulo', for: 'vg-equipe-email' }, 'Convidar uma pessoa da empresa (e-mail)'),
         el('div', { class: 'vg-link-curto' }, [email, convidar]),
         el('span', { class: 'campo__ajuda', id: 'vg-equipe-ajuda' }, 'Ela entra como recrutador(a): publica vagas, vê os cartões e conversa.' +
@@ -286,9 +340,7 @@
             // Nome da conta em cima e o e-mail embaixo; sem nome, só o e-mail.
             var quem = m.nome ? [el('span', { class: 'seminegrito' }, m.nome), el('span', { class: 'vg-emp-sub' }, m.email)] : el('span', { class: 'seminegrito' }, m.email);
             return el('tr', { data: { membro: m.userId } }, [el('td', {}, quem), el('td', {}, papel(m.papel)), el('td', { class: 'nao-quebra' }, U.data(m.desde)),
-              el('td', {}, el('div', { class: 'vg-tabela__acoes' }, m.eu ? el('span', { class: 't-nota texto-suave' }, 'Você') : (m.podeRemover && !so
-                ? el('button', { type: 'button', class: 'botao botao--perigo', 'aria-label': 'Remover ' + (m.nome || m.email) + ' da equipe', data: { acao: 'remover' },
-                  onclick: function () { remover(m, corpo); } }, 'Remover') : null)))]);
+              el('td', {}, el('div', { class: 'vg-tabela__acoes' }, acoesMembro(m, corpo, so)))]);
           }))])),
         convites.length ? el('div', { class: 'vg-rolagem vg-emp-equipe-tabela' }, el('table', { class: 'vg-tabela', id: 'vg-equipe-convites' }, [
           el('thead', {}, el('tr', {}, ['Convite', 'Situação', 'Vale até', ''].map(function (h) { return el('th', { scope: 'col' }, h || el('span', { class: 'visualmente-oculto' }, 'Ação')); }))),
@@ -299,9 +351,32 @@
                   onclick: function (ev) { cancelar(c, ev.currentTarget, corpo); } }, 'Cancelar') : null))]);
           }))])) : null,
         form,
+        !so && !podeConvidar ? el('p', { class: 'aviso vg-emp-nota', role: 'note', id: 'vg-equipe-so-verificada' }, 'Só empresa verificada pela Gestão sem Caos pode convidar pessoas para a equipe.') : null,
         linkPreviaConvite ? el('div', { class: 'aviso vg-emp-nota', id: 'vg-equipe-previa' }, [el('p', {}, 'Prévia: nenhum e-mail sai daqui. Abra o link que o convite traria.'),
           el('a', { class: 'botao botao--claro', id: 'vg-equipe-abrir-previa', href: linkPreviaConvite }, 'Abrir o convite (prévia)')]) : null]);
     }, function (e) { U.tratarErro(e, { raiz: corpo, aoTentar: function () { carregarEquipe(corpo); } }); });
+  }
+  // Ações de cada linha da equipe: "Você" (ou "Sair da equipe", quando há outra pessoa dona), "Tornar dono(a)" e "Remover".
+  function acoesMembro(m, corpo, so) {
+    var nome = m.nome || m.email;
+    if (m.eu) {
+      return m.podeRemover && !so ? el('button', { type: 'button', class: 'botao botao--perigo', id: 'vg-equipe-sair', onclick: sairDaEquipe }, 'Sair da equipe')
+        : el('span', { class: 't-nota texto-suave' }, 'Você');
+    }
+    if (so) return null;
+    return [
+      m.papel !== 'dono' && typeof A.tornarDono === 'function' ? el('button', { type: 'button', class: 'botao botao--claro', 'aria-label': 'Tornar ' + nome + ' dono(a) da empresa',
+        data: { acao: 'tornar-dono' }, onclick: function () { tornarDono(m, corpo); } }, 'Tornar dono(a)') : null,
+      m.podeRemover ? el('button', { type: 'button', class: 'botao botao--perigo', 'aria-label': 'Remover ' + nome + ' da equipe', data: { acao: 'remover' },
+        onclick: function () { remover(m, corpo); } }, 'Remover') : null];
+  }
+  function tornarDono(m, corpo) {
+    U.confirmar({ id: 'vg-confirmar-dono', titulo: 'Tornar ' + (m.nome || m.email) + ' dono(a) da empresa?',
+      texto: 'Você continua dono(a). Quem é dono(a) convida e remove pessoas da equipe e muda os dados da empresa.', sim: 'Tornar dono(a)' })
+      .then(function (sim) {
+        if (!sim) return;
+        A.tornarDono(ctx.empresa.id, m.userId).then(function () { U.avisar('Pronto. ' + (m.nome || m.email) + ' agora é dono(a) da empresa.', { tipo: 'ok' }); carregarEquipe(corpo); }, function (e) { U.tratarErro(e); });
+      });
   }
   function remover(m, corpo) {
     U.confirmar({ id: 'vg-confirmar-remover', titulo: 'Remover ' + (m.nome || m.email) + ' da equipe?', texto: 'A pessoa deixa de ver as vagas e as conversas da empresa. As vagas continuam.', sim: 'Remover', perigo: true })
@@ -409,7 +484,7 @@
       // Tela de uma tarefa só, feita para o celular (o link chega por e-mail): sem o menu do painel.
       var token = tokenDoConvite();
       if (token) {
-        doc.body.classList.add('vg-emp-convite');
+        doc.body.classList.add('vg-emp-tarefa');
         doc.title = 'Convite para a equipe | Vagas sem Caos';
         return telaConvite(raiz, token).then(function () { U.focarTitulo(raiz); });
       }
