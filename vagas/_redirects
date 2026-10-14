@@ -1,9 +1,11 @@
 # Redirecionamentos do Cloudflare Pages (docs: developers.cloudflare.com/pages/configuration/redirects/).
 # Formato: origem  destino  código (302 se omitido). Regras estáticas antes das dinâmicas.
 #
-# Enquanto não há seletor de cidade, a raiz vai para a única cidade ativa.
-# Tire esta linha quando vagas/index.html ganhar o seletor (o registro na mesa de equipe avisa).
-/  /boa-vista-rr/  302
+# A raiz é o index.html (escolha/lembrança da cidade): nenhuma cidade fixa aqui.
+# Endereço amigável da cidade (/<slug>/) e o botão "Quero essa vaga" da página do link curto (/<slug>/?vaga=<código>) vão para a
+# tela da lista. É redirecionamento (302), não reescrita: a tela usa caminhos relativos (js/, assets/, comum/), que só funcionam
+# com a página na raiz do site.
+/:cidade/  /cidade.html?cidade=:cidade  302
 
 # Links curtos da vaga (/v/K7M2QX) são servidos pela Pages Function vagas/functions/v/[codigo].js.
 # Regra de _redirects NÃO vale para rota atendida por Function (documentado pelo Cloudflare), então não há
