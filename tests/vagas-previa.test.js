@@ -65,7 +65,8 @@ test('a prévia tem TODAS as RPCs públicas da migração (e as do contrato de v
   const b = novo();
   const doBanco = [...SQL.matchAll(/create or replace function public\.(vagas_[a-z_0-9]+)/g)].map((m) => m[1])
     .filter((f) => !['vagas_ids_minhas_empresas', 'vagas_ids_minhas_cidades', 'vagas_sou_pessoa', 'vagas_conta_limite', 'vagas_conta_consultar',
-      'vagas_conta_registrar', 'vagas_conta_quem', 'vagas_conta_foto', 'vagas_conta_convite_equipe', 'vagas_iniciar_tentativa'].includes(f));
+      'vagas_conta_registrar', 'vagas_conta_quem', 'vagas_conta_foto', 'vagas_conta_convite_equipe', 'vagas_conta_exclusao_conferir',
+      'vagas_iniciar_tentativa'].includes(f));
   for (const f of doBanco) assert.ok(b.RPCS.includes(f), 'falta na prévia: ' + f);
   for (const def of Object.values(API.METODOS)) assert.ok(b.RPCS.includes(def.rpc), 'falta na prévia (api.js): ' + def.rpc);
   // Mensagens: cada erro da prévia existe igual no banco, na Edge Function ou no cliente (exceto o do selo, que é da 20261023).
@@ -421,6 +422,8 @@ test('onda 2 na prévia: lista de espera com WhatsApp opcional (celular com DDD)
   assert.ok(linha().whatsappEm);
   await ok(b.rpc('vagas_lista_espera_entrar', { p_dados: { cidade: cid, email: 'zap@exemplo.com' } }));
   assert.equal(linha().whatsapp, '5562988881111', 'sem o campo, o número fica');
+  assert.deepEqual(await ok(b.rpc('vagas_lista_espera_entrar', { p_dados: { cidade: cid, email: 'zap@exemplo.com', whatsapp: '62 97777-0000' } })), sem);
+  assert.equal(linha().whatsapp, '5562988881111', 'um terceiro não troca o número já gravado (revisão de segurança, I5)');
   await erro(b.rpc('vagas_lista_espera_entrar', { p_dados: { cidade: 'uruacu-go', email: 'zap@exemplo.com', whatsapp: '62988881111' } }),
     'Esta cidade já está aberta: faça o seu cadastro.');
   await erro(b.rpc('vagas_lista_espera_sair', { p_dados: { cidade: cid, whatsapp: '123' } }), R.MSG.WHATSAPP_INVALIDO);
@@ -504,7 +507,7 @@ test('equipe da empresa na prévia: só a dona convida; resposta neutra; convite
   assert.equal(eq.membros[1].nome, 'Rita Moraes');
   assert.deepEqual(eq.convites.map((c) => [c.email, c.status]), [['convidada@previa.com', 'pendente']]);
   assert.ok(!JSON.stringify(eq).includes('token'), 'o token nunca volta');
-  assert.deepEqual(eq.limites, { convitesPorDia: 10, convitesHoje: 0, membrosMax: 20, convitesAbertosMax: 20, validadeHoras: 72 });
+  assert.deepEqual(eq.limites, { convitesPorDia: 10, convitesHoje: 0, membrosMax: 20, convitesAbertosMax: 20, validadeHoras: 72, podeConvidar: true });
   await erro(b.conta.convidarEquipe(merc.id, 'recrutador@previa.com'), 'Esta pessoa já faz parte da equipe.');
   await erro(b.conta.convidarEquipe(merc.id, 'sem-arroba'), 'E-mail inválido.');
   await erro(b.conta.convidarEquipe(st.empresas[1].id, 'x@exemplo.com'), 'Empresa não encontrada.');
@@ -627,4 +630,43 @@ test('pedidos da operação na prévia: resumo com repasse, cidades e operadores
   const api = API.criar({ modo: 'previa', backend: b });
   assert.equal(typeof api.opIndicadores, 'function');
   assert.deepEqual((await api.opIndicadores('uruacu-go')).indicadores.map((i) => i.chave), (await api.indicadores('uruacu-go')).indicadores.map((i) => i.chave));
+});
+
+test('revisão de segurança na prévia: empresa não verificada não convida; números pequenos protegidos; a última dona com equipe não sai', async () => {
+  const b = novo();
+  const st = b.estado();
+  // B1: empresa em análise (CNPJ não conferido) não convida.
+  const emAnalise = st.empresas.find((e) => e.status === 'em_analise');
+  const dona = st.membros.find((m) => m.empresaId === emAnalise.id && m.papel === 'dono');
+  await entrar(b, st.usuarios.find((u) => u.id === dona.userId).email);
+  await erro(b.conta.convidarEquipe(emAnalise.id, 'alguem@exemplo.com'), 'Só empresa verificada pela Gestão sem Caos pode convidar pessoas para a equipe.');
+  assert.equal((await ok(b.rpc('vagas_equipe_empresa', { p_empresa: emAnalise.id }))).limites.podeConvidar, false);
+  await ok(b.conta.sair());
+  // I1: cidade pequena — pessoas com selo e contratações abaixo de 3 saem null + poucos (e são "até ontem").
+  await entrar(b, 'operador@previa.com');
+  const ind = Object.fromEntries((await ok(b.rpc('vagas_op_indicadores', { p_cidade: 'uruacu-go' }))).indicadores.map((i) => [i.chave, i]));
+  assert.deepEqual([ind.pessoas_com_selo_por_funcao.valor, ind.pessoas_com_selo_por_funcao.poucos, ind.pessoas_com_selo_por_funcao.ateOntem], [null, true, true]);
+  assert.ok(Object.values(ind.pessoas_com_selo_por_funcao.detalhe.porTeste).every((n) => n === null || n >= 3));
+  assert.ok(ind.contratacoes.valor === null || ind.contratacoes.valor >= 3);
+  await ok(b.conta.sair());
+  // I2: a dona do Mercadinho (com recrutadora) não exclui a conta; torna a recrutadora dona e aí pode.
+  await entrar(b, 'empresa@previa.com');
+  const merc = st.empresas[0];
+  await erro(b.conta.excluirConta(), /^Você é a única pessoa dona de uma empresa que tem equipe/);
+  const rita = st.usuarios.find((u) => u.email === 'recrutador@previa.com');
+  assert.equal((await ok(b.rpc('vagas_equipe_tornar_dono', { p_empresa: merc.id, p_membro: rita.id }))).duplicado, false);
+  await ok(b.conta.sair());
+  // Operação nomeia dona: operador só sem dona ativa; a equipe sempre; motivo obrigatório; só quem está na equipe.
+  await entrar(b, 'operador@previa.com');
+  await erro(b.rpc('vagas_op_empresa_dono', { p_empresa: merc.id, p_email: 'recrutador@previa.com', p_motivo: 'x' }),
+    'A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.');
+  await ok(b.conta.sair());
+  await entrar(b, 'admin@previa.com');
+  await erro(b.rpc('vagas_op_empresa_dono', { p_empresa: merc.id, p_email: 'recrutador@previa.com', p_motivo: '' }), 'Informe o motivo.');
+  await erro(b.rpc('vagas_op_empresa_dono', { p_empresa: merc.id, p_email: 'pessoa@previa.com', p_motivo: 'pedido' }), 'Esta pessoa não está na equipe da empresa.');
+  await ok(b.rpc('vagas_op_empresa_dono', { p_empresa: merc.id, p_email: 'recrutador@previa.com', p_motivo: 'pedido' }));
+  await ok(b.conta.sair());
+  await entrar(b, 'empresa@previa.com');
+  assert.equal((await ok(b.conta.excluirConta())).excluida, true, 'com outra dona na equipe, a conta sai');
+  assert.ok(st.moderacao.some((m) => m.acao === 'equipe_tornar_dono') && st.moderacao.some((m) => m.acao === 'empresa_dono' && m.motivo === 'pedido'));
 });
