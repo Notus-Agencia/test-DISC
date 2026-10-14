@@ -78,11 +78,13 @@
     if (m <= 36) return '1a3';
     return 'mais3';
   }
-  // Carteira assinada: Sim -> informal:false · Não -> informal:true · Prefiro não dizer -> sem a chave. O banco guarda só
-  // true/false, então ao reabrir "false" volta sem pílula marcada (não dá para saber se era "Sim" ou "Prefiro não dizer").
+  // Carteira assinada: Sim -> informal:false · Não -> informal:true · Prefiro não dizer -> informal:null. Sem resposta também vai
+  // null ("não informado"): sem a chave o banco grava false, e a pergunta reabriria como "Sim", que a pessoa não disse.
+  // Ao reabrir: false -> "Sim", true -> "Não", null -> "Prefiro não dizer". O banco guarda null como null a partir da migração 0005;
+  // antes dela null vira false (reabre como "Sim"). A empresa só vê "sem carteira" quando é true.
   var CARTEIRA = [{ id: 'sim', rotulo: 'Sim' }, { id: 'nao', rotulo: 'Não' }, { id: 'nd', rotulo: 'Prefiro não dizer' }];
-  function informalDe(carteira) { return carteira === 'sim' ? false : carteira === 'nao' ? true : undefined; }
-  function carteiraDe(informal) { return informal === true ? 'nao' : ''; }
+  function informalDe(carteira) { return carteira === 'sim' ? false : carteira === 'nao' ? true : null; }
+  function carteiraDe(informal) { return informal === true ? 'nao' : informal === false ? 'sim' : informal === null ? 'nd' : ''; }
 
   // CNH: Não tem / A / B / AB / C ou mais.
   var CNH_OPCOES = [{ id: 'nao', rotulo: 'Não tem', lista: [] }, { id: 'A', rotulo: 'A', lista: ['A'] }, { id: 'B', rotulo: 'B', lista: ['B'] },
@@ -150,8 +152,7 @@
       var e = { funcao: R.limparTexto(x.cargo, 80), inicio: x.inicio, fim: fimDe(x, agora) };
       var onde = R.limparTexto(x.onde, 120);
       if (onde) e.empregador = onde;
-      var inf = informalDe(x.carteira);
-      if (inf !== undefined) e.informal = inf;
+      e.informal = informalDe(x.carteira);
       return e;
     });
   }

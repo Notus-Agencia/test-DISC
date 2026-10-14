@@ -121,7 +121,7 @@
         el('div', { class: 'vg-entrada__golpe' }, P.golpe({ id: 'vg-aviso-golpe', aoDenunciar: denunciar, idDenunciar: 'vg-golpe-denunciar' })),
         el('p', { class: 'vg-links-pe' }, [el('button', { type: 'button', class: 'botao botao--link', id: 'vg-denunciar', onclick: denunciar }, 'Denunciar esta vaga'), ' · ',
           el('a', { class: 'botao botao--link', id: 'vg-compartilhar', target: '_blank', rel: 'noopener noreferrer', href: U.compartilharWhatsapp(textoCompartilhar(a)) }, 'Compartilhar no WhatsApp')]),
-        pessoa() && U.armazenamento.ler(CHAVE_ACEITE) ? el('p', { class: 't-nota texto-suave', id: 'vg-quero-lembrete' }, consentimento().lembrete_curto || '') : null
+        aceiteValido() ? el('p', { class: 't-nota texto-suave', id: 'vg-quero-lembrete' }, consentimento().lembrete_curto || '') : null
       ]);
       U.trocar(app, [el('a', { class: 'botao botao--link vg-voltar', href: voltarLista(), id: 'vg-voltar' }, [U.icone('voltar'), 'Vagas de ' + (a.cidade ? a.cidade.nome : 'volta para a lista')]), artigo]);
       desenharBarra();
@@ -178,6 +178,14 @@
       var c = root.VAGAS_TEXTOS && root.VAGAS_TEXTOS.consentimentos;
       return (c && c.aceites && c.aceites.pessoa_candidatura) || {};
     }
+    // O aviso de candidatura vale por CONTA e por VERSÃO do texto (P2 da revisão C): outra pessoa no mesmo celular, ou um texto novo
+    // de pessoa_candidatura, pede o aviso de novo. Guardado como {conta: e-mail da conta, versao, em} (vagas_eu não devolve o id).
+    function versaoAceite() { return consentimento().versao || R.VERSAO_TERMOS; }
+    function contaAtual() { return String((pessoa() && pessoa().conta && pessoa().conta.email) || '').trim().toLowerCase(); }
+    function aceiteValido() {
+      var g = U.armazenamento.ler(CHAVE_ACEITE);
+      return !!(contaAtual() && g && g.conta === contaAtual() && g.versao === versaoAceite());
+    }
     function guardarIntencao() { U.armazenamento.gravar(CHAVE_QUERO, { codigo: anuncio.codigo, id: anuncio.id, em: Date.now() }); }
     function quero() {
       if (!pessoa()) {
@@ -187,7 +195,7 @@
         return;
       }
       if (!pessoa().pessoa || !pessoa().pessoa.completo) { irCompletar(); return; }
-      if (!U.armazenamento.ler(CHAVE_ACEITE)) { pedirAceite(); return; }
+      if (!aceiteValido()) { pedirAceite(); return; }
       enviarQuero();
     }
     function irCompletar() {
@@ -206,7 +214,7 @@
         acoes: [el('button', { type: 'button', class: 'botao botao--claro', id: 'vg-aceite-cancelar', onclick: function () { j.fechar('cancelar'); } }, 'Cancelar'), enviar] });
       enviar.addEventListener('click', function () {
         if (!caixa.checked) { erro.textContent = 'Marque a caixa para continuar'; erro.hidden = false; caixa.focus(); return; }
-        U.armazenamento.gravar(CHAVE_ACEITE, { versao: c.versao || R.VERSAO_TERMOS, em: Date.now() });
+        U.armazenamento.gravar(CHAVE_ACEITE, { conta: contaAtual(), versao: versaoAceite(), em: Date.now() });
         j.fechar('aceite');
         enviarQuero();
       });

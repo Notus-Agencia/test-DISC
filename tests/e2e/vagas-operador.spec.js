@@ -394,4 +394,19 @@ test.describe('Operação da praça (prévia)', () => {
     await expect(page.locator('#vg-op-tela h1')).toHaveText('Boletim do dia');
     await expect(page.locator('#vg-menu')).not.toBeInViewport();
   });
+
+  test('Sair (aparelho emprestado no mutirão): encerra a sessão, limpa o aparelho e vai para a entrada', async ({ page }) => {
+    await entrarComo(page, 'operador@previa.com');
+    await expect(page.locator('#vg-op-tela h1')).toHaveText('Fila');
+    // O que a operação deixa no aparelho (cidade escolhida, rascunho da vaga assistida…) sai junto.
+    await page.evaluate(() => { localStorage.setItem('vg.op.cidade', '"x"'); localStorage.setItem('vg.rascunho.vaga-assistida', '{"dados":{}}'); });
+    await expect(page.locator('#vg-op-sair')).toHaveText('Sair');
+    await page.click('#vg-op-sair');
+    await page.waitForURL(/entrar\.html$/);
+    const depois = await page.evaluate(async () => ({
+      vg: Object.keys(localStorage).filter((k) => k.startsWith('vg.') && k !== 'vg.cidade'),
+      sessao: await window.VAGAS_API.sessao().then(() => 'aberta', () => 'fechada')
+    }));
+    expect(depois).toEqual({ vg: [], sessao: 'fechada' });
+  });
 });
