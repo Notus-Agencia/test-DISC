@@ -11,7 +11,9 @@
  *   normalizarCodigo(c) -> 'K7M2QX9A' | ''     formatarCodigo(c) -> 'K7M2-QX9A' | ''
  *   formatarTempo(seg) -> '12:05' (ou '1:02:03')     tempoPorExtenso(seg) -> 'Faltam 12 minutos' | 'Falta 1 minuto' | …
  *   calcularNota(acertos, total) -> 0–100 (a mesma conta do banco: arredonda 100 × acertos ÷ total)
- *   dataBR('2026-10-13') -> '13/10/2026'    dataDoIso('2026-10-13T03:00:00.000Z') -> '13/10/2026' (fuso de Boa Vista, UTC−4)
+ *   dataBR('2026-10-13') -> '13/10/2026'    dataDoIso('2026-10-13T03:00:00.000Z', fuso?) -> '13/10/2026' (fuso da cidade — o campo
+ *   "fuso" dela —; sem fuso, o horário de Brasília, America/Sao_Paulo, como o banco)    hoje(agoraMs?, fuso?) -> 'AAAA-MM-DD'
+ *   (hojeBoaVista: nome antigo de hoje(), mantido só para quem já chamava; usa o mesmo fuso padrão)
  *   novoEstado(respostaIniciar, agoraMs) -> estado da prova
  *   aplicarQuestao(estado, respostaProximaQuestao, agoraMs) -> estado com a questão atual (ou fim)
  *   aplicarResposta(estado, respostaResponder, agoraMs) -> estado com a próxima questão (ou fim)
@@ -36,7 +38,8 @@
   var INTERVALO_DIAS = 30;
   var TOLERANCIA_SEG_POR_QUESTAO = 10;   // a questão que já está na tela é aceita até maior(fim, hora em que apareceu) + 10 s
   var ALFABETO_CODIGO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  var FUSO_HORAS = -4;   // Boa Vista (Roraima): UTC−4, sem horário de verão
+  // Sem fuso da cidade: horário de Brasília (o mesmo padrão do banco, vagas_interno.fuso_conta). Nenhuma cidade fixa aqui.
+  var FUSO_PADRAO = 'America/Sao_Paulo';
   // O selo e o resultado nunca falam em aprovação nem comparam pessoas (padrões do painel científico, §5).
   var PALAVRAS_PROIBIDAS = ['aprovad', 'reprovad', 'percentil', 'ranking', 'melhor que', 'pior que'];
 
@@ -111,16 +114,26 @@
     return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
   }
 
-  function dataDoIso(iso) {
-    var t = Date.parse(String(iso || ''));
-    if (!isFinite(t)) return '';
-    return dataBR(new Date(t + FUSO_HORAS * 3600 * 1000).toISOString());
+  // 'AAAA-MM-DD' de um instante no fuso pedido (Intl; sem Intl de fusos, UTC−3).
+  function dataNoFuso(t, fuso) {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: fuso || FUSO_PADRAO, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t));
+    } catch (e) {
+      return new Date(t - 3 * 3600 * 1000).toISOString().slice(0, 10);
+    }
   }
 
-  function hojeBoaVista(agoraMs) {
-    var t = typeof agoraMs === 'number' ? agoraMs : Date.now();
-    return new Date(t + FUSO_HORAS * 3600 * 1000).toISOString().slice(0, 10);
+  function dataDoIso(iso, fuso) {
+    var t = Date.parse(String(iso || ''));
+    if (!isFinite(t)) return '';
+    return dataBR(dataNoFuso(t, fuso));
   }
+
+  function hoje(agoraMs, fuso) {
+    return dataNoFuso(typeof agoraMs === 'number' ? agoraMs : Date.now(), fuso);
+  }
+  var hojeNoFuso = hoje;
+  var hojeBoaVista = hoje;
 
   // ---------------------------------------------------------------- estado da prova
 
@@ -234,7 +247,7 @@
 
   function exibirSelo(selo, hojeIso) {
     var s = selo || {};
-    var hoje = hojeIso || hojeBoaVista();
+    var hoje = hojeIso || hojeNoFuso();
     var situacao = s.situacao === 'revogado' ? 'revogado'
       : (s.situacao === 'vencido' || (s.validoAte && String(s.validoAte) < hoje)) ? 'vencido' : 'valido';
     var margem = s.margem == null ? MARGEM_PADRAO : inteiro(s.margem);
@@ -305,7 +318,7 @@
     PALAVRAS_PROIBIDAS: PALAVRAS_PROIBIDAS, AVISO_SUPERVISAO: AVISO_SUPERVISAO, TEXTO_SELO: TEXTO_SELO, MENSAGENS: MENSAGENS,
     normalizarCodigo: normalizarCodigo, formatarCodigo: formatarCodigo, formatarTempo: formatarTempo,
     tempoPorExtenso: tempoPorExtenso, calcularNota: calcularNota, dataBR: dataBR, dataDoIso: dataDoIso,
-    hojeBoaVista: hojeBoaVista, novoEstado: novoEstado, aplicarQuestao: aplicarQuestao, aplicarResposta: aplicarResposta,
+    hoje: hoje, hojeBoaVista: hojeBoaVista, FUSO_PADRAO: FUSO_PADRAO, novoEstado: novoEstado, aplicarQuestao: aplicarQuestao, aplicarResposta: aplicarResposta,
     segundosRestantes: segundosRestantes, progresso: progresso, instrucoes: instrucoes, mensagemErro: mensagemErro,
     exibirSelo: exibirSelo, textoResultado: textoResultado, situacaoDoTeste: situacaoDoTeste
   };

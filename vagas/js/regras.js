@@ -16,6 +16,9 @@
  *   lerPessoa(dados) / lerEmpresa(dados) / lerAnuncio(dados, hoje) / lerReferencia(dados, mesAtual) -> {ok:true, campos} | {ok:false, erro}
  *     (mesmas mensagens das RPCs vagas_pessoa_salvar, vagas_empresa_cadastrar, vagas_anuncio_salvar, vagas_referencia_oferecer).
  *   MSG: mensagens fixas compartilhadas.
+ *   Onda 2 (migração 20261024120000_vagas_onda2): lerListaEspera(dados) (e-mail + WhatsApp opcional), PORTES, INDICADORES e GATILHOS
+ *     (catálogo do painel, alvos por porte), corIndicador(valor, alvo, direcao) -> 'ok' | 'atencao' | 'alerta' | null, CORES_INDICADOR,
+ *     PAPEIS_EMPRESA, STATUS_CONVITE_EQUIPE (equipe da empresa).
  * Textos longos (termos, privacidade, consentimentos, e-mails): texto final em conteudo/vagas-textos/ (aqui só a versão).
  */
 (function (root) {
@@ -55,8 +58,9 @@
   var BENEFICIOS = lista([['vt', 'Vale-transporte'], ['refeicao', 'Refeição ou vale-refeição'], ['saude', 'Plano de saúde'],
     ['moradia', 'Moradia'], ['comissao', 'Comissão']]);
   // Testes que a vaga pode citar ("valoriza o selo"): informativo, NUNCA filtro nem corte.
-  var TESTES_SELO = lista([['atendimento', 'Atendimento e recepção'], ['vendas', 'Vendas'], ['administrativo', 'Rotinas administrativas'],
-    ['caixa', 'Operação de caixa'], ['portugues', 'Português para o trabalho']]);
+  // Rótulos = nomes do catálogo dos testes (docs/VAGAS-TESTES.md), para o "Pede selo: …" da vaga e o selo dizerem o mesmo.
+  var TESTES_SELO = lista([['atendimento', 'Atendimento e recepção'], ['vendas', 'Vendas no varejo'], ['administrativo', 'Rotina administrativa'],
+    ['caixa', 'Caixa e matemática prática'], ['portugues', 'Português prático']]);
   // Lista fechada de pontos fortes da referência profissional: os 12 comportamentos observáveis da psicologia (evidencias.md
   // §4A.4; a empresa marca até 3). Mesma lista, na mesma ordem, em vagas_interno.pontos_fortes() (o teste do banco confere).
   var PONTOS_FORTES = lista([['pontualidade', 'Chega no horário e avisa quando não pode'], ['atendimento', 'Atende bem o cliente'],
@@ -85,6 +89,54 @@
   // Para a EMPRESA ("Referências dadas"): o banco nunca devolve "ocultada" para ela (veto P2 da psicologia).
   var STATUS_REFERENCIA_EMPRESA = lista([['pendente', 'Esperando a pessoa aceitar'], ['aceita', 'Aceita'], ['recusada', 'Não aceita'],
     ['removida', 'Removida pela moderação']]);
+  // Equipe da empresa (convite feito por quem é dono(a); migração 20261024120000_vagas_onda2). "vencido" = aberto e fora do prazo.
+  var PAPEIS_EMPRESA = lista([['dono', 'Dono(a)'], ['recrutador', 'Recrutador(a)']]);
+  var STATUS_CONVITE_EQUIPE = lista([['pendente', 'Esperando o aceite'], ['vencido', 'Venceu'], ['aceito', 'Aceito'], ['cancelado', 'Cancelado']]);
+  // Porte da cidade: escolhe o alvo de cada indicador do painel ('pequena' = os alvos "cidadePequena" do arquivo; 'grande' ainda
+  // não tem alvo no arquivo). Sem porte cadastrado, os indicadores saem sem alvo e sem cor.
+  var PORTES = lista([['pequena', 'Cidade pequena'], ['grande', 'Cidade grande']]);
+  var CORES_INDICADOR = lista([['ok', 'No alvo'], ['atencao', 'Perto do alvo'], ['alerta', 'Longe do alvo']]);
+  // Os 15 indicadores e os 5 gatilhos de conteudo/vagas-operacao/indicadores.json (versão 2), com os alvos por porte. O MESMO
+  // catálogo de vagas_interno.indicadores_catalogo() (tests/supabase/vagas_onda2.test.js compara o arquivo, o banco e esta lista).
+  var INDICADORES = [
+    { chave: 'vagas_ativas', nome: 'Vagas ativas', unidade: 'vagas', periodo: 'agora', direcao: 'maior_melhor',
+      alvo: { pequena: 20 }, alvoLancamento: { pequena: 15 }, hipotese: false },
+    { chave: 'pessoas_com_selo_por_funcao', nome: 'Pessoas com selo, por teste', unidade: 'pessoas', periodo: 'agora', direcao: 'maior_melhor',
+      alvo: { pequena: { porTeste: null, total: 400 } }, alvoLancamento: { pequena: { total: 150 } }, hipotese: false },
+    { chave: 'vagas_3_interessados_72h', nome: 'Vagas com 3 interessados com selo em 7 dias', unidade: '%', periodo: '30 dias',
+      direcao: 'maior_melhor', alvo: { pequena: 70 }, janela: { pequena: '7d' }, hipotese: false },
+    { chave: 'vagas_combinou_7d', nome: 'Vagas com Combinou em 7 dias', unidade: '%', periodo: '30 dias', direcao: 'maior_melhor',
+      alvo: { pequena: 60 }, hipotese: true },
+    { chave: 'primeira_resposta_empresa_dias', nome: 'Primeira resposta da empresa', unidade: 'dias', periodo: '30 dias', direcao: 'menor_melhor',
+      alvo: { pequena: 7 }, hipotese: false },
+    { chave: 'contratacoes', nome: 'Contratações', unidade: 'contratações', periodo: 'acumulado e mês', direcao: 'maior_melhor',
+      alvo: { pequena: 3 }, hipotese: false },
+    { chave: 'empresas_ativas_mes', nome: 'Empresas ativas por mês', unidade: 'empresas', periodo: 'mês', direcao: 'maior_melhor',
+      alvo: { pequena: 15 }, alvoLancamento: { pequena: 10 }, hipotese: false },
+    { chave: 'empresas_buscando_semana', nome: 'Empresas buscando no banco por semana', unidade: 'empresas', periodo: 'semana', direcao: 'maior_melhor',
+      alvo: { pequena: null }, hipotese: false },
+    { chave: 'empresas_pagantes', nome: 'Empresas pagantes (mês)', unidade: 'empresas', periodo: 'mês', direcao: 'maior_melhor',
+      alvo: { pequena: 5 }, hipotese: false },
+    { chave: 'receita_liquida_centavos', nome: 'Receita líquida (mês)', unidade: 'centavos', periodo: 'mês', direcao: 'maior_melhor',
+      alvo: { pequena: null }, hipotese: false },
+    { chave: 'denuncia_tempo_decisao_h', nome: 'Tempo para decidir uma denúncia', unidade: 'horas', periodo: 'últimas 30', direcao: 'menor_melhor',
+      alvo: { pequena: 24 }, hipotese: true },
+    { chave: 'emails_mes', nome: 'E-mails enviados no mês', unidade: 'e-mails', periodo: 'mês', direcao: 'menor_melhor',
+      alvo: { pequena: 3000 }, alerta: 2500, hipotese: false },
+    { chave: 'fila_moderacao', nome: 'Esperando moderação há mais de 24 h', unidade: 'itens', periodo: 'agora', direcao: 'menor_melhor',
+      alvo: { pequena: 0 }, hipotese: true },
+    { chave: 'lista_espera', nome: 'Pessoas na lista de espera', unidade: 'pessoas', periodo: 'agora', direcao: 'maior_melhor',
+      alvo: { pequena: 200 }, hipotese: true },
+    { chave: 'cadastros_assistidos_confirmados', nome: 'Cadastros assistidos confirmados', unidade: 'contas', periodo: 'por mutirão e mês',
+      direcao: 'maior_melhor', alvo: { pequena: 45 }, hipotese: true }
+  ];
+  var GATILHOS = [
+    { chave: 'antes_de_cobrar', nome: 'Pode começar a cobrar a empresa', hipotese: true },
+    { chave: 'praca_viva', nome: 'Praça viva (6 meses)', hipotese: false },
+    { chave: 'abrir_proxima', nome: 'Abrir outra praça (só quando o dono decidir; nenhuma cidade escolhida)', hipotese: true },
+    { chave: 'trocar_parceiro', nome: 'Trocar o parceiro', hipotese: false },
+    { chave: 'pessoa_nao_paga', nome: 'A pessoa não paga nada', hipotese: false }
+  ];
 
   var MSG = {
     SESSAO: 'Sessão expirada. Entre de novo.',
@@ -98,7 +150,10 @@
     VAGA_FORA: 'Vaga não encontrada ou já encerrada.',
     BLOQUEADO: 'Muitas tentativas. Tente de novo mais tarde.',
     DADOS_INVALIDOS: 'Dados inválidos. Confira os campos.',
-    NUNCA_PAGUE: 'Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.'
+    NUNCA_PAGUE: 'Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.',
+    // Sem DDD de exemplo (nenhuma cidade fixa em texto): a mesma do banco e de conteudo/vagas-textos (validacao.whatsapp_invalido).
+    WHATSAPP_INVALIDO: 'WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).',
+    CONVITE_INVALIDO: 'Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.'
   };
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -277,13 +332,13 @@
     if (!a || !b) return 0;
     return Math.max(1, numeroMes(b) - numeroMes(a) + 1);
   }
-  // Data no fuso da cidade (Roraima: UTC−4, sem horário de verão).
+  // Data no fuso da cidade (o campo "fuso" dela); sem fuso, o horário de Brasília (America/Sao_Paulo, UTC−3), como o banco.
   function hoje(fuso, agora) {
     var d = new Date(agora == null ? Date.now() : agora);
     try {
-      return new Intl.DateTimeFormat('en-CA', { timeZone: fuso || 'America/Boa_Vista', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+      return new Intl.DateTimeFormat('en-CA', { timeZone: fuso || 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
     } catch (e) {
-      return new Date(d.getTime() - 4 * 3600000).toISOString().slice(0, 10);
+      return new Date(d.getTime() - 3 * 3600000).toISOString().slice(0, 10);
     }
   }
   function somarDias(dataIso, n) {
@@ -356,7 +411,7 @@
     var nome = limparTexto(texto(d.nome), 120);
     if (!nomeValido(nome)) return falha('Informe seu nome e sobrenome.');
     var whats = normalizarWhatsapp(texto(d.whatsapp));
-    if (!whatsappCelularValido(whats)) return falha('WhatsApp inválido. Use DDD + número de celular (ex.: 95 99123-4567).');
+    if (!whatsappCelularValido(whats)) return falha(MSG.WHATSAPP_INVALIDO);
     var email = '';
     if (texto(d.email).trim()) {
       email = normalizarEmail(d.email);
@@ -392,6 +447,31 @@
     if (!conf) conf = conferirTexto(campos.sobre, 'perfil');
     if (conf) return falha(conf.erro);
     return { ok: true, campos: campos };
+  }
+
+  // vagas_lista_espera_entrar (sem a consulta da cidade): e-mail obrigatório; WhatsApp opcional (celular com DDD, só algarismos).
+  function lerListaEspera(d) {
+    d = d && typeof d === 'object' ? d : {};
+    var email = normalizarEmail(d.email);
+    if (!email) return falha('E-mail inválido.');
+    var whats = '';
+    if (texto(d.whatsapp).trim()) {
+      whats = normalizarWhatsapp(texto(d.whatsapp));
+      if (!whatsappCelularValido(whats)) return falha(MSG.WHATSAPP_INVALIDO);
+    }
+    return { ok: true, campos: { cidade: texto(d.cidade).trim().toLowerCase(), email: email, perfil: d.perfil === 'empresa' ? 'empresa' : 'pessoa',
+      whatsapp: whats } };
+  }
+
+  // Cor de um indicador pela regra de conteudo/vagas-operacao/indicadores.json (igual a vagas_interno.indicador_cor):
+  // maior é melhor — 'ok' (atingiu), 'atencao' (70% ou mais do alvo), 'alerta'; menor é melhor — 'ok' (até o alvo),
+  // 'atencao' (até 1,3 vez), 'alerta'. Sem valor ou sem alvo: null.
+  function corIndicador(valor, alvo, direcao) {
+    if (valor === null || valor === undefined || alvo === null || alvo === undefined) return null;
+    var v = Number(valor);
+    var a = Number(alvo);
+    if (direcao === 'menor_melhor') return v <= a ? 'ok' : (v <= a * 1.3 ? 'atencao' : 'alerta');
+    return v >= a ? 'ok' : (v >= a * 0.7 ? 'atencao' : 'alerta');
   }
 
   // vagas_interno.ler_empresa (sem a consulta de CNPJ repetido e da cidade).
@@ -564,7 +644,9 @@
     PONTOS_FORTES: PONTOS_FORTES, MOTIVOS_DENUNCIA: MOTIVOS_DENUNCIA, MOTIVOS_DENUNCIA_TELA: MOTIVOS_DENUNCIA_TELA, TEXTO_STATUS: TEXTO_STATUS,
     STATUS_CANDIDATURA: STATUS_CANDIDATURA,
     STATUS_ANUNCIO: STATUS_ANUNCIO, STATUS_EMPRESA: STATUS_EMPRESA, STATUS_REFERENCIA: STATUS_REFERENCIA,
-    STATUS_REFERENCIA_EMPRESA: STATUS_REFERENCIA_EMPRESA, MSG: MSG,
+    STATUS_REFERENCIA_EMPRESA: STATUS_REFERENCIA_EMPRESA, MSG: MSG, PAPEIS_EMPRESA: PAPEIS_EMPRESA,
+    STATUS_CONVITE_EQUIPE: STATUS_CONVITE_EQUIPE, PORTES: PORTES, CORES_INDICADOR: CORES_INDICADOR, INDICADORES: INDICADORES, GATILHOS: GATILHOS,
+    lerListaEspera: lerListaEspera, corIndicador: corIndicador,
     PADROES: PADROES, tiposDoContexto: tiposDoContexto, mensagemTexto: mensagemTexto, conferirTexto: conferirTexto, normalizar: normalizar,
     normalizarCnpj: normalizarCnpj, cnpjValido: cnpjValido, formatarCnpj: formatarCnpj, normalizarWhatsapp: normalizarWhatsapp,
     whatsappCelularValido: whatsappCelularValido, whatsappEmpresaValido: whatsappEmpresaValido, normalizarEmail: normalizarEmail,

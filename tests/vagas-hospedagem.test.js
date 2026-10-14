@@ -143,8 +143,8 @@ test('montarPaginaVaga: Open Graph completo, sem JavaScript, texto escapado', ()
   assert.ok(html.includes('<meta property="og:site_name" content="Vagas · Gestão sem Caos">'));
   assert.ok(html.includes('<h1>Atendente de loja &lt;turno da tarde&gt;</h1>'));
   assert.ok(!html.includes('<turno da tarde>'), 'nada de HTML cru vindo do anúncio');
-  assert.ok(html.includes('href="/boa-vista-rr/?vaga=K7M2QX"'), 'botão leva para a tela da cidade com o código');
-  assert.ok(html.includes('Quero essa vaga'));
+  assert.ok(html.includes('href="/vaga.html?vaga=K7M2QX"'), 'botão leva direto para a tela da vaga com o código');
+  assert.ok(html.includes('Quero esta vaga'));
   assert.ok(html.includes('12/11/2026'), 'data de validade no formato brasileiro');
   assert.ok(html.includes('Gestão sem Caos') && !/notus/i.test(html), 'marca certa');
   const semUrls = html.replace(/https?:\/\/\S+/g, '');
@@ -156,7 +156,7 @@ test('montarPaginaVaga: vaga encerrada ganha noindex e botão "Ver outras vagas"
   assert.ok(html.includes('<meta name="robots" content="noindex">'));
   assert.ok(html.includes('Vaga encerrada'));
   assert.ok(html.includes('Ver outras vagas'));
-  assert.ok(!html.includes('Quero essa vaga'));
+  assert.ok(!html.includes('Quero esta vaga'));
 });
 
 test('montarPaginaErro: 404 e 503 simples, com noindex e sem script', () => {
@@ -227,10 +227,11 @@ test('_headers: CSP sem script de fora (exceto Turnstile), Supabase liberado, ca
   assert.ok(blocos.length <= 100);
 });
 
-test('_redirects: raiz vai para /boa-vista-rr/ com 302; /v/ fica com a Function', () => {
+test('_redirects: a raiz fica com o index.html (escolha da cidade); /<cidade>/ vai para cidade.html; /v/ fica com a Function', () => {
   const txt = fs.readFileSync(path.join(RAIZ, '_redirects'), 'utf8');
   const regras = txt.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')).map((l) => l.split(/\s+/));
-  assert.deepEqual(regras[0], ['/', '/boa-vista-rr/', '302']);
+  assert.ok(!regras.some((r) => r[0] === '/'), 'sem cidade fixa na raiz');
+  assert.deepEqual(regras[0], ['/:cidade/', '/cidade.html?cidade=:cidade', '302']);
   assert.ok(!regras.some((r) => r[0].startsWith('/v/')), 'uma regra /v/ ignoraria a Function (o Pages não aplica _redirects a rota de Function)');
   for (const r of regras) {
     assert.ok(r.length === 2 || r.length === 3, 'origem destino [código]');
