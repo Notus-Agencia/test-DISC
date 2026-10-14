@@ -15,6 +15,9 @@
  * No Node (testes): require('./vagas/js/api-previa.js').criarBackend({armazenamento, agora: () => ms, semente: true|false})
  *   -> {rpc(nome, args) -> Promise<json>, conta: {cadastrar, reenviarConfirmacao, esqueciSenha, cadastroAssistido, convidarOperador,
  *   excluirConta, entrar, sair, sessao, confirmarLink, definirSenha}, estado(), reiniciar()}
+ *
+ * Testes de habilidade: a prova da prévia usa um banco de DEMONSTRAÇÃO escrito só para ela (TESTES_DEMONSTRACAO, 18 questões
+ * por teste), nunca as questões reais; mesmas regras, tempos, tolerância, 30 dias e mensagens da migração 20261023.
  */
 (function (root) {
   'use strict';
@@ -37,6 +40,698 @@
     var m = {};
     return { getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },
       setItem: function (k, v) { m[k] = String(v); }, removeItem: function (k) { delete m[k]; } };
+  }
+
+  // ===============================================================================================================================
+  // PROVA DE DEMONSTRAÇÃO (frente testes, onda 2) — SÓ PARA A PRÉVIA.
+  // As questões abaixo foram escritas para demonstrar as telas. NÃO são as questões da prova real: aquelas são confidenciais e
+  // nunca entram no repositório (docs/VAGAS-TESTES.md, "Gabarito fora do repositório"). A tela mostra "Questões de demonstração
+  // (a prova real usa outro banco)". Redação no padrão de docs/painel-cientifico/vagas/padroes.md §2 a §4 (o teste de unidade
+  // passa cada questão pelo mesmo validador das questões reais, scripts/montar-testes.mjs).
+  // 18 por teste (6 fáceis, 6 médias, 6 difíceis), cobrindo as competências do contrato. As regras são as da migração
+  // 20261023120000_vagas_testes.sql: 15 questões (6/6/3), 20 min (caixa 25) pelo relógio do "servidor", 10 s de tolerância para a
+  // questão que já está na tela, 1 tentativa a cada 30 dias, nota = arredonda(100 × acertos ÷ total), selo com nota ≥ 60 válido
+  // por 12 meses, sinais (saiu da tela, copiou texto) só registrados. Sem limite por origem (a prévia não tem IP).
+  // ===============================================================================================================================
+  var MSG_PROVA = {
+    login: 'Entre na sua conta para fazer o teste.',
+    so_pessoa: 'Os testes são para a conta de pessoa. Entre com a sua conta de pessoa para fazer o teste.',
+    conta_inativa: 'Sua conta não está ativa. Confirme o e-mail ou fale com a equipe da Gestão sem Caos.',
+    teste_indisponivel: 'Este teste não está disponível agora.',
+    aguarde: 'Você fez este teste há menos de 30 dias. Pode fazer de novo a partir de ',
+    tentativa_inexistente: 'Teste não encontrado. Volte à lista de testes.',
+    encerrada: 'Este teste já foi encerrado.',
+    tempo_esgotado: 'O tempo acabou. As respostas dadas até aqui foram guardadas.',
+    fora_de_ordem: 'Esta questão não está disponível. Siga para a questão atual.',
+    alternativa_invalida: 'Escolha uma das alternativas.',
+    sinal_invalido: 'Sinal inválido.',
+    selo_inexistente: 'Selo não encontrado. Confira o código.'
+  };
+  var REGRAS_PROVA = { questoes: 15, intervaloDias: 30, toleranciaSeg: 10, notaMinima: 60, margem: 10, validadeMeses: 12, rapidaSeg: 3 };
+  var ALFABETO_SELO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  // Questão: {id, competencia, dificuldade 1|2|3, texto? (aviso a interpretar), enunciado, alternativas[4], correta 0..3, conta?}.
+  function q(id, competencia, dificuldade, enunciado, alternativas, correta, extra) {
+    return Object.assign({ id: id, competencia: competencia, dificuldade: dificuldade, enunciado: enunciado, alternativas: alternativas,
+      correta: correta }, extra || {});
+  }
+  var TESTES_DEMONSTRACAO = [
+    { slug: 'atendimento', nome: 'Atendimento e recepção', minutos: 20,
+      descricao: 'O básico de quem atende o público: receber, telefone e mensagens, agenda, reclamações e cuidado com os dados do cliente.',
+      competencias: [{ id: 'receber', nome: 'Receber e informar' }, { id: 'telefone', nome: 'Telefone e WhatsApp' },
+        { id: 'agenda', nome: 'Agenda e horários' }, { id: 'reclamacoes', nome: 'Reclamações e situações difíceis' },
+        { id: 'sigilo', nome: 'Sigilo e dados do cliente' }],
+      questoes: [
+        q('DEMO-ATE-01', 'receber', 1, 'Um cliente chega ao balcão enquanto você termina de anotar um recado. O que deve ser feito primeiro?',
+          ['Cumprimentar o cliente e pedir um instante para terminar', 'Terminar o recado e só depois olhar para o cliente',
+            'Pedir ao cliente que volte em alguns minutos', 'Fazer um sinal com a mão e continuar escrevendo o recado'], 0),
+        q('DEMO-ATE-02', 'receber', 1, 'Uma pessoa idosa chega à recepção, e outras pessoas já esperam. Como ela deve ser atendida?',
+          ['Na ordem de chegada, como qualquer cliente', 'Depois de quem chegou antes dela', 'Com prioridade, antes de quem não tem prioridade',
+            'Com prioridade, só se ela pedir para passar'], 2),
+        q('DEMO-ATE-03', 'receber', 2, 'Um cliente pergunta o preço de um serviço, e você não sabe o valor. O que deve ser feito?',
+          ['Dar um valor aproximado para o cliente não esperar', 'Dizer que vai confirmar e trazer o preço certo',
+            'Dizer que não sabe e encerrar o atendimento', 'Pedir que o cliente procure o preço sozinho'], 1),
+        q('DEMO-ATE-04', 'receber', 3, 'Um cliente pede uma informação que só a gerência pode dar. A gerente volta só à tarde. O que deve ser feito?',
+          ['Responder do jeito que a gerente provavelmente responderia', 'Pedir que o cliente volte, sem dizer quando',
+            'Passar ao cliente o celular pessoal da gerente', 'Anotar nome, contato e pergunta, e combinar o retorno'], 3),
+        q('DEMO-ATE-05', 'telefone', 1, 'Ao atender o telefone da empresa, o que deve ser dito primeiro?',
+          ['Alô, e depois esperar a pessoa dizer o que quer', 'Quem fala, e de onde está ligando', 'O nome da empresa, o seu nome e um bom-dia',
+            'O horário de funcionamento e o endereço da empresa'], 2),
+        q('DEMO-ATE-06', 'telefone', 2, 'Um cliente liga e pede para falar com um colega que está em reunião. O que deve ir no recado?',
+          ['Nome, telefone e assunto, com o dia e a hora', 'Só o nome de quem ligou, para não esquecer de avisar', 'Só o assunto, sem o telefone de retorno',
+            'Nada, porque o cliente pode ligar de novo'], 0),
+        q('DEMO-ATE-07', 'telefone', 2, 'Um cliente pergunta, por mensagem, se a loja abre no domingo. A loja fecha no domingo. Qual é a melhor resposta?',
+          ['Bom dia! Domingo eu não sei dizer. Pergunte de novo amanhã, que alguém vê para você.',
+            'Oi! Domingo é fechado e no fim de semana a gente não responde mensagem, tá?',
+            'Bom dia! Pode vir no domingo, que deve ter alguém aqui para atender você.',
+            'Bom dia! No domingo a loja fica fechada. Abrimos de segunda a sábado, das 8h às 18h.'], 3),
+        q('DEMO-ATE-08', 'telefone', 3, 'Você atende um cliente no balcão, e o telefone toca várias vezes. O que é correto fazer?',
+          ['Deixar tocar até parar, sem anotar a ligação', 'Pedir licença, atender, anotar o recado e voltar ao cliente',
+            'Atender e resolver tudo pelo telefone, com calma', 'Tirar o telefone do gancho para ele parar de tocar'], 1),
+        q('DEMO-ATE-09', 'agenda', 1, 'Um cliente quer marcar horário para quinta-feira, às 10h. O que deve ser conferido antes de confirmar?',
+          ['Se o cliente já foi atendido antes', 'Se o horário está livre na agenda', 'Se o cliente prefere outro dia',
+            'Se o cliente mora perto da empresa'], 1),
+        q('DEMO-ATE-10', 'agenda', 2, 'Cada consulta dura 30 minutos. A última vaga livre é às 17h30, e a clínica fecha às 18h. Um cliente pede 17h45. O que deve ser feito?',
+          ['Marcar às 17h45, porque ainda é horário de expediente', 'Marcar às 18h, no fim do expediente',
+            'Dizer que não há vaga em nenhum dia da semana', 'Oferecer o horário das 17h30, que ainda está livre'], 3),
+        q('DEMO-ATE-11', 'agenda', 3, 'Um cliente desmarcou a consulta de amanhã, às 9h. Outro cliente está na lista de espera para esse dia. O que deve ser feito?',
+          ['Liberar o horário e oferecer a vaga a quem está na espera', 'Deixar o horário vazio até o fim do dia',
+            'Marcar o cliente da lista de espera, sem avisar a ele antes', 'Manter o horário no nome de quem desmarcou'], 0),
+        q('DEMO-ATE-12', 'agenda', 3, 'A agenda mostra dois clientes marcados no mesmo horário, com o mesmo profissional. O que deve ser feito?',
+          ['Esperar os dois chegarem e ver quem fica', 'Atender quem chegar primeiro e dispensar o outro',
+            'Ligar antes para um deles e combinar outro horário', 'Apagar um dos horários sem avisar o cliente'], 2),
+        q('DEMO-ATE-13', 'reclamacoes', 1, 'Um cliente reclama que esperou muito para ser atendido. Qual é a primeira atitude correta?',
+          ['Explicar que a culpa é do colega que faltou', 'Dizer que hoje o movimento está assim e não há o que fazer',
+            'Pedir que ele fale mais baixo antes de ouvir', 'Ouvir sem interromper e pedir desculpas pela espera'], 3),
+        q('DEMO-ATE-14', 'reclamacoes', 2, 'Uma cliente diz que foi cobrada duas vezes pelo mesmo serviço. O que deve ser feito?',
+          ['Dizer que o sistema não erra e encerrar a conversa', 'Conferir os pagamentos e corrigir, se houver erro',
+            'Devolver o dinheiro na hora, sem conferir nada', 'Pedir que ela reclame no banco dela'], 1),
+        q('DEMO-ATE-15', 'reclamacoes', 3, 'Um cliente muito irritado começa a ofender você no balcão. O que deve ser feito?',
+          ['Responder no mesmo tom, para ele se acalmar', 'Ignorar o cliente e atender outra pessoa',
+            'Manter a calma, sem revidar, e chamar a pessoa responsável', 'Dizer que ele está errado e encerrar o assunto'], 2),
+        q('DEMO-ATE-16', 'sigilo', 1, 'Uma pessoa pede, no balcão, o telefone de outro cliente da loja. O que deve ser feito?',
+          ['Explicar que o dado é do cliente e oferecer levar um recado', 'Passar o telefone, porque é só um número',
+            'Mostrar a ficha do cliente para a pessoa copiar', 'Passar o número, se a pessoa disser que conhece bem o cliente'], 0),
+        q('DEMO-ATE-17', 'sigilo', 2, 'Você precisa sair da recepção por alguns minutos. A tela do computador mostra a ficha de um paciente. O que deve ser feito?',
+          ['Deixar a ficha aberta para não perder tempo', 'Pedir a um colega de outro setor que olhe a tela',
+            'Bloquear a tela ou fechar a ficha antes de sair', 'Deixar a ficha aberta, com um aviso de volto já'], 2),
+        q('DEMO-ATE-18', 'sigilo', 3, 'Uma pessoa diz, por mensagem, que é parente de um cliente e pede o endereço dele. O que deve ser feito?',
+          ['Passar o endereço, porque a pessoa disse que é parente', 'Explicar que os dados só são passados ao próprio cliente',
+            'Pedir a foto de um documento e então passar o endereço', 'Passar só o bairro, sem o nome da rua'], 1)
+      ] },
+    { slug: 'vendas', nome: 'Vendas no varejo', minutos: 20,
+      descricao: 'O básico de quem vende no balcão: entender o que o cliente precisa, apresentar o produto, preço e desconto, troca e pós-venda.',
+      competencias: [{ id: 'abordagem', nome: 'Abordagem e necessidade do cliente' }, { id: 'apresentacao', nome: 'Apresentação do produto e fechamento' },
+        { id: 'objecoes', nome: 'Objeções, negociação e preço' }, { id: 'troca', nome: 'Troca, devolução e direitos do consumidor' },
+        { id: 'posvenda', nome: 'Pós-venda e relacionamento' }],
+      questoes: [
+        q('DEMO-VEN-01', 'abordagem', 1, 'Um cliente entra na loja e olha as prateleiras. Qual é a forma correta de abordar?',
+          ['Cumprimentar e perguntar se pode ajudar a encontrar algo', 'Seguir o cliente de perto, sem dizer nada',
+            'Esperar o cliente chamar, mesmo que demore', 'Oferecer logo o produto mais caro da loja, para ganhar tempo'], 0),
+        q('DEMO-VEN-02', 'abordagem', 1, 'Para indicar o produto certo, o que deve ser feito primeiro?',
+          ['Mostrar o produto que dá mais comissão', 'Falar o preço de todos os produtos parecidos da loja',
+            'Perguntar para que o cliente vai usar o produto', 'Pegar o primeiro produto da prateleira'], 2),
+        q('DEMO-VEN-03', 'abordagem', 2, 'Uma cliente diz que só está olhando. O que é correto fazer?',
+          ['Insistir até ela escolher algum produto da vitrine', 'Dizer que fica à disposição e deixá-la à vontade', 'Sair de perto sem responder nada',
+            'Perguntar quanto ela pode gastar hoje'], 1),
+        q('DEMO-VEN-04', 'abordagem', 3, 'Um cliente quer uma tinta para pintar o banheiro. Qual informação é mais importante para indicar o produto certo?',
+          ['A cor preferida da família', 'Se o cliente já comprou na loja antes', 'Quantas pessoas moram na casa',
+            'Se a parede pega vapor e umidade do banho'], 3),
+        q('DEMO-VEN-05', 'apresentacao', 1, 'Ao mostrar um produto, o que deve ser explicado ao cliente?',
+          ['Quantas unidades a loja vendeu neste mês', 'Quanto a loja pagou ao fornecedor', 'Como o produto atende ao que o cliente precisa',
+            'Qual dos produtos dá mais comissão para quem vende'], 2),
+        q('DEMO-VEN-06', 'apresentacao', 2, 'O cliente decidiu comprar uma geladeira. O que deve ser confirmado antes de fechar a venda?',
+          ['As medidas do lugar onde ela vai ficar', 'Se o cliente gosta de cozinhar', 'A cor das paredes da cozinha',
+            'Se o cliente tem outros eletrodomésticos'], 0),
+        q('DEMO-VEN-07', 'apresentacao', 2, 'Um cliente pergunta se o produto tem garantia. A etiqueta mostra 12 meses de garantia do fabricante. Qual é a resposta correta?',
+          ['Que a garantia é só de 7 dias', 'Que a loja não trabalha com garantia', 'Que só tem garantia se pagar à vista',
+            'Que tem 12 meses de garantia do fabricante'], 3),
+        q('DEMO-VEN-08', 'apresentacao', 3, 'O produto que o cliente pediu acabou no estoque. Há outro parecido, mais caro. O que é correto fazer?',
+          ['Dizer que é o mesmo produto e cobrar o preço novo', 'Avisar que acabou e mostrar a outra opção e o preço',
+            'Prometer a entrega sem saber quando o produto chega', 'Encerrar o atendimento, porque o produto acabou'], 1),
+        q('DEMO-VEN-09', 'objecoes', 1, 'O cliente diz que achou o preço alto. Qual é a atitude correta?',
+          ['Dizer que o cliente não entende nada desse tipo de produto', 'Explicar o que o preço inclui e as formas de pagamento',
+            'Baixar o preço sem consultar ninguém', 'Mudar de assunto e mostrar outro setor'], 1),
+        q('DEMO-VEN-10', 'objecoes', 2, 'A loja permite 5% de desconto no pagamento à vista. O cliente pede 15%. O que deve ser feito?',
+          ['Dar os 15% para não perder a venda', 'Dar 10%, o meio-termo entre os dois', 'Recusar qualquer desconto ao cliente',
+            'Oferecer os 5% que a loja permite'], 3),
+        q('DEMO-VEN-11', 'objecoes', 3, 'O cliente diz que outra loja vende o mesmo produto mais barato. O que é correto fazer?',
+          ['Mostrar as vantagens da loja e consultar se dá para cobrir', 'Dizer que a outra loja vende produto falso',
+            'Pedir que ele compre na outra loja, então', 'Baixar o preço por conta própria, sem perguntar à gerência'], 0),
+        q('DEMO-VEN-12', 'objecoes', 3, 'O cliente gostou do produto, mas diz que precisa pensar. O que deve ser feito?',
+          ['Insistir até ele aceitar levar hoje', 'Dizer que o preço muda amanhã, para ele decidir já',
+            'Tirar as dúvidas e passar o contato da loja', 'Deixar o cliente sozinho, sem responder'], 2),
+        q('DEMO-VEN-13', 'troca', 1, 'A loja aceita troca em 30 dias, com a etiqueta. Um cliente quer trocar o tamanho de uma camisa comprada há 10 dias. O que deve ser feito?',
+          ['Recusar, porque a roupa já foi levada para a casa dele', 'Cobrar uma taxa para fazer a troca', 'Pedir que ele volte só no fim do mês',
+            'Fazer a troca, porque está dentro da regra da loja'], 3),
+        q('DEMO-VEN-14', 'troca', 2, 'Um produto comprado na loja apresentou defeito dentro da garantia. O que o cliente tem direito de pedir?',
+          ['Só um desconto na próxima compra', 'Que o defeito seja consertado no prazo da lei', 'Nada, se ele já usou o produto',
+            'Só a troca por um produto mais barato'], 1),
+        q('DEMO-VEN-15', 'troca', 3, 'Uma cliente comprou um celular pelo site da loja. Ela quer desistir 5 dias depois de receber. O que diz a regra das compras feitas fora da loja?',
+          ['Ela só pode trocar por outro produto da loja', 'Ela perde o dinheiro, porque já abriu a caixa',
+            'Ela pode desistir em até 7 dias e receber de volta', 'Ela pode desistir, mas paga uma multa de 50%'], 2),
+        q('DEMO-VEN-16', 'posvenda', 1, 'Depois da venda, o que deve ser entregue ao cliente?',
+          ['A nota fiscal e as informações da garantia', 'Um cartão com o telefone pessoal de quem vendeu', 'Só o produto, bem embrulhado',
+            'Um cupom para indicar amigos'], 0),
+        q('DEMO-VEN-17', 'posvenda', 2, 'A loja manda ofertas para clientes que autorizaram. Um cliente pede para sair da lista. O que deve ser feito?',
+          ['Continuar enviando, porque ele já comprou antes', 'Mandar só as ofertas mais importantes',
+            'Tirar o número da lista e parar de enviar ofertas', 'Pedir que ele bloqueie o número da loja'], 2),
+        q('DEMO-VEN-18', 'posvenda', 3, 'Um cliente volta dizendo que não sabe usar o produto que comprou. O que é correto fazer?',
+          ['Dizer que o manual explica tudo', 'Explicar com calma como usar e conferir se ficou claro',
+            'Cobrar pela explicação, porque a venda acabou', 'Oferecer a troca por outro produto mais simples de usar'], 1)
+      ] },
+    { slug: 'administrativo', nome: 'Rotina administrativa', minutos: 20,
+      descricao: 'O básico da rotina de escritório: documentos, planilha, e-mail, contas a pagar e agenda.',
+      competencias: [{ id: 'documentos', nome: 'Organização de documentos' }, { id: 'planilha', nome: 'Planilha básica' },
+        { id: 'email', nome: 'E-mail e comunicação escrita' }, { id: 'contas', nome: 'Notas, recibos e contas a pagar' },
+        { id: 'rotina', nome: 'Agenda e rotina do escritório' }],
+      questoes: [
+        q('DEMO-ADM-01', 'documentos', 1, 'Onde devem ficar os documentos de um cliente depois de usados?',
+          ['Na pasta certa, no arquivo ou no armário', 'Em cima da mesa, para achar mais rápido depois', 'Na gaveta de quem atendeu o cliente',
+            'Junto com os papéis que vão para o lixo'], 0),
+        q('DEMO-ADM-02', 'documentos', 1, 'As pastas estão em ordem alfabética pelo nome da empresa. Onde deve entrar a pasta "Mercado Central"?',
+          ['Entre "Açougue Boi Bom" e "Bazar Lima"', 'Entre "Padaria Sol" e "Sorveteria Gelo"', 'Entre "Loja Azul" e "Oficina Rápida"',
+            'Depois de "Vidraçaria Nova", no fim do arquivo'], 2),
+        q('DEMO-ADM-03', 'documentos', 2, 'Um papel com dados pessoais de um funcionário não é mais necessário. O que deve ser feito com ele?',
+          ['Jogar o papel inteiro no lixo comum', 'Picar bem o papel antes de jogar fora', 'Usar o verso como papel de rascunho',
+            'Deixar na mesa para alguém decidir'], 1),
+        q('DEMO-ADM-04', 'documentos', 3, 'As pastas do arquivo são separadas por mês. Qual nome de pasta deixa os meses em ordem, ano após ano?',
+          ['Março de 2026', 'Mar-26', '03-2026', '2026-03'], 3),
+        q('DEMO-ADM-05', 'planilha', 1, 'Numa planilha de clientes, cada linha é um cliente. O que deve ir na primeira linha?',
+          ['O cliente mais antigo da empresa', 'O total de clientes do mês', 'Os títulos das colunas, como nome e telefone',
+            'A data em que a planilha foi criada pela empresa'], 2),
+        q('DEMO-ADM-06', 'planilha', 2, 'Numa planilha, a célula B2 tem 150 e a célula B3 tem 250. Qual fórmula soma as duas?',
+          ['=B2+B3', '=B2*B3', '=B2-B3', '=B2/B3'], 0),
+        q('DEMO-ADM-07', 'planilha', 2, 'Uma planilha de vendas tem a coluna "Valor". O que deve ser feito para ver primeiro as maiores vendas?',
+          ['Apagar as linhas com valores pequenos', 'Pintar de amarelo as vendas maiores', 'Digitar as vendas de novo, em outra ordem',
+            'Ordenar a coluna "Valor" do maior para o menor'], 3),
+        q('DEMO-ADM-08', 'planilha', 3, 'A coluna C tem os preços dos produtos, da linha 2 até a linha 31. Qual fórmula soma todos os preços?',
+          ['=SOMA(C2;C31)', '=SOMA(C2:C31)', '=MÉDIA(C2:C31)', '=CONT.NÚM(C2:C31)'], 1),
+        q('DEMO-ADM-09', 'email', 1, 'Antes de enviar um e-mail de trabalho, o que deve ser conferido?',
+          ['Se o texto tem cores e figurinhas', 'O endereço, o assunto e se o anexo foi junto', 'Se o texto está todo escrito em letras maiúsculas',
+            'Se o e-mail vai sair antes do almoço'], 1),
+        q('DEMO-ADM-10', 'email', 2, 'Qual é o melhor assunto para um e-mail que envia ao cliente a nota fiscal de setembro?',
+          ['Oi', 'Urgente!!!', 'Documento', 'Nota fiscal de setembro'], 3),
+        q('DEMO-ADM-11', 'email', 3, 'Um e-mail chegou com cópia para cinco pessoas. A resposta interessa só a quem enviou. O que deve ser feito?',
+          ['Responder só para quem enviou', 'Responder para todos que estão na cópia', 'Encaminhar para um colega responder',
+            'Mandar a resposta por mensagem para todos'], 0),
+        q('DEMO-ADM-12', 'email', 3, 'Um e-mail pede para clicar num link e informar a senha do banco da empresa. O que deve ser feito?',
+          ['Clicar e informar a senha, se o e-mail parecer do banco', 'Responder o e-mail pedindo mais detalhes',
+            'Avisar a pessoa responsável e apagar o e-mail sem clicar', 'Encaminhar aos colegas para ver se é verdade'], 2),
+        q('DEMO-ADM-13', 'contas', 1, 'Chegou a conta de luz da empresa. O que deve ser anotado para ela ser paga em dia?',
+          ['O nome de quem entregou a conta', 'O consumo do mês anterior', 'A hora em que a conta chegou', 'O valor e a data de vencimento'], 3),
+        q('DEMO-ADM-14', 'contas', 2, 'Um cliente pagou R$ 350,00 em dinheiro por um serviço. O que deve ser entregue a ele?',
+          ['Só um agradecimento, porque o pagamento foi em dinheiro', 'Um recibo com valor, data, serviço e assinatura', 'Uma cópia do contrato da empresa',
+            'Um papel com o valor escrito a lápis'], 1),
+        q('DEMO-ADM-15', 'contas', 3, 'Uma conta de R$ 200,00 venceu ontem. A multa por atraso é de 2%, sem juros. Quanto deve ser pago hoje?',
+          ['R$ 200,00', 'R$ 202,00', 'R$ 204,00', 'R$ 220,00'], 2, { conta: '200 + 200 * 0.02' }),
+        q('DEMO-ADM-16', 'rotina', 1, 'A gerente pediu para você lembrar de uma reunião na sexta, às 14h. Qual é a forma mais segura de não esquecer?',
+          ['Anotar na agenda o dia, a hora e o assunto', 'Guardar a informação só de cabeça', 'Escrever num papel solto e deixar em cima da mesa',
+            'Pedir a um colega para lembrar você'], 0),
+        q('DEMO-ADM-17', 'rotina', 2, 'Chegou uma encomenda para um colega que está de férias. O que deve ser feito?',
+          ['Recusar a entrega até o colega voltar', 'Abrir a caixa para saber o que é', 'Receber, conferir e registrar onde ela foi guardada',
+            'Deixar a caixa na porta da sala dele'], 2),
+        q('DEMO-ADM-18', 'rotina', 3, 'Há três tarefas para hoje: pagar uma conta que vence hoje, arquivar papéis antigos e arrumar a mesa. Qual deve ser feita primeiro?',
+          ['Arquivar os papéis antigos', 'Pagar a conta que vence hoje', 'Arrumar a mesa', 'A que for mais rápida de fazer'], 1)
+      ] },
+    { slug: 'caixa', nome: 'Caixa e matemática prática', minutos: 25,
+      descricao: 'O básico do caixa: troco, desconto, parcelas, Pix e cartão, abertura e fechamento.',
+      competencias: [{ id: 'troco', nome: 'Troco e contagem de dinheiro' }, { id: 'desconto', nome: 'Porcentagem e desconto' },
+        { id: 'parcelamento', nome: 'Juros e parcelamento' }, { id: 'pagamentos', nome: 'Pix, cartão e dinheiro' },
+        { id: 'fechamento', nome: 'Abertura, fechamento e conferência do caixa' }],
+      questoes: [
+        q('DEMO-CAI-01', 'troco', 1, 'No caixa há 3 notas de R$ 20,00, 4 notas de R$ 5,00 e 6 moedas de R$ 1,00. Quanto dinheiro há no caixa?',
+          ['R$ 76,00', 'R$ 86,00', 'R$ 96,00', 'R$ 106,00'], 1, { conta: '3 * 20 + 4 * 5 + 6 * 1' }),
+        q('DEMO-CAI-02', 'troco', 1, 'A compra deu R$ 36,75. O cliente pagou com R$ 50,00. Qual é o troco?',
+          ['R$ 13,25', 'R$ 13,75', 'R$ 14,25', 'R$ 23,25'], 0, { conta: '50 - 36.75' }),
+        q('DEMO-CAI-03', 'troco', 2, 'A compra deu R$ 23,00. Para facilitar o troco, o cliente pagou com R$ 53,00. Qual é o troco?',
+          ['R$ 20,00', 'R$ 27,00', 'R$ 30,00', 'R$ 33,00'], 2, { conta: '53 - 23' }),
+        q('DEMO-CAI-04', 'troco', 3, 'O caixa só tem notas de R$ 10,00 e moedas de R$ 1,00. O troco é R$ 27,00. Qual forma de dar o troco usa menos peças?',
+          ['27 moedas de R$ 1,00', '1 nota de R$ 10,00 e 17 moedas de R$ 1,00', '2 notas de R$ 10,00 e 7 moedas de R$ 1,00',
+            '3 notas de R$ 10,00 e 3 moedas de R$ 1,00'], 2),
+        q('DEMO-CAI-05', 'desconto', 1, 'Um produto custa R$ 100,00 e está com 10% de desconto. Qual é o preço com desconto?',
+          ['R$ 80,00', 'R$ 90,00', 'R$ 95,00', 'R$ 110,00'], 1, { conta: '100 - 100 * 0.10' }),
+        q('DEMO-CAI-06', 'desconto', 2, 'Uma blusa custa R$ 80,00. No Pix, a loja dá 5% de desconto. Quanto o cliente paga no Pix?',
+          ['R$ 72,00', 'R$ 75,00', 'R$ 76,00', 'R$ 78,00'], 2, { conta: '80 - 80 * 0.05' }),
+        q('DEMO-CAI-07', 'desconto', 2, 'Um produto de R$ 60,00 tem 25% de desconto. De quanto é o desconto, em reais?',
+          ['R$ 6,00', 'R$ 12,00', 'R$ 15,00', 'R$ 25,00'], 2, { conta: '60 * 0.25' }),
+        q('DEMO-CAI-08', 'desconto', 3, 'Um produto custava R$ 50,00 e agora custa R$ 40,00. De quantos por cento foi o desconto?',
+          ['10%', '20%', '25%', '40%'], 1, { conta: '(50 - 40) / 50 * 100' }),
+        q('DEMO-CAI-09', 'parcelamento', 1, 'Uma compra de R$ 300,00 foi dividida em 3 parcelas iguais, sem juros. Qual é o valor de cada parcela?',
+          ['R$ 90,00', 'R$ 100,00', 'R$ 110,00', 'R$ 150,00'], 1, { conta: '300 / 3' }),
+        q('DEMO-CAI-10', 'parcelamento', 2, 'Um produto custa R$ 240,00 à vista ou 4 parcelas de R$ 65,00. Quanto o cliente paga a mais no parcelado?',
+          ['R$ 5,00', 'R$ 15,00', 'R$ 20,00', 'R$ 25,00'], 2, { conta: '4 * 65 - 240' }),
+        q('DEMO-CAI-11', 'parcelamento', 3, 'Uma geladeira custa R$ 2.000,00 à vista. No crediário, são 10 parcelas de R$ 230,00. Qual é o total pago no crediário?',
+          ['R$ 2.030,00', 'R$ 2.230,00', 'R$ 2.300,00', 'R$ 2.400,00'], 2, { conta: '10 * 230' }),
+        q('DEMO-CAI-12', 'parcelamento', 3, 'O cliente quer pagar R$ 450,00 em parcelas iguais, sem juros, de no máximo R$ 100,00. Qual é o menor número de parcelas?',
+          ['4 parcelas', '5 parcelas', '6 parcelas', '9 parcelas'], 1, { conta: '(450 + 50) / 100' }),
+        q('DEMO-CAI-13', 'pagamentos', 1, 'O cliente vai pagar com Pix. O que deve ser conferido antes de liberar a compra?',
+          ['Se o valor entrou na conta da loja', 'Só a tela do celular do cliente', 'Se o cliente guardou o comprovante',
+            'Se o aplicativo do banco do cliente está aberto'], 0),
+        q('DEMO-CAI-14', 'pagamentos', 2, 'O cliente vai pagar no débito, na maquininha. Quem deve digitar a senha?',
+          ['A pessoa do caixa, para ir mais rápido', 'O cliente, falando a senha em voz alta', 'Qualquer pessoa da fila que saiba usar',
+            'O próprio cliente, sem ninguém olhar'], 3),
+        q('DEMO-CAI-15', 'pagamentos', 3, 'Um cliente paga com uma nota de R$ 100,00 que parece diferente das outras. O que deve ser feito?',
+          ['Aceitar, porque recusar pode ofender o cliente', 'Conferir os sinais de segurança antes de aceitar',
+            'Aceitar e passar a nota no troco do próximo cliente', 'Guardar a nota e chamar a polícia na hora'], 1),
+        q('DEMO-CAI-16', 'fechamento', 1, 'Ao abrir o caixa, o que deve ser feito primeiro?',
+          ['Contar o fundo de troco e anotar o valor', 'Começar a atender sem contar o dinheiro', 'Pegar troco emprestado do caixa ao lado',
+            'Esperar o primeiro cliente para contar'], 0),
+        q('DEMO-CAI-17', 'fechamento', 2, 'O caixa abriu com R$ 100,00 de troco. As vendas em dinheiro somaram R$ 850,00. Quanto deve haver em dinheiro no fechamento?',
+          ['R$ 750,00', 'R$ 850,00', 'R$ 950,00', 'R$ 1.050,00'], 2, { conta: '100 + 850' }),
+        q('DEMO-CAI-18', 'fechamento', 3, 'No fechamento, o sistema mostra R$ 1.200,00 em dinheiro, mas a contagem deu R$ 1.180,00. O que deve ser feito?',
+          ['Completar a diferença com dinheiro do próprio bolso', 'Contar de novo e avisar a diferença ao responsável',
+            'Mudar o valor do sistema para R$ 1.180,00', 'Deixar para conferir no dia seguinte'], 1)
+      ] },
+    { slug: 'portugues', nome: 'Português prático', minutos: 20,
+      descricao: 'O básico do português no trabalho: escrita correta, concordância, entender avisos e escrever mensagens.',
+      competencias: [{ id: 'ortografia', nome: 'Ortografia e acentuação' }, { id: 'concordancia', nome: 'Concordância e uso correto' },
+        { id: 'interpretacao', nome: 'Interpretação de avisos e mensagens' }, { id: 'mensagem', nome: 'Mensagem profissional' }],
+      questoes: [
+        q('DEMO-POR-01', 'ortografia', 1, 'Qual palavra está escrita da forma correta?', ['Excessão', 'Exceção', 'Esceção', 'Eceção'], 1),
+        q('DEMO-POR-02', 'ortografia', 1, 'Qual palavra está acentuada da forma correta?', ['Ônibus', 'Onibús', 'Ônibús', 'Onibus'], 0),
+        q('DEMO-POR-03', 'ortografia', 2, 'Qual aviso está escrito da forma correta?',
+          ['A loja abre as 9h.', 'A loja abre à 9h.', 'A loja abre às 9h.', 'A loja abre há 9h.'], 2),
+        q('DEMO-POR-04', 'ortografia', 3, 'Qual opção completa a frase "O cliente quer saber ___ o pedido atrasou"?',
+          ['porque', 'porquê', 'por quê', 'por que'], 3),
+        q('DEMO-POR-05', 'ortografia', 3, 'Qual frase de boas-vindas está escrita da forma correta?',
+          ['Seja bem-vindo à loja.', 'Seje bem-vindo à loja.', 'Seja bem vindo à loja.', 'Seja bem-vindo a loja.'], 0),
+        q('DEMO-POR-06', 'concordancia', 1, 'Qual frase está correta?',
+          ['Os produtos chegou hoje.', 'Os produto chegaram hoje.', 'Os produtos chegaram hoje.', 'Os produto chegou hoje.'], 2),
+        q('DEMO-POR-07', 'concordancia', 1, 'Qual frase do aviso está correta?',
+          ['Nós vai fechar mais cedo hoje.', 'Nós vamos fechar mais cedo hoje.', 'Nós vamo fechar mais cedo hoje.', 'Nós ir fechar mais cedo hoje.'], 1),
+        q('DEMO-POR-08', 'concordancia', 2, 'Qual frase está de acordo com a norma da língua?',
+          ['Ficou prontas as duas encomendas.', 'Ficaram pronta as duas encomendas.', 'Ficou pronto as duas encomendas.',
+            'Ficaram prontas as duas encomendas.'], 3),
+        q('DEMO-POR-09', 'concordancia', 3, 'Qual frase está de acordo com a norma da língua, para usar num recado?',
+          ['Faz dois meses que o pedido chegou.', 'Fazem dois meses que o pedido chegou.', 'Faz dois meses que o pedido chegaram.',
+            'Fazem dois meses que os pedido chegou.'], 0),
+        q('DEMO-POR-10', 'interpretacao', 1, 'Segundo o aviso, até que horas a loja funciona hoje?',
+          ['Até as 8h', 'Até as 12h', 'Até as 13h', 'Até as 18h'], 2,
+          { texto: 'AVISO: Hoje, sábado, a loja fecha às 13h. Na segunda-feira, abrimos no horário normal, às 8h.' }),
+        q('DEMO-POR-11', 'interpretacao', 2, 'Um cliente comprou um produto em promoção que veio com defeito. Segundo o aviso, ele pode trocar?',
+          ['Sim, porque o produto veio com defeito', 'Sim, mas só depois de 30 dias', 'Não, porque o produto estava em promoção',
+            'Não, porque a troca é só sem defeito'], 0,
+          { texto: 'Troca só com a nota fiscal, em até 30 dias. Produto em promoção não tem troca, exceto se tiver defeito.' }),
+        q('DEMO-POR-12', 'interpretacao', 2, 'Segundo o recado, quando chega a entrega?',
+          ['Na quinta-feira, às 10h', 'Na sexta-feira, às 10h', 'Na quinta-feira, às 15h', 'Na sexta-feira, às 15h'], 1,
+          { texto: 'Recado: o fornecedor ligou. A entrega de quinta-feira passou para sexta-feira, no mesmo horário, às 10h.' }),
+        q('DEMO-POR-13', 'interpretacao', 3, 'Um pedido foi feito no sábado, às 17h. Segundo o aviso, quando ele sai para entrega?',
+          ['No sábado, no mesmo dia', 'No domingo', 'Na segunda-feira', 'Na terça-feira'], 2,
+          { texto: 'Pedidos feitos até as 16h saem no mesmo dia. Depois disso, saem no dia seguinte. Não fazemos entregas aos domingos.' }),
+        q('DEMO-POR-14', 'mensagem', 1, 'Qual é a melhor mensagem para avisar um cliente que o pedido está pronto?',
+          ['Bom dia! Seu pedido está pronto. Pode retirar até as 18h.', 'E aí, pedido pronto, vem buscar logo antes que feche.',
+            'Seu pedido. Pronto. Retirar. Até 18h. Obrigado.', 'Bom dia! Talvez seu pedido esteja pronto, passe aqui um dia.'], 0),
+        q('DEMO-POR-15', 'mensagem', 2, 'Um cliente pergunta por mensagem se o conserto ficou pronto. Ainda falta uma peça. Qual é a melhor resposta?',
+          ['Boa tarde! Ainda não ficou pronto, depois a gente vê isso com calma e responde.',
+            'Boa tarde! Está quase pronto, pode vir buscar amanhã cedo que deve estar aqui.',
+            'Boa tarde! Ainda falta uma peça. Ela chega quinta, e avisamos assim que ficar pronto.',
+            'Boa tarde! O técnico é quem sabe, pergunte para ele quando passar aqui na loja.'], 2),
+        q('DEMO-POR-16', 'mensagem', 2, 'Qual é a forma mais adequada de começar um e-mail para um cliente que você ainda não conhece?',
+          ['Fala, tudo certo? É sobre o seu pedido.', 'Bom dia. Escrevo para confirmar o seu pedido.', 'Oi, querido! Seu pedido, tudo em ordem?',
+            'E aí, cliente, bora falar do pedido?'], 1),
+        q('DEMO-POR-17', 'mensagem', 3, 'Um cliente reclamou de um atraso por mensagem. Qual é a resposta mais adequada?',
+          ['O atraso não foi culpa nossa. A transportadora é que demorou demais desta vez.',
+            'Calma, atrasos acontecem. Uma hora o seu pedido vai chegar aí na sua casa.',
+            'Pedimos desculpas. Não sabemos quando chega, mas qualquer dia desses ele chega.',
+            'Pedimos desculpas pelo atraso. Seu pedido sai hoje e chega amanhã até as 12h.'], 3),
+        q('DEMO-POR-18', 'mensagem', 3, 'Qual mensagem informa melhor os clientes sobre a mudança de horário da loja?',
+          ['A partir de 1º de dezembro, abrimos de segunda a sábado, das 8h às 18h.',
+            'Mudou o horário. Agora abrimos mais cedo e fechamos um pouco mais tarde.',
+            'Atenção: horário novo em breve! Fique de olho, que logo avisamos tudo.',
+            'Horário novo: abrimos às 8h e fechamos às 18h, mas ainda sem data.'], 0)
+      ] }
+  ];
+  var QUESTAO_DEMO = {};
+  TESTES_DEMONSTRACAO.forEach(function (t) { t.questoes.forEach(function (x) { QUESTAO_DEMO[x.id] = x; }); });
+
+  // Motor da prova de demonstração. c = {estado() -> st, agora(), novoId(), usuario(uid), cidade(slug), contaAtual(tipo), R}.
+  // Devolve as RPCs (mesmos nomes, argumentos, respostas e erros da migração 20261023) para o criarBackend pôr em H.
+  function provaDemonstracao(c) {
+    var DIA_MS = 86400000;
+    var R = c.R;
+    function st() { return c.estado(); }
+    function agora() { return c.agora(); }
+    function iso(ms) { return ms == null ? null : new Date(ms).toISOString(); }
+    function copia(x) { return x == null ? x : JSON.parse(JSON.stringify(x)); }
+    function falha(codigo, extra) { return Object.assign({ ok: false, erro: MSG_PROVA[codigo], codigo: codigo }, extra || {}); }
+    function inteiro(v) {
+      var n = typeof v === 'number' ? v : (typeof v === 'string' && /^\s*-?\d+\s*$/.test(v) ? Number(v) : NaN);
+      return Number.isInteger(n) ? n : null;
+    }
+    function teste(slug) { return TESTES_DEMONSTRACAO.filter(function (t) { return t.slug === slug; })[0] || null; }
+    function sorteio(n) { return Math.floor(Math.random() * n); }
+    function embaralhar(lista) {
+      var a = lista.slice();
+      for (var i = a.length - 1; i > 0; i--) { var j = sorteio(i + 1); var x = a[i]; a[i] = a[j]; a[j] = x; }
+      return a;
+    }
+    // Datas do selo no fuso da cidade da pessoa (reserva America/Sao_Paulo), como a migração da onda 2 do banco.
+    function fusoDe(uid) { var p = st().pessoas[uid]; var cid = p ? c.cidade(p.cidade) : null; return (cid && cid.fuso) || 'America/Sao_Paulo'; }
+    function diaDe(uid, ms) { return R.hoje(fusoDe(uid), ms == null ? agora() : ms); }
+    function dataBR(d) { return d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4); }
+    function somarMeses(d, n) {
+      var a = Number(d.slice(0, 4)); var m = Number(d.slice(5, 7)) - 1 + n; var dia = Number(d.slice(8, 10));
+      a += Math.floor(m / 12); m = ((m % 12) + 12) % 12;
+      var ultimo = new Date(Date.UTC(a, m + 1, 0)).getUTCDate();
+      return a + '-' + ('0' + (m + 1)).slice(-2) + '-' + ('0' + Math.min(dia, ultimo)).slice(-2);
+    }
+    // Estado da prova dentro do "banco" da prévia. Os selos fictícios da semente passam a morar aqui (com a dona); st.selos[uid]
+    // continua sendo o que vai no cartão (válido de maior nota por teste, o gancho vagas_interno.selos_cartao).
+    function dados() {
+      var s = st();
+      if (!s.provaDemo) {
+        var selos = [];
+        Object.keys(s.selos || {}).forEach(function (uid) {
+          (s.selos[uid] || []).forEach(function (x) {
+            selos.push({ uid: uid, codigo: String(x.codigo || ''), teste: x.teste, tentativa: null, nota: x.nota, questoes: x.questoes || REGRAS_PROVA.questoes,
+              data: x.data, validoAte: x.validoAte, supervisao: x.supervisao === 'presencial' ? 'presencial' : 'online', revogado: false, semente: true });
+          });
+        });
+        s.provaDemo = { tentativas: [], selos: selos };
+      }
+      return s.provaDemo;
+    }
+    function usuarioAtual() { var uid = st().sessao; return uid && c.usuario(uid) ? uid : null; }
+    function tentativasDe(uid, slug) { return dados().tentativas.filter(function (t) { return t.uid === uid && (!slug || t.teste === slug); }); }
+    function tentativaDe(uid, id) { return dados().tentativas.filter(function (t) { return t.uid === uid && t.id === String(id == null ? '' : id); })[0] || null; }
+
+    // Prazo: a questão que já está na tela (mostrada e sem resposta) vale até maior(fim, hora em que apareceu) + 10 s.
+    function prazo(tt) {
+      var item = tt.itens[tt.respondidas];
+      if (item && item.exibidaEm != null && item.respondidaEm == null) return Math.max(tt.terminaEm, item.exibidaEm) + REGRAS_PROVA.toleranciaSeg * 1000;
+      return tt.terminaEm;
+    }
+    function vencida(tt) { return tt.status === 'aberta' && agora() > prazo(tt); }
+    function segundos(tt) { return Math.max(0, Math.floor((tt.terminaEm - agora()) / 1000)); }
+
+    function seloJson(s) {
+      var t = teste(s.teste);
+      var revogado = !!s.revogado;
+      return { codigo: s.codigo, teste: s.teste, nome: t ? t.nome : s.teste, nota: revogado ? null : s.nota, margem: REGRAS_PROVA.margem,
+        questoes: s.questoes || REGRAS_PROVA.questoes, data: s.data, validoAte: s.validoAte, supervisao: s.supervisao,
+        situacao: revogado ? 'revogado' : (s.validoAte < diaDe(s.uid) ? 'vencido' : 'valido') };
+    }
+    function melhorSelo(uid, slug) {
+      var hoje = diaDe(uid);
+      return dados().selos.filter(function (s) { return s.uid === uid && s.teste === slug && !s.revogado && s.validoAte >= hoje; })
+        .sort(function (a, b) { return b.nota - a.nota || (a.data < b.data ? 1 : a.data > b.data ? -1 : 0); })[0] || null;
+    }
+    // O cartão (st.selos[uid]) recebe só o selo válido de maior nota de cada teste, sem "situacao" (formato de selos_cartao).
+    function atualizarCartao(uid) {
+      var temAlgum = dados().selos.some(function (s) { return s.uid === uid; });
+      if (!temAlgum && !(st().selos && st().selos[uid])) return;
+      st().selos = st().selos || {};
+      st().selos[uid] = TESTES_DEMONSTRACAO.map(function (t) { return melhorSelo(uid, t.slug); }).filter(Boolean).map(function (s) {
+        var j = seloJson(s);
+        delete j.situacao;
+        return j;
+      });
+    }
+    function novoCodigoSelo() {
+      var c8;
+      do {
+        c8 = '';
+        for (var i = 0; i < 8; i++) c8 += ALFABETO_SELO.charAt(sorteio(32));
+      } while (dados().selos.some(function (s) { return s.codigo === c8; }));
+      return c8;
+    }
+
+    // Igual a vagas_interno.teste_fechar: nota, acertos por competência, alertas (só registro) e o selo com nota ≥ 60.
+    function fechar(tt) {
+      if (tt.status !== 'aberta') return;
+      var t = teste(tt.teste);
+      var respondidos = tt.itens.filter(function (i) { return i.respondidaEm != null; });
+      var acertos = respondidos.filter(function (i) { return i.correta; }).length;
+      var rapidas = respondidos.filter(function (i) { return i.respondidaEm - i.exibidaEm < REGRAS_PROVA.rapidaSeg * 1000; }).length;
+      var fim = Math.min(agora(), tt.terminaEm + REGRAS_PROVA.toleranciaSeg * 1000);
+      tt.porCompetencia = t.competencias.map(function (comp) {
+        var itens = tt.itens.filter(function (i) { return QUESTAO_DEMO[i.id].competencia === comp.id; });
+        return { id: comp.id, nome: comp.nome, acertos: itens.filter(function (i) { return i.respondidaEm != null && i.correta; }).length, total: itens.length };
+      }).filter(function (x) { return x.total > 0; });
+      tt.alertas = [];
+      if (rapidas * 3 >= tt.total) tt.alertas.push('respostas_rapidas');
+      if (tt.sinais.trocasAba >= 3) tt.alertas.push('troca_aba');
+      if (tt.sinais.copias >= 1) tt.alertas.push('copiou_texto');
+      tt.status = tt.respondidas >= tt.total || agora() <= tt.terminaEm ? 'concluida' : 'tempo_esgotado';
+      tt.finalizadaEm = fim;
+      tt.acertos = acertos;
+      tt.nota = Math.floor((100 * acertos) / tt.total + 0.5 + 1e-9);
+      tt.notaMinima = REGRAS_PROVA.notaMinima;
+      tt.sinais.respostasRapidas = rapidas;
+      tt.sinais.duracaoSeg = Math.max(0, Math.floor((fim - tt.iniciadaEm) / 1000));
+      if (tt.nota >= tt.notaMinima) {
+        var data = diaDe(tt.uid, fim);
+        dados().selos.push({ uid: tt.uid, codigo: novoCodigoSelo(), teste: tt.teste, tentativa: tt.id, nota: tt.nota, questoes: tt.total, data: data,
+          validoAte: somarMeses(data, REGRAS_PROVA.validadeMeses), supervisao: 'online', revogado: false, semente: false });
+        atualizarCartao(tt.uid);
+      }
+    }
+    function fecharVencidas(uid) { tentativasDe(uid).forEach(function (tt) { if (vencida(tt)) fechar(tt); }); }
+    // Início da última tentativa que conta para os 30 dias (ao menos 1 questão mostrada). O selo fictício da semente conta como
+    // uma tentativa feita no dia do selo (no banco real ele sempre vem de uma tentativa).
+    function ultimoInicio(uid, slug) {
+      var ini = null;
+      tentativasDe(uid, slug).forEach(function (tt) {
+        if (tt.itens.some(function (i) { return i.exibidaEm != null; }) && (ini === null || tt.iniciadaEm > ini)) ini = tt.iniciadaEm;
+      });
+      dados().selos.forEach(function (s) {
+        if (s.uid !== uid || s.teste !== slug || !s.semente) return;
+        var t = Date.parse(s.data + 'T12:00:00Z');
+        if (isFinite(t) && (ini === null || t > ini)) ini = t;
+      });
+      return ini;
+    }
+
+    // Sorteio igual a vagas_interno.teste_sortear: 15 = 6 fáceis, 6 médias e 3 difíceis, n/C por competência (ordem sorteada), as
+    // dificuldades 3, 1 e 2 em rodízio, as difíceis primeiro, as já vistas por último; alternativas embaralhadas em cada prova.
+    function cotas(n, C) {
+      var q1 = Math.round(n * 0.4);
+      var q3 = Math.round(n * 0.2);
+      var quer = { 1: q1, 2: n - q1 - q3, 3: q3 };
+      var resta = [];
+      var cel = [];
+      for (var i = 0; i < C; i++) { resta.push(Math.floor(n / C) + (i < n % C ? 1 : 0)); cel.push({ 1: 0, 2: 0, 3: 0 }); }
+      var p = 0;
+      [3, 1, 2].forEach(function (d) {
+        var falta = quer[d];
+        for (var guarda = 0; falta > 0 && guarda < C * 50; guarda++, p++) {
+          var k = p % C;
+          if (resta[k] > 0) { cel[k][d]++; resta[k]--; falta--; }
+        }
+      });
+      return cel;
+    }
+    function sortear(t, vistas) {
+      var n = REGRAS_PROVA.questoes;
+      var comps = embaralhar(t.competencias.map(function (x) { return x.id; }));
+      var cel = cotas(n, comps.length);
+      var escolhidas = [];
+      var falta = { 1: 0, 2: 0, 3: 0 };
+      function porComp(comp) { return escolhidas.filter(function (x) { return x.competencia === comp; }).length; }
+      function candidatas(filtro, equilibrar) {
+        return embaralhar(t.questoes.filter(function (x) { return escolhidas.indexOf(x) < 0 && filtro(x); })).sort(function (a, b) {
+          var va = vistas.indexOf(a.id) >= 0 ? 1 : 0;
+          var vb = vistas.indexOf(b.id) >= 0 ? 1 : 0;
+          return va - vb || (equilibrar ? porComp(a.competencia) - porComp(b.competencia) : 0);
+        });
+      }
+      function naoVistaNaDificuldade(d) {
+        return t.questoes.some(function (y) { return y.dificuldade === d && escolhidas.indexOf(y) < 0 && vistas.indexOf(y.id) < 0; });
+      }
+      [3, 1, 2].forEach(function (d) {
+        comps.forEach(function (comp, i) {
+          for (var j = 0; j < cel[i][d]; j++) {
+            var x = candidatas(function (y) { return y.competencia === comp && y.dificuldade === d; }, false)[0];
+            // Demonstração: a célula só tem 1 ou 2 questões; se a melhor já foi vista e há outra da mesma dificuldade ainda não
+            // vista, deixa para o complemento abaixo (quem refaz quase nunca recebe questão repetida, como na prova real).
+            if (x && vistas.indexOf(x.id) >= 0 && naoVistaNaDificuldade(d)) x = null;
+            if (x) escolhidas.push(x); else falta[d]++;
+          }
+        });
+      });
+      // Demonstração: com só 18 questões a célula quase sempre falta. Completa na MESMA dificuldade (a competência com menos
+      // questões escolhidas primeiro), para manter 6/6/3 como na prova real, que tem 80 questões por teste.
+      [3, 1, 2].forEach(function (d) {
+        for (; falta[d] > 0; falta[d]--) {
+          var x = candidatas(function (y) { return y.dificuldade === d; }, true)[0];
+          if (x) escolhidas.push(x);
+        }
+      });
+      while (escolhidas.length < n) {
+        var resto = candidatas(function () { return true; }, true)[0];
+        if (!resto) break;
+        escolhidas.push(resto);
+      }
+      return embaralhar(escolhidas).sort(function (a, b) { return a.dificuldade - b.dificuldade; }).map(function (x) {
+        return { id: x.id, alt: embaralhar([0, 1, 2, 3]), exibidaEm: null, respondidaEm: null, alternativa: null, original: null, correta: null };
+      });
+    }
+
+    function tentativaJson(tt, retomada) {
+      var t = teste(tt.teste);
+      return { ok: true, demonstracao: true, tentativa: { id: tt.id, teste: tt.teste, nome: t.nome, total: tt.total, respondidas: tt.respondidas,
+        minutos: Math.round((tt.terminaEm - tt.iniciadaEm) / 60000), segundosRestantes: segundos(tt), terminaEm: iso(tt.terminaEm), retomada: !!retomada } };
+    }
+    // Questão atual, sem gabarito; marca a hora em que apareceu só da primeira vez (recarregar não zera o tempo).
+    function questaoJson(tt) {
+      var item = tt.itens[tt.respondidas];
+      if (item.exibidaEm == null) item.exibidaEm = agora();
+      var x = QUESTAO_DEMO[item.id];
+      return { ok: true, fim: false, demonstracao: true, tentativa: tt.id, numero: tt.respondidas + 1, total: tt.total, segundosRestantes: segundos(tt),
+        questao: { texto: x.texto || null, enunciado: x.enunciado, alternativas: item.alt.map(function (i) { return x.alternativas[i]; }) } };
+    }
+    // Resultado: acertos por competência, nunca quais questões a pessoa errou.
+    function resultadoJson(tt) {
+      var s = dados().selos.filter(function (x) { return x.tentativa === tt.id; })[0];
+      return { tentativa: tt.id, teste: tt.teste, nome: teste(tt.teste).nome, status: tt.status, acertos: tt.acertos, total: tt.total, nota: tt.nota,
+        margem: REGRAS_PROVA.margem, notaMinima: tt.notaMinima, porCompetencia: copia(tt.porCompetencia || []), selo: s ? seloJson(s) : null,
+        podeIniciarEm: tt.itens.some(function (i) { return i.exibidaEm != null; }) ? iso(tt.iniciadaEm + REGRAS_PROVA.intervaloDias * DIA_MS) : null };
+    }
+    function minha(uid, t) {
+      var ab = tentativasDe(uid, t.slug).filter(function (x) { return x.status === 'aberta' && !vencida(x); })[0] || null;
+      var ult = tentativasDe(uid, t.slug).filter(function (x) { return x.status !== 'aberta'; })
+        .sort(function (a, b) { return b.iniciadaEm - a.iniciadaEm; })[0] || null;
+      var ini = ultimoInicio(uid, t.slug);
+      var s = melhorSelo(uid, t.slug);
+      var volta = ini === null ? null : ini + REGRAS_PROVA.intervaloDias * DIA_MS;
+      return {
+        aberta: ab ? { tentativa: ab.id, respondidas: ab.respondidas, total: ab.total, segundosRestantes: segundos(ab) } : null,
+        ultima: ult ? { status: ult.status, nota: ult.nota, data: diaDe(uid, ult.finalizadaEm) } : null,
+        podeIniciarEm: !ab && volta !== null && volta > agora() ? iso(volta) : null,
+        selo: s ? seloJson(s) : null
+      };
+    }
+
+    var rpcs = {};
+    rpcs.vagas_testes_catalogo = function () {
+      var uid = usuarioAtual();
+      if (uid) { fecharVencidas(uid); atualizarCartao(uid); }
+      return { ok: true, demonstracao: true,
+        regras: { intervaloDias: REGRAS_PROVA.intervaloDias, toleranciaSegPorQuestao: REGRAS_PROVA.toleranciaSeg, supervisao: 'online' },
+        testes: TESTES_DEMONSTRACAO.map(function (t) {
+          var item = { slug: t.slug, nome: t.nome, descricao: t.descricao, questoes: REGRAS_PROVA.questoes, minutos: t.minutos,
+            validadeMeses: REGRAS_PROVA.validadeMeses, notaMinima: REGRAS_PROVA.notaMinima, margem: REGRAS_PROVA.margem, competencias: copia(t.competencias) };
+          if (uid) item.minha = minha(uid, t);
+          return item;
+        }) };
+    };
+    rpcs.vagas_iniciar_tentativa = function (a) {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      c.contaAtual(null);   // promove a conta confirmada de "pendente" para "ativa", como no resto da prévia
+      var conta = st().contas[uid];
+      if (!conta || conta.tipo !== 'pessoa') return falha('so_pessoa');
+      if (conta.status !== 'ativa') return falha('conta_inativa');
+      var t = teste(String(a.p_teste == null ? '' : a.p_teste).trim().toLowerCase());
+      if (!t) return falha('teste_indisponivel');
+      fecharVencidas(uid);
+      var aberta = tentativasDe(uid, t.slug).filter(function (x) { return x.status === 'aberta'; })[0];
+      if (aberta) return tentativaJson(aberta, true);
+      var ini = ultimoInicio(uid, t.slug);
+      if (ini !== null && ini + REGRAS_PROVA.intervaloDias * DIA_MS > agora()) {
+        var volta = ini + REGRAS_PROVA.intervaloDias * DIA_MS;
+        return { ok: false, erro: MSG_PROVA.aguarde + dataBR(diaDe(uid, volta)) + '.', codigo: 'aguarde', podeIniciarEm: iso(volta) };
+      }
+      var vistas = [];
+      tentativasDe(uid, t.slug).forEach(function (x) { x.itens.forEach(function (i) { vistas.push(i.id); }); });
+      var t0 = agora();
+      var tt = { id: c.novoId(), uid: uid, teste: t.slug, iniciadaEm: t0, terminaEm: t0 + t.minutos * 60000, itens: sortear(t, vistas), respondidas: 0,
+        total: REGRAS_PROVA.questoes, status: 'aberta', finalizadaEm: null, acertos: null, nota: null, notaMinima: null, porCompetencia: null,
+        sinais: { trocasAba: 0, copias: 0 }, alertas: [] };
+      dados().tentativas.push(tt);
+      return tentativaJson(tt, false);
+    };
+    rpcs.vagas_proxima_questao = function (a) {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      var tt = tentativaDe(uid, a.p_tentativa);
+      if (!tt) return falha('tentativa_inexistente');
+      if (vencida(tt)) fechar(tt);
+      if (tt.status !== 'aberta' || tt.respondidas >= tt.total) {
+        return { ok: true, fim: true, tentativa: tt.id, status: tt.status, respondidas: tt.respondidas, total: tt.total };
+      }
+      return questaoJson(tt);
+    };
+    rpcs.vagas_responder = function (a) {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      var tt = tentativaDe(uid, a.p_tentativa);
+      if (!tt) return falha('tentativa_inexistente');
+      if (tt.status !== 'aberta') return falha('encerrada', { fim: true });
+      if (vencida(tt)) { fechar(tt); return falha('tempo_esgotado', { fim: true }); }
+      var n = inteiro(a.p_questao);
+      if (n === null || n < 1 || n > tt.total) return falha('fora_de_ordem');
+      // Reenvio de uma resposta já gravada (internet fraca): devolve o estado atual sem mudar nada (sem voltar).
+      if (n <= tt.respondidas) {
+        var base = { ok: true, duplicado: true, respondidas: tt.respondidas, total: tt.total, fim: tt.respondidas >= tt.total };
+        if (tt.respondidas < tt.total) base.proxima = questaoJson(tt);
+        return base;
+      }
+      if (n > tt.respondidas + 1) return falha('fora_de_ordem');
+      var item = tt.itens[tt.respondidas];
+      if (item.exibidaEm == null) return falha('fora_de_ordem');
+      var alt = inteiro(a.p_alternativa);
+      if (alt === null || alt < 0 || alt > 3) return falha('alternativa_invalida');
+      item.alternativa = alt;
+      item.original = item.alt[alt];
+      item.correta = item.original === QUESTAO_DEMO[item.id].correta;
+      item.respondidaEm = agora();
+      tt.respondidas += 1;
+      // Última questão, ou o fim oficial já passou (nenhuma questão nova depois do fim): fecha; a tela chama vagas_finalizar.
+      if (tt.respondidas >= tt.total || agora() > tt.terminaEm) {
+        fechar(tt);
+        return { ok: true, respondidas: tt.respondidas, total: tt.total, fim: true };
+      }
+      return { ok: true, respondidas: tt.respondidas, total: tt.total, fim: false, proxima: questaoJson(tt) };
+    };
+    rpcs.vagas_finalizar = function (a) {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      var tt = tentativaDe(uid, a.p_tentativa);
+      if (!tt) return falha('tentativa_inexistente');
+      if (tt.status === 'aberta') fechar(tt);
+      return { ok: true, resultado: resultadoJson(tt) };
+    };
+    rpcs.vagas_registrar_sinal = function (a) {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      var chave = a.p_tipo === 'troca_aba' ? 'trocasAba' : a.p_tipo === 'copiar' ? 'copias' : null;
+      if (!chave) return falha('sinal_invalido');
+      var tt = tentativaDe(uid, a.p_tentativa);
+      if (!tt || tt.status !== 'aberta') return falha('tentativa_inexistente');
+      tt.sinais[chave] = Math.min(999, (tt.sinais[chave] || 0) + 1);
+      return { ok: true };
+    };
+    rpcs.vagas_meus_selos = function () {
+      var uid = usuarioAtual();
+      if (!uid) return falha('login', { sessaoExpirada: true });
+      fecharVencidas(uid);
+      atualizarCartao(uid);
+      var exibidos = TESTES_DEMONSTRACAO.map(function (t) { var s = melhorSelo(uid, t.slug); return s ? s.codigo : null; });
+      return { ok: true, selos: dados().selos.filter(function (s) { return s.uid === uid; }).slice().reverse()
+        .sort(function (a, b) { return a.data < b.data ? 1 : a.data > b.data ? -1 : 0; })
+        .map(function (s) { return Object.assign(seloJson(s), { exibido: exibidos.indexOf(s.codigo) >= 0 }); }) };
+    };
+    // Conferência pública: qualquer selo da prova de demonstração ou da semente, sem dado da pessoa.
+    rpcs.seloPublico = function (a, anterior) {
+      var cod = String(a.p_codigo == null ? '' : a.p_codigo).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (!/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/.test(cod)) return falha('selo_inexistente');
+      var s = dados().selos.filter(function (x) { return x.codigo === cod; })[0];
+      if (s) return { ok: true, selo: seloJson(s) };
+      return anterior ? anterior(a) : falha('selo_inexistente');
+    };
+    // Exportação (LGPD), igual a vagas_interno.testes_exportar: tentativas em resumo e selos, sem questões nem gabarito.
+    rpcs.exportar = function (uid) {
+      return {
+        tentativas: tentativasDe(uid).slice().sort(function (a, b) { return a.iniciadaEm - b.iniciadaEm; }).map(function (tt) {
+          return { teste: tt.teste, status: tt.status, iniciadaEm: iso(tt.iniciadaEm), finalizadaEm: iso(tt.finalizadaEm), respondidas: tt.respondidas,
+            total: tt.total, acertos: tt.acertos, nota: tt.nota, porCompetencia: copia(tt.porCompetencia), sinais: copia(tt.sinais), alertas: copia(tt.alertas) };
+        }),
+        selos: dados().selos.filter(function (s) { return s.uid === uid; }).map(seloJson)
+      };
+    };
+    return rpcs;
   }
 
   function criarBackend(op) {
@@ -2014,6 +2709,25 @@
     st = op.reiniciar ? null : carregar();
     if (!st) reiniciar(op.semente);
 
+    // Testes de habilidade com a prova de DEMONSTRAÇÃO (frente testes, onda 2): as RPCs da migração 20261023 e, por cima das
+    // que já existiam, a conferência pública (agora acha também os selos da prova) e a exportação (LGPD) com os testes.
+    (function () {
+      var prova = provaDemonstracao({ estado: function () { return st; }, agora: agora, novoId: novoId, usuario: usuario, cidade: cidade,
+        contaAtual: contaAtual, R: R });
+      ['vagas_testes_catalogo', 'vagas_iniciar_tentativa', 'vagas_proxima_questao', 'vagas_responder', 'vagas_finalizar', 'vagas_registrar_sinal',
+        'vagas_meus_selos'].forEach(function (nome) { H[nome] = prova[nome]; });
+      var seloAntes = H.vagas_selo_publico;
+      H.vagas_selo_publico = function (a) { return prova.seloPublico(a, seloAntes); };
+      var exportarAntes = H.vagas_exportar_meus_dados;
+      if (exportarAntes) {
+        H.vagas_exportar_meus_dados = function (a) {
+          var r = exportarAntes(a);
+          if (r && r.ok && st.sessao) r.testes = prova.exportar(st.sessao);
+          return r;
+        };
+      }
+    })();
+
     function rpc(nome, args) {
       return Promise.resolve().then(function () {
         if (!Object.prototype.hasOwnProperty.call(H, nome)) {
@@ -2036,6 +2750,10 @@
   }
 
   var VAGAS_PREVIA = { criarBackend: criarBackend, SENHA_PREVIA: SENHA_PREVIA };
+  // Prova de demonstração (só a prévia; os testes de unidade e do navegador conferem o banco e respondem com ele).
+  VAGAS_PREVIA.TESTES_DEMONSTRACAO = TESTES_DEMONSTRACAO;
+  VAGAS_PREVIA.MSG_PROVA = MSG_PROVA;
+  VAGAS_PREVIA.REGRAS_PROVA = REGRAS_PROVA;
   if (typeof module !== 'undefined' && module.exports) module.exports = VAGAS_PREVIA;
   else root.VAGAS_PREVIA = VAGAS_PREVIA;
 })(typeof self !== 'undefined' ? self : this);
