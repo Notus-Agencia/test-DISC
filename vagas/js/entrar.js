@@ -5,6 +5,9 @@
  *
  * Endereço:   entrar.html[?voltar=<página do site>][&tipo=empresa][&motivo=sessao|confirmar][&termos=1][#entrar|#criar|#esqueci]
  *             entrar.html?token_hash=…&type=invite|magiclink|recovery|signup (link do e-mail; o token sai da barra na hora)
+ *             entrar.html?convite=<64 hex>[&token_hash=…&type=invite] (convite de equipe da empresa): depois de entrar ou de criar a
+ *             senha, o destino é empresa.html?convite=<token> (a tela de aceite é da frente empresa). O convite fica no endereço
+ *             quando o token_hash sai, e no aparelho ('vg.entrar.convite' = {token, em}, 7 dias) para a volta do link de confirmação.
  * ?voltar= só aceita página do próprio site (VAGAS_UI.voltarValido); ele é guardado no aparelho ('vg.entrar.voltar') quando a
  * pessoa pede o link, para voltar ao mesmo lugar depois de criar a senha.
  *
@@ -13,8 +16,8 @@
  * cidade (slug lembrado ou '')}, em}. Depois do link e da senha a tela vai para empresa.html#inicio: a frente empresa completa
  * o cadastro (razão social, cidade, zona) com VAGAS_API.cadastrarEmpresa e apaga o rascunho.
  *
- * Funções puras (testes): VAGAS_ENTRAR.destinoDe(eu, voltar, cidade) · aceiteDaConta(eu) · validarCriar(d) · validarEmpresa(d) ·
- *   validarNovaSenha(senha, confirmar)
+ * Funções puras (testes): VAGAS_ENTRAR.destinoDe(eu, voltar, cidade, convite) · conviteValido(token) · conviteDaUrl(location, api) ·
+ *   enderecoLimpo({empresa, voltar, convite}) · aceiteDaConta(eu) · validarCriar(d) · validarEmpresa(d) · validarNovaSenha(senha, confirmar)
  */
 (function (root) {
   'use strict';
@@ -37,10 +40,29 @@
     empresaNota: 'Sem senha agora: você cria a senha ao abrir o link do e-mail. Depois disso, a operação confere o CNPJ (em geral no mesmo dia útil). Você já pode escrever a vaga enquanto espera.'
   };
   var ESPERA_REENVIO = 60;
+  var CHAVE_CONVITE = 'vg.entrar.convite';
+  var VALIDADE_CONVITE_MS = 7 * 86400000;
 
   // ------------------------------------------------------------------------------------------------- lógica pura
-  function destinoDe(eu, voltar, cidade) {
+  // Token do convite de equipe: 64 hex (mesmo formato de VAGAS_API.conviteDoEndereco). Qualquer outra coisa é ignorada.
+  function conviteValido(t) { return typeof t === 'string' && /^[0-9a-fA-F]{64}$/.test(t) ? t.toLowerCase() : ''; }
+  function conviteDaUrl(loc, api) {
+    if (api && typeof api.conviteDoEndereco === 'function') return conviteValido(api.conviteDoEndereco(loc));
+    var m = /[?&]convite=([0-9a-fA-F]{64})(?:&|$)/.exec(String((loc && loc.search) || ''));
+    return m ? m[1].toLowerCase() : '';
+  }
+  // Endereço sem o token_hash do link do e-mail (mantém tipo=empresa, voltar e convite).
+  function enderecoLimpo(o) {
+    var q = [];
+    if (o.empresa) q.push('tipo=empresa');
+    if (o.voltar) q.push('voltar=' + encodeURIComponent(o.voltar));
+    if (conviteValido(o.convite)) q.push('convite=' + conviteValido(o.convite));
+    return 'entrar.html' + (q.length ? '?' + q.join('&') : '');
+  }
+  function destinoDe(eu, voltar, cidade, convite) {
     var U = root.VAGAS_UI || (nodeJs ? require('./ui.js') : null);
+    var cv = conviteValido(convite);
+    if (cv && eu && (eu.conta || !eu.admin)) return 'empresa.html?convite=' + cv;   // convite de equipe: a tela de aceite da empresa
     var v = U.voltarValido(voltar, '');
     if (v && !/^entrar\.html/.test(v)) return v;
     var c = eu && eu.conta;
@@ -101,14 +123,20 @@
     var senhaPendente = U.armazenamento.ler('vg.entrar.senha');
     // O ?voltar= guardado quando a pessoa pediu o link só vale na volta do link (ou se ela recarregar antes de criar a senha).
     var voltar = U.voltarValido(U.parametro('voltar'), '') || (link || senhaPendente ? U.voltarValido(U.armazenamento.ler('vg.entrar.voltar'), '') : '');
+    // Convite de equipe: do endereço (e guardado no aparelho para a volta do link); do aparelho só na volta do link ou com a senha pendente.
+    var convite = conviteDaUrl(root.location, A);
+    if (convite) U.armazenamento.gravar(CHAVE_CONVITE, { token: convite, em: Date.now() });
+    else if (link || senhaPendente) {
+      var cg = U.armazenamento.ler(CHAVE_CONVITE);
+      convite = cg && typeof cg.em === 'number' && Date.now() - cg.em < VALIDADE_CONVITE_MS ? conviteValido(cg.token) : '';
+    }
     var captchaToken = '';
     var emailPendente = '';
     var contagem = null;
 
     // Tira o token do endereço na hora: um recarregar não reaproveita o link e ele não fica no histórico.
     if (link && root.history && root.history.replaceState) {
-      var limpo = 'entrar.html' + (empresa || voltar ? '?' : '') + (empresa ? 'tipo=empresa' + (voltar ? '&' : '') : '') + (voltar ? 'voltar=' + encodeURIComponent(voltar) : '');
-      try { root.history.replaceState(null, '', limpo); } catch (e) { /* segue */ }
+      try { root.history.replaceState(null, '', enderecoLimpo({ empresa: empresa, voltar: voltar, convite: convite })); } catch (e) { /* segue */ }
     }
 
     // --------------------------------------------------------------------------- moldura
@@ -181,7 +209,8 @@
       if (chave) { telaAceite(eu, chave); return; }
       U.armazenamento.apagar('vg.entrar.voltar');
       U.armazenamento.apagar('vg.entrar.senha');
-      irPara(destinoDe(eu, voltar, U.cidadeLembrada()));
+      U.armazenamento.apagar(CHAVE_CONVITE);
+      irPara(destinoDe(eu, voltar, U.cidadeLembrada(), convite));
     }
     function erroDaApi(e, alvo) {
       if (e.sessaoExpirada) { telaEntrar(); return; }
@@ -491,13 +520,14 @@
       if (motivo === 'sessao') { telaEntrar(textoFixo('avisos.sessao_expirada') || U.MSG.SESSAO); return; }
       var h = (root.location.hash || '').replace(/^#/, '');
       if (h === 'esqueci') telaEsqueci();
+      else if (convite && h !== 'criar') telaEntrar();   // quem recebeu o convite e já tem conta: entra e segue para o aceite
       else if (empresa) { if (h === 'entrar') telaEntrar(); else telaEmpresa(); }
       else if (h === 'entrar' || U.parametro('termos') === '1') telaEntrar();
       else telaCriar();
     });
   }
 
-  var VAGAS_ENTRAR = { destinoDe: destinoDe, aceiteDaConta: aceiteDaConta, validarCriar: validarCriar, validarEmpresa: validarEmpresa,
+  var VAGAS_ENTRAR = { destinoDe: destinoDe, conviteValido: conviteValido, conviteDaUrl: conviteDaUrl, enderecoLimpo: enderecoLimpo, aceiteDaConta: aceiteDaConta, validarCriar: validarCriar, validarEmpresa: validarEmpresa,
     validarNovaSenha: validarNovaSenha, mascaraCnpj: mascaraCnpj, TXT: TXT, iniciar: iniciar };
   if (nodeJs) module.exports = VAGAS_ENTRAR;
   else { root.VAGAS_ENTRAR = VAGAS_ENTRAR; iniciar(); }
