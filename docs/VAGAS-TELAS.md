@@ -449,12 +449,17 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
      `#vg-vaga-turno` (`manha|tarde|noite|comercial|escala|a_combinar`, obrigatório); `fim_de_semana` → `#vg-vaga-fim-de-semana`
      (caixa "Trabalha fim de semana"); `inicio` → `#vg-vaga-inicio` (`imediato|data`) + `inicio_data` → `#vg-vaga-inicio-data`
      (habilita com "Em uma data"; erro "Use dd/mm/aaaa"); `zona` → `#vg-vaga-zona` (slug da `vagas_zonas`, obrigatório).
-  2. **O que a vaga pede:** `experiencia` → `#vg-vaga-experiencia` (`nao_precisa|ate_1|1_a_3|mais_3`; padrão `nao_precisa`;
-     alimenta o filtro "Aceita sem experiência"); `escolaridade` → `#vg-vaga-escolaridade` (`nao_exigida|fundamental|medio|tecnico|
-     superior`; ajuda "Só marque se a função exige de verdade: cada exigência tira gente boa da lista."); `requisitos[]` →
+  2. **O que a vaga pede:** `experiencia` → `#vg-vaga-experiencia` (opções lidas de `VAGAS_REGRAS.EXPERIENCIAS_VAGA`, nunca acima de
+     6 meses: "Não precisa" (`nao_precisa`, padrão) · "Ajuda ter, mas não é obrigatória" (`ajuda`) · "Pelo menos 6 meses na função"
+     (`6_meses`); os ids antigos `ate_1|1_a_3|mais_3` não aparecem e viram `6_meses` ao editar; ajuda "Só peça experiência se a
+     função exige. Bico e trabalho sem carteira contam. A lei não deixa exigir mais de 6 meses na mesma função (CLT, art. 442-A)."
+     `[REVISÃO JURÍDICA: CLT 442-A]`; alimenta o filtro "Aceita sem experiência"); `escolaridade` → `#vg-vaga-escolaridade`
+     (`nao_exigida|fundamental|medio|tecnico|superior`; ajuda "Só marque se a função exige de verdade. Cada exigência afasta gente
+     que sabe fazer o trabalho."); `requisitos[]` →
      `#vg-vaga-requisitos` (checklist `cnh_a|cnh_b|cnh_d|curso_registro|disponibilidade|outro` + `requisito_outro` →
-     `#vg-vaga-requisito-outro`, ≤ 80, habilita com "Outro"); `selo` → `#vg-vaga-selo` (`nenhum` ou slug do teste; opcional; some
-     nas áreas sem teste; ajuda "Quem não tem o selo ainda pode se candidatar; você vê quem tem. Sem nota mínima.").
+     `#vg-vaga-requisito-outro`, ≤ 80, habilita com "Outro"); `selo` → `#vg-vaga-selo`, rótulo "Selo sugerido" (`nenhum` ou slug
+     do teste; opcional; ajuda "Quem não tem o selo também pode se candidatar, e o cartão chega do mesmo jeito. O teste é opcional:
+     sem selo não quer dizer que a pessoa não sabe. Sem nota mínima.").
   3. **O que a vaga oferece:** `beneficios[]` → `#vg-vaga-beneficios` (checklist `vt|refeicao|saude|moradia|comissao`; "Comissão"
      marca junto `comissao`); `confidencial` → `#vg-vaga-confidencial` (`nao|sim`; ajuda explica).
   4. **Descrição:** `descricao` → `#vg-vaga-descricao` ("O que a pessoa vai fazer no dia a dia", obrigatório, 40–1500) — o único texto
@@ -477,7 +482,11 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   `#vg-vaga-publicar` fica desabilitado enquanto houver erro. A lista oficial de termos vem de `regras.js` (fundação) e os
   motivos da operação.
 - Ações: `#vg-vaga-salvar-rascunho` (claro; `vagas_anuncio_salvar`), `#vg-vaga-publicar` "Enviar para publicar" (laranja;
-  `vagas_anuncio_publicar` → `em_revisao` nas 3 primeiras, senão `publicado`). Sucesso → 3.4. Rascunho local `vg.rascunho.vaga`.
+  `vagas_anuncio_publicar` → `em_revisao` nas 3 primeiras, senão `publicado`). Sucesso → 3.4. Rascunho local `vg.rascunho.vaga`
+  (guarda também o id que o banco deu no 1º salvar: uma publicação que falha depois do salvar não cria outra vaga).
+  Cidade em pré-abertura (VAGAS-SPEC §6.8): `#vg-vaga-pre-abertura` acima dos botões, "Sua vaga entra no ar no dia em que
+  {cidade} abrir."; publicada, a vaga mostra "Aguardando a abertura" (`[data-status="aguarda_abertura"]`) na lista e na página,
+  com `avisoAbertura` no lugar do "Divulgar" (`#vg-vaga-aguarda`).
   Lateral: "O que não entra no anúncio" e "Diária ou bico".
 
 ### 3.4 Vaga publicada (`#vaga/<id>`) — `empresa-vaga-publicada.png`
@@ -494,9 +503,10 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
 
 ### 3.5 Candidatos em cartões cegos (`#vaga/<id>/cartoes`) — `empresa-candidatos.png`
 - Cabeçalho "11 pessoas querem esta vaga" + "Por ordem de chegada. Sem nome, foto, idade ou nacionalidade até vocês combinarem.
-  Não existe ranking: quem decide é você." Filtros `#vg-cartoes-filtros` (lista fechada): Selo ("Tem selo de <teste pedido>" /
-  "Tem algum selo" / "Todos"; sem nota mínima), Zona, Turno, Escolaridade, CNH, Pretensão (faixas), Mostrar (Novos e em conversa /
-  Agora não / Todos). Ordem única: chegada.
+  Quem decide é você." + `#vg-cartoes-selo` "O selo é informação, não requisito: o teste é opcional e nem toda função tem teste.
+  Sem selo não quer dizer que a pessoa não sabe. A nota tem margem de cerca de 10 pontos e não serve para ordenar pessoas."
+  Filtro único "Mostrar" (`#vg-cartoes-filtros`: Novos e em conversa / Agora não / Todos), pela situação da candidatura. Ordem
+  única: chegada. Sem filtro por selo, nota, referência, zona, turno, escolaridade, CNH ou pretensão (veto P3).
 - `ul#vg-cartoes` de `.vg-cartao` (componente 9.4): ordem ("1º"), "Pessoa candidata" + "chegou em 12/10, 15:40" + `.vg-status`
   (Novo / Você chamou / Combinou / Agora não), `dl` (Zona, Quer trabalhar com, Experiência, Escolaridade, Turnos, CNH,
   Pretensão "A partir de R$ 1.600"), selos (`.vg-etiqueta--selo` com teste · nota · data), referências
