@@ -52,7 +52,7 @@ Regras que valem para TODAS as telas (não repetidas em cada uma):
 | Arquivo (em `vagas/`) | Rota pública | Quem | Dispositivo | Carrega |
 |---|---|---|---|---|
 | `index.html` | `/` | todos | celular | escolha/lembrança da cidade (`vg.cidade` no aparelho) → redireciona para `/<cidade>/` |
-| `cidade.html` | `/<slug-da-cidade>/`, ex.: `/uruacu-go/` (rewrite em `_redirects`) | pessoa, anônimo | celular | lista pública + filtros; estados espera/pausada |
+| `cidade.html` | `/<slug-da-cidade>/`, ex.: `/uruacu-go/` (302 em `_redirects` para `cidade.html?cidade=<slug>`: com rewrite os caminhos relativos quebrariam) | pessoa, anônimo | celular | lista pública + filtros; estados espera/pausada |
 | `vaga.html` | `/v/K7M2QX` (Pages Function monta o HTML da prévia; abre sem JS) | pessoa, anônimo | celular | página da vaga + Quero/Pular |
 | `entrar.html` | `/entrar.html?token_hash=…&type=…` | pessoa e empresa | celular/computador | entrar, criar conta, esqueci, confirmação (verifyOtp por fetch) |
 | `eu.html` | `#curriculo/1…5`, `#candidaturas`, `#conversa/<id>`, `#quem-viu`, `#dados`, `#referencias`, `#referencia/pedir`, `#referencia/<id>` | pessoa logada | celular | área da pessoa |
