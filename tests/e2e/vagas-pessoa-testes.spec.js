@@ -6,6 +6,8 @@
 const { test, expect } = require('@playwright/test');
 
 const BASE = '/vagas/';
+// Diretriz da psicologia (onda 2): em toda tela de testes.
+const OPCIONAL = 'O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo; ela só vê o selo, se você ganhar.';
 
 // O "banco" da prévia fica no localStorage ('vagas_previa_v<N>'): os testes leem a versão mais nova, sem fixar o número.
 test.beforeEach(async ({ page }) => {
@@ -88,12 +90,16 @@ test('catálogo sem login: 5 testes, faixa de demonstração e textos fixos; ins
   await expect(page.locator('#app')).toContainText('Mostre o que você sabe fazer: faça o teste da função no celular e ganhe o selo de habilidade testada.');
   await expect(page.locator('#vg-testes-aviso')).toContainText('não mede inteligência nem personalidade. Nenhuma vaga pode cobrar por eles.');
   await expect(page.locator('#vg-testes-entrar-aviso')).toContainText('Entre na sua conta para fazer o teste.');
+  await expect(page.locator('#vg-testes-subtitulo')).toContainText('Grátis, no celular, de 20 a 25 minutos cada.');
+  await expect(page.locator('#vg-testes-opcional')).toHaveText(OPCIONAL);
+  await expect(page.locator('#app')).not.toContainText('15 min');
   await expect(page.locator('#vg-nav')).toHaveCount(0);
   expect(await semRolagemLateral(page)).toBe(true);
   await page.click('#vg-teste-caixa-acao');
   await expect(page.locator('#vg-instrucoes-titulo')).toHaveText('Caixa e matemática prática');
   await expect(page.locator('#vg-instrucoes-titulo')).toBeFocused();
   await expect(page.locator('#vg-instrucoes-lista')).toContainText('Pode usar papel e caneta para as contas. Não use calculadora.');
+  await expect(page.locator('#vg-instrucoes-opcional')).toHaveText(OPCIONAL);
   await expect(page.locator('#vg-prova-comecar')).toHaveText('Entrar para começar');
   await expect(page.locator('#vg-prova-comecar')).toHaveAttribute('href', 'entrar.html?voltar=' + encodeURIComponent('testes.html#teste/caixa'));
   // "Pular para o conteúdo" (#app) não é rota: a pessoa continua nas instruções.
@@ -141,6 +147,7 @@ test('prova inteira com selo: textos fixos, uma questão por tela, "Responder" s
   await expect(page.locator('#vg-barra-prova .barra-dica')).toHaveText('Depois de responder não dá para voltar.');
   await expect(page.locator('#vg-nav')).toHaveCount(0);
   await expect(page.locator('#vg-prova-responder')).toBeDisabled();
+  await expect(page.locator('#vg-prova-opcional')).toHaveText(OPCIONAL);
   expect(await semRolagemLateral(page)).toBe(true);
   // Trocar de alternativa antes de responder pode; só uma fica marcada.
   await page.click('#vg-prova-opcoes button[data-opcao="0"]');
@@ -187,6 +194,7 @@ test('sem selo: "Prova concluída", texto fixo de padroes.md §5.3, onde acertou
   for (let n = 1; n <= 15; n++) await responder(page, n, n <= 3);
   await expect(page.locator('#vg-resultado-titulo')).toHaveText('Prova concluída');
   await expect(page.locator('#vg-resultado-sem-selo')).toHaveText('Ainda sem selo neste teste. Você pode refazer em 30 dias, de graça.');
+  await expect(page.locator('#vg-resultado-opcional')).toHaveText(OPCIONAL);
   await expect(page.locator('#vg-resultado-nota')).toContainText('Você acertou 3 de 15 questões. Nota 20 (±10).');
   await expect(page.locator('#vg-resultado-nota')).toContainText('O selo sai a partir da nota 60.');
   await expect(page.locator('#vg-resultado-refazer')).toHaveText(/^Você pode refazer este teste a partir de \d{2}\/\d{2}\/\d{4}, de graça\.$/);
@@ -306,6 +314,7 @@ test('vagas que pedem o selo: só as vagas da cidade com o selo do teste (o selo
   });
   await page.goto(BASE + 'testes.html?cidade=1#vagas/caixa');
   await expect(page.locator('#vg-testes-vagas-titulo')).toHaveText('Vagas que pedem este selo');
+  await expect(page.locator('#vg-testes-vagas-opcional')).toHaveText(OPCIONAL);
   await expect(page.locator('#vg-cidade')).toContainText(esperado.nome);
   if (esperado.codigos.length) {
     await expect(page.locator('#vg-testes-vagas > li')).toHaveCount(esperado.codigos.length);

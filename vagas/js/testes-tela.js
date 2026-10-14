@@ -39,7 +39,9 @@
     DICA_PROVA: 'Depois de responder não dá para voltar.',
     RECONECTANDO_RESPOSTA: 'Reconectando… sua resposta está guardada.',
     SEM_RESPOSTA_ERRO: 'O que ficou sem resposta vale como erro.',
-    QUEM_NAO_TEM: 'Quem não tem o selo também pode se candidatar.'
+    QUEM_NAO_TEM: 'Quem não tem o selo também pode se candidatar.',
+    // Diretriz da psicologia (onda 2): em toda tela de testes, o teste é opcional e a empresa só vê o selo.
+    OPCIONAL: 'O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo; ela só vê o selo, se você ganhar.'
   };
 
   // ------------------------------------------------------------------------------------------------- funções puras
@@ -127,6 +129,14 @@
     (anuncios || []).forEach(function (a) { if (a && a.selo) n[a.selo] = (n[a.selo] || 0) + 1; });
     return n;
   }
+  // "de 20 a 25 minutos" (ou "20 minutos" se todos forem iguais): o tempo vem do catálogo, nunca fixo na tela.
+  function faixaDeMinutos(testes) {
+    var m = (testes || []).map(function (t) { return inteiro(t.minutos); }).filter(function (x) { return x > 0; });
+    if (!m.length) return '';
+    var menor = Math.min.apply(null, m);
+    var maior = Math.max.apply(null, m);
+    return menor === maior ? menor + ' minutos' : 'de ' + menor + ' a ' + maior + ' minutos';
+  }
   function textoBotaoVagas(n) { return n > 0 ? 'Ver ' + plural(n, 'vaga que pede', 'vagas que pedem') + ' este selo' : 'Ver vagas'; }
 
   // Relógio: "12:05", laranja com 1 minuto ou menos; anúncio para leitor de tela em 5 min e 1 min (só o mais próximo, uma vez:
@@ -152,7 +162,7 @@
     TXT: TXT, POUCO_TEMPO: POUCO_TEMPO, CHAVE_ATUAL: CHAVE_ATUAL,
     acaoDoTeste: acaoDoTeste, linhaDoTeste: linhaDoTeste, linhasInstrucoes: linhasInstrucoes, partesDoResultado: partesDoResultado,
     linhasDoResultado: linhasDoResultado, textoRefazer: textoRefazer, ondeAcertouMenos: ondeAcertouMenos, contarPedidos: contarPedidos,
-    textoBotaoVagas: textoBotaoVagas, estadoDoRelogio: estadoDoRelogio, linkSelo: linkSelo, juntar: juntar, diasAte: diasAte
+    textoBotaoVagas: textoBotaoVagas, faixaDeMinutos: faixaDeMinutos, estadoDoRelogio: estadoDoRelogio, linkSelo: linkSelo, juntar: juntar, diasAte: diasAte
   };
   if (nodeJs) { module.exports = PURO; return; }
   root.VAGAS_TESTES_TELA = PURO;
@@ -253,8 +263,9 @@
         el('p', { class: 'sobretitulo' }, 'Habilidade testada'),
         el('h1', { id: 'vg-testes-titulo', class: 'titulo-pagina', tabindex: '-1' }, 'Testes'),
         el('p', { class: 'subtitulo' }, TXT.FRASE_PESSOA),
-        el('p', { class: 'subtitulo' }, 'Grátis. O selo mostra o teste, a nota e a data, e vale ' + validade + ' meses. Pode refazer depois de ' +
-          (regras.intervaloDias || 30) + ' dias.'),
+        el('p', { class: 'subtitulo', id: 'vg-testes-subtitulo' }, 'Grátis, no celular' + (faixaDeMinutos(r.testes) ? ', ' + faixaDeMinutos(r.testes) + ' cada' : '') +
+          '. O selo mostra o teste, a nota e a data, e vale ' + validade + ' meses. Pode refazer depois de ' + (regras.intervaloDias || 30) + ' dias.'),
+        el('p', { class: 'aviso', id: 'vg-testes-opcional' }, TXT.OPCIONAL),
         ctx.logado ? null : el('div', { class: 'aviso', id: 'vg-testes-entrar-aviso' }, [el('p', {}, T.MENSAGENS.login),
           el('div', { class: 'acoes' }, el('a', { class: 'botao botao--claro', id: 'vg-testes-entrar', href: U.linkEntrar('testes.html') }, 'Entrar'))]),
         lista,
@@ -304,6 +315,7 @@
           return el('li', { class: 'vg-item' }, [U.icone(l.icone), el('span', { class: 'vg-item__texto t-corpo' }, l.texto)]);
         })),
         el('p', { class: 'aviso', id: 'vg-instrucoes-sozinho' }, U.t('avisos.teste_antes')),
+        el('p', { class: 't-rotulo texto-medio', id: 'vg-instrucoes-opcional' }, TXT.OPCIONAL),
         a.tipo === 'aguardar' && ctx.logado ? el('p', { class: 'aviso', id: 'vg-instrucoes-aguardar' }, 'Você pode fazer de novo a partir de ' + data(a.quando) + '.') : null,
         erro,
         el('div', { class: 'acoes' }, [principal, el('a', { class: 'botao botao--link', href: '#catalogo', id: 'vg-prova-depois' }, 'Deixar para depois')])
@@ -434,6 +446,7 @@
       opcoes,
       el('p', { class: 'vg-reconectando', id: 'vg-prova-reconectando', role: 'status', 'aria-live': 'polite', hidden: true },
         [el('span', { class: 'giro', 'aria-hidden': 'true' }), TXT.RECONECTANDO_RESPOSTA]),
+      el('p', { class: 't-nota texto-suave', id: 'vg-prova-opcional' }, TXT.OPCIONAL),
       el('div', { class: 'acoes' }, el('button', { type: 'button', class: 'botao botao--link', id: 'vg-prova-encerrar', onclick: encerrar }, 'Encerrar o teste'))
     ]));
     p.sel = null;
@@ -635,6 +648,7 @@
       })),
       menos ? el('p', { class: 't-rotulo', id: 'vg-resultado-estudar' }, U.t('avisos.selo_sem_selo_competencias', { competencias: menos })) : null,
       el('p', { class: 'aviso', id: 'vg-resultado-limites' }, TXT.LIMITES),
+      el('p', { class: 't-rotulo texto-medio', id: 'vg-resultado-opcional' }, TXT.OPCIONAL),
       el('div', { class: 'acoes acoes-coluna' }, [botaoVagas,
         temSelo ? el('button', { type: 'button', class: 'botao botao--claro botao--grande', id: 'vg-resultado-compartilhar', onclick: function () { compartilhar(res); } },
           [U.icone('compartilhar'), 'Compartilhar o selo']) : null,
@@ -655,7 +669,8 @@
       var vagas = x[1].filter(function (a) { return a.selo === slug; });
       var cab = [el('p', { class: 'sobretitulo' }, t ? t.nome : 'Habilidade testada'),
         el('h1', { id: 'vg-testes-vagas-titulo', class: 'titulo-pagina', tabindex: '-1' }, 'Vagas que pedem este selo'),
-        el('p', { class: 'subtitulo' }, [ctx.cidade ? 'Vagas de ' + ctx.cidade.nome + '. ' : '', TXT.QUEM_NAO_TEM])];
+        el('p', { class: 'subtitulo' }, ctx.cidade ? 'Vagas de ' + ctx.cidade.nome + '.' : ''),
+        el('p', { class: 'aviso', id: 'vg-testes-vagas-opcional' }, TXT.OPCIONAL)];
       var corpo = vagas.length
         ? el('ul', { class: 'vg-vagas', id: 'vg-testes-vagas' }, vagas.map(function (a) { return P.cartaoVaga(a, { cidadeAtual: ctx.cidade && ctx.cidade.slug }); }))
         : el('div', { id: 'vg-testes-vagas-vazio' });

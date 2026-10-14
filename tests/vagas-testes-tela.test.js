@@ -529,6 +529,17 @@ test('resultado: barras por competência ("5 de 6"), linhas sem data fixa, onde 
   assert.equal(TELA.textoBotaoVagas(9), 'Ver 9 vagas que pedem este selo');
   assert.equal(TELA.textoBotaoVagas(1), 'Ver 1 vaga que pede este selo');
   assert.equal(TELA.textoBotaoVagas(0), 'Ver vagas');
+  // Tempo do catálogo: "de 20 a 25 minutos" (do dado), nunca "15 min".
+  assert.equal(TELA.faixaDeMinutos(BANCO), 'de 20 a 25 minutos');
+  assert.equal(TELA.faixaDeMinutos([{ minutos: 20 }, { minutos: 20 }]), '20 minutos');
+  assert.equal(TELA.faixaDeMinutos([]), '');
+  // Diretriz da psicologia: opcional e a empresa só vê o selo.
+  assert.equal(TELA.TXT.OPCIONAL, 'O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo; ela só vê o selo, se você ganhar.');
+  const tela = fs.readFileSync(path.join(CONF.VAGAS, 'js', 'testes-tela.js'), 'utf8');
+  for (const id of ['vg-testes-opcional', 'vg-instrucoes-opcional', 'vg-prova-opcional', 'vg-resultado-opcional', 'vg-testes-vagas-opcional']) {
+    assert.ok(new RegExp("id: '" + id + "' \\}, TXT\\.OPCIONAL").test(tela), id);
+  }
+  assert.ok(!/15 min/.test(CONF.semComentarios(tela)));
   assert.equal(TELA.juntar(['a']), 'a');
   assert.equal(TELA.linkSelo('k7m2-qx9a'), 'selo.html?codigo=K7M2QX9A');
   assert.equal(TELA.linkSelo('K7M2QX9A', 'https://vagas.gestaosemcaos.com.br/testes.html#resultado/x'), 'https://vagas.gestaosemcaos.com.br/selo.html?codigo=K7M2QX9A');
