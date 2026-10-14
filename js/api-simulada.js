@@ -105,7 +105,7 @@
 (function (root) {
   'use strict';
 
-  var VERSAO_BANCO = 20261024120002;                     // última migração (supabase/migrations)
+  var VERSAO_BANCO = 20261024120003;                     // última migração (supabase/migrations)
   var CHAVE_ARMAZENAMENTO = 'disc_planilha_simulada';     // respostas (mesma chave das versões anteriores)
   var CHAVES = {
     usuarios: 'disc_simulada_usuarios',

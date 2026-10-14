@@ -31,9 +31,11 @@
 //       (vagas_equipe_convite_aceitar, com o login dela).
 //   avisar_lista_espera (JWT da equipe) {cidade, limite?} -> um LOTE (padrão 25, até 50) do aviso "a cidade abriu" por e-mail
 //       para a lista de espera de uma cidade ATIVA. O banco (vagas_conta_aviso_lote) reserva quem ainda não foi avisado e
-//       marca na hora (rodar de novo não manda duas vezes); quem falhar volta para a fila (vagas_conta_aviso_marcar). Resposta:
-//       só contagens {enviados, falhas, restantes, aAvisarWhatsapp, terminou}; nenhum e-mail da lista sai daqui. A tela chama
-//       de novo até terminou:true. Migração 20261024120002_vagas_aviso_abertura.
+//       marca na hora (rodar de novo não manda duas vezes); quem falhar volta para o FIM da fila, até 3 vezes, e e-mail
+//       recusado aqui não volta (vagas_conta_aviso_marcar, 20261024120003). Teto de 24 h no banco (padrão 60). Resposta:
+//       só contagens {enviados, falhas, invalidos, restantes, aAvisarWhatsapp, terminou, travado, tetoAtingido}; nenhum
+//       e-mail da lista sai daqui. A tela chama de novo enquanto terminou, travado e tetoAtingido forem false.
+//       Migrações 20261024120002_vagas_aviso_abertura e 20261024120003_vagas_aviso_reforco.
 // Link do e-mail: <VAGAS_SITE_URL>/entrar.html?token_hash=<hash>&type=invite|recovery (gerado com auth.admin.generateLink,
 // no domínio do site; o antivírus que "abre" o link antes da pessoa não o gasta, porque a tela só confere no clique). No convite
 // de equipe o link leva também &convite=<token> (ou só ?convite=<token> para quem já tem conta de empresa).
@@ -77,9 +79,11 @@ export function siteVagas(env) {
   try { return new URL(String((env && env.VAGAS_SITE_URL) || VAGAS_SITE_PADRAO).trim()).origin; } catch (err) { return VAGAS_SITE_PADRAO; }
 }
 
+// Só ASCII visível (! a ~), igual a vagas_interno.email (20261024120003) e a VAGAS_REGRAS.normalizarEmail: o que o banco
+// aceita a Function também aceita (senão a fila do aviso de abertura travava num e-mail com caractere invisível).
 export function emailVagas(v) {
   const e = String(v == null ? '' : v).trim().toLowerCase();
-  return e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : '';
+  return e.length <= 254 && /^[!-?A-~]+@[!-?A-~]+\.[!-?A-~]+$/.test(e) ? e : '';
 }
 
 /** "ana.souza@empresa.com.br" -> "a***@e***.com.br" */
@@ -443,11 +447,12 @@ export async function acaoVagasAvisarListaEspera(base, corpo, origem, quem) {
   const esperar = typeof base.esperar === 'function' ? base.esperar : (ms) => new Promise((res) => setTimeout(res, ms));
   const enviados = [];
   const falhas = [];
+  const invalidos = [];
   for (let i = 0; i < lote.length; i++) {
     const c = lote[i] || {};
     const email = emailVagas(c.email);
     if (!UUID_VAGAS.test(String(c.id || ''))) continue;
-    if (!email) { falhas.push(c.id); continue; }
+    if (!email) { invalidos.push(c.id); continue; }
     if (i > 0) await esperar(VAGAS_AVISO_INTERVALO_MS);
     const l = linksAvisoAbertura(base.env, cidade, c.perfil, c.sairToken);
     try {
@@ -458,14 +463,18 @@ export async function acaoVagasAvisarListaEspera(base, corpo, origem, quem) {
     }
   }
   let contagens = r.contagens || {};
-  if (enviados.length || falhas.length) {
-    const m = await base.db.avisoMarcar(quem.id, cidade, enviados, falhas);
+  if (enviados.length || falhas.length || invalidos.length) {
+    const m = await base.db.avisoMarcar(quem.id, cidade, enviados, falhas, invalidos);
     if (!m || m.ok !== true) throw new Error('aviso: marcar o lote falhou');
     contagens = m.contagens || contagens;
   }
   const n = (k) => (typeof contagens[k] === 'number' ? contagens[k] : 0);
-  return { ok: true, cidade: { slug: cidade, nome }, enviados: enviados.length, falhas: falhas.length,
-    restantes: n('aAvisarEmail'), aAvisarWhatsapp: n('aAvisarWhatsapp'), terminou: n('aAvisarEmail') === 0 };
+  const restantes = n('aAvisarEmail');
+  const disponivel = r.teto && typeof r.teto.disponivel === 'number' ? r.teto.disponivel - lote.length : 1;
+  // travado: o lote não avisou ninguém e só teve falhas (a tela para de repetir); tetoAtingido: acabou a cota de 24 h.
+  return { ok: true, cidade: { slug: cidade, nome }, enviados: enviados.length, falhas: falhas.length, invalidos: invalidos.length,
+    restantes, aAvisarWhatsapp: n('aAvisarWhatsapp'), terminou: restantes === 0,
+    travado: enviados.length === 0 && falhas.length > 0, tetoAtingido: restantes > 0 && disponivel <= 0 };
 }
 
 /** URL assinada curta da foto: o banco decide se pode (vagas_conta_foto); aqui só se assina o caminho que ele devolver. */
@@ -503,8 +512,8 @@ export function criarBaseVagasConta(createClient, getEnv, extras) {
         p_email: email, p_cf: cf || '', p_xff: xff || '' }),
       exclusaoConferir: (userId) => rpc('vagas_conta_exclusao_conferir', { p_user: userId }),
       avisoLote: (userId, cidade, limite) => rpc('vagas_conta_aviso_lote', { p_user: userId, p_cidade: cidade, p_limite: limite }),
-      avisoMarcar: (userId, cidade, enviados, falhas) => rpc('vagas_conta_aviso_marcar', { p_user: userId, p_cidade: cidade,
-        p_enviados: enviados || [], p_falhas: falhas || [] })
+      avisoMarcar: (userId, cidade, enviados, falhas, invalidos) => rpc('vagas_conta_aviso_marcar', { p_user: userId, p_cidade: cidade,
+        p_enviados: enviados || [], p_falhas: falhas || [], p_invalidos: invalidos || [] })
     },
     storage: {
       async assinar(bucket, caminho, segundos) {

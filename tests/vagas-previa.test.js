@@ -11,9 +11,10 @@ const API = require('../vagas/js/api.js');
 const R = require('../vagas/js/regras.js');
 
 const RAIZ = path.join(__dirname, '..');
-const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql']
+const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql', '20261024120003_vagas_aviso_reforco.sql']
   .map((f) => fs.readFileSync(path.join(RAIZ, 'supabase', 'migrations', f), 'utf8')).join('\n');
 const AGORA = Date.parse('2026-10-13T15:00:00Z');
+const DIA_MS = 86400000;
 
 function memoria() {
   const m = {};
@@ -689,7 +690,8 @@ test('aviso de abertura (20261024120002): só a equipe; e-mail em lotes só com 
   await entrar(b, 'admin@previa.com');
   const r0 = await ok(b.rpc('vagas_adm_aviso_resumo', { p_cidade: cid }));
   assert.deepEqual(r0, { ok: true, cidade: { slug: cid, nome: 'Niquelândia', status: 'lista_espera', abertaEm: '', listaAte: '' },
-    contagens: { naLista: 4, aAvisarEmail: 4, avisadosEmail: 0, aAvisarWhatsapp: 2 } });
+    contagens: { naLista: 4, aAvisarEmail: 4, avisadosEmail: 0, emEnvio: 0, semEmail: 0, aAvisarWhatsapp: 2 },
+    teto: { porDia: 60, usados24h: 0, disponivel: 60, diasPrevistos: 1 } });
   await erro(b.conta.avisarListaEspera(cid), FECHADA);
   await erro(b.rpc('vagas_adm_aviso_whatsapp', { p_cidade: cid }), FECHADA);
   await erro(b.conta.avisarListaEspera('nao-existe-go'), 'Cidade não encontrada.');
@@ -699,10 +701,12 @@ test('aviso de abertura (20261024120002): só a equipe; e-mail em lotes só com 
   assert.ok(r1.cidade.abertaEm && Date.parse(r1.cidade.listaAte) - Date.parse(r1.cidade.abertaEm) === 30 * 86400000);
   // E-mail em lotes: a tela recebe só contagens.
   const l1 = await ok(b.conta.avisarListaEspera(cid, 3));
-  assert.deepEqual(l1, { ok: true, cidade: { slug: cid, nome: 'Niquelândia' }, enviados: 3, falhas: 0, restantes: 1, aAvisarWhatsapp: 2, terminou: false });
+  const resp = (enviados, restantes, extra) => Object.assign({ ok: true, cidade: { slug: cid, nome: 'Niquelândia' }, enviados, falhas: 0, invalidos: 0,
+    restantes, aAvisarWhatsapp: 2, terminou: restantes === 0, travado: false, tetoAtingido: false }, extra || {});
+  assert.deepEqual(l1, resp(3, 1));
   assert.ok(!JSON.stringify(l1).includes('@'));
-  assert.deepEqual(await ok(b.conta.avisarListaEspera(cid, 3)), { ok: true, cidade: { slug: cid, nome: 'Niquelândia' }, enviados: 1, falhas: 0, restantes: 0,
-    aAvisarWhatsapp: 2, terminou: true });
+  assert.deepEqual(await ok(b.conta.avisarListaEspera(cid, 3)), resp(1, 0));
+  assert.deepEqual((await ok(b.rpc('vagas_adm_aviso_resumo', { p_cidade: cid }))).teto, { porDia: 60, usados24h: 4, disponivel: 56, diasPrevistos: 0 });
   assert.equal((await ok(b.conta.avisarListaEspera(cid))).enviados, 0, 'rodar de novo não avisa ninguém duas vezes');
   // Quem deixou só o e-mail já saiu; quem deixou o WhatsApp fica até a equipe avisar por lá.
   const daCidade = () => st.listaEspera.filter((l) => l.cidade === cid);
@@ -721,10 +725,10 @@ test('aviso de abertura (20261024120002): só a equipe; e-mail em lotes só com 
   const texto = W.replace('{{cidade}}', 'Niquelândia').replace('{{link_cidade}}', 'https://vagas.gestaosemcaos.com.br/cidade.html?cidade=' + cid);
   assert.deepEqual(fila.contato, { id: fila.contato.id, whatsapp: '5562988887777', perfil: 'pessoa', texto,
     link: 'https://wa.me/5562988887777?text=' + encodeURIComponent(texto) });
-  assert.deepEqual(fila.contagens, { naLista: 1, aAvisarEmail: 0, avisadosEmail: 1, aAvisarWhatsapp: 1 });
+  assert.deepEqual(fila.contagens, { naLista: 1, aAvisarEmail: 0, avisadosEmail: 1, emEnvio: 0, semEmail: 0, aAvisarWhatsapp: 1 });
   assert.ok(st.moderacao.some((m) => m.acao === 'aviso_whatsapp_ver'));
   assert.deepEqual(await ok(b.rpc('vagas_adm_aviso_whatsapp_feito', { p_id: fila.contato.id })), { ok: true, duplicado: false,
-    contagens: { naLista: 0, aAvisarEmail: 0, avisadosEmail: 0, aAvisarWhatsapp: 0 } });
+    contagens: { naLista: 0, aAvisarEmail: 0, avisadosEmail: 0, emEnvio: 0, semEmail: 0, aAvisarWhatsapp: 0 } });
   await erro(b.rpc('vagas_adm_aviso_whatsapp_feito', { p_id: fila.contato.id }), 'Contato não encontrado.');
   assert.equal((await ok(b.rpc('vagas_adm_aviso_whatsapp', { p_cidade: cid }))).contato, null);
   assert.deepEqual(daCidade(), [], 'avisada pelo que pediu, a linha some');
@@ -735,8 +739,30 @@ test('aviso de abertura (20261024120002): só a equipe; e-mail em lotes só com 
   assert.deepEqual(daCidade(), []);
   // O cliente (modo prévia) tem o método; cidade aberta sem lista: nada a avisar.
   const api = API.criar({ modo: 'previa', backend: b });
-  assert.deepEqual(await api.avisarListaEspera('uruacu-go'), { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 0, falhas: 0, restantes: 0,
-    aAvisarWhatsapp: 0, terminou: true });
+  assert.deepEqual(await api.avisarListaEspera('uruacu-go'), { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 0, falhas: 0, invalidos: 0,
+    restantes: 0, aAvisarWhatsapp: 0, terminou: true, travado: false, tetoAtingido: false });
+});
+
+test('reforço do aviso na prévia (20261024120003): e-mail só ASCII visível; teto de 60 em 24 h com a previsão de dias', async () => {
+  let t = AGORA;
+  const b = PREVIA.criarBackend({ armazenamento: memoria(), agora: () => t });
+  const st = b.estado();
+  const cid = 'niquelandia-go';
+  for (const e of ['a\u00a0b@ex.com', 'a\ufeffb@ex.com', 'a\u2028b@ex.com', 'a\u3000b@ex.com', 'joão@ex.com']) {
+    await erro(b.rpc('vagas_lista_espera_entrar', { p_dados: { cidade: cid, email: e } }), 'E-mail inválido.');
+  }
+  for (let i = 0; i < 70; i++) st.listaEspera.push({ cidade: cid, email: 'p' + i + '@exemplo.com', perfil: 'pessoa', whatsapp: '', whatsappEm: null, criadoEm: AGORA - DIA_MS });
+  await entrar(b, 'admin@previa.com');
+  await ok(b.rpc('vagas_adm_cidade_salvar', { p_dados: { slug: cid, status: 'ativa' } }));
+  assert.deepEqual((await ok(b.rpc('vagas_adm_aviso_resumo', { p_cidade: cid }))).teto, { porDia: 60, usados24h: 0, disponivel: 60, diasPrevistos: 2 });
+  for (let i = 0; i < 2; i++) await ok(b.conta.avisarListaEspera(cid, 50));
+  const fim = await ok(b.conta.avisarListaEspera(cid, 50));
+  assert.deepEqual([fim.enviados, fim.restantes, fim.tetoAtingido, fim.terminou], [0, 11, true, false]);
+  assert.deepEqual((await ok(b.rpc('vagas_adm_aviso_resumo', { p_cidade: cid }))).teto, { porDia: 60, usados24h: 60, disponivel: 0, diasPrevistos: 1 },
+    'hoje não cabe mais nenhum: termina amanhã');
+  t += DIA_MS + 1000;
+  const amanha = await ok(b.conta.avisarListaEspera(cid, 50));
+  assert.deepEqual([amanha.enviados, amanha.restantes, amanha.terminou, amanha.tetoAtingido], [11, 0, true, false]);
 });
 
 test('2ª revisão de segurança na prévia: N2 (quem saiu não ganha WhatsApp novo por 24 h) e N1 (dona só com conta válida)', async () => {
