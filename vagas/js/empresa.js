@@ -21,8 +21,9 @@
   var el = U.el;
   var ctx = E.ctx;
   function t(c, v) { return U.t(c, v); }
-  // Métodos da equipe da empresa (banco-onda2). Se faltarem, a seção Equipe fica "em breve".
-  var EQUIPE = { listar: 'equipeEmpresa', convidar: 'convidarEquipe', cancelar: 'cancelarConviteEquipe', remover: 'removerDaEquipe' };
+  // Métodos da equipe da empresa (banco-onda2, docs/VAGAS-SPEC.md §8.4a). Se faltarem, a seção Equipe fica "em breve".
+  var EQUIPE = { listar: 'equipeDaEmpresa', convidar: 'convidarEquipe', cancelar: 'cancelarConvite', remover: 'removerMembro' };
+  var CONVITE_INVALIDO = 'Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.';
   function temEquipe() { return Object.keys(EQUIPE).every(function (k) { return typeof A[EQUIPE[k]] === 'function'; }); }
 
   // ------------------------------------------------------------------------------------------------- início
@@ -113,7 +114,7 @@
       U.trocar(zonaLugar, zona ? zona.no : null);
       campos.zona = zona ? zona.grupo : null;
     }
-    var cidade = abertas.length ? E.chips({ id: 'vg-emp-cad-cidade', rotulo: 'Cidade', obrigatorio: true, opcoes: abertas.map(function (c) { return { id: c.slug, rotulo: c.nome + ' (' + c.uf + ')' }; }),
+    var cidade = abertas.length ? E.chips({ id: 'vg-emp-cad-cidade', rotulo: 'Cidade', obrigatorio: true, largo: true, opcoes: abertas.map(function (c) { return { id: c.slug, rotulo: c.nome + ' (' + c.uf + ')' }; }),
       valor: cidadeAtual, aoMudar: function (v) { g.zona = ''; desenharZonas(v); guardarDepois(); } }) : null;
     campos.cidade = cidade ? cidade.grupo : null;
     var erro = el('p', { class: 'aviso aviso--erro', id: 'vg-emp-cad-erro', role: 'alert', hidden: true });
@@ -249,8 +250,10 @@
         }, function (e) { U.tratarErro(e); });
       });
   }
-  var PAPEL = { dono: 'Dono(a)', recrutador: 'Recrutador(a)' };
-  var CONVITE = { pendente: 'Esperando aceitar', vencido: 'Vencido', aceito: 'Aceito', cancelado: 'Cancelado' };
+  // Rótulos de VAGAS_REGRAS (PAPEIS_EMPRESA, STATUS_CONVITE_EQUIPE, do banco-onda2); a reserva é igual.
+  function papel(id) { return (R.PAPEIS_EMPRESA && R.rotulo(R.PAPEIS_EMPRESA, id)) || { dono: 'Dono(a)', recrutador: 'Recrutador(a)' }[id] || id; }
+  function situacaoConvite(id) { return (R.STATUS_CONVITE_EQUIPE && R.rotulo(R.STATUS_CONVITE_EQUIPE, id)) || { pendente: 'Esperando o aceite', vencido: 'Venceu', aceito: 'Aceito', cancelado: 'Cancelado' }[id] || id; }
+  var linkPreviaConvite = '';   // prévia: o "e-mail" do convite vira um link para abrir aqui mesmo
   function carregarEquipe(corpo) {
     U.carregando(corpo);
     A[EQUIPE.listar](ctx.empresa.id).then(function (r) {
@@ -270,8 +273,9 @@
         var v = R.normalizarEmail(email.value);
         if (!v) { U.erroCampo(email, 'E-mail inválido.'); email.focus(); return; }
         U.ocupado(convidar, true, 'Enviando…');
-        A[EQUIPE.convidar]({ empresaId: ctx.empresa.id, email: v }).then(function (x) {
+        A[EQUIPE.convidar](ctx.empresa.id, v).then(function (x) {
           U.avisar((x && x.mensagem) || 'Convite enviado.', { tipo: 'ok', ms: 6000 });
+          linkPreviaConvite = x && x.linkPrevia ? U.voltarValido(x.linkPrevia, '') : '';
           carregarEquipe(corpo);
         }, function (e) { U.ocupado(convidar, false); if (e.sessaoExpirada || e.confirmar) { U.tratarErro(e); return; } U.erroCampo(email, e.message); });
       });
@@ -279,18 +283,20 @@
         el('div', { class: 'vg-rolagem' }, el('table', { class: 'vg-tabela', id: 'vg-equipe-membros' }, [
           el('thead', {}, el('tr', {}, ['Pessoa', 'E-mail', 'Papel', 'Desde', ''].map(function (h) { return el('th', { scope: 'col' }, h || el('span', { class: 'visualmente-oculto' }, 'Ação')); }))),
           el('tbody', {}, membros.map(function (m) {
-            return el('tr', { data: { membro: m.userId } }, [el('td', {}, m.nome || '—'), el('td', {}, m.email), el('td', {}, PAPEL[m.papel] || m.papel), el('td', { class: 'nao-quebra' }, U.data(m.desde)),
+            return el('tr', { data: { membro: m.userId } }, [el('td', {}, m.nome || '—'), el('td', {}, m.email), el('td', {}, papel(m.papel)), el('td', { class: 'nao-quebra' }, U.data(m.desde)),
               el('td', {}, el('div', { class: 'vg-tabela__acoes' }, m.eu ? el('span', { class: 't-nota texto-suave' }, 'Você') : (m.podeRemover && !so
                 ? el('button', { type: 'button', class: 'botao botao--perigo', data: { acao: 'remover' }, onclick: function () { remover(m, corpo); } }, 'Remover') : null)))]);
           }))])),
         convites.length ? el('div', { class: 'vg-rolagem' }, el('table', { class: 'vg-tabela', id: 'vg-equipe-convites' }, [
           el('thead', {}, el('tr', {}, ['Convite', 'Situação', 'Vale até', ''].map(function (h) { return el('th', { scope: 'col' }, h || el('span', { class: 'visualmente-oculto' }, 'Ação')); }))),
           el('tbody', {}, convites.map(function (c) {
-            return el('tr', { data: { convite: c.id } }, [el('td', {}, c.email), el('td', {}, CONVITE[c.status] || c.status), el('td', { class: 'nao-quebra' }, c.status === 'pendente' ? U.dataHora(c.expiraEm) : '—'),
+            return el('tr', { data: { convite: c.id } }, [el('td', {}, c.email), el('td', {}, situacaoConvite(c.status)), el('td', { class: 'nao-quebra' }, c.status === 'pendente' ? U.dataHora(c.expiraEm) : '—'),
               el('td', {}, el('div', { class: 'vg-tabela__acoes' }, c.status === 'pendente' && !so
                 ? el('button', { type: 'button', class: 'botao botao--claro', data: { acao: 'cancelar' }, onclick: function (ev) { cancelar(c, ev.currentTarget, corpo); } }, 'Cancelar convite') : null))]);
           }))])) : null,
-        form]);
+        form,
+        linkPreviaConvite ? el('div', { class: 'aviso vg-emp-nota', id: 'vg-equipe-previa' }, [el('p', {}, 'Prévia: nenhum e-mail sai daqui. Abra o link que o convite traria.'),
+          el('a', { class: 'botao botao--claro', id: 'vg-equipe-abrir-previa', href: linkPreviaConvite }, 'Abrir o convite (prévia)')]) : null]);
     }, function (e) { U.tratarErro(e, { raiz: corpo, aoTentar: function () { carregarEquipe(corpo); } }); });
   }
   function remover(m, corpo) {
@@ -303,6 +309,60 @@
   function cancelar(c, botao, corpo) {
     U.ocupado(botao, true);
     A[EQUIPE.cancelar](c.id).then(function () { U.avisar('Convite cancelado.', { tipo: 'ok' }); carregarEquipe(corpo); }, function (e) { U.ocupado(botao, false); U.tratarErro(e); });
+  }
+
+  // ------------------------------------------------------------------------------------------------- convite para a equipe (quem recebeu)
+  // O e-mail leva a entrar.html?convite=<token>; depois de entrar (ou de criar a senha) a pessoa chega aqui com ?convite=. Mostra de
+  // quem é o convite ANTES do aceite e só aceita no clique (docs/VAGAS-SPEC.md §8.4a).
+  function tokenDoConvite() {
+    if (typeof A.conviteDoEndereco === 'function') return A.conviteDoEndereco(root.location);
+    var m = /[?&]convite=([0-9a-fA-F]{64})(?:&|$)/.exec(String(root.location.search || ''));
+    return m ? m[1].toLowerCase() : '';
+  }
+  function telaConvite(raiz, token) {
+    var cab = E.cabecalho({ sobre: 'Equipe da empresa', titulo: 'Convite para a equipe', idTitulo: 'vg-convite-titulo' });
+    var painel = el('a', { class: 'botao botao--claro', href: 'empresa.html#inicio', id: 'vg-convite-painel' }, ctx.empresa ? 'Ir para o painel' : 'Continuar');
+    if (typeof A.conviteEquipe !== 'function') {
+      E.tela(raiz, [cab, el('p', { class: 'aviso', role: 'note', id: 'vg-convite-em-breve' }, 'Em breve: aceitar o convite para a equipe por aqui.'), el('div', { class: 'acoes' }, painel)]);
+      return Promise.resolve();
+    }
+    U.carregando(raiz);
+    return A.conviteEquipe(token).then(function (r) {
+      var cv = r.convite || {};
+      var emp = cv.empresa || {};
+      var nome = emp.nomeFantasia + (emp.cidade && emp.cidade.nome ? ' (' + emp.cidade.nome + ')' : '');
+      if (cv.jaMembro) {
+        E.tela(raiz, [cab, el('p', { class: 't-corpo texto-medio', id: 'vg-convite-texto' }, 'Você já faz parte da equipe de ' + nome + '.'), el('div', { class: 'acoes' }, painel)]);
+        return;
+      }
+      var aceitar = el('button', { type: 'button', class: 'botao botao--laranja botao--grande', id: 'vg-convite-aceitar' }, 'Aceitar o convite');
+      var agoraNao = el('a', { class: 'botao botao--claro botao--grande', href: 'empresa.html#inicio', id: 'vg-convite-agora-nao' }, 'Agora não');
+      var erro = el('p', { class: 'aviso aviso--erro', id: 'vg-convite-erro', role: 'alert', hidden: true });
+      var caixaConvite = E.caixa({ id: 'vg-convite', classe: 'caixa--ampla caixa--destaque' }, [
+        el('p', { class: 't-corpo', id: 'vg-convite-texto' }, [el('strong', {}, nome), ' convidou você para a equipe da empresa no Vagas sem Caos, como ' + papel(cv.papel).toLowerCase() +
+          ': publicar vagas, ver os cartões e conversar com as pessoas.']),
+        el('p', { class: 't-rotulo texto-medio' }, 'O convite vale até ' + U.data(cv.expiraEm) + ', ' + U.hora(cv.expiraEm) + '. Ao aceitar, quem é dono(a) da empresa vê o seu nome e o seu e-mail na lista da equipe.'),
+        erro, el('div', { class: 'acoes' }, [agoraNao, aceitar])]);
+      aceitar.addEventListener('click', function () {
+        erro.hidden = true;
+        U.ocupado(aceitar, true, 'Aceitando…');
+        A.aceitarConviteEquipe(token).then(function (x) {
+          E.escolher(x.empresa.id);
+          E.tela(raiz, [cab, el('section', { class: 'caixa caixa--ampla', id: 'vg-convite-ok', role: 'status' }, [el('div', { class: 'vg-ok-icone' }, U.icone('check')),
+            el('h2', { class: 't-titulo', tabindex: '-1' }, 'Pronto. Agora você faz parte da equipe de ' + x.empresa.nomeFantasia + '.'),
+            el('div', { class: 'acoes' }, el('a', { class: 'botao botao--principal', href: 'empresa.html#inicio', id: 'vg-convite-ir' }, 'Ir para o painel'))])]);
+          U.focarTitulo(raiz.querySelector('#vg-convite-ok'));
+        }, function (e) {
+          U.ocupado(aceitar, false);
+          if (e.sessaoExpirada || e.confirmar || e.conexao) { U.tratarErro(e); return; }
+          erro.textContent = e.message; erro.hidden = false;
+        });
+      });
+      E.tela(raiz, [cab, caixaConvite, P.golpe({ id: 'vg-aviso-golpe' })]);
+    }, function (e) {
+      if (e.sessaoExpirada || e.confirmar || e.conexao) { U.tratarErro(e, { raiz: raiz, aoTentar: function () { root.location.reload(); } }); return; }
+      E.tela(raiz, [cab, el('p', { class: 'aviso aviso--erro', role: 'alert', id: 'vg-convite-invalido' }, e.message || CONVITE_INVALIDO), el('div', { class: 'acoes' }, painel)]);
+    });
   }
 
   // ------------------------------------------------------------------------------------------------- compras (ocultas) e banco (fase 2)
@@ -342,6 +402,12 @@
       E.menu({});
       E.faixas();
       E.contarConversas();
+      // Convite para a equipe (?convite=): vem antes do cadastro (quem foi convidado pode não ter empresa própria) e do roteador.
+      var token = tokenDoConvite();
+      if (token) {
+        doc.title = 'Convite para a equipe | Vagas sem Caos';
+        return telaConvite(raiz, token).then(function () { U.focarTitulo(raiz); });
+      }
       function rota(fn) {
         return function (resto) {
           if (parar) { parar(); parar = null; }
