@@ -205,6 +205,8 @@ test.describe('Feedback 360: painel (computador)', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
   test('criar pelo organograma, links individuais, só contagens, encerrar, moderar, devolutiva e publicar', async ({ page, context }) => {
+    // O ciclo inteiro (criar → responder → encerrar → moderar → publicar) passa de 60 s em máquina carregada.
+    test.slow();
     const erros = coletarErros(page);
     await previa(context);
     await page.goto('/admin.html#empresa/' + EMP + '/feedback360');
