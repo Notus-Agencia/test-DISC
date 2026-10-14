@@ -32,7 +32,7 @@
 
   // whatsapp.json: "vaga_compartilhar" e "empresa_para_pessoa_combinou" (palavra por palavra; tests/vagas-empresa.test.js).
   var WHATSAPP = {
-    vaga_compartilhar: 'Vaga de {{vaga_titulo}} · {{empresa_nome_ou_confidencial}} · {{zona}} · {{valor}}. Candidatura grátis pelo celular: {{link_curto}} (Vagas sem Caos, uma ferramenta da Gestão sem Caos)',
+    vaga_compartilhar: 'Vaga de {{vaga_titulo}} · {{empresa_nome_ou_confidencial}} · {{zona}} · {{valor}}. Candidatura grátis pelo celular: {{link_curto}} (Vagas sem Caos, uma empresa do grupo Gestão sem Caos)',
     empresa_para_pessoa_combinou: 'Oi, {{pessoa_primeiro_nome}}! Aqui é {{responsavel_nome}}, da {{empresa_nome}}. Vi a sua candidatura à vaga de {{vaga_titulo}} no Vagas sem Caos e deu Combinou. Podemos conversar sobre a vaga? Me diz um horário bom para você. (Nunca pedimos dinheiro, Pix ou documento para a vaga: só na admissão, pessoalmente.)'
   };
   var DIA = 86400000;

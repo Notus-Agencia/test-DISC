@@ -13,7 +13,7 @@ const R = require('../vagas/js/regras.js');
 const T = require('../vagas/js/textos.js');
 // No navegador textos-conta.js acrescenta as chaves ao VAGAS_TEXTOS; no Node exporta à parte: junta igual ao navegador.
 const TC = require('../vagas/js/textos-conta.js');
-Object.keys(TC).forEach((k) => { T[k] = TC[k]; });
+Object.keys(TC).forEach((k) => { if (k === 'avisos') Object.assign(T.avisos, TC.avisos); else T[k] = TC[k]; });
 const PREVIA = require('../vagas/js/api-previa.js');
 const TELA = require('./helpers/vagas-tela.js');
 
@@ -53,7 +53,7 @@ test('eu.html e os scripts da área: CSP, ordem dos scripts, nada inline, sem in
   const scripts = [...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(scripts.slice(-6), SCRIPTS.slice(0, 1).concat(SCRIPTS.slice(2), ['js/eu.js']), 'telas antes, eu.js por último');
   for (const base of ['js/ui-area.js', 'js/pecas-pessoa.js', 'js/conversa.js', 'js/textos-conta.js']) assert.ok(scripts.includes(base), base);
-  assert.match(html, /img-src 'self' data: blob: https:\/\/\*\.supabase\.co/, 'a foto (blob e URL assinada) precisa da CSP');
+  assert.match(html, /img-src 'self' data: blob: https:\/\/tevpqngqzxcswmticjnr\.supabase\.co/, 'a foto (blob e URL assinada) precisa da CSP (só o projeto)');
   assert.match(html, /<title>[^<]*\| Vagas sem Caos<\/title>/);
   assert.ok(!/notus|icone\.svg/i.test(html.replace(/comum\/notus\.css/g, '')), 'nada da Notus na tela');
 });

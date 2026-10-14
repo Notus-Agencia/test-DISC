@@ -103,8 +103,9 @@ Nunca dado de pessoa. O botão "Quero essa vaga" leva para `/<cidade>/?vaga=<có
   `requisitos` + `requisitoOutro` viram frases e chave desconhecida some; nunca imprime `cnh_b`), `beneficios`
   (chaves → frases), `escolaridade`, `expiraEm` ("Vaga aberta até"). Vaga fora do ar vem como `{ok:false}` → 404.
   A Function **não** chama `vagas_anuncio_vista` (prévia de link não conta como vista).
-- **Imagem da prévia**: `/comum/marca/gsc-logo-email.png` (PNG; o WhatsApp não mostra SVG). Uma imagem própria
-  1200×630 com a marca Vagas melhora a prévia: troque a constante `IMAGEM_OG`.
+- **Imagem da prévia**: `/comum/marca/vsc-logo-email.png` (logo do Vagas sem Caos em PNG; o WhatsApp não mostra SVG). A
+  página usa o logo negativo no topo e, no rodapé, o endosso "Uma empresa do grupo" + logo da Gestão sem Caos. Uma imagem
+  própria 1200×630 melhora a prévia: troque a constante `IMAGEM_OG`.
 - Testes sem rede: `node --test tests/vagas-hospedagem.test.js` (entra no `npm test`).
 
 ## 5. Testar localmente
@@ -123,7 +124,7 @@ Nunca dado de pessoa. O botão "Quero essa vaga" leva para `/<cidade>/?vaga=<có
 | Onde | Nome | Valor | Obrigatório |
 |---|---|---|---|
 | Supabase → Edge Functions → Secrets | `VAGAS_SITE_URL` | `https://vagas.gestaosemcaos.com.br` | sim (CORS e links dos e-mails da `vagas-conta`) |
-| idem | `VAGAS_EMAIL_REMETENTE` | `Vagas · Gestão sem Caos <vagas@gestaosemcaos.com.br>` | recomendado (sem ele usa `EMAIL_REMETENTE`) |
+| idem | `VAGAS_EMAIL_REMETENTE` | `Vagas sem Caos <vagas@gestaosemcaos.com.br>` | recomendado (sem ele usa `EMAIL_REMETENTE`) |
 | idem | `TURNSTILE_SECRET` | chave secreta do widget Turnstile | sim antes de abrir ao público (sem ela a `vagas-conta` não exige CAPTCHA) |
 | idem | `RESEND_API_KEY` | já existe (DISC) | já configurado |
 | Cloudflare Pages → Settings → Variables and Secrets | `SUPABASE_ANON_KEY` | chave anon (pública) | não (a Function lê de `/js/config.js`) |

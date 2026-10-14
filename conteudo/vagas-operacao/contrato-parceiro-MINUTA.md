@@ -127,7 +127,7 @@ As partes celebram este contrato, regido pelas cláusulas abaixo.
 
 ## 8. Marca, materiais e kit
 
-8.1. Licença gratuita, não exclusiva e revogável para usar a marca "Vagas sem Caos · uma ferramenta da Gestão sem Caos" só nos materiais aprovados e na praça. Nada de marca de agência, nome próprio na frente da marca ou alteração de cor, logo e texto.
+8.1. Licença gratuita, não exclusiva e revogável para usar a marca "Vagas sem Caos · uma empresa do grupo Gestão sem Caos" [REVISÃO JURÍDICA: confirmar a estrutura societária de "empresa do grupo"] só nos materiais aprovados e na praça. Nada de marca de agência, nome próprio na frente da marca ou alteração de cor, logo e texto.
 
 8.2. **Kit de abertura** (impressos, 4 semanas de rádio e treinamento): custo dividido meio a meio entre as partes (decisão do painel; **HIPÓTESE** de valor: [●]).
 

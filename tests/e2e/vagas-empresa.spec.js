@@ -53,7 +53,9 @@ test('início: saudação, os 4 números, a tabela de vagas e o menu lateral; se
   expect(await page.locator('#vg-emp-vagas-tabela tbody tr').count()).toBeGreaterThan(0);
   await expect(page.locator('#vg-emp-aba-inicio')).toHaveAttribute('aria-current', 'page');
   await expect(page).toHaveTitle('Início | Vagas sem Caos');
-  await expect(page.locator('#vg-menu')).toContainText('Vagas sem Caos · Empresa');
+  await expect(page.locator('#vg-menu .menu-lateral__logo')).toHaveAttribute('alt', 'Vagas sem Caos');
+  await expect(page.locator('#vg-menu .menu-lateral__logo')).toHaveAttribute('src', 'comum/marca/vsc-logo.svg');
+  await expect(page.locator('#vg-menu')).toContainText('Painel da empresa');
   await page.click('#vg-emp-aba-vagas');
   await expect(page.locator('main h1')).toHaveText('Minhas vagas');
   await expect(page.locator('#vg-emp-aba-vagas')).toHaveAttribute('aria-current', 'page');

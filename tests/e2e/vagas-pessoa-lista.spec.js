@@ -185,6 +185,18 @@ test('sem internet: faixa e a última lista guardada no aparelho, com "Tentar de
   await expect(page.locator('#vg-lista .vg-vaga')).toHaveCount(n);
   await expect(page.locator('#vg-lista-de')).toContainText('Lista de ');
   await expect(page.locator('#vg-tentar-de-novo')).toBeVisible();
+  // A faixa sai sozinha quando a internet volta (evento online) e quando o servidor volta a responder.
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect(page.locator('#vg-faixa-offline')).toHaveCount(0);
+  await page.click('#vg-tentar-de-novo');
+  await expect(page.locator('#vg-faixa-offline')).toBeVisible();
+  await page.unroute('**/js/api-previa.js');
+  await page.click('#vg-tentar-de-novo');
+  await expect(page.locator('#vg-faixa-offline')).toHaveCount(0);
+  await expect(page.locator('#vg-lista .vg-vaga').first()).toBeVisible();
+  // Prévia: uma faixa no alto da tela, uma só.
+  await expect(page.locator('#vg-faixa-previa')).toHaveCount(1);
+  await expect(page.locator('#vg-faixa-previa')).toHaveText('Prévia: dados de exemplo, nada aqui é real. Não use sua senha de verdade.');
 });
 
 test('vaga: dados, aviso anti-golpe, denúncia anônima com motivo da lista; "Quero" sem conta guarda a intenção e volta com a candidatura', async ({ page }) => {

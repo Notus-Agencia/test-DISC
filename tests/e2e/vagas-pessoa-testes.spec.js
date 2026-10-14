@@ -82,6 +82,9 @@ test('catálogo sem login: 5 testes, faixa de demonstração e textos fixos; ins
   const erros = coletarErros(page);
   await page.goto(BASE + 'testes.html');
   await expect(page.locator('#vg-faixa-demo')).toHaveText('Questões de demonstração (a prova real usa outro banco)');
+  // Uma faixa só: a das questões entra dentro da faixa geral da prévia.
+  await expect(page.locator('.faixa-demo')).toHaveCount(1);
+  await expect(page.locator('#vg-faixa-previa #vg-faixa-demo')).toHaveCount(1);
   await expect(page.locator('#vg-testes-lista > li.vg-teste')).toHaveCount(5);
   for (const slug of ['atendimento', 'vendas', 'administrativo', 'caixa', 'portugues']) await expect(page.locator('#vg-teste-' + slug)).toBeVisible();
   await expect(page.locator('#vg-teste-caixa-info')).toContainText('25 min · pode usar papel e caneta');

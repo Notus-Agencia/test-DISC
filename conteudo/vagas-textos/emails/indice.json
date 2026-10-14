@@ -1,7 +1,7 @@
 {
-  "_sobre": "Índice dos e-mails do Vagas sem Caos: assunto, quando é enviado e as variáveis {{ }} de cada arquivo. O envio é pela Edge Function (Resend), substituindo cada {{variavel}} pelo valor já escapado para HTML. O logo é o mesmo PNG dos e-mails do Mapa DISC (o Gmail não mostra SVG). MINUTA: para revisão do(a) advogado(a) antes de publicar.",
+  "_sobre": "Índice dos e-mails do Vagas sem Caos: assunto, quando é enviado e as variáveis {{ }} de cada arquivo. O envio é pela Edge Function (Resend), substituindo cada {{variavel}} pelo valor já escapado para HTML. O logo é o do Vagas sem Caos em PNG (vsc-logo-email.png, mesmo tamanho e estilo do PNG dos e-mails do Mapa DISC; o Gmail não mostra SVG). MINUTA: para revisão do(a) advogado(a) antes de publicar.",
   "versao": "2026-10-13",
-  "logo": "https://disc.gestaosemcaos.com.br/assets/marca/gsc-logo-email.png",
+  "logo": "https://disc.gestaosemcaos.com.br/assets/marca/vsc-logo-email.png",
   "emails": [
     {
       "arquivo": "confirmar-cadastro.html",

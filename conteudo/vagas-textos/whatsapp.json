@@ -75,7 +75,7 @@
         "valor",
         "link_curto"
       ],
-      "texto": "Vaga de {{vaga_titulo}} · {{empresa_nome_ou_confidencial}} · {{zona}} · {{valor}}. Candidatura grátis pelo celular: {{link_curto}} (Vagas sem Caos, uma ferramenta da Gestão sem Caos)"
+      "texto": "Vaga de {{vaga_titulo}} · {{empresa_nome_ou_confidencial}} · {{zona}} · {{valor}}. Candidatura grátis pelo celular: {{link_curto}} (Vagas sem Caos, uma empresa do grupo Gestão sem Caos)"
     },
     {
       "chave": "empresa_convite_colaborador",
