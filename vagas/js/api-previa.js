@@ -402,7 +402,10 @@
     };
 
     // WhatsApp opcional (celular com DDD); a resposta é a mesma com ou sem ele e não revela se o e-mail já estava; o primeiro
-    // número gravado para o e-mail fica.
+    // número gravado para o e-mail fica. N2 (20261024120002): e-mail que saiu da lista há menos de 24 h entra sem WhatsApp.
+    function saidas() { if (!st.listaSaidas) st.listaSaidas = {}; return st.listaSaidas; }
+    function marcarSaida(slug, email) { saidas()[slug + '|' + email] = agora(); }
+    function saiuHaPouco(slug, email) { var t = saidas()[slug + '|' + email]; return t != null && t > agora() - DIA; }
     H.vagas_lista_espera_entrar = function (a) {
       var d = obj(a.p_dados);
       var c = cidade(txt(d.cidade).trim().toLowerCase());
@@ -416,18 +419,20 @@
         st.listaEspera.push(linha);
       }
       // Sem prova de dono do e-mail, o primeiro WhatsApp gravado fica (revisão de segurança, I5).
-      if (l.campos.whatsapp && !linha.whatsapp) { linha.whatsapp = l.campos.whatsapp; linha.whatsappEm = agora(); }
+      if (l.campos.whatsapp && !linha.whatsapp && !saiuHaPouco(c.slug, l.campos.email)) { linha.whatsapp = l.campos.whatsapp; linha.whatsappEm = agora(); }
       return ok({ cidade: c.slug, interessados: interessados(c.slug) });
     };
 
-    // Sair: pelo e-mail apaga a linha (com o WhatsApp); pelo WhatsApp tira só o número das linhas da cidade.
     // Link "sair da lista" do e-mail do aviso de abertura (20261024120002): resposta sempre igual.
     H.vagas_lista_espera_sair_link = function (a) {
       var tk = txt(a.p_token).trim().toLowerCase();
-      if (/^[0-9a-f]{64}$/.test(tk)) st.listaEspera = st.listaEspera.filter(function (l) { return l.sairToken !== tk; });
+      if (/^[0-9a-f]{64}$/.test(tk)) {
+        st.listaEspera = st.listaEspera.filter(function (l) { if (l.sairToken !== tk) return true; marcarSaida(l.cidade, l.email); return false; });
+      }
       return ok({ removido: true });
     };
 
+    // Sair: pelo e-mail apaga a linha (com o WhatsApp); pelo WhatsApp tira só o número das linhas da cidade.
     H.vagas_lista_espera_sair = function (a) {
       var d = obj(a.p_dados);
       var c = cidade(txt(d.cidade).trim().toLowerCase());
@@ -441,8 +446,10 @@
         if (!R.whatsappCelularValido(whats)) return erro(R.MSG.WHATSAPP_INVALIDO);
       }
       if (!email && !whats) return erro('E-mail inválido.');
-      if (email) st.listaEspera = st.listaEspera.filter(function (l) { return !(l.cidade === c.slug && l.email === email); });
-      if (whats) st.listaEspera.forEach(function (l) { if (l.cidade === c.slug && l.whatsapp === whats) { l.whatsapp = ''; l.whatsappEm = null; } });
+      if (email) {
+        st.listaEspera = st.listaEspera.filter(function (l) { if (l.cidade !== c.slug || l.email !== email) return true; marcarSaida(c.slug, email); return false; });
+      }
+      if (whats) st.listaEspera.forEach(function (l) { if (l.cidade === c.slug && l.whatsapp === whats) { l.whatsapp = ''; l.whatsappEm = null; marcarSaida(c.slug, l.email); } });
       return ok({ cidade: c.slug, removido: true });
     };
 
@@ -2077,7 +2084,7 @@
       if (!e) return erro('Empresa não encontrada.');
       var papel = papelCidade(e.cidade);
       if (!papel || papel === 'moderador') return erro(R.MSG.SEM_PERMISSAO);
-      if (papel === 'operador' && st.membros.some(function (d) { return d.empresaId === e.id && d.ativo && d.papel === 'dono'; })) {
+      if (papel === 'operador' && st.membros.some(function (d) { return d.empresaId === e.id && d.ativo && d.papel === 'dono' && contaValida(d.userId); })) {
         return erro('A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.');
       }
       var motivo = R.limparTexto(txt(a.p_motivo), 300);
@@ -2086,6 +2093,7 @@
       if (!em) return erro('E-mail inválido.');
       var m = st.membros.filter(function (x) { var u = usuario(x.userId); return x.empresaId === e.id && x.ativo && u && u.email === em; })[0];
       if (!m) return erro('Esta pessoa não está na equipe da empresa.');
+      if (!contaValida(m.userId)) return erro('Esta pessoa não pode ser dona agora: a conta dela está suspensa ou ainda não confirmou o e-mail.');
       m.papel = 'dono';
       registrar(e.cidade, papel, 'empresa_dono', 'empresa', e.id, motivo, { papel: 'dono' });
       return ok({ empresa: { id: e.id }, membro: { papel: 'dono' } });

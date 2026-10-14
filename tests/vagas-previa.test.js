@@ -738,3 +738,40 @@ test('aviso de abertura (20261024120002): só a equipe; e-mail em lotes só com 
   assert.deepEqual(await api.avisarListaEspera('uruacu-go'), { ok: true, cidade: { slug: 'uruacu-go', nome: 'Uruaçu' }, enviados: 0, falhas: 0, restantes: 0,
     aAvisarWhatsapp: 0, terminou: true });
 });
+
+test('2ª revisão de segurança na prévia: N2 (quem saiu não ganha WhatsApp novo por 24 h) e N1 (dona só com conta válida)', async () => {
+  let t = AGORA;
+  const b = PREVIA.criarBackend({ armazenamento: memoria(), agora: () => t });
+  const st = b.estado();
+  const cid = 'niquelandia-go';
+  const zap = (email) => (st.listaEspera.find((l) => l.cidade === cid && l.email === email) || {}).whatsapp;
+  const entra = (email, whatsapp) => ok(b.rpc('vagas_lista_espera_entrar', { p_dados: { cidade: cid, email, whatsapp } }));
+  const normal = await entra('vitima@exemplo.com', '62 99111-0060');
+  await ok(b.rpc('vagas_lista_espera_sair', { p_dados: { cidade: cid, email: 'vitima@exemplo.com' } }));
+  assert.deepEqual(await entra('vitima@exemplo.com', '62 98222-0002'), normal, 'mesma resposta');
+  assert.equal(zap('vitima@exemplo.com'), '', 'o número do golpista não entra');
+  await ok(b.rpc('vagas_lista_espera_sair', { p_dados: { cidade: cid, email: 'futura@exemplo.com' } }));
+  await entra('futura@exemplo.com', '62 99111-0062');
+  assert.equal(zap('futura@exemplo.com'), '5562991110062', 'sair antes de existir não marca nada');
+  await entra('bia@exemplo.com', '62 99111-0061');
+  await ok(b.rpc('vagas_lista_espera_sair', { p_dados: { cidade: cid, whatsapp: '62 99111-0061' } }));
+  await entra('bia@exemplo.com', '62 98222-0003');
+  assert.equal(zap('bia@exemplo.com'), '');
+  t += 25 * 3600000;
+  await entra('vitima@exemplo.com', '62 99111-0060');
+  assert.equal(zap('vitima@exemplo.com'), '5562991110060', 'depois de 24 h, entra com o número');
+  // N1: o operador nomeia dona só quando nenhuma dona ativa tem conta válida, e só alguém com conta válida.
+  const dona = st.usuarios.find((u) => u.email === 'empresa@previa.com');
+  const rita = st.usuarios.find((u) => u.email === 'recrutador@previa.com');
+  const merc = st.membros.find((m) => m.userId === rita.id).empresaId;
+  await entrar(b, 'operador@previa.com');
+  await erro(b.rpc('vagas_op_empresa_dono', { p_empresa: merc, p_email: 'recrutador@previa.com', p_motivo: 'pedido' }),
+    'A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.');
+  st.contas[dona.id].status = 'suspensa';
+  rita.confirmada = false;
+  await erro(b.rpc('vagas_op_empresa_dono', { p_empresa: merc, p_email: 'recrutador@previa.com', p_motivo: 'pedido' }),
+    'Esta pessoa não pode ser dona agora: a conta dela está suspensa ou ainda não confirmou o e-mail.');
+  rita.confirmada = true;
+  await ok(b.rpc('vagas_op_empresa_dono', { p_empresa: merc, p_email: 'recrutador@previa.com', p_motivo: 'pedido' }));
+  assert.equal(st.membros.find((m) => m.userId === rita.id).papel, 'dono');
+});

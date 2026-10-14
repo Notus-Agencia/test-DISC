@@ -381,7 +381,8 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
    `versao: 20261024120002`. **Publique de novo a função `vagas-conta`** (ação nova `avisar_lista_espera`: só a equipe, em
    lotes de até 50 e-mails). Agende no `pg_cron` (Database → Cron), uma vez por dia, `select vagas_interno.lista_espera_limpar();`
    (tira da lista quem já foi avisado e, 30 dias depois da abertura, a lista inteira da cidade). Como avisar, passo a passo:
-   [VAGAS-SPEC.md §6.7](VAGAS-SPEC.md).
+   [VAGAS-SPEC.md §6.7](VAGAS-SPEC.md). Ela traz também as correções da 2ª revisão de segurança (N1, N2) por cima de funções da
+   20261024120000: se alguém rodar a 20261024120000 de novo, rode a 20261024120002 em seguida. **Aplique antes do primeiro aviso.**
 2. **Função `vagas-conta`:** crie como no passo 8 (arquivo `dist/funcoes/vagas-conta/index.ts`) com **Verify JWT
    desligado** (o cadastro é feito por quem ainda não tem login; as ações que exigem login conferem o token sozinhas).
 3. **Segredos** (passo 9): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`, e os opcionais `VAGAS_EMAIL_REMETENTE` e

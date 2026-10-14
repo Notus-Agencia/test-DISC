@@ -4,7 +4,8 @@
 // por e-mail (só a equipe, só cidade ativa, reserva na hora: ninguém recebe duas vezes; quem falhou volta para a fila; quem
 // saiu da lista antes não recebe; nada de outra cidade); a fila do WhatsApp (um contato por vez, só a equipe, texto do
 // whatsapp.json e link wa.me prontos, cada número mostrado registrado sem o número); e a retenção (sai depois de avisada;
-// tudo some 30 dias depois da abertura).
+// tudo some 30 dias depois da abertura). E as correções da 2ª revisão de segurança que vão nesta migração: N2 (quem saiu
+// não ganha WhatsApp novo por 24 h) e N1 (empresa sem dona: só conta válida conta e vira dona).
 //
 // Rodar: npm run test:supabase
 const test = require('node:test');
@@ -354,4 +355,102 @@ test('sair pelo link do e-mail (token): tira a pessoa sem o e-mail, resposta sem
   assert.deepEqual(await linhas('token-go'), []);
   assert.deepEqual(await rpcComo('anon', null, 'vagas_lista_espera_sair_link', [l[0].sairToken]), SAIU, 'de novo: igual');
   assert.deepEqual(ok(await de(S.admin)('vagas_adm_aviso_whatsapp', 'token-go')).contato, null, 'não aparece mais na fila do WhatsApp');
+});
+
+function cnpjCom(base12) {
+  const val = (c) => c.charCodeAt(0) - 48;
+  const dv = (t, pesos) => { const r = t.split('').reduce((a, c, i) => a + val(c) * pesos[i], 0) % 11; return r < 2 ? 0 : 11 - r; };
+  const d1 = dv(base12, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = dv(base12 + d1, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return base12 + d1 + d2;
+}
+
+test('N2 (2ª revisão): sair + entrar com o e-mail de outra pessoa não troca o WhatsApp dela; 24 h depois, entra normal', async () => {
+  exigirBanco();
+  const cid = 'n2-go';
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: cid, nome: 'N2', uf: 'GO', status: 'lista_espera', porte: 'pequena' }));
+  const vitima = anonIp(60);
+  const golpista = anonIp(61);
+  const normal = ok(await vitima('vagas_lista_espera_entrar', { cidade: cid, email: 'vitima@exemplo.com', whatsapp: '62 99111-0060' }));
+  const whatsDe = async (email) => (await db.query(`select whatsapp from public.vagas_lista_espera where email = $1`, [email])).rows.map((x) => x.whatsapp);
+  assert.deepEqual(await whatsDe('vitima@exemplo.com'), ['5562991110060']);
+  // O golpista tira o e-mail da vítima e entra de novo com o número dele: a linha volta SEM WhatsApp, e a resposta é igual.
+  ok(await golpista('vagas_lista_espera_sair', { cidade: cid, email: 'vitima@exemplo.com' }));
+  assert.deepEqual(await golpista('vagas_lista_espera_entrar', { cidade: cid, email: 'VITIMA@exemplo.com', whatsapp: '62 98222-0002' }), normal);
+  assert.deepEqual(await whatsDe('vitima@exemplo.com'), ['']);
+  // Sair pelo número (precisa saber o número) e pôr outro no lugar: também não.
+  ok(await vitima('vagas_lista_espera_entrar', { cidade: cid, email: 'bia-n2@exemplo.com', whatsapp: '62 99111-0061' }));
+  ok(await golpista('vagas_lista_espera_sair', { cidade: cid, whatsapp: '62 99111-0061' }));
+  ok(await golpista('vagas_lista_espera_entrar', { cidade: cid, email: 'bia-n2@exemplo.com', whatsapp: '62 98222-0003' }));
+  assert.deepEqual(await whatsDe('bia-n2@exemplo.com'), ['']);
+  // Sair antes de existir não marca nada (ninguém bloqueia o WhatsApp de quem ainda vai entrar).
+  ok(await golpista('vagas_lista_espera_sair', { cidade: cid, email: 'futura@exemplo.com' }));
+  ok(await vitima('vagas_lista_espera_entrar', { cidade: cid, email: 'futura@exemplo.com', whatsapp: '62 99111-0062' }));
+  assert.deepEqual(await whatsDe('futura@exemplo.com'), ['5562991110062']);
+  // Outra cidade não é afetada.
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: 'n2b-go', nome: 'N2b', uf: 'GO', status: 'lista_espera', porte: 'pequena' }));
+  ok(await vitima('vagas_lista_espera_entrar', { cidade: 'n2b-go', email: 'vitima@exemplo.com', whatsapp: '62 99111-0060' }));
+  assert.deepEqual((await whatsDe('vitima@exemplo.com')).sort(), ['', '5562991110060']);
+  // A marca guarda só o hash do e-mail (nunca o e-mail) e vale 24 h.
+  const idCid = (await db.query(`select id from public.vagas_cidades where slug = $1`, [cid])).rows[0].id;
+  const marcas = (await db.query(`select chave from public.vagas_limites where tipo = 'lista_saiu' and chave like $1`, [idCid + ':%'])).rows.map((x) => x.chave);
+  assert.equal(marcas.length, 2);
+  assert.ok(marcas.every((k) => /^[0-9a-f-]{36}:[0-9a-f]{64}$/.test(k) && !k.includes('@')));
+  await db.query(`update public.vagas_limites set em = now() - interval '25 hours' where tipo = 'lista_saiu' and chave like $1`, [idCid + ':%']);
+  ok(await vitima('vagas_lista_espera_entrar', { cidade: cid, email: 'vitima@exemplo.com', whatsapp: '62 99111-0060' }));
+  assert.ok((await whatsDe('vitima@exemplo.com')).includes('5562991110060'), 'depois de 24 h, a própria pessoa entra com o número');
+  // O link com token do aviso também marca a saída.
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: cid, status: 'ativa' }));
+  const l = ok(await lote(S.admin, cid, 50)).lote;
+  const daBia = l.find((x) => x.email === 'bia-n2@exemplo.com');
+  ok(await rpcComo('anon', null, 'vagas_lista_espera_sair_link', [daBia.sairToken]));
+  assert.equal((await db.query(`select count(*)::int n from public.vagas_limites where tipo = 'lista_saiu' and chave like $1 and em > now() - interval '1 hour'`, [idCid + ':%'])).rows[0].n, 1);
+});
+
+test('N1 (2ª revisão): empresa sem dona — só conta válida conta como dona e vira dona; o operador age quando a dona é inválida', async () => {
+  exigirBanco();
+  ok(await de(S.admin)('vagas_adm_cidade_salvar', { slug: 'n1-go', nome: 'N1', uf: 'GO', status: 'ativa', porte: 'pequena' }));
+  const op = await contaVagas('operador', { operador: { cidade: 'n1-go', papel: 'operador' } });
+  const emailDe = async (id) => (await db.query(`select email from auth.users where id = $1`, [id])).rows[0].email;
+  async function empresaCom(base, nome, membros) {
+    const dona = await contaVagas('empresa');
+    const emp = ok(await de(dona)('vagas_empresa_cadastrar', { cnpj: cnpjCom(base), razaoSocial: 'Empresa ' + nome + ' Ltda', cidade: 'n1-go' })).empresa.id;
+    ok(await de(op)('vagas_op_empresa_decidir', emp, 'aprovar', 'CNPJ conferido'));
+    const ids = {};
+    let t = 0;
+    for (const [nome, estado] of membros) {
+      const id = await contaVagas('empresa');
+      t += 1;
+      await db.query(`insert into public.vagas_empresa_membros (empresa_id, user_id, papel, ativo, criado_em) values ($1, $2, 'recrutador', true, now() - make_interval(days => 10 - $3::int))`, [emp, id, t]);
+      if (estado === 'suspensa') await db.query(`update public.vagas_contas set status = 'suspensa' where user_id = $1`, [id]);
+      if (estado === 'pendente') await db.query(`update auth.users set email_confirmed_at = null where id = $1`, [id]);
+      ids[nome] = id;
+    }
+    return { dona, emp, ids };
+  }
+  const papeis = async (emp) => Object.fromEntries((await db.query(`select user_id, papel from public.vagas_empresa_membros where empresa_id = $1`, [emp])).rows.map((x) => [x.user_id, x.papel]));
+  const automaticos = async (emp) => (await db.query(`select count(*)::int n from public.vagas_moderacao where alvo_id = $1 and acao = 'dono_automatico'`, [emp])).rows[0].n;
+  // A mais antiga está suspensa e a segunda não confirmou o e-mail: quem vira dona é a válida.
+  const a = await empresaCom('666555444001', 'Primeira', [['suspensa', 'suspensa'], ['pendente', 'pendente'], ['valida', 'ativa']]);
+  await db.query(`delete from auth.users where id = $1`, [a.dona]);
+  const pa = await papeis(a.emp);
+  assert.deepEqual([pa[a.ids.suspensa], pa[a.ids.pendente], pa[a.ids.valida]], ['recrutador', 'recrutador', 'dono']);
+  assert.equal(await automaticos(a.emp), 1);
+  // A dona automática foi suspensa depois: o operador pode nomear outra pessoa da equipe, mas só com conta válida.
+  await db.query(`update public.vagas_contas set status = 'suspensa' where user_id = $1`, [a.ids.valida]);
+  erro(await de(op)('vagas_op_empresa_dono', a.emp, await emailDe(a.ids.suspensa), 'pedido da empresa'),
+    'Esta pessoa não pode ser dona agora: a conta dela está suspensa ou ainda não confirmou o e-mail.');
+  erro(await de(op)('vagas_op_empresa_dono', a.emp, await emailDe(a.ids.pendente), 'pedido da empresa'),
+    'Esta pessoa não pode ser dona agora: a conta dela está suspensa ou ainda não confirmou o e-mail.');
+  await db.query(`update auth.users set email_confirmed_at = now() where id = $1`, [a.ids.pendente]);
+  ok(await de(op)('vagas_op_empresa_dono', a.emp, await emailDe(a.ids.pendente), 'pedido da empresa'));
+  assert.equal((await papeis(a.emp))[a.ids.pendente], 'dono');
+  // Agora há dona válida: o operador volta a ser barrado.
+  erro(await de(op)('vagas_op_empresa_dono', a.emp, await emailDe(a.ids.suspensa), 'pedido'),
+    'A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.');
+  // Ninguém válido na equipe: ninguém vira dona sozinho (a equipe da Gestão sem Caos resolve).
+  const b = await empresaCom('666555444002', 'Segunda', [['suspensa', 'suspensa'], ['pendente', 'pendente']]);
+  await db.query(`delete from auth.users where id = $1`, [b.dona]);
+  assert.deepEqual(Object.values(await papeis(b.emp)).sort(), ['recrutador', 'recrutador']);
+  assert.equal(await automaticos(b.emp), 0);
 });

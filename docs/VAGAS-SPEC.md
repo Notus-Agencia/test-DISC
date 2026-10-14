@@ -440,7 +440,10 @@ encerrada.` (`naoEncontrada`).
 `vagas_cidades_publicas` — a resposta não revela se o e-mail já estava na lista, nem se veio WhatsApp).
 `whatsapp` (20261024) é OPCIONAL: celular com DDD (`(62) 98888-1111`, `62988881111` ou `5562988881111`; guardado como
 `5562988881111`). Ninguém prova ser dono do e-mail, então o PRIMEIRO número gravado para aquele e-mail fica: um número
-diferente depois não troca (a resposta é a mesma); quem quiser trocar sai da lista e entra de novo. A tela explica no campo para que serve
+diferente depois não troca (a resposta é a mesma); quem quiser trocar sai da lista e entra de novo no dia seguinte. E-mail
+que saiu da lista daquela cidade há menos de 24 h (pelo e-mail, pelo WhatsApp ou pelo link do aviso) entra SEM WhatsApp, com a
+mesma resposta (2ª revisão de segurança, N2, 20261024120002): sair e entrar de novo com o e-mail de outra pessoa não troca o
+número dela. A marca da saída guarda só o hash do e-mail, na tabela de limites. A tela explica no campo para que serve
 ("só para avisar quando abrir"). Validação igual na tela: `VAGAS_REGRAS.lerListaEspera(d)`.
 Erros: `Cidade não encontrada.` · `Esta cidade já está aberta: faça o seu cadastro.` (`ativa`) · `E-mail inválido.` ·
 `WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).` ·
@@ -764,7 +767,9 @@ Erros: `Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.` · `
 está suspensa. Fale com a Gestão sem Caos.` (`suspensa`).
 **A empresa nunca fica sem dona** (revisão de segurança, I2): a última pessoa dona de uma empresa que tem equipe não exclui a
 conta (§9, `excluir`) nem sai da equipe; e, se a conta dela sumir por fora da Function (painel do Supabase), um gatilho faz a
-pessoa mais antiga da equipe virar dona, com registro `dono_automatico` (papel `sistema`).
+pessoa mais antiga da equipe virar dona, com registro `dono_automatico` (papel `sistema`). Desde a 20261024120002 (2ª
+revisão, N1), "tem dona" e "quem vira dona" contam só **conta válida** (não suspensa, e-mail confirmado): a mais antiga
+VÁLIDA vira dona; sem ninguém válido, ninguém vira dona sozinho e a operação/equipe nomeia (`vagas_op_empresa_dono`).
 
 #### `vagas_equipe_convite(p_token)` — `VAGAS_API.conviteEquipe(token)`
 A tela de aceite (logada com o e-mail convidado) mostra de quem é o convite ANTES do aceite:
@@ -877,7 +882,7 @@ Filtro comum `{cidade?}` (slug, dentro das cidades que a pessoa opera). Erros co
 | `vagas_op_anuncio_decidir(p_anuncio, p_acao, p_motivo)` (`opAnuncioDecidir`) | `'publicar'|'devolver'|'remover'` (motivo = chave de `conteudo/vagas-textos/moderacao.json`; `devolver`: de `em_revisao`/`suspenso` volta a `rascunho` com `statusMotivo`, a empresa corrige e publica de novo) | `{anuncio}` · erros `Vaga não encontrada.` · `Esta vaga não está esperando a moderação.` · `Aprove a empresa antes de publicar a vaga.` · `A data da diária já passou.` · `Informe o motivo.` · `Ação inválida.` (publicar uma suspensa fecha as denúncias abertas como improcedentes) |
 | `vagas_op_denuncias(p_filtro)` (`opDenuncias`) | `{cidade?, status?[]}` (padrão `aberta`) | `{denuncias:[{id, alvo, motivo, detalhe, status, contaNoLimite, criadoEm, decisaoMotivo, decididaEm, anuncio:{…empresa}|null, mensagem:{texto, autor}|null, referencia:{id, funcao, texto, textoStatus, status (visão da empresa), empresa}|null}]}` (nunca quem denunciou) |
 | `vagas_op_denuncia_decidir(p_denuncia, p_dados)` (`opDenunciaDecidir`) | `{decisao:'procedente'|'improcedente', motivo, removerAnuncio?, suspenderEmpresa?, suspenderAutor?, removerReferencia?}` | `{denuncia:{id, status, decisaoMotivo}}` · erros `Denúncia não encontrada.` · `Decisão inválida.` · `Informe o motivo.` · `Sem permissão.` (moderador não suspende) |
-| `vagas_op_empresa_dono(p_empresa, p_email, p_motivo)` (`opEmpresaDono`; revisão de segurança, I2) | e-mail de login de quem JÁ está na equipe; motivo obrigatório | `{empresa:{id}, membro:{papel:'dono'}}` · registro `empresa_dono` com o motivo · operador(a) só em empresa SEM dona ativa (`A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.`); a equipe em qualquer uma · `Sem permissão.` (moderador ou outra cidade) · `Empresa não encontrada.` · `Informe o motivo.` · `E-mail inválido.` · `Esta pessoa não está na equipe da empresa.` |
+| `vagas_op_empresa_dono(p_empresa, p_email, p_motivo)` (`opEmpresaDono`; revisão de segurança, I2) | e-mail de login de quem JÁ está na equipe; motivo obrigatório | `{empresa:{id}, membro:{papel:'dono'}}` · registro `empresa_dono` com o motivo · operador(a) só em empresa SEM dona ativa com conta válida (`A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.`; dona suspensa ou sem e-mail confirmado não conta — N1, 20261024120002); a equipe em qualquer uma · `Sem permissão.` (moderador ou outra cidade) · `Empresa não encontrada.` · `Informe o motivo.` · `E-mail inválido.` · `Esta pessoa não está na equipe da empresa.` · `Esta pessoa não pode ser dona agora: a conta dela está suspensa ou ainda não confirmou o e-mail.` |
 | `vagas_op_moderacao(p_filtro)` (`opModeracao`) | `{cidade?, limite? ≤200}` | `{registros:[{id, em, papel, acao, alvo, alvoId, motivo, dados, cidade}]}` |
 | `vagas_op_referencias(p_filtro)` (`opReferencias`) | `{cidade?, textoStatus?[]}` (padrão `pendente`) | `{referencias:[{id, empresa:{id, nomeFantasia}, funcao, vinculo, texto, textoStatus, textoMotivo, status, criadoEm}]}` (nada da pessoa) |
 | `vagas_op_referencia_decidir(p_referencia, p_acao, p_motivo)` (`opReferenciaDecidir`) | `'aprovar_texto'|'recusar_texto'|'remover'` | `{referencia:{id, status, textoStatus}}` · erros `Referência não encontrada.` · `Este texto não está esperando a moderação.` · `Informe o motivo.` · `Ação inválida.` |
@@ -1120,11 +1125,16 @@ VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
     da operação → da conta assistida → `America/Sao_Paulo`); `vagas/js/testes.js` (`hoje(agora, fuso?)`, `dataDoIso(iso, fuso?)`)
     faz a mesma conta na tela, com a mesma reserva.
   - **Ordem:** rodar a 20261022 ou a 20261023 de novo depois da 20261024 volta as funções redefinidas à versão antiga
-    (inclusive `vagas_op_resumo` sem `repassePercentual`); rode a 20261024 em seguida.
+    (inclusive `vagas_op_resumo` sem `repassePercentual`); rode a 20261024 em seguida. Do mesmo jeito, a 20261024120002
+    redefine `vagas_lista_espera_entrar`, `vagas_lista_espera_sair`, `vagas_op_empresa_dono` e o gatilho
+    `membros_sem_dono` (N1, N2): rodar a 20261024120000 de novo depois dela pede rodar a 20261024120002 em seguida.
   - **Riscos aceitos (revisão de segurança da onda 2):** I4 — no `convite_equipe` (como no `cadastrar`), quando nenhum e-mail
     é enviado (conta só do painel DISC ou suspensa) a resposta volta mais rápido; quem medir o tempo pode inferir algo do
     e-mail. Mesma classe já aceita no cadastro; correção possível depois: enviar fora da resposta (`EdgeRuntime.waitUntil`)
-    ou atraso fixo.
+    ou atraso fixo. N3 (2ª revisão, aceito para o piloto) — mesmo com o corte em "até ontem" e o "menos de 3", acima de 3
+    ainda dá para deduzir resultado: se só uma pessoa fez o teste X ontem, `porTeste` indo de 3 para 4 revela que ela passou.
+    Mitigação futura, se a operação pedir: foto semanal (contagem até o fim da semana anterior) ou arredondar `porTeste` para
+    múltiplos de 5 em cidade `pequena`.
   - **Pedidos da operação ainda abertos:** "reverter um ato" (`vagas_op_reverter`) precisa de regra por ação (o que volta, quem
     pode, se avisa a empresa) decidida com a operação/psicologia antes de existir; textos locais da cidade (WhatsApp da praça,
     endereço do balcão, horário do mutirão) ficam para a fase 2 (coluna/tabela nova).

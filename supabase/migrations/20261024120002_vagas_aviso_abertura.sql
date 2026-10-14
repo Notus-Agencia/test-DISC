@@ -23,7 +23,14 @@
 --   4. SAIR COM TOKEN (revisão de segurança, I5): cada e-mail do aviso leva um link de saída com token de uso único (só o
 --      hash fica no banco); vagas_lista_espera_sair_link(p_token) tira a pessoa da lista sem precisar do e-mail, com resposta
 --      sempre igual. A saída pela página (vagas_lista_espera_sair, com o e-mail) continua.
---   5. versao_banco(): a lista da 20261024 + 20261024120002_vagas_aviso_abertura.
+--   5. 2ª REVISÃO DE SEGURANÇA da onda 2 (as funções abaixo valem por cima das da 20261024120000, que já está em produção):
+--      N2 — quem saiu da lista (pelo e-mail, pelo WhatsApp ou pelo link) não ganha WhatsApp novo para aquele e-mail por 24 h:
+--      sair + entrar com o e-mail de outra pessoa não troca mais o número dela (a resposta continua igual).
+--      N1 — "a empresa tem dona" conta só dona com conta válida (não suspensa, e-mail confirmado): o gatilho
+--      membros_sem_dono promove a pessoa válida mais antiga, e o operador pode nomear dona quando a única dona é inválida;
+--      a nova dona precisa ter conta válida.
+--      Rodar a 20261024120000 de novo DEPOIS desta volta essas funções à versão antiga: rode esta em seguida.
+--   6. versao_banco(): a lista da 20261024 + 20261024120002_vagas_aviso_abertura.
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -304,6 +311,192 @@ end;
 $$;
 
 -- -----------------------------------------------------------------------------
+-- 3. Segunda revisão de segurança da onda 2 (N1, N2)
+-- -----------------------------------------------------------------------------
+
+-- N2. Marca que um e-mail saiu da lista de uma cidade (na tabela de limites, só o hash do e-mail; some em 8 dias). Por 24 h,
+-- entrar de novo com esse e-mail não grava WhatsApp: quem tirou da lista o e-mail de outra pessoa não consegue pôr o
+-- próprio número no lugar do dela. Quem saiu de verdade e quer o aviso pelo WhatsApp entra de novo no dia seguinte.
+create or replace function vagas_interno.lista_espera_saiu(p_cidade uuid, p_email text)
+returns void language plpgsql volatile security definer set search_path = '' as $$
+begin
+  if p_cidade is null or coalesce(p_email, '') = '' then return; end if;
+  perform vagas_interno.contar('lista_saiu', p_cidade::text || ':' || vagas_interno.token_hash(p_email), interval '24 hours');
+end;
+$$;
+
+create or replace function vagas_interno.lista_espera_saiu_recente(p_cidade uuid, p_email text)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select vagas_interno.contagem('lista_saiu', p_cidade::text || ':' || vagas_interno.token_hash(p_email), interval '24 hours') > 0;
+$$;
+
+-- "Avise-me quando chegar" {cidade, email, perfil?, whatsapp?}: IGUAL à da 20261024120000 + N2 (e-mail que saiu há menos
+-- de 24 h entra sem WhatsApp). Limite: 10 por hora por origem. A resposta é a MESMA com ou sem WhatsApp e não revela se o
+-- e-mail já estava na lista. Repetir o e-mail não duplica; o primeiro WhatsApp gravado para aquele e-mail fica.
+create or replace function public.vagas_lista_espera_entrar(p_dados jsonb)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  d jsonb := case when jsonb_typeof(p_dados) = 'object' then p_dados else '{}'::jsonb end;
+  c public.vagas_cidades%rowtype;
+  v_email text := vagas_interno.email(disc_interno.texto(d -> 'email'));
+  v_perfil text := case when disc_interno.texto(d -> 'perfil') = 'empresa' then 'empresa' else 'pessoa' end;
+  v_whats_txt text := btrim(disc_interno.texto(d -> 'whatsapp'));
+  v_whats text := '';
+  v_origens text[] := disc_interno.origens_requisicao();
+  o text;
+begin
+  select * into c from public.vagas_cidades where slug = lower(btrim(disc_interno.texto(d -> 'cidade')));
+  if not found or c.status in ('rascunho', 'pausada') then return vagas_interno.erro('Cidade não encontrada.'); end if;
+  if c.status = 'ativa' then return vagas_interno.erro('Esta cidade já está aberta: faça o seu cadastro.', '{"ativa": true}'); end if;
+  if v_email = '' then return vagas_interno.erro('E-mail inválido.'); end if;
+  if v_whats_txt <> '' then
+    v_whats := vagas_interno.normalizar_whatsapp(v_whats_txt);
+    if v_whats !~ '^55[1-9][1-9]9[0-9]{8}$' then
+      return vagas_interno.erro('WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).');
+    end if;
+  end if;
+  if v_origens is not null then
+    foreach o in array v_origens loop
+      if vagas_interno.contar('lista_espera', o, interval '1 hour') > 10 then
+        return vagas_interno.erro('Muitas tentativas. Tente de novo mais tarde.', '{"bloqueado": true}');
+      end if;
+    end loop;
+  end if;
+  -- N2: saiu há menos de 24 h → entra sem WhatsApp (a resposta é a mesma).
+  if v_whats <> '' and vagas_interno.lista_espera_saiu_recente(c.id, v_email) then v_whats := ''; end if;
+  insert into public.vagas_lista_espera as l (cidade_id, email, perfil, whatsapp, whatsapp_em)
+  values (c.id, v_email, v_perfil, v_whats, case when v_whats <> '' then now() end)
+  on conflict (cidade_id, email) do update set
+    -- I5: o PRIMEIRO WhatsApp gravado fica (um terceiro não troca o número de outra pessoa).
+    whatsapp = case when l.whatsapp = '' and excluded.whatsapp <> '' then excluded.whatsapp else l.whatsapp end,
+    whatsapp_em = case when l.whatsapp = '' and excluded.whatsapp <> '' then excluded.whatsapp_em else l.whatsapp_em end;
+  return vagas_interno.ok(jsonb_build_object('cidade', c.slug, 'interessados', vagas_interno.interessados(c.id)));
+end;
+$$;
+
+-- Sair da lista de espera (LGPD) {cidade, email?, whatsapp?}: IGUAL à da 20261024120000 + N2 (marca a saída de cada e-mail
+-- que saiu ou perdeu o número). Com o e-mail apaga a linha dele (e o WhatsApp junto); com o WhatsApp tira esse número de
+-- todas as linhas da cidade (os e-mails ficam). Resposta sempre igual, exista ou não.
+create or replace function public.vagas_lista_espera_sair(p_dados jsonb)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  d jsonb := case when jsonb_typeof(p_dados) = 'object' then p_dados else '{}'::jsonb end;
+  c public.vagas_cidades%rowtype;
+  v_email_txt text := btrim(disc_interno.texto(d -> 'email'));
+  v_email text := vagas_interno.email(disc_interno.texto(d -> 'email'));
+  v_whats_txt text := btrim(disc_interno.texto(d -> 'whatsapp'));
+  v_whats text := '';
+  v_origens text[] := disc_interno.origens_requisicao();
+  o text;
+  x record;
+begin
+  select * into c from public.vagas_cidades where slug = lower(btrim(disc_interno.texto(d -> 'cidade')));
+  if not found then return vagas_interno.erro('Cidade não encontrada.'); end if;
+  if v_email_txt <> '' and v_email = '' then return vagas_interno.erro('E-mail inválido.'); end if;
+  if v_whats_txt <> '' then
+    v_whats := vagas_interno.normalizar_whatsapp(v_whats_txt);
+    if v_whats !~ '^55[1-9][1-9]9[0-9]{8}$' then
+      return vagas_interno.erro('WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).');
+    end if;
+  end if;
+  if v_email = '' and v_whats = '' then return vagas_interno.erro('E-mail inválido.'); end if;
+  if v_origens is not null then
+    foreach o in array v_origens loop
+      if vagas_interno.contar('lista_espera', o, interval '1 hour') > 10 then
+        return vagas_interno.erro('Muitas tentativas. Tente de novo mais tarde.', '{"bloqueado": true}');
+      end if;
+    end loop;
+  end if;
+  if v_email <> '' then
+    for x in delete from public.vagas_lista_espera where cidade_id = c.id and email = v_email returning email loop
+      perform vagas_interno.lista_espera_saiu(c.id, x.email);
+    end loop;
+  end if;
+  if v_whats <> '' then
+    for x in update public.vagas_lista_espera set whatsapp = '', whatsapp_em = null
+              where cidade_id = c.id and whatsapp = v_whats returning email loop
+      perform vagas_interno.lista_espera_saiu(c.id, x.email);
+    end loop;
+  end if;
+  return vagas_interno.ok(jsonb_build_object('cidade', c.slug, 'removido', true));
+end;
+$$;
+
+-- Link "sair da lista" do e-mail do aviso (público), agora também com a marca de saída do N2.
+create or replace function public.vagas_lista_espera_sair_link(p_token text)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  x record;
+begin
+  if lower(btrim(coalesce(p_token, ''))) ~ '^[0-9a-f]{64}$' then
+    for x in delete from public.vagas_lista_espera where sair_token_hash = vagas_interno.token_hash(p_token) returning cidade_id, email loop
+      perform vagas_interno.lista_espera_saiu(x.cidade_id, x.email);
+    end loop;
+  end if;
+  return vagas_interno.ok(jsonb_build_object('removido', true));
+end;
+$$;
+
+-- N1. Rede de segurança da empresa sem dona: IGUAL à da 20261024120000, mas "tem dona" e "quem vira dona" contam só conta
+-- VÁLIDA (não suspensa, e-mail confirmado). Assim a empresa não fica nas mãos de uma conta suspensa.
+create or replace function vagas_interno.membros_sem_dono()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare
+  v_empresa uuid := coalesce(old.empresa_id, new.empresa_id);
+  v_novo uuid;
+begin
+  if not exists (select 1 from public.vagas_empresas e where e.id = v_empresa) then return null; end if;
+  if exists (select 1 from public.vagas_empresa_membros m
+              where m.empresa_id = v_empresa and m.ativo and m.papel = 'dono' and vagas_interno.conta_valida(m.user_id)) then
+    return null;
+  end if;
+  select m.user_id into v_novo from public.vagas_empresa_membros m
+   where m.empresa_id = v_empresa and m.ativo and m.papel <> 'dono' and vagas_interno.conta_valida(m.user_id)
+   order by m.criado_em, m.user_id limit 1;
+  if v_novo is null then return null; end if;   -- ninguém válido: a equipe da Gestão sem Caos resolve (vagas_op_empresa_dono)
+  update public.vagas_empresa_membros set papel = 'dono' where empresa_id = v_empresa and user_id = v_novo;
+  insert into public.vagas_moderacao (cidade_id, ator, papel, acao, alvo, alvo_id, motivo, dados)
+  select e.cidade_id, null, 'sistema', 'dono_automatico', 'empresa', e.id, 'A empresa ficou sem pessoa dona.', '{}'::jsonb
+    from public.vagas_empresas e where e.id = v_empresa;
+  return null;
+end;
+$$;
+
+-- N1. A operação nomeia a nova pessoa dona: IGUAL à da 20261024120000, mas o operador pode agir quando nenhuma dona ativa
+-- tem conta válida (suspensa ou sem e-mail confirmado), e a pessoa nomeada precisa ter conta válida.
+create or replace function public.vagas_op_empresa_dono(p_empresa uuid, p_email text, p_motivo text)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  e public.vagas_empresas%rowtype;
+  v_papel text;
+  v_user uuid;
+  v_email text := vagas_interno.email(p_email);
+  v_motivo text := coalesce(disc_interno.limpar_texto(coalesce(p_motivo, ''), 300), '');
+begin
+  if auth.uid() is null then return vagas_interno.erro('Sessão expirada. Entre de novo.', '{"sessaoExpirada": true}'); end if;
+  select * into e from public.vagas_empresas where id = p_empresa;
+  if not found then return vagas_interno.erro('Empresa não encontrada.'); end if;
+  v_papel := vagas_interno.papel_cidade(e.cidade_id);
+  if v_papel is null or v_papel = 'moderador' then return vagas_interno.erro('Sem permissão.'); end if;
+  if v_papel = 'operador' and exists (select 1 from public.vagas_empresa_membros d
+                                       where d.empresa_id = e.id and d.ativo and d.papel = 'dono' and vagas_interno.conta_valida(d.user_id)) then
+    return vagas_interno.erro('A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.');
+  end if;
+  if v_motivo = '' then return vagas_interno.erro('Informe o motivo.'); end if;
+  if v_email = '' then return vagas_interno.erro('E-mail inválido.'); end if;
+  select m.user_id into v_user from public.vagas_empresa_membros m join auth.users u on u.id = m.user_id
+   where m.empresa_id = e.id and m.ativo and lower(u.email) = v_email limit 1;
+  if v_user is null then return vagas_interno.erro('Esta pessoa não está na equipe da empresa.'); end if;
+  if not vagas_interno.conta_valida(v_user) then
+    return vagas_interno.erro('Esta pessoa não pode ser dona agora: a conta dela está suspensa ou ainda não confirmou o e-mail.');
+  end if;
+  update public.vagas_empresa_membros set papel = 'dono' where empresa_id = e.id and user_id = v_user;
+  perform vagas_interno.registrar(e.cidade_id, v_papel, 'empresa_dono', 'empresa', e.id, v_motivo, jsonb_build_object('papel', 'dono'));
+  return vagas_interno.ok(jsonb_build_object('empresa', jsonb_build_object('id', e.id), 'membro', jsonb_build_object('papel', 'dono')));
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
 -- Permissões do que é novo
 -- -----------------------------------------------------------------------------
 
@@ -312,9 +505,10 @@ declare
   papel text;
   f text;
   autenticadas text[] := array['public.vagas_adm_aviso_resumo(text)', 'public.vagas_adm_aviso_whatsapp(text)',
-    'public.vagas_adm_aviso_whatsapp_feito(uuid)'];
+    'public.vagas_adm_aviso_whatsapp_feito(uuid)', 'public.vagas_op_empresa_dono(uuid, text, text)'];
   servico text[] := array['public.vagas_conta_aviso_lote(uuid, text, integer)', 'public.vagas_conta_aviso_marcar(uuid, text, uuid[], uuid[])'];
-  publicas text[] := array['public.vagas_lista_espera_sair_link(text)'];
+  publicas text[] := array['public.vagas_lista_espera_sair_link(text)', 'public.vagas_lista_espera_entrar(jsonb)',
+    'public.vagas_lista_espera_sair(jsonb)'];
 begin
   foreach papel in array array['anon', 'authenticated'] loop
     if exists (select 1 from pg_roles where rolname = papel) then
