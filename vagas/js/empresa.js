@@ -280,19 +280,23 @@
         }, function (e) { U.ocupado(convidar, false); if (e.sessaoExpirada || e.confirmar) { U.tratarErro(e); return; } U.erroCampo(email, e.message); });
       });
       U.trocar(corpo, [
-        el('div', { class: 'vg-rolagem' }, el('table', { class: 'vg-tabela', id: 'vg-equipe-membros' }, [
-          el('thead', {}, el('tr', {}, ['Pessoa', 'E-mail', 'Papel', 'Desde', ''].map(function (h) { return el('th', { scope: 'col' }, h || el('span', { class: 'visualmente-oculto' }, 'Ação')); }))),
+        el('div', { class: 'vg-rolagem vg-emp-equipe-tabela' }, el('table', { class: 'vg-tabela', id: 'vg-equipe-membros' }, [
+          el('thead', {}, el('tr', {}, ['Pessoa', 'Papel', 'Desde', ''].map(function (h) { return el('th', { scope: 'col' }, h || el('span', { class: 'visualmente-oculto' }, 'Ação')); }))),
           el('tbody', {}, membros.map(function (m) {
-            return el('tr', { data: { membro: m.userId } }, [el('td', {}, m.nome || '—'), el('td', {}, m.email), el('td', {}, papel(m.papel)), el('td', { class: 'nao-quebra' }, U.data(m.desde)),
+            // Nome da conta em cima e o e-mail embaixo; sem nome, só o e-mail.
+            var quem = m.nome ? [el('span', { class: 'seminegrito' }, m.nome), el('span', { class: 'vg-emp-sub' }, m.email)] : el('span', { class: 'seminegrito' }, m.email);
+            return el('tr', { data: { membro: m.userId } }, [el('td', {}, quem), el('td', {}, papel(m.papel)), el('td', { class: 'nao-quebra' }, U.data(m.desde)),
               el('td', {}, el('div', { class: 'vg-tabela__acoes' }, m.eu ? el('span', { class: 't-nota texto-suave' }, 'Você') : (m.podeRemover && !so
-                ? el('button', { type: 'button', class: 'botao botao--perigo', data: { acao: 'remover' }, onclick: function () { remover(m, corpo); } }, 'Remover') : null)))]);
+                ? el('button', { type: 'button', class: 'botao botao--perigo', 'aria-label': 'Remover ' + (m.nome || m.email) + ' da equipe', data: { acao: 'remover' },
+                  onclick: function () { remover(m, corpo); } }, 'Remover') : null)))]);
           }))])),
-        convites.length ? el('div', { class: 'vg-rolagem' }, el('table', { class: 'vg-tabela', id: 'vg-equipe-convites' }, [
+        convites.length ? el('div', { class: 'vg-rolagem vg-emp-equipe-tabela' }, el('table', { class: 'vg-tabela', id: 'vg-equipe-convites' }, [
           el('thead', {}, el('tr', {}, ['Convite', 'Situação', 'Vale até', ''].map(function (h) { return el('th', { scope: 'col' }, h || el('span', { class: 'visualmente-oculto' }, 'Ação')); }))),
           el('tbody', {}, convites.map(function (c) {
-            return el('tr', { data: { convite: c.id } }, [el('td', {}, c.email), el('td', {}, situacaoConvite(c.status)), el('td', { class: 'nao-quebra' }, c.status === 'pendente' ? U.dataHora(c.expiraEm) : '—'),
+            return el('tr', { data: { convite: c.id } }, [el('td', {}, c.email), el('td', { class: 'nao-quebra' }, situacaoConvite(c.status)), el('td', { class: 'nao-quebra' }, c.status === 'pendente' ? U.dataHora(c.expiraEm) : '—'),
               el('td', {}, el('div', { class: 'vg-tabela__acoes' }, c.status === 'pendente' && !so
-                ? el('button', { type: 'button', class: 'botao botao--claro', data: { acao: 'cancelar' }, onclick: function (ev) { cancelar(c, ev.currentTarget, corpo); } }, 'Cancelar convite') : null))]);
+                ? el('button', { type: 'button', class: 'botao botao--claro', 'aria-label': 'Cancelar o convite de ' + c.email, data: { acao: 'cancelar' },
+                  onclick: function (ev) { cancelar(c, ev.currentTarget, corpo); } }, 'Cancelar') : null))]);
           }))])) : null,
         form,
         linkPreviaConvite ? el('div', { class: 'aviso vg-emp-nota', id: 'vg-equipe-previa' }, [el('p', {}, 'Prévia: nenhum e-mail sai daqui. Abra o link que o convite traria.'),

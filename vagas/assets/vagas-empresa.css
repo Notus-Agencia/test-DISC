@@ -79,6 +79,8 @@ body.vg-so-leitura .vg-so-escrita { display: none !important; }
 
 /* Equipe e referências */
 .vg-emp-equipe-form { margin-top: 16px; display: grid; gap: 6px; }
+.vg-emp-equipe-tabela + .vg-emp-equipe-tabela { margin-top: 16px; }
+.vg-emp-equipe-tabela .vg-tabela td:first-child { min-width: 0; }
 .vg-emp-pedido { margin-top: 10px; }
 .vg-emp-faixa-fase2 { border-radius: 16px; margin-bottom: 8px; }
 
