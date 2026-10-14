@@ -12,7 +12,7 @@
  "versao": "2026-10-13",
  "avisos": {
   "nunca_pague": "Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.",
-  "nunca_pague_longo": "Concorrer é grátis, sempre. Ninguém pode cobrar de você para se candidatar: nem taxa, nem curso, nem exame, nem uniforme. Documento, só na contratação, depois de conhecer a empresa. Nunca passe senha nem código que chegou por SMS. Se alguém pedir dinheiro em nosso nome, é golpe: denuncie aqui.",
+  "nunca_pague_longo": "Concorrer é grátis, sempre. Ninguém pode cobrar de você para se candidatar: nem taxa, nem curso, nem exame, nem uniforme. Documento, só na contratação, depois de conhecer a empresa. Nunca passe código que chegou por SMS. Se alguém pedir em nosso nome, é golpe: denuncie aqui.",
   "gratis_para_sempre": "Grátis para quem procura trabalho. Sempre.",
   "cartao_cego": "A empresa vê só este cartão: sem nome, sem foto, sem idade, sem contato. Seu nome (e a sua foto, se você enviou) aparece só se você aceitar conversar.",
   "cartao_cego_empresa": "Cartão sem nome e sem contato, por ordem de chegada. Nome e WhatsApp aparecem quando a pessoa aceitar conversar.",
@@ -78,7 +78,7 @@
   "banco_talentos_vence": "Sua autorização do banco de talentos vence em {{dias}} dias. Quer renovar por mais 6 meses?",
   "conta_parada": "Conta sem uso há {{meses}} meses. Contas paradas por 24 meses são apagadas, com aviso 30 dias antes.",
   "denuncia_ok": "Denúncia recebida. Ela é confidencial: não mostramos a quem foi denunciado quem denunciou. Decidimos em até 24 horas.",
-  "whatsapp_opcional": "Antes do Combinou, a conversa é só por aqui, sem número. Quando você toca em Combinou, a empresa vê o seu nome, WhatsApp e e-mail (e a foto, se houver) e você vê os dela. Você pode cortar o acesso depois.",
+  "whatsapp_opcional": "Até o Combinou, a conversa é só por aqui, sem número. No Combinou, a empresa vê seu nome, WhatsApp e e-mail (e a foto, se houver) e você vê os dela. Você pode cortar o acesso depois.",
   "whatsapp_nao_confirmado": "Nesta versão, o WhatsApp é informado por você e não é confirmado por código. Confira o número antes de salvar.",
   "disc_fora": "O Mapa DISC não entra na seleção. Ele é oferecido só depois da contratação, para a integração da pessoa na equipe.",
   "assinatura": "uma ferramenta da Gestão sem Caos",
