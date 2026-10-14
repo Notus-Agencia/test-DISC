@@ -1,0 +1,65 @@
+# Cópia de segurança do banco do Supabase (DISC + Vagas): todo dia, trancada com senha, guardada 90 dias.
+# O plano grátis do Supabase não tem backup; este robô cobre isso até o plano Pro valer a pena.
+# O repositório é público: a cópia só sai daqui trancada (AES-256). Sem a BACKUP_SENHA ninguém abre, nem a equipe.
+#
+# Precisa de 2 segredos do repositório (Settings > Secrets and variables > Actions > New repository secret):
+#   SUPABASE_DB_URL -> URI do "Session pooler" (Supabase > Connect), com a senha do banco no lugar de [YOUR-PASSWORD]
+#   BACKUP_SENHA    -> senha que tranca a cópia (20+ caracteres); guarde também fora do GitHub
+# Sem os segredos o robô falha de propósito: cópia que não acontece em silêncio é pior que aviso de erro.
+# Onde baixar e como restaurar: docs/BACKUP.md. O script é scripts/backup-banco.sh.
+name: Cópia de segurança do banco
+
+on:
+  schedule:
+    - cron: '41 6 * * *'   # todo dia, 06:41 UTC (03:41 em Brasília)
+  workflow_dispatch: {}      # botão "Run workflow" para testar na hora
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-banco
+  cancel-in-progress: false
+
+jobs:
+  copiar:
+    if: ${{ !github.event.repository.fork }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_SENHA: ${{ secrets.BACKUP_SENHA }}
+    steps:
+      - name: Segredos ausentes
+        if: env.SUPABASE_DB_URL == '' || env.BACKUP_SENHA == ''
+        run: |
+          echo "::error::SUPABASE_DB_URL e/ou BACKUP_SENHA não configurados nos Secrets do GitHub: nenhuma cópia foi feita. Veja docs/BACKUP.md."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Instalar o pg_dump 17 (mesma versão do banco)
+        run: |
+          set -eu
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Copiar e trancar
+        id: copia
+        env:
+          PG_BIN: /usr/lib/postgresql/17/bin/
+        run: |
+          bash scripts/backup-banco.sh copia
+          echo "dia=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Guardar a cópia (90 dias)
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ steps.copia.outputs.dia }}
+          path: copia/*.tar.gpg
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
