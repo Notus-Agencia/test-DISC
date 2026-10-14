@@ -5,6 +5,7 @@ Site estático (HTML/CSS/JS puro, sem build) + backend Google Apps Script. Contr
 ## Marca (quem é o dono do produto)
 - O sistema e o produto DISC são da **Gestão sem Caos** (consultoria). **Notus** é a agência de marketing que fez o design.
 - Em todo texto que cliente, candidato, colaborador ou contratante vê: "Gestão sem Caos". Nunca "Notus" / "Notus Agência" em tela ou relatório.
+- **Vagas sem Caos** (plataforma de vagas, pasta `vagas/`) tem marca própria: logo `assets/marca/vsc-logo*.svg` (mesmo símbolo e desenho do logo da Gestão sem Caos, com "Vagas" no lugar de "Gestão"; colorida, negativa e preta) no topo das telas, e a Gestão sem Caos só como endosso: "Uma empresa do grupo" + logo da Gestão sem Caos (rodapé, imagem de compartilhamento). Textos legais continuam identificando a Gestão sem Caos como responsável.
 - A paleta e os componentes abaixo continuam valendo (é o sistema visual). O **logo oficial da Gestão sem Caos** está em `assets/marca/` (horizontal colorida, negativa para fundo azul-escuro, preta para moldura laranja, símbolo e favicons); quando usar cada um: `docs/IDENTIDADE-VISUAL.md`, seção Logo. A estrela `assets/icone.svg` é da Notus: não usar em nenhuma tela pública.
 
 ## Visual — identidade Notus (obrigatório)

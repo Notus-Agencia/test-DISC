@@ -36,12 +36,16 @@
  *   convidarOperador({email, cidade, papel, cidadeNome?}), convidarEquipe(empresaId, email) (só dono(a); resposta neutra),
  *   excluirConta(), entrar(email, senha) -> resposta de eu(),
  *   sair(), sessao() -> {ok, usuario:{id, email}}, linkDoEndereco(location) -> {tokenHash, tipo} | null,
- *   conviteDoEndereco(location) -> token do convite de equipe (?convite=…) | '', RECURSOS ({listaEsperaWhatsapp:true}),
+ *   conviteDoEndereco(location) -> token do convite de equipe (?convite=…) | '', RECURSOS ({listaEsperaWhatsapp, preAberturaEmpresas,
+ *   origemListaEspera}); listaEspera({…, origem?, site?, captcha?}): com captcha vai pela vagas-conta (Turnstile).
  *   confirmarLink({tokenHash, tipo}) -> {ok, tipo, precisaSenha:true}, definirSenha(senha) -> {ok}.
  * Foto OPCIONAL da pessoa (bucket privado 'vagas-fotos' do Storage): enviarFoto(arquivo File/Blob jpg|png|webp ≤ 1 MB) -> {ok, temFoto},
  *   apagarFoto() -> {ok, temFoto:false}, fotoUrl(candidaturaId?) -> {ok, url, expiraEm} (URL assinada de 5 min pela Edge Function:
  *   sem candidatura = a própria; com candidatura = só a empresa daquela candidatura, depois do Combinou). contatoPessoa(candId)
  *   já devolve pessoa.fotoUrl ('' quando não há foto ou não deu para assinar).
+ * Testes de habilidade (docs/VAGAS-TESTES.md): testesCatalogo() (público), iniciarTentativa(teste), proximaQuestao(tentativa),
+ *   responder(tentativa, numero 1..total, posição mostrada 0..3), registrarSinal(tentativa, 'troca_aba'|'copiar'),
+ *   finalizar(tentativa), meusSelos(); a conferência pública é seloPublico(codigo). Na prévia, a prova usa questões de DEMONSTRAÇÃO.
  *
  * No Node (testes): require('./vagas/js/api.js').criar({modo:'supabase', url, chave, fetch, armazenamento, agora}) ou
  *   criar({modo:'previa', backend: require('./vagas/js/api-previa.js').criarBackend({...})}).
@@ -76,6 +80,15 @@
     anuncio: { rpc: 'vagas_anuncio_publico', p: ['p_codigo'], publico: true },
     anuncioVista: { rpc: 'vagas_anuncio_vista', p: ['p_codigo'], publico: true },
     seloPublico: { rpc: 'vagas_selo_publico', p: ['p_codigo'], publico: true },
+    // Testes de habilidade (migração 20261023120000_vagas_testes.sql; contrato em docs/VAGAS-TESTES.md). O catálogo é público
+    // (com login traz "minha" em cada teste); o resto é da pessoa logada. Erro de regra vem com {codigo, fim?, podeIniciarEm?}.
+    testesCatalogo: { rpc: 'vagas_testes_catalogo', p: [], publico: true },
+    iniciarTentativa: { rpc: 'vagas_iniciar_tentativa', p: ['p_teste'] },
+    proximaQuestao: { rpc: 'vagas_proxima_questao', p: ['p_tentativa'] },
+    responder: { rpc: 'vagas_responder', p: ['p_tentativa', 'p_questao', 'p_alternativa'] },
+    registrarSinal: { rpc: 'vagas_registrar_sinal', p: ['p_tentativa', 'p_tipo'] },
+    finalizar: { rpc: 'vagas_finalizar', p: ['p_tentativa'] },
+    meusSelos: { rpc: 'vagas_meus_selos', p: [] },
     listaEspera: { rpc: 'vagas_lista_espera_entrar', p: ['p_dados'], publico: true },
     listaEsperaSair: { rpc: 'vagas_lista_espera_sair', p: ['p_dados'], publico: true },
     listaEsperaSairLink: { rpc: 'vagas_lista_espera_sair_link', p: ['p_token'], publico: true },
@@ -157,7 +170,7 @@
   // O que este cliente (e o banco que ele espera) já sabe fazer, para a tela ligar o campo novo só quando existir.
   // listaEsperaWhatsapp: listaEspera/listaEsperaSair aceitam "whatsapp" (migração 20261024; no modo supabase, publicar o site
   // só depois de aplicá-la — antes dela o banco ignoraria o número).
-  function recursos() { return { listaEsperaWhatsapp: true }; }
+  function recursos() { return { listaEsperaWhatsapp: true, preAberturaEmpresas: true, origemListaEspera: true }; }
 
   function erroDe(json, extra) {
     var e = new Error((json && json.erro) ? String(json.erro) : MSG_RECUSA);
@@ -368,6 +381,8 @@
     api.convidarOperador = function (d) { return funcao(Object.assign({ acao: 'operador' }, d || {}), true); };
     api.convidarEquipe = function (empresaId, email) { return funcao({ acao: 'convite_equipe', empresaId: empresaId || '', email: email || '' }, true); };
     api.avisarListaEspera = function (cidade, limite) { return funcao({ acao: 'avisar_lista_espera', cidade: cidade || '', limite: limite || 25 }, true); };
+    var listaRpc = api.listaEspera;
+    api.listaEspera = function (d) { return d && d.captcha ? funcao(Object.assign({ acao: 'lista_espera' }, d), false) : listaRpc(d); };
     api.excluirConta = function () {
       return funcao({ acao: 'excluir', confirmar: 'EXCLUIR' }, true).then(function (r) { guardarSessao(null); return r; });
     };
