@@ -315,7 +315,7 @@ test('mural e feed: "aceita sem experiência" traz as vagas em que experiência 
   assert.deepEqual([...new Set(feed)].sort(), ['ajuda', 'nao_precisa']);
 });
 
-test('operação: donos e semDona; alvoNome e quem no registro (e-mail mascarado só para a equipe; nunca de pessoa)', async () => {
+test('operação: donos e semDona; moderador(a) não suspende (O1); alvoNome e quem no registro (e-mail mascarado só para a equipe)', async () => {
   exigirBanco();
   S.op = await contaVagas('operador', { operador: { cidade: 'fc-go', papel: 'operador' } });
   const e = await empresaComVaga('888777666006', 'Bazar Sem Dona Ltda');
@@ -333,6 +333,15 @@ test('operação: donos e semDona; alvoNome e quem no registro (e-mail mascarado
   assert.deepEqual(await daEmpresa(e.emp), [0, true]);
   ok(await de(S.op)('vagas_op_empresa_dono', e.emp, await emailDe(rec), 'A pessoa dona saiu da empresa.'));
   assert.deepEqual(await daEmpresa(e.emp), [1, false]);
+  // O1: moderador(a) não suspende empresa (nem aprova, recusa ou reativa); o operador suspende.
+  const mod = await contaVagas('operador', { operador: { cidade: 'fc-go', papel: 'moderador' } });
+  const statusDe = async (id) => (await db.query(`select status from public.vagas_empresas where id = $1`, [id])).rows[0].status;
+  erro(await de(mod)('vagas_op_empresa_decidir', sozinha.emp, 'suspender', 'golpe'), 'Sem permissão.');
+  assert.equal(await statusDe(sozinha.emp), 'ativa');
+  for (const acao of ['aprovar', 'recusar', 'reativar']) erro(await de(mod)('vagas_op_empresa_decidir', sozinha.emp, acao, 'x'), 'Sem permissão.');
+  ok(await de(S.op)('vagas_op_empresa_decidir', sozinha.emp, 'suspender', 'golpe'));
+  assert.equal(await statusDe(sozinha.emp), 'suspensa');
+  ok(await de(S.op)('vagas_op_empresa_decidir', sozinha.emp, 'reativar', ''));
   // Cadastro assistido feito pelo operador: registro com alvo 'conta' (sem nome).
   const assistida = await contaVagas('pessoa', { assistidaPor: S.op, cidade: 'fc-go' });
   ok(await de(assistida)('vagas_pessoa_salvar', pessoaDados({ nome: 'Joana Assistida Pereira' })));

@@ -2099,6 +2099,7 @@
         if (e.status === 'suspensa') return erro('Empresa suspensa: use "Reativar".');
         if (e.status !== 'ativa') { e.status = 'ativa'; e.statusMotivo = ''; e.cnpjConferidoEm = e.cnpjConferidoEm || agora(); }
       } else if (a.p_acao === 'suspender') {
+        if (papel === 'moderador') return erro(R.MSG.SEM_PERMISSAO);   // moderador(a) não suspende (O1, 20261024120005)
         if (!motivo) return erro('Informe o motivo.');
         e.status = 'suspensa'; e.statusMotivo = motivo;
       } else if (a.p_acao === 'recusar') {

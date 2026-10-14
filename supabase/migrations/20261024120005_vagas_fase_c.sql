@@ -12,7 +12,8 @@
 --      a 6_meses aqui, e a entrada ainda aceita os ids antigos, convertendo. No mural e no feed, "aceita sem experiência"
 --      (semExperiencia) traz nao_precisa e ajuda; só 6_meses fica de fora.
 --   3. vagas_cartoes ignora escolaridadeMin e experienciaMinMeses (como já ignora temSelo); ficam zona, turnos, CNH e pretensão.
---   4. OPERAÇÃO: vagas_op_empresas traz donos (pessoas donas com conta válida) e semDona; vagas_op_moderacao traz alvoNome
+--   4. OPERAÇÃO: vagas_op_empresa_decidir recusa 'suspender' de moderador(a) (O1: moderador só modera; "Sem permissão.").
+--      vagas_op_empresas traz donos (pessoas donas com conta válida) e semDona; vagas_op_moderacao traz alvoNome
 --      (título da vaga, nome fantasia, cidade ou zona — nunca nome de pessoa) e quem {papel, voce, email} (email mascarado,
 --      só para a equipe e só de operador ou equipe; nunca de pessoa nem de membro de empresa). vagas_conta_limite aceita
 --      'reenviar_op' (o reenvio de confirmação pela operação, sem captcha, com limite próprio por quem age) e
@@ -552,6 +553,50 @@ begin
 end;
 $$;
 
+-- Decisão sobre a empresa: IGUAL à da 20261022, mas moderador(a) também não SUSPENDE (revisão de código, O1: a regra é
+-- "moderador só modera"; antes, o ramo 'suspender' não conferia o papel). Moderador(a) não aprova, recusa, suspende nem reativa.
+create or replace function public.vagas_op_empresa_decidir(p_empresa uuid, p_acao text, p_motivo text)
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  e public.vagas_empresas%rowtype;
+  v_papel text;
+  v_motivo text := disc_interno.limpar_texto(p_motivo, 300);
+begin
+  if auth.uid() is null then return vagas_interno.erro('Sessão expirada. Entre de novo.', '{"sessaoExpirada": true}'); end if;
+  select * into e from public.vagas_empresas where id = p_empresa for update;
+  if not found then return vagas_interno.erro('Empresa não encontrada.'); end if;
+  v_papel := vagas_interno.papel_cidade(e.cidade_id);
+  if v_papel is null then return vagas_interno.erro('Empresa não encontrada.'); end if;
+  if p_acao = 'aprovar' then
+    if v_papel = 'moderador' then return vagas_interno.erro('Sem permissão.'); end if;
+    if e.status = 'suspensa' then return vagas_interno.erro('Empresa suspensa: use "Reativar".'); end if;
+    if e.status <> 'ativa' then
+      update public.vagas_empresas set status = 'ativa', status_motivo = '', cnpj_conferido_em = coalesce(cnpj_conferido_em, now()),
+        cnpj_conferido_por = coalesce(cnpj_conferido_por, auth.uid()) where id = e.id returning * into e;
+    end if;
+  elsif p_acao = 'suspender' then
+    if v_papel = 'moderador' then return vagas_interno.erro('Sem permissão.'); end if;   -- O1 (20261024120005)
+    if v_motivo = '' then return vagas_interno.erro('Informe o motivo.'); end if;
+    update public.vagas_empresas set status = 'suspensa', status_motivo = v_motivo where id = e.id returning * into e;
+  elsif p_acao = 'recusar' then
+    -- Cadastro recusado (ex.: CNPJ não confere): a empresa continua em análise, com o motivo visível para ela corrigir.
+    if v_papel = 'moderador' then return vagas_interno.erro('Sem permissão.'); end if;
+    if v_motivo = '' then return vagas_interno.erro('Informe o motivo.'); end if;
+    if e.status <> 'em_analise' then return vagas_interno.erro('Só dá para recusar uma empresa em análise.'); end if;
+    update public.vagas_empresas set status_motivo = v_motivo where id = e.id returning * into e;
+  elsif p_acao = 'reativar' then
+    if v_papel = 'moderador' then return vagas_interno.erro('Sem permissão.'); end if;
+    if e.status <> 'suspensa' then return vagas_interno.erro('Esta empresa não está suspensa.'); end if;
+    update public.vagas_empresas set status = 'ativa', status_motivo = '', cnpj_conferido_em = coalesce(cnpj_conferido_em, now()),
+      cnpj_conferido_por = coalesce(cnpj_conferido_por, auth.uid()) where id = e.id returning * into e;
+  else
+    return vagas_interno.erro('Ação inválida.');
+  end if;
+  perform vagas_interno.registrar(e.cidade_id, v_papel, 'empresa_' || p_acao, 'empresa', e.id, v_motivo);
+  return vagas_interno.ok(jsonb_build_object('empresa', vagas_interno.empresa_json(e)));
+end;
+$$;
+
 -- Nome do alvo de um registro de moderação, para a tela: título da vaga, nome fantasia da empresa (também a da referência e
 -- a da denúncia), cidade ou zona. Conta e operador: '' (nunca nome de pessoa).
 create or replace function vagas_interno.moderacao_alvo_nome(p_alvo text, p_id uuid)
@@ -898,7 +943,7 @@ declare
   papel text;
   f text;
   autenticadas text[] := array['public.vagas_referencias_empresa(uuid)', 'public.vagas_referencia_oferecer(jsonb)',
-    'public.vagas_cartoes(uuid, jsonb)', 'public.vagas_op_empresas(jsonb)', 'public.vagas_op_moderacao(jsonb)', 'public.vagas_foto_consentimento(boolean)',
+    'public.vagas_cartoes(uuid, jsonb)', 'public.vagas_op_empresas(jsonb)', 'public.vagas_op_empresa_decidir(uuid, text, text)', 'public.vagas_op_moderacao(jsonb)', 'public.vagas_foto_consentimento(boolean)',
     'public.vagas_quem_viu_meu_contato()', 'public.vagas_pessoa_salvar(jsonb)'];
   servico text[] := array[]::text[] || array['public.vagas_conta_limite(text, text, text, text, uuid)', 'public.vagas_conta_consultar(text)'];
 begin

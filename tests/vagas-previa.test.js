@@ -927,6 +927,16 @@ test('fase C na prévia (20261024120005): semDona, alvoNome/quem, "aceita sem ex
   const doOp = (await reg()).find((r) => r.acao === 'empresa_dono');
   assert.deepEqual([doOp.alvoNome, doOp.quem], ['Mercadinho Sol do Norte', { papel: 'operador', voce: true, email: '' }]);
   assert.ok((await reg()).every((r) => r.quem.email === '' && typeof r.alvoNome === 'string'));
+  // O1: moderador(a) não suspende empresa (nem aprova, recusa ou reativa); o operador suspende.
+  const opLinha = st.operadores.find((o) => o.userId === st.usuarios.find((u) => u.email === 'operador@previa.com').id);
+  opLinha.papel = 'moderador';
+  for (const acao of ['suspender', 'aprovar', 'recusar', 'reativar']) {
+    await erro(b.rpc('vagas_op_empresa_decidir', { p_empresa: merc.id, p_acao: acao, p_motivo: 'golpe' }), 'Sem permissão.');
+  }
+  assert.equal(merc.status, 'ativa');
+  opLinha.papel = 'operador';
+  assert.equal((await ok(b.rpc('vagas_op_empresa_decidir', { p_empresa: merc.id, p_acao: 'suspender', p_motivo: 'golpe' }))).empresa.status, 'suspensa');
+  await ok(b.rpc('vagas_op_empresa_decidir', { p_empresa: merc.id, p_acao: 'reativar', p_motivo: '' }));
   await ok(b.conta.sair());
   await entrar(b, 'admin@previa.com');
   const daEquipe = await reg();
