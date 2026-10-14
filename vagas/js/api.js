@@ -12,33 +12,10 @@
  *   erro.resposta (o JSON {ok:false, erro, ...}), erro.sessaoExpirada, erro.confirmar (e-mail não confirmado),
  *   erro.bancoDesatualizado (migração não aplicada), erro.conexao (sem internet / servidor fora).
  *
- * Métodos (nome -> RPC; ver METODOS): públicos — cidades, areas, anuncios(filtro), anuncio(codigo), anuncioVista(codigo), listaEspera(dados), listaEsperaSair(dados),
- *   denunciar(dados), referenciasPublicas(token), seloPublico(codigo) (RPC da migração dos testes), versaoBanco; conta — eu,
- *   aceitarTermos(dados), exportarMeusDados; pessoa — minhaPessoa, salvarPessoa(dados), feed(filtro), quero(anuncioId), pular(anuncioId),
- *   retirar(candId), minhasCandidaturas, verEmpresa(candId), combinar(candId), recusar(candId), quemViuMeuContato, cortarAcesso(candId);
- *   empresa — cadastrarEmpresa(dados), salvarEmpresa(empresaId, dados), minhasEmpresas, salvarAnuncio(dados), publicarAnuncio(anuncioId),
- *   acaoAnuncio(anuncioId, acao), anunciosDaEmpresa(empresaId), anuncioNumeros(anuncioId), cartoes(anuncioId, filtro),
- *   decidir(candId, decisao), contatoPessoa(candId), marcarContratada(candId); conversa — conversa(candId),
- *   enviarMensagem(candId, texto, idCliente?), minhasConversas, conversasDaEmpresa(empresaId); referência — oferecerReferencia(dados),
- *   pedirReferencia(dados), conviteReferencia(token), responderReferencia(refId, acao), minhasReferencias, referenciasDaEmpresa(empresaId),
- *   publicarReferencias(ligar); operação — opResumo, opEmpresas(filtro), opEmpresaDecidir(id, acao, motivo), opEmpresaCadastrar(dados),
- *   opVincularMembro(empresaId, email), opAnuncios(filtro), opAnuncioSalvar(dados) (vaga assistida), opAnuncioDecidir(id, acao, motivo), opDenuncias(filtro),
- *   opDenunciaDecidir(id, dados), opModeracao(filtro), opReferencias(filtro), opReferenciaDecidir(id, acao, motivo),
- *   indicadores(cidade) = opIndicadores(cidade) (painel da praça: só números agregados; migração 20261024),
- *   opAssistidos(filtro) (cadastros assistidos pendentes, e-mail mascarado; 20261024);
- *   equipe da empresa (20261024) — equipeDaEmpresa(empresaId), cancelarConvite(conviteId), removerMembro(empresaId, userId),
- *   tornarDono(empresaId, userId), conviteEquipe(token), aceitarConviteEquipe(token); operação: opEmpresaDono(empresaId, email, motivo);
- *   equipe da Gestão sem Caos — admCidadeSalvar(dados), admZonaSalvar(dados), admOperadorSalvar(dados), admCidades(),
- *   admOperadores(filtro) (as duas da 20261024); aviso de abertura (SPEC §6.7) — admAvisoResumo(cidade),
- *   admAvisoWhatsapp(cidade), admAvisoWhatsappFeito(id), avisarListaEspera(cidade, limite?), listaEsperaSairLink(token).
- * Conta e sessão: cadastrar({email, tipo, nome?, termosVersao?, captcha?}), reenviarConfirmacao(email, captcha?),
- *   esqueciSenha(email, captcha?), cadastroAssistido({email, tipo, cidade, empresaId?, nome?, codigoEvento?}),
- *   convidarOperador({email, cidade, papel, cidadeNome?}), convidarEquipe(empresaId, email) (só dono(a); resposta neutra),
- *   excluirConta(), entrar(email, senha) -> resposta de eu(),
- *   sair(), sessao() -> {ok, usuario:{id, email}}, linkDoEndereco(location) -> {tokenHash, tipo} | null,
- *   conviteDoEndereco(location) -> token do convite de equipe (?convite=…) | '', RECURSOS ({listaEsperaWhatsapp, preAberturaEmpresas,
- *   origemListaEspera}); listaEspera({…, origem?, site?, captcha?}): com captcha vai pela vagas-conta (Turnstile).
- *   confirmarLink({tokenHash, tipo}) -> {ok, tipo, precisaSenha:true}, definirSenha(senha) -> {ok}.
+ * Métodos: um por RPC (tabela METODOS abaixo; contrato em docs/VAGAS-SPEC.md §8), mais os da Edge Function vagas-conta e do
+ *   Auth: cadastrar, reenviarConfirmacao, esqueciSenha, cadastroAssistido, convidarOperador, convidarEquipe, avisarListaEspera,
+ *   excluirConta, entrar, sair, sessao, linkDoEndereco, conviteDoEndereco, confirmarLink, definirSenha (SPEC §9 e §10).
+ *   RECURSOS ({listaEsperaWhatsapp, preAberturaEmpresas, origemListaEspera}); listaEspera com captcha vai pela vagas-conta.
  * Foto OPCIONAL da pessoa (bucket privado 'vagas-fotos' do Storage): enviarFoto(arquivo File/Blob jpg|png|webp ≤ 1 MB) -> {ok, temFoto},
  *   apagarFoto() -> {ok, temFoto:false}, fotoUrl(candidaturaId?) -> {ok, url, expiraEm} (URL assinada de 5 min pela Edge Function:
  *   sem candidatura = a própria; com candidatura = só a empresa daquela candidatura, depois do Combinou). contatoPessoa(candId)

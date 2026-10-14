@@ -12,7 +12,7 @@ const R = require('../vagas/js/regras.js');
 
 const RAIZ = path.join(__dirname, '..');
 const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql', '20261024120003_vagas_aviso_reforco.sql',
-  '20261024120004_vagas_pre_abertura.sql']
+  '20261024120004_vagas_pre_abertura.sql', '20261024120005_vagas_fase_c.sql']
   .map((f) => fs.readFileSync(path.join(RAIZ, 'supabase', 'migrations', f), 'utf8')).join('\n');
 const AGORA = Date.parse('2026-10-13T15:00:00Z');
 const DIA_MS = 86400000;
@@ -174,11 +174,12 @@ test('referência — veto P2: ocultar e remover não mudam nada do que a empres
   };
   await entrar(b, 'pessoa@previa.com');
   const antes = await foto();
-  assert.equal(antes.dadas.referencias[0].status, 'aceita');
-  assert.ok(antes.dadas.referencias[0].aceitaEm);
-  assert.ok(!('respondidaEm' in antes.dadas.referencias[0]));
-  assert.equal(antes.cartoes.cartoes[0].cartao.temReferencia, true);
-  assert.equal(antes.contato.pessoa.referencias.length, 1);
+  // Veto P2 (20261024120005): a empresa vê só "enviada" — nem aceita, nem quando aceitou — e não vê a própria referência no
+  // perfil da pessoa (aparecer só depois do aceite contaria que a pessoa aceitou).
+  assert.equal(antes.dadas.referencias[0].status, 'enviada');
+  assert.ok(!('aceitaEm' in antes.dadas.referencias[0]) && !('respondidaEm' in antes.dadas.referencias[0]));
+  assert.equal(antes.cartoes.cartoes[0].cartao.temReferencia, false);
+  assert.equal(antes.contato.pessoa.referencias.length, 0);
   assert.equal(antes.oferta.erro, 'Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.');
   assert.equal(antes.denuncia.erro, 'Referência não encontrada.');
   for (const acao of ['ocultar', 'mostrar', 'ocultar', 'remover']) {
@@ -870,4 +871,32 @@ test('pré-abertura, canal e origem na prévia (20261024120004): as três ligada
   const antes = st.listaEspera.length;
   assert.deepEqual(await entra({ email: 'robo@exemplo.com', site: 'http://spam.example' }), normal);
   assert.equal(st.listaEspera.length, antes);
+});
+
+test('fase C na prévia (20261024120005): experiência pela CLT, cartões sem filtro de escolaridade e experiência, envio por e-mail no limite', async () => {
+  const b = novo();
+  const st = b.estado();
+  const ids = R.EXPERIENCIAS_VAGA.map((x) => x.id);
+  assert.ok(st.anuncios.every((a) => ids.includes(a.experiencia)), 'a semente usa só os ids novos');
+  await entrar(b, 'empresa@previa.com');
+  const merc = st.empresas.find((e) => e.nomeFantasia === 'Mercadinho Sol do Norte');
+  const comQuero = st.anuncios.find((a) => a.empresaId === merc.id && st.candidaturas.some((k) => k.anuncioId === a.id && k.status !== 'retirada'));
+  const total = async (f) => (await ok(b.rpc('vagas_cartoes', { p_anuncio: comQuero.id, p_filtro: f }))).total;
+  assert.equal(await total({ escolaridadeMin: 'superior', experienciaMinMeses: 600, temSelo: true }), await total({}));
+  const an = (await ok(b.rpc('vagas_anuncio_salvar', { p_dados: { empresaId: merc.id, area: 'atendimento', funcao: 'Atendente', modalidade: 'clt',
+    descricao: 'Atendimento no balcão, organização de prateleiras e apoio no caixa. Escala 6x1 com folga no domingo.',
+    turno: 'comercial', experiencia: 'mais_3', escolaridade: 'medio', quantidade: 1, salarioDe: 162100 } }))).anuncio;
+  assert.equal(an.experiencia, '6_meses', 'id antigo convertido');
+  await ok(b.conta.sair());
+  // Envio por e-mail: conta no limite com ou sem conta; a lista da empresa não mostra o que foi por e-mail.
+  await entrar(b, 'empresa6@previa.com');
+  const rest = st.empresas.find((e) => e.nomeFantasia === 'Restaurante Sabor da Terra');
+  const lista = () => ok(b.rpc('vagas_referencias_empresa', { p_empresa: rest.id }));
+  const antes = await lista();
+  const base = { empresaId: rest.id, funcao: 'Cozinheira', vinculo: 'clt', inicio: '2024-01', pontosFortes: ['equipe'], declaracao: true };
+  assert.deepEqual(await ok(b.rpc('vagas_referencia_oferecer', { p_dados: Object.assign({ email: 'ninguem@nao-existe.teste' }, base) })), { ok: true, enviada: true });
+  assert.deepEqual(await ok(b.rpc('vagas_referencia_oferecer', { p_dados: Object.assign({ email: 'pessoa@previa.com' }, base) })), { ok: true, enviada: true });
+  const depois = await lista();
+  assert.deepEqual([depois.referencias.length, depois.restantes30Dias], [antes.referencias.length, antes.restantes30Dias - 2]);
+  assert.ok(depois.referencias.every((r) => ['enviada', 'removida'].includes(r.status)));
 });

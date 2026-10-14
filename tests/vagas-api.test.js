@@ -12,7 +12,7 @@ const CHAVE = 'sb_publishable_teste';
 // A 20261024 (onda 2) acrescenta e redefine RPCs (painel da praça, equipe da empresa, lista de espera com WhatsApp).
 // A 20261024120002 acrescenta o aviso de abertura da lista de espera (painel da equipe e o link público de saída).
 const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql', '20261024120003_vagas_aviso_reforco.sql',
-  '20261024120004_vagas_pre_abertura.sql']
+  '20261024120004_vagas_pre_abertura.sql', '20261024120005_vagas_fase_c.sql']
   .map((f) => fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', f), 'utf8')).join('\n');
 const SQL_FUNDACAO = SQL;   // o teste de contrato junta a migração dos testes (20261023) a esta
 

@@ -927,14 +927,12 @@
     }
     function pontosFortesIds() { return R.PONTOS_FORTES.map(function (p) { return p.id; }); }
     function referenciaVisivel(r) { var e = empresa(r.empresaId); return r.status === 'aceita' && !!e && e.status === 'ativa'; }
-    // O que a empresa autora (e a operação) vê: ocultar/remover pela pessoa não aparece (veto P2 da psicologia).
-    function referenciaStatusEmpresa(r) {
-      if (r.status === 'aceita' || r.status === 'ocultada') return 'aceita';
-      if (r.status === 'removida' && r.removidaPor === 'pessoa') return r.aceitaEm != null ? 'aceita' : 'recusada';
-      return r.status;
-    }
+    // O que a empresa autora (e a operação) vê (veto P2, 20261024120005): 'enviada' ou 'removida' (pela moderação); nada do que
+    // a pessoa fez (aceitar, recusar, ocultar, remover, publicar).
+    function referenciaStatusEmpresa(r) { return r.status === 'removida' && r.removidaPor === 'moderacao' ? 'removida' : 'enviada'; }
+    // No perfil da pessoa, a empresa vê só referência visível de OUTRA empresa (a própria nunca aparece).
     function referenciaParaEmpresa(r, empresas) {
-      return referenciaVisivel(r) || ((empresas || []).indexOf(r.empresaId) >= 0 && referenciaStatusEmpresa(r) === 'aceita');
+      return referenciaVisivel(r) && (empresas || []).indexOf(r.empresaId) < 0;
     }
     // Cartão cego: só "tem referência de empresa verificada" (veto P1).
     function temReferencia(uid, empId) {
@@ -1700,9 +1698,6 @@
       var f = obj(a.p_filtro);
       var status = R.listaEnum(f.status, ['enviada', 'conversar', 'agora_nao', 'combinou', 'contratada', 'recusada']);
       var zonas = R.listaTexto(typeof f.zona === 'string' ? [f.zona] : f.zona, 60);
-      var escIds = R.ESCOLARIDADES.map(function (x) { return x.id; });
-      var esc = escIds.indexOf(txt(f.escolaridadeMin));
-      var exp = R.inteiro(f.experienciaMinMeses);
       var turnos = R.listaEnum(f.turnos, R.TURNOS);
       var cnh = R.listaEnum(f.cnh, R.CNH);
       var pret = R.inteiro(f.pretensaoMaxCentavos);
@@ -1711,12 +1706,10 @@
         if (k.anuncioId !== an.id || k.status === 'retirada' || !p) return false;
         if (status.length && status.indexOf(k.status) < 0) return false;
         if (zonas.length && zonas.indexOf(p.zona) < 0) return false;
-        if (esc >= 0 && escIds.indexOf(p.escolaridade) < esc) return false;
-        if (exp != null && cartao(k.pessoaId).experienciaTotalMeses < exp) return false;
         if (turnos.length && !turnos.some(function (t) { return p.turnos.indexOf(t) >= 0; })) return false;
         if (cnh.length && !cnh.every(function (t) { return p.cnh.indexOf(t) >= 0; })) return false;
         if (pret != null && p.pretensaoCentavos != null && p.pretensaoCentavos > pret) return false;
-        return true;   // sem filtro por selo, nota ou referência (veto P3): "temSelo" é ignorado
+        return true;   // sem filtro por selo, nota ou referência (veto P3), escolaridade nem tempo de experiência (20261024120005)
       }).sort(function (x, y) { return x.criadoEm - y.criadoEm || (x.id < y.id ? -1 : 1); }).map(function (k) {
         var v = conversaDe(k.id);
         return { candidaturaId: k.id, status: k.status, chegouEm: iso(k.criadoEm), contatoCortado: k.contatoCortadoEm != null, cartao: cartao(k.pessoaId, k.empresaId),
@@ -1897,9 +1890,12 @@
       // Limite decidido ANTES de saber se o e-mail tem conta: mesma resposta com ou sem conta, inclusive no limite.
       var noLimite = referenciasNoMes(e.id) >= 20;
       if (neutro && noLimite) return ok({ enviada: true });
+      // Envio por e-mail conta no limite sempre (com ou sem conta): o contador não revela nada.
+      if (neutro) { if (!st.referenciaEnviosEmail) st.referenciaEnviosEmail = []; st.referenciaEnviosEmail.push({ empresaId: e.id, em: agora() }); }
       if (!pessoaId) return ok({ enviada: true });
       var r = st.referencias.filter(function (x) { return x.empresaId === e.id && x.pessoaId === pessoaId; })[0];
-      if (r && r.status !== 'pendente' && origem !== 'convite') {
+      // Mesma resposta antes e depois da resposta da pessoa (veto P2).
+      if (r && origem !== 'convite') {
         if (neutro) return ok({ enviada: true });
         return erro('Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.');
       }
@@ -1918,7 +1914,7 @@
       historico(r.id, 'oferecida', 'empresa');
       if (cv) { cv.status = 'usado'; cv.usadoEm = agora(); cv.referenciaId = r.id; }
       if (neutro) return ok({ enviada: true });
-      return ok({ referencia: Object.assign(referenciaJson(r, true), { status: r.status }) });
+      return ok({ referencia: Object.assign(referenciaJson(r, true), { status: referenciaStatusEmpresa(r) }) });
     };
 
     H.vagas_referencia_pedir = function (a) {
@@ -1994,16 +1990,15 @@
       var c = contaAtual('empresa');
       if (!c.ok) return c;
       if (!membro(a.p_empresa)) return erro('Empresa não encontrada.');
-      return ok({ referencias: st.referencias.filter(function (r) { return r.empresaId === a.p_empresa && (r.origem !== 'email' || referenciaStatusEmpresa(r) === 'aceita'); })
+      return ok({ referencias: st.referencias.filter(function (r) { return r.empresaId === a.p_empresa && r.origem !== 'email'; })
         .sort(function (x, y) { return y.criadoEm - x.criadoEm; })
-        .map(function (r) { return Object.assign(referenciaJson(r, true), { status: referenciaStatusEmpresa(r), textoMotivo: r.textoMotivo, origem: r.origem, aceitaEm: iso(r.aceitaEm) }); }),
+        .map(function (r) { return Object.assign(referenciaJson(r, true), { status: referenciaStatusEmpresa(r), textoMotivo: r.textoMotivo, origem: r.origem }); }),
         restantes30Dias: Math.max(0, 20 - referenciasNoMes(a.p_empresa)) });
     };
-    // Referências que contam no limite de 20 em 30 dias: só as que a empresa consegue ver (nunca a pendente por e-mail).
+    // Limite de 20 em 30 dias: as que não vieram por e-mail + cada envio por e-mail (tenha conta ou não; aceite ou não).
     function referenciasNoMes(empId) {
-      return st.referencias.filter(function (r) {
-        return r.empresaId === empId && r.criadoEm > agora() - 30 * DIA && (r.origem !== 'email' || referenciaStatusEmpresa(r) === 'aceita');
-      }).length;
+      return st.referencias.filter(function (r) { return r.empresaId === empId && r.criadoEm > agora() - 30 * DIA && r.origem !== 'email'; }).length +
+        (st.referenciaEnviosEmail || []).filter(function (x) { return x.empresaId === empId && x.em > agora() - 30 * DIA; }).length;
     }
 
     H.vagas_referencias_publicar = function (a) {
@@ -3272,7 +3267,7 @@
         var a = { id: novoId(), codigo: '', empresaId: e.id, cidade: e.cidade, zona: v[6], area: AREA_DO_CARGO[v[2]] || 'outros', funcao: v[1],
           titulo: v[1], modalidade: v[3], descricao: 'Vaga fictícia da prévia: ' + v[1].toLowerCase() + ' em ' + e.nomeFantasia + '. Rotina de trabalho explicada na conversa.',
           turno: ['comercial', 'manha', 'tarde', 'escala', 'noite', 'a_combinar'][i % 6], fimDeSemana: i % 4 === 1, comissao: vende,
-          inicio: diaria ? 'data' : 'imediato', inicioData: diaria ? diaria.data : null, experiencia: ['nao_precisa', 'ate_1', '1_a_3'][i % 3],
+          inicio: diaria ? 'data' : 'imediato', inicioData: diaria ? diaria.data : null, experiencia: ['nao_precisa', 'ajuda', '6_meses'][i % 3],
           escolaridade: v[3] === 'estagio' || i % 4 === 0 ? 'medio' : 'nao_exigida',
           requisitos: v[2] === 'Motorista' ? ['cnh_b'] : (i % 5 === 0 ? ['disponibilidade'] : []), requisitoOutro: '',
           selo: v[2] === 'Caixa' ? 'caixa' : (v[2] === 'Recepcionista' ? 'atendimento' : null), beneficios: ben,

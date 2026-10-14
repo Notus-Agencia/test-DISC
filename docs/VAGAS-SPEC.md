@@ -141,8 +141,8 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
 - **Convite de equipe** (20261024) `pendente` (aberto, no prazo) | `vencido` (72 h) | `aceito` | `cancelado` (pela dona/pelo dono,
   por um convite novo para o mesmo e-mail ou porque quem convidou saiu da equipe). Rótulos em `VAGAS_REGRAS.STATUS_CONVITE_EQUIPE`.
 - **Referência** (visão da pessoa) `pendente → aceita ⇄ ocultada`, `pendente → recusada`, qualquer → `removida`.
-  Visão da EMPRESA AUTORA (veto P2): `pendente | aceita | recusada | removida` — ocultada e removida pela pessoa depois do
-  aceite aparecem como **aceita**; removida antes do aceite = **recusada**; `removida` só quando foi a moderação.
+  Visão da EMPRESA AUTORA e da operação (veto P2, 20261024120005): só `enviada | removida` — `removida` só quando foi a
+  moderação. Nada do que a pessoa faz (aceitar, recusar, ocultar, mostrar, remover, publicar) muda o que a empresa vê.
   Texto livre: `sem_texto | pendente | publicado | nao_publicado` (aparece para terceiros só `publicado`; rótulos em
   `VAGAS_REGRAS.TEXTO_STATUS`). Nenhuma RPC devolve a palavra "aprovado": o texto é publicado ou não.
 - **Denúncia** `aberta → procedente | improcedente`.
@@ -169,9 +169,11 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
 8. **Operação e equipe não leem pessoa nem contato** (nem tabela, nem RPC). A moderação de mensagem vê só o texto e o lado
    (empresa/pessoa), nunca quem denunciou.
 9. **Referência:** só aparece depois do aceite da pessoa; pendente/oculta de uma empresa nunca aparece para outra empresa,
-   para o operador ou para a equipe pela API; no cartão cego só `temReferencia` (P1); ocultar/remover não chega à empresa
-   autora por nenhum caminho (P2; teste compara TODAS as respostas que a empresa consegue pedir antes e depois); nenhuma
-   RPC filtra por "tem referência" (P3).
+   para o operador ou para a equipe pela API; no cartão cego só `temReferencia` (P1); a empresa autora NUNCA sabe o que a
+   pessoa fez — nem aceitar, nem recusar, nem ocultar, nem publicar (P2, 20261024120005: a lista dela diz só `enviada`; a
+   referência dela não aparece no perfil, no cartão nem na página pública com o login dela; oferecer de novo dá a mesma
+   resposta antes e depois; o limite conta todo envio por e-mail; teste compara as respostas antes e depois); nenhuma RPC
+   filtra por "tem referência" (P3).
 10. **Conta do Vagas nunca vira administradora do painel DISC** (`garantir_primeiro_admin` recusa `app_metadata.produto =
     'vagas'` ou linha em `vagas_contas`, mesmo sendo o primeiro login do projeto).
 11. **Anti-enumeração:** cadastro, reenviar e esqueci respondem sempre a mesma frase neutra; referência por e-mail responde
@@ -264,11 +266,12 @@ código. Mensagem e referência só com login.
   o produto certo · `situacao_dificil` Resolve reclamação ou situação difícil com calma.
 - A pessoa aceita/recusa (pendente), oculta/mostra, remove. **Cartão cego: só "Referência de empresa verificada: sim"**
   (`temReferencia`). Completa (com nome da empresa e texto aprovado) em `vagas_contato_pessoa` e na página pública que a
-  pessoa liga (`/referencias.html?t=<token>`).
-- Depois que a pessoa respondeu, a empresa só muda a referência se a pessoa pedir de novo (convite). Moderação pode remover
-  (fraude/abuso) — aí sim a empresa vê "removida" e o motivo.
+  pessoa liga (`/referencias.html?t=<token>`) — sempre de OUTRAS empresas: a referência da própria empresa não aparece para
+  ela em lugar nenhum do perfil (20261024120005, veto P2).
+- Depois de dada, a empresa só muda a referência se a pessoa pedir de novo (convite) — a mesma resposta antes e depois da
+  resposta da pessoa. Moderação pode remover (fraude/abuso) — aí sim a empresa vê "removida" e o motivo.
 - Limitação conhecida: quem abre a página pública SEM login não é identificado; se alguém da empresa autora abrir o link sem
-  entrar, a referência oculta não aparece. A tela de "Ocultar" deve explicar à pessoa que a referência some do perfil
+  entrar, vê a referência quando ela está aceita e visível. A tela de "Ocultar" deve explicar à pessoa que a referência some do perfil
   público e do cartão.
 
 ### 6.6 Contas (Edge Function `vagas-conta`, §9)
@@ -688,7 +691,7 @@ Cria (com `empresaId`) ou edita (com `id`) um rascunho/vaga. Campos (chaves do d
 | `fimDeSemana` | boolean | não |
 | `inicio` / `inicioData` | `imediato|data` + `AAAA-MM-DD` (hoje em diante) | padrão `imediato` |
 | `cidade` / `zona` | slugs (cidade padrão: a da empresa) | não |
-| `experiencia` | `nao_precisa|ate_1|1_a_3|mais_3` | sim |
+| `experiencia` | `nao_precisa|ajuda|6_meses` (CLT art. 442-A: no máximo 6 meses na função; os ids antigos `ate_1`, `1_a_3` e `mais_3` são aceitos e viram `6_meses` — 20261024120005) | sim |
 | `escolaridade` | `nao_exigida|fundamental|medio|tecnico|superior` | padrão `nao_exigida` |
 | `requisitos` / `requisitoOutro` | lista `cnh_a|cnh_b|cnh_d|curso_registro|disponibilidade|outro` + texto ≤ 80 (filtrado) | não |
 | `selo` | `atendimento|vendas|administrativo|caixa|portugues` ou `nenhum`/null (informativo; NUNCA filtro nem corte) | não |
@@ -746,9 +749,10 @@ Só totais, nunca quem.
 `quero` não conta as retiradas; `combinou` inclui as contratadas; `comSelo` = quem disse Quero e tem selo válido.
 Erro: `Vaga não encontrada.`
 
-#### `vagas_cartoes(p_anuncio, p_filtro)` — `VAGAS_API.cartoes(anuncioId, {status?, zona?, escolaridadeMin?, experienciaMinMeses?, turnos?, cnh?, pretensaoMaxCentavos?})`
+#### `vagas_cartoes(p_anuncio, p_filtro)` — `VAGAS_API.cartoes(anuncioId, {status?, zona?, turnos?, cnh?, pretensaoMaxCentavos?})`
 Cartões cegos por ORDEM DE CHEGADA (sem ranking). Filtros só da lista fechada; qualquer outra chave é ignorada (inclusive
-"tem referência" e `temSelo` — veto P3: o selo é só informação no cartão). `status` = o filtro "Mostrar" da tela
+"tem referência" e `temSelo` — veto P3: o selo é só informação no cartão — e, desde a 20261024120005, `escolaridadeMin` e
+`experienciaMinMeses`: nenhuma tela usava e eles tirariam do caminho quem procura o primeiro emprego). `status` = o filtro "Mostrar" da tela
 (`enviada|conversar|agora_nao|combinou|contratada|recusada`).
 ```json
 {"ok":true,"anuncio":{"id","codigo","titulo","status"},"total":1,
@@ -876,8 +880,10 @@ A lista da empresa não traz nenhum dado da pessoa. Erro (empresa): `Empresa nã
 Membro de empresa ATIVA. Para quem: `conviteToken` (pedido da pessoa) | `candidaturaId` (depois do Combinou, sem corte de
 acesso) | `email` (resposta neutra). Conteúdo: `empresaId, funcao, vinculo, inicio, fim?, pontosFortes[1..3],
 recomendaPara[≤5], texto? (≤300), declaracao:true`.
-`{"ok":true,"referencia":{<referência completa>,"status":"pendente","textoStatus":"pendente"}}` · por e-mail sempre
-`{"ok":true,"enviada":true}`. Enquanto a pessoa não responde, oferecer de novo corrige a mesma referência.
+`{"ok":true,"referencia":{<referência completa>,"status":"enviada","textoStatus":"pendente"}}` · por e-mail sempre
+`{"ok":true,"enviada":true}` (e cada envio por e-mail conta no limite de 20 em 30 dias, tenha o e-mail conta ou não).
+Referência já dada para a pessoa: a mesma resposta (`Sua empresa já deu referência…`) antes e depois de a pessoa responder;
+para mudar, só pelo convite da pessoa (20261024120005, veto P2).
 Erros: `Empresa não encontrada.` · `Só empresa verificada pela Gestão sem Caos pode dar referência.` · `Convite inválido ou
 vencido. Peça um link novo à pessoa.` · `Candidatura não encontrada.` · `E-mail inválido.` · `Muitos envios por e-mail hoje.
 Tente de novo amanhã.` (`bloqueado`) · `Informe para quem é a referência.` · `Informe a função que a pessoa exercia.` ·
@@ -909,10 +915,11 @@ Erros: `Referência não encontrada.` · `Ação inválida para esta referência
 (removidas não aparecem; pendentes primeiro).
 
 #### `vagas_referencias_empresa(p_empresa)` — `VAGAS_API.referenciasDaEmpresa(empresaId)`
-"Referências dadas". `status` pela visão da empresa (`VAGAS_REGRAS.STATUS_REFERENCIA_EMPRESA`), `aceitaEm` (não muda ao
-ocultar), sem dados da pessoa. As enviadas por e-mail só aparecem depois do aceite, e `restantes30Dias` conta só o que a
-empresa vê (as pendentes por e-mail não entram: o contador não revela se um e-mail tem conta).
-`{"ok":true,"referencias":[{<completa com texto>,"status":"aceita","textoMotivo":"","origem":"candidatura","aceitaEm":"…"}],"restantes30Dias":19}`
+"Referências dadas" (veto P2, 20261024120005): só o que a empresa escreveu e o estado DELA — `status` `enviada` ou
+`removida` (pela moderação; `VAGAS_REGRAS.STATUS_REFERENCIA_EMPRESA`) e a moderação do texto (`textoStatus`, `textoMotivo`) —,
+sem dados da pessoa e nunca aceita/recusada/aceitaEm. As enviadas por e-mail não aparecem (revelariam se o e-mail tem conta);
+`restantes30Dias` conta as outras e cada envio por e-mail.
+`{"ok":true,"referencias":[{<completa com texto>,"status":"enviada","textoMotivo":"","origem":"candidatura"}],"restantes30Dias":19}`
 Erro: `Empresa não encontrada.`
 
 #### `vagas_referencias_publicar(p_ligar)` — `VAGAS_API.publicarReferencias(true|false)`
@@ -1230,6 +1237,8 @@ VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
 7d. Aplicar `20261024120004_vagas_pre_abertura.sql` (depois da 20261024120003; idempotente) e publicar de novo a `vagas-conta`
    (ação `lista_espera`). Canal de WhatsApp de Uruaçu, quando existir: `admCidadeSalvar({slug:'uruacu-go', canalWhatsapp:'https://whatsapp.com/channel/…'})`.
    Turnstile na lista de espera: chave no site, `TURNSTILE_SECRET` na função e o ajuste `lista_espera_captcha` (§8.1).
+7e. Aplicar `20261024120005_vagas_fase_c.sql` (depois da 20261024120004; idempotente; converte a experiência das vagas
+   antigas para os ids da CLT) e publicar de novo a `vagas-conta`.
 8. Abrir a praça piloto quando for a hora: `admCidadeSalvar({slug:'uruacu-go', status:'ativa'})` (nasce em `lista_espera`).
    Depois, avisar a lista de espera (§6.7): "Avisar por e-mail" até terminar e a fila do WhatsApp, em até 30 dias.
    Bairros das zonas `regiao-leste` e `regiao-oeste` com a operação (`admZonaSalvar`).

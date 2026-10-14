@@ -226,7 +226,7 @@ test('a vaga montada pela tela é aceita pela prévia (mesmo contrato do banco) 
   const zonas = cidade.zonas;
   const hoje = R.hoje(cidade.fuso, agora);
   const f = formValido({ zona: zonas.length ? zonas[0].slug : '', comissao: true, beneficios: ['vt'], requisitos: ['outro'], requisitoOutro: 'Saber usar a maquininha',
-    selo: 'caixa', escolaridade: 'medio', experiencia: 'ate_1', fimDeSemana: true, quantidade: '2', salarioAte: '1.900,00' });
+    selo: 'caixa', escolaridade: 'medio', experiencia: '6_meses', fimDeSemana: true, quantidade: '2', salarioAte: '1.900,00' });
   const v = ER.validarVaga(f, { hoje, zonas, empresaId: emp.id });
   assert.equal(v.ok, true, v.erro);
   const r = await api.salvarAnuncio(v.dados);

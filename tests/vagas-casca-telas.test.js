@@ -65,8 +65,8 @@ test('vaga: código, intenção de "Quero" guardada (só desta vaga e por 7 dias
   const d = { cidade: { nome: 'Cidade Teste' }, zona: null, modalidade: 'diaria', diaria: { data: '2026-10-14', inicio: '07:00', fim: '16:00' }, quantidade: 1,
     valor: { minCentavos: 12000, maxCentavos: null, unidade: 'dia' } };
   assert.deepEqual(VAGA.dadosDaVaga(d, U).slice(0, 4), [['Onde', 'Cidade Teste'], ['Data', '14/10/2026'], ['Horário', '07:00 às 16:00'], ['Valor do dia', 'R$ 120 por dia']]);
-  assert.deepEqual(VAGA.requisitosDaVaga({ requisitosLista: ['CNH categoria B'], experiencia: '1_a_3', escolaridade: 'medio' }),
-    ['CNH categoria B', 'Experiência: de 1 a 3 anos', 'Escolaridade mínima: Médio']);
+  assert.deepEqual(VAGA.requisitosDaVaga({ requisitosLista: ['CNH categoria B'], experiencia: '6_meses', escolaridade: 'medio' }),
+    ['CNH categoria B', 'Experiência: pelo menos 6 meses na função', 'Escolaridade mínima: Médio']);
   assert.deepEqual(VAGA.requisitosDaVaga({ experiencia: 'nao_precisa', escolaridade: 'nao_exigida' }), [R.rotulo(R.EXPERIENCIAS_VAGA, 'nao_precisa')]);
 });
 
