@@ -101,10 +101,15 @@ test('pílulas de tempo: N = 3, 9, 24 e 48 meses antes do mês atual; datas grav
 test('carteira assinada, CNH, pretensão e WhatsApp: os valores do contrato', () => {
   assert.equal(L.informalDe('sim'), false);
   assert.equal(L.informalDe('nao'), true);
-  assert.equal(L.informalDe('nd'), undefined);
-  assert.equal(L.informalDe(''), undefined);
+  assert.equal(L.informalDe('nd'), null, '"Prefiro não dizer" manda null (migração 0005 do banco)');
+  assert.equal(L.informalDe(''), null, 'sem resposta também é "não informado" (sem a chave o banco grava false = "Sim")');
   assert.equal(L.carteiraDe(true), 'nao');
-  assert.equal(L.carteiraDe(false), '', 'o banco não distingue "Sim" de "Prefiro não dizer": volta sem pílula');
+  assert.equal(L.carteiraDe(false), 'sim', 'ao reabrir, false volta como "Sim" marcado');
+  assert.equal(L.carteiraDe(null), 'nd', 'null (banco com a 0005) volta como "Prefiro não dizer" marcado');
+  assert.equal(L.carteiraDe(undefined), '', 'resposta sem a chave: nenhuma pílula');
+  // Os dois bancos: com a 0005 o null volta null; antes dela, vira false (e reabre como "Sim").
+  for (const c of ['sim', 'nao', 'nd']) assert.equal(L.carteiraDe(L.informalDe(c)), c, 'ida e volta com o banco novo: ' + c);
+  assert.equal(L.carteiraDe(L.informalDe('nd') === true), 'sim', 'banco antigo (informal === true) reabre "Prefiro não dizer" como "Sim"');
   assert.deepEqual(L.CNH_OPCOES.map((c) => [c.id, c.lista]), [['nao', []], ['A', ['A']], ['B', ['B']], ['AB', ['A', 'B']], ['C', ['C']]]);
   assert.equal(L.cnhDe([]), 'nao');
   assert.equal(L.cnhDe(['A', 'B']), 'AB');
@@ -124,7 +129,7 @@ test('carteira assinada, CNH, pretensão e WhatsApp: os valores do contrato', ()
   assert.equal(L.formatarWhatsapp(''), '');
 });
 
-test('experiência -> contrato: pílula vira início, "atual" deixa o fim vazio, "Não" vira informal, campo vazio sai do envio', () => {
+test('experiência -> contrato: pílula vira início, "atual" deixa o fim vazio, "Não" vira informal, "Prefiro não dizer" vira null, campo vazio sai do envio', () => {
   const cv = L.cvVazio({ cidade: 'cidade-x' });
   cv.experiencias = [
     { cargo: ' Atendente  de loja ', onde: '', tempo: '1a3', inicio: L.inicioDoTempo('1a3', AGORA), fim: '', atual: false, carteira: 'nao', datas: false },
@@ -134,7 +139,7 @@ test('experiência -> contrato: pílula vira início, "atual" deixa o fim vazio,
   const d = L.pessoaDoCv(cv, { agora: AGORA });
   assert.deepEqual(d.experiencias, [
     { funcao: 'Atendente de loja', inicio: '2024-10', fim: '2026-10', informal: true },
-    { funcao: 'Caixa', empregador: 'Mercado do bairro', inicio: '2026-07', fim: '' },
+    { funcao: 'Caixa', empregador: 'Mercado do bairro', inicio: '2026-07', fim: '', informal: null },
     { funcao: 'Repositor', empregador: 'Loja X', inicio: '2021-03', fim: '2022-01', informal: false }]);
   cv.semExperiencia = true;
   assert.deepEqual(L.pessoaDoCv(cv, { agora: AGORA }).experiencias, [], '"Ainda não trabalhei" envia experiencias: []');
@@ -213,7 +218,8 @@ test('conta nova: preenche os 5 passos, salva no banco (completo) e o cartão lo
   assert.equal(cv.nome, 'Pessoa Nova', 'o nome do cadastro já vem no passo 4');
   Object.assign(cv, { zona: cidade.zonas[0].slug, areas: ['atendimento', 'caixa'], escolaridade: 'medio', cursos: ['Atendimento ao cliente'], cnh: 'B',
     turnos: ['tarde', 'manha'], modalidades: ['diaria', 'clt'], pretensao: '1600', nome: 'Nova Pessoa Teste', whatsapp: '(62) 99123-4567', banco: false });
-  cv.experiencias = [{ cargo: 'Atendente', onde: 'Loja do Centro', tempo: '1a3', inicio: L.inicioDoTempo('1a3', AGORA), fim: '', atual: false, carteira: 'sim', datas: false }];
+  cv.experiencias = [{ cargo: 'Atendente', onde: 'Loja do Centro', tempo: '1a3', inicio: L.inicioDoTempo('1a3', AGORA), fim: '', atual: false, carteira: 'sim', datas: false },
+    { cargo: 'Repositor', onde: '', tempo: '', inicio: '2021-03', fim: '2022-01', atual: false, carteira: 'nd', datas: true }];
   const op = { zonasDe, agora: AGORA };
   assert.equal(L.primeiroPassoIncompleto(cv, op), 5);
   const local = L.cartaoLocal(cv, { cidades, cartao: null, agora: AGORA });
@@ -223,6 +229,12 @@ test('conta nova: preenche os 5 passos, salva no banco (completo) e o cartão lo
   assert.deepEqual(salvo.cartao.turnos, ['manha', 'tarde'], 'ordem da lista fechada, como no banco');
   assert.deepEqual(salvo.cartao.cargos, ['Atendimento e recepção', 'Caixa e operação de loja']);
   assert.equal(salvo.cartao.experiencias[0].meses, 25);
+  // "Prefiro não dizer": com a migração 0005 o banco devolve null (reabre marcado); antes dela, false (reabre como "Sim").
+  const nd = salvo.pessoa.experiencias.find((x) => x.funcao === 'Repositor');
+  assert.ok(nd.informal === null || nd.informal === false, 'informal de "Prefiro não dizer": ' + nd.informal);
+  assert.equal(L.cvDaPessoa(salvo.pessoa, AGORA).experiencias.find((x) => x.cargo === 'Repositor').carteira, nd.informal === null ? 'nd' : 'sim');
+  assert.equal(L.cvDaPessoa(salvo.pessoa, AGORA).experiencias.find((x) => x.cargo === 'Atendente').carteira, 'sim', '"Sim" volta marcado');
+  assert.equal(salvo.cartao.experiencias.find((x) => x.funcao === 'Repositor').informal, false, 'no cartão, só "Não" vira "sem carteira"');
   assert.ok(!JSON.stringify(salvo.cartao).includes('Nova Pessoa Teste'));
   assert.ok(!JSON.stringify(salvo.cartao).includes('99123'));
   assert.equal(salvo.pessoa.whatsapp, '5562991234567');
@@ -305,4 +317,128 @@ test('excluir só com EXCLUIR; rascunho do aparelho só vale para a mesma conta;
   assert.equal(L.rascunhoDaConta(null, 'ana@exemplo.com'), null);
   assert.equal(L.semMarcador('Texto final. [REVISÃO JURÍDICA]'), 'Texto final.');
   assert.equal(L.semMarcador('Selo [REVISÃO PSICOLOGIA] ok'), 'Selo ok');
+});
+
+// ---------------------------------------------------------------------------------------------------------------- sair do aparelho
+// P1 da revisão C: ao sair por QUALQUER caminho, o que a conta deixou no aparelho (chaves 'vg.*') sai, num lugar só (VAGAS_API).
+// Fica a cidade lembrada e o que só serve para a próxima conta continuar um link (volta e tokens de convite/referência).
+const API = require('../vagas/js/api.js');
+function aparelho() {
+  const m = {};
+  return { getItem: (k) => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: (k) => { delete m[k]; },
+    key: (i) => (Object.keys(m)[i] === undefined ? null : Object.keys(m)[i]), get length() { return Object.keys(m).length; }, _m: m };
+}
+const DA_CONTA = ['vg.rascunho.curriculo', 'vg.cache.candidaturas', 'vg.aceite.candidatura', 'vg.quero', 'vg.rascunho.conversa.k1', 'vg.prova.atual',
+  'vg.empresa.atual', 'vg.op.cidade', 'vg.filtros.x', 'vg.entrar.senha'];
+const FICA = ['vg.cidade', 'vg.entrar.voltar', 'vg.entrar.convite', 'vg.empresa.convite', 'vg.referencia.t'];
+function encher(arm) { DA_CONTA.concat(FICA).forEach((k) => arm.setItem(k, '{"dados":1}')); arm.setItem('vagas_previa_v3', '{}'); }
+function sobrou(arm) { return Object.keys(arm._m).filter((k) => k !== 'vagas_sessao').sort(); }
+const SO_O_QUE_FICA = FICA.concat(['vagas_previa_v3']).sort();
+
+test('sair do aparelho: limparAparelho tira as chaves vg.* da conta e deixa a cidade, os tokens de link e o que não é vg.*', () => {
+  const arm = aparelho();
+  encher(arm);
+  assert.equal(API.limparAparelho(arm), DA_CONTA.length);
+  assert.deepEqual(sobrou(arm), SO_O_QUE_FICA);
+  assert.deepEqual(API.FICA_NO_APARELHO.slice().sort(), FICA.slice().sort());
+  assert.equal(API.limparAparelho(null), 0, 'sem armazenamento: não quebra');
+});
+
+test('sair do aparelho (Supabase): sair, sessão recusada, sessão vencida e entrar com OUTRA conta limpam; renovar a mesma conta não', async () => {
+  const URL_SB = 'https://exemplo.supabase.co';
+  const resp = (status, corpo) => ({ status, text: () => Promise.resolve(JSON.stringify(corpo)) });
+  const sessao = (id, tok) => ({ access_token: tok || 'tok-' + id, refresh_token: 'ref-' + id, expires_in: 3600, user: { id, email: id + '@exemplo.com' } });
+  let relogio = AGORA;
+  function cliente(rotas, arm) {
+    const fetch = (url) => {
+      const c = url.replace(URL_SB, '');
+      for (const [p, fn] of rotas) if (c.startsWith(p)) return Promise.resolve(fn());
+      return Promise.resolve(resp(404, { code: 'PGRST202' }));
+    };
+    return API.criar({ modo: 'supabase', url: URL_SB, chave: 'sb_publishable_x', fetch, armazenamento: arm, agora: () => relogio });
+  }
+  let quem = 'u1';
+  const rotas = [['/auth/v1/token?grant_type=password', () => resp(200, sessao(quem))], ['/auth/v1/logout', () => resp(204, {})],
+    ['/rest/v1/rpc/vagas_eu', () => resp(200, { ok: true, conta: { tipo: 'pessoa' } })]];
+  // 1) "Sair da conta" (e "Sair e entrar com outra conta", que chama o mesmo sair()).
+  let arm = aparelho();
+  let api = cliente(rotas, arm);
+  await api.entrar('u1@exemplo.com', 'senha-boa-1');
+  encher(arm);
+  await api.sair();
+  assert.deepEqual(sobrou(arm), SO_O_QUE_FICA, 'sair');
+  assert.equal(arm.getItem('vagas_sessao'), null);
+  // 2) Entrar sem sessão anterior não apaga a intenção de "Quero" guardada antes de entrar.
+  arm.setItem('vg.quero', '{"codigo":"ABC123"}');
+  await api.entrar('u1@exemplo.com', 'senha-boa-1');
+  assert.ok(arm.getItem('vg.quero'), 'sem sessão antes: nada a limpar');
+  // 3) Entrar com OUTRA conta sem passar pelo "Sair": limpa o que a anterior deixou.
+  encher(arm);
+  quem = 'u2';
+  await api.entrar('u2@exemplo.com', 'senha-boa-1');
+  assert.deepEqual(sobrou(arm), SO_O_QUE_FICA, 'troca de conta');
+  // 4) Sessão recusada pelo servidor (401 sem renovação possível): limpa.
+  encher(arm);
+  api = cliente([['/rest/v1/rpc/vagas_minhas_candidaturas', () => resp(401, {})], ['/auth/v1/token?grant_type=refresh_token', () => resp(400, { error: 'invalid_grant' })]], arm);
+  await assert.rejects(api.minhasCandidaturas(), (e) => e.sessaoExpirada === true);
+  assert.deepEqual(sobrou(arm), SO_O_QUE_FICA, 'sessão recusada');
+  // 5) Renovar a MESMA conta não limpa. 6) Sessão vencida (renovação recusada): limpa.
+  arm = aparelho();
+  api = cliente([['/auth/v1/token?grant_type=password', () => resp(200, sessao('u3'))], ['/rest/v1/rpc/vagas_eu', () => resp(200, { ok: true, conta: {} })],
+    ['/auth/v1/token?grant_type=refresh_token', () => resp(200, sessao('u3', 'tok-novo'))], ['/rest/v1/rpc/vagas_minhas_candidaturas', () => resp(200, { ok: true, candidaturas: [] })]], arm);
+  await api.entrar('u3@exemplo.com', 'senha-boa-1');
+  encher(arm);
+  relogio += 2 * 3600 * 1000;
+  await api.minhasCandidaturas();
+  assert.equal(JSON.parse(arm.getItem('vagas_sessao')).access_token, 'tok-novo');
+  assert.equal(sobrou(arm).length, DA_CONTA.length + SO_O_QUE_FICA.length, 'renovar a mesma conta não apaga nada');
+  api = cliente([['/auth/v1/token?grant_type=refresh_token', () => resp(400, { error: 'invalid_grant' })]], arm);
+  relogio += 2 * 3600 * 1000;
+  await assert.rejects(api.minhasCandidaturas(), (e) => e.sessaoExpirada === true);
+  assert.deepEqual(sobrou(arm), SO_O_QUE_FICA, 'sessão vencida');
+});
+
+test('sair do aparelho (prévia): sair, excluir e entrar com outra conta limpam; entrar sem sessão antes guarda a intenção de "Quero"', async () => {
+  const b = novo();
+  const arm = aparelho();
+  const api = API.criar({ modo: 'previa', backend: b, armazenamento: arm });
+  arm.setItem('vg.quero', '{"codigo":"ABC123"}');
+  await api.entrar('pessoa@previa.com', PREVIA.SENHA_PREVIA);
+  assert.ok(arm.getItem('vg.quero'), 'a intenção de quem ainda não tinha entrado continua');
+  encher(arm);
+  await api.entrar('pessoa2@previa.com', PREVIA.SENHA_PREVIA);
+  assert.deepEqual(sobrou(arm), SO_O_QUE_FICA, 'troca de conta');
+  encher(arm);
+  await api.sair();
+  assert.deepEqual(sobrou(arm), SO_O_QUE_FICA, 'sair');
+  encher(arm);
+  await api.sair();
+  assert.deepEqual(sobrou(arm), SO_O_QUE_FICA, 'sair sem sessão também limpa');
+  await api.entrar('pessoa3@previa.com', PREVIA.SENHA_PREVIA);
+  encher(arm);
+  await api.excluirConta();
+  assert.deepEqual(sobrou(arm), SO_O_QUE_FICA, 'excluir');
+});
+
+test('rascunho do aparelho vale 7 dias: mais velho, ler() apaga e devolve nada', () => {
+  const U = require('../vagas/js/ui-area.js');
+  const janela = { localStorage: aparelho() };
+  const arm = U.criarArmazenamento(janela);
+  let agora = AGORA;
+  const r = U.rascunho('curriculo', { armazenamento: arm, agora: () => agora });
+  r.gravar({ conta: 'ana@exemplo.com' });
+  agora += 6 * 86400000;
+  assert.deepEqual(r.ler().dados, { conta: 'ana@exemplo.com' }, '6 dias: vale');
+  agora += 2 * 86400000;
+  assert.equal(r.ler(), null, '8 dias: venceu');
+  assert.equal(janela.localStorage.getItem('vg.rascunho.curriculo'), null, 'e sai do aparelho');
+});
+
+test('aviso de candidatura (vaga.js) vale por conta e por versão do texto; "Voltar a compartilhar" pede o aceite do Combinou', () => {
+  const vaga = fs.readFileSync(path.join(RAIZ, 'vagas', 'js', 'vaga.js'), 'utf8');
+  assert.match(vaga, /gravar\(CHAVE_ACEITE, \{ conta: contaAtual\(\), versao: versaoAceite\(\), em: Date\.now\(\) \}\)/);
+  assert.match(vaga, /g\.conta === contaAtual\(\) && g\.versao === versaoAceite\(\)/);
+  assert.ok(!/armazenamento\.ler\(CHAVE_ACEITE\)\)/.test(vaga), 'nada de "existe a chave = já aceitou"');
+  const cand = fs.readFileSync(path.join(RAIZ, 'vagas', 'js', 'eu-candidaturas.js'), 'utf8');
+  assert.match(cand, /function voltar\(x\) \{\s*confirmarContato\(x\.empresa/);
 });

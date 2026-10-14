@@ -27,7 +27,7 @@
   "cidade_pausada": "O mural de {{cidade}} está pausado por enquanto. Suas candidaturas e seus selos continuam guardados. Avisamos por e-mail quando voltar.",
   "sem_internet": "Sem internet agora. O que você fez ficou salvo neste aparelho e é enviado quando a conexão voltar.",
   "erro_generico": "Algo deu errado do nosso lado. Tente de novo em instantes. Se continuar, fale com a gente.",
-  "conta_suspensa": "Sua conta está suspensa. Veja o motivo no e-mail que enviamos e, se discordar, peça revisão em até 30 dias.",
+  "conta_suspensa": "Sua conta está suspensa. O motivo está no e-mail que enviamos. Se discordar, responda esse e-mail em até 30 dias: uma pessoa da equipe revisa. Você continua podendo baixar uma cópia dos seus dados ou apagar a conta.",
   "denuncia_ok": "Denúncia recebida. Ela é confidencial: não mostramos a quem foi denunciado quem denunciou. Decidimos em até 24 horas.",
   "referencia_cartao_cego_empresa": "Referência de empresa verificada: {{quantidade}}. O nome da empresa, os pontos fortes e o texto aparecem depois do Combinou.",
   "selo_nota": "Nota {{nota}} de 100 (15 questões; margem de cerca de ±{{margem}} pontos)",

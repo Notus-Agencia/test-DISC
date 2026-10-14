@@ -16,6 +16,31 @@
     return { U: root.VAGAS_UI, A: root.VAGAS_API, P: root.VAGAS_PECAS, L: root.VAGAS_EU_LOGICA, C: root.VAGAS_CONVERSA, T: root.VAGAS_TEXTOS };
   }
 
+  // Aceite expresso (consentimentos.json, pessoa_combinou_contato): o texto exato, com o nome da empresa, antes de liberar o contato.
+  // Vale no primeiro Combinou e ao voltar a compartilhar depois de cortar (a base legal pede a confirmação na tela nas duas vezes).
+  // liberar() -> Promise da API; aoLiberar() depois de liberado; aoErro(e) com a janela já fechada.
+  function confirmarContato(nome, liberar, aoLiberar, aoErro) {
+    var b = base(), U = b.U, T = b.T, el = U.el;
+    var c = (T && T.consentimentos && T.consentimentos.aceites && T.consentimentos.aceites.pessoa_combinou_contato) || {};
+    var j = null;
+    var sim = el('button', { type: 'button', class: 'botao botao--laranja', id: 'vg-confirmar-combinou-sim' }, U.t('botoes.liberar_contato') || 'Liberar meu contato');
+    j = U.janela({ id: 'vg-confirmar-combinou', titulo: c.titulo || 'Liberar meu contato para esta empresa', alerta: true, foco: '#vg-confirmar-combinou-nao', corpo: [
+      el('p', { class: 't-corpo' }, String(c.texto || '').replace(/\{\{\s*empresa_nome\s*\}\}/g, nome)),
+      c.explicacao ? el('p', { class: 't-nota texto-suave' }, b.L.semMarcador(c.explicacao)) : null],
+      acoes: [el('button', { type: 'button', class: 'botao botao--claro', id: 'vg-confirmar-combinou-nao', onclick: function () { j.fechar('nao'); } }, U.t('botoes.cancelar') || 'Cancelar'), sim] });
+    sim.addEventListener('click', function () {
+      U.ocupado(sim, true, 'Liberando…');
+      liberar().then(function () {
+        j.fechar('sim');
+        aoLiberar();
+      }, function (e) {
+        U.ocupado(sim, false);
+        j.fechar('erro');
+        aoErro(e);
+      });
+    });
+  }
+
   // ------------------------------------------------------------------------------------------------- candidaturas
   TELAS.candidaturas = function (ctx) {
     var b = base(), U = b.U, A = b.A, P = b.P, L = b.L, el = U.el;
@@ -171,27 +196,13 @@
           el('button', { type: 'button', class: 'botao botao--claro botao--grande', id: 'vg-convite-recusar', onclick: function () { recusar(k, nome); } }, U.t('botoes.agora_nao') || 'Agora não')])
       ]);
     }
-    // Aceite expresso (consentimentos.json, pessoa_combinou_contato): o texto exato, com o nome da empresa, antes de liberar.
     function aceitar(k, nome) {
-      var c = (T && T.consentimentos && T.consentimentos.aceites && T.consentimentos.aceites.pessoa_combinou_contato) || {};
-      var j = null;
-      var sim = el('button', { type: 'button', class: 'botao botao--laranja', id: 'vg-confirmar-combinou-sim' }, U.t('botoes.liberar_contato') || 'Liberar meu contato');
-      j = U.janela({ id: 'vg-confirmar-combinou', titulo: c.titulo || 'Liberar meu contato para esta empresa', alerta: true, foco: '#vg-confirmar-combinou-nao', corpo: [
-        el('p', { class: 't-corpo' }, String(c.texto || '').replace(/\{\{\s*empresa_nome\s*\}\}/g, nome)),
-        c.explicacao ? el('p', { class: 't-nota texto-suave' }, b.L.semMarcador(c.explicacao)) : null],
-        acoes: [el('button', { type: 'button', class: 'botao botao--claro', id: 'vg-confirmar-combinou-nao', onclick: function () { j.fechar('nao'); } }, U.t('botoes.cancelar') || 'Cancelar'), sim] });
-      sim.addEventListener('click', function () {
-        U.ocupado(sim, true, 'Liberando…');
-        A.combinar(k.id).then(function () {
-          j.fechar('sim');
-          U.avisar(U.t('avisos.combinou_pessoa', { empresa_nome: nome }), { tipo: 'ok', ms: 12000 });
-          recarregar();
-        }, function (e) {
-          U.ocupado(sim, false);
-          j.fechar('erro');
-          if (e.verEmpresa) { recarregar(); return; }
-          U.tratarErro(e);
-        });
+      confirmarContato(nome, function () { return A.combinar(k.id); }, function () {
+        U.avisar(U.t('avisos.combinou_pessoa', { empresa_nome: nome }), { tipo: 'ok', ms: 12000 });
+        recarregar();
+      }, function (e) {
+        if (e.verEmpresa) { recarregar(); return; }
+        U.tratarErro(e);
       });
     }
     function recusar(k, nome) {
@@ -244,7 +255,7 @@
     function item(x) {
       var acao = null;
       if (x.podeCortar && x.candidaturaId) acao = el('button', { type: 'button', class: 'botao botao--claro', data: { acao: 'cortar' }, onclick: function () { cortar(x); } }, 'Cortar acesso');
-      else if (x.podeVoltar && x.candidaturaId) acao = el('button', { type: 'button', class: 'botao botao--claro', data: { acao: 'voltar' }, onclick: function (ev) { voltar(x, ev.currentTarget); } }, 'Voltar a compartilhar');
+      else if (x.podeVoltar && x.candidaturaId) acao = el('button', { type: 'button', class: 'botao botao--claro', data: { acao: 'voltar' }, onclick: function () { voltar(x); } }, 'Voltar a compartilhar');
       return el('li', { class: 'vg-item', data: { candidatura: x.candidaturaId } }, [P.iniciais(x.empresa),
         el('div', { class: 'vg-item__texto' }, [el('p', { class: 'vg-item__titulo' }, x.empresa), el('p', { class: 'vg-item__sub' }, sub(x))]), acao]);
     }
@@ -258,12 +269,12 @@
         }, function (e) { U.tratarErro(e); });
       });
     }
-    function voltar(x, botao) {
-      U.ocupado(botao, true, 'Liberando…');
-      A.combinar(x.candidaturaId).then(function () {
+    // Voltar a compartilhar libera de novo nome, WhatsApp, e-mail e foto: pede a mesma confirmação expressa do Combinou.
+    function voltar(x) {
+      confirmarContato(x.empresa, function () { return A.combinar(x.candidaturaId); }, function () {
         U.avisar('Contato liberado de novo para ' + x.empresa + '.', { tipo: 'ok' });
         recarregar();
-      }, function (e) { U.ocupado(botao, false); U.tratarErro(e); });
+      }, function (e) { U.tratarErro(e); });
     }
     return null;
   };

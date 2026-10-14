@@ -12,7 +12,8 @@
  *     conta de outro tipo -> mensagem na raiz com "Sair e entrar com outra conta". Nesses casos a Promise nunca resolve.
  *   menuLateral({id?, produto, grupos: [{titulo, itens: [{id, rotulo, icone, href|aoClicar, rota, n, etiqueta}]}], usuario: {nome, papel}})
  *   marcarMenu(rota) (aria-current na .aba com data-rota) · ligarGaveta({botao:'vg-menu-abrir', menu:'vg-menu'}) (abaixo de 900 px)
- *   rascunho(tela, {armazenamento?, agora?}) -> {chave:'vg.rascunho.<tela>', ler() -> {dados, em}|null, gravar(dados) -> {em, hora}, apagar()}
+ *   rascunho(tela, {armazenamento?, agora?, validadeMs?}) -> {chave:'vg.rascunho.<tela>', ler() -> {dados, em}|null (vale 7 dias),
+ *     gravar(dados) -> {em, hora}, apagar()}
  *   textoRascunho(hora) -> 'Rascunho salvo neste aparelho às 14:32' · mostrarRascunho(alvo, hora) (aria-live)
  *   copiar(texto) -> Promise · contador(campo, alvo, max) -> atualizar()
  */
@@ -148,14 +149,22 @@
   }
 
   // ------------------------------------------------------------------------------------------------- rascunho no aparelho
+  // Vale 7 dias (como a intenção de "Quero"): mais velho que isso, ler() apaga e devolve null. Sair da conta apaga antes (api.js).
+  var VALIDADE_RASCUNHO = 7 * 86400000;
   function rascunho(tela, op) {
     op = op || {};
     var arm = op.armazenamento || U.armazenamento;
     var chave = 'vg.rascunho.' + String(tela);
     var agora = op.agora || function () { return Date.now(); };
+    var validade = op.validadeMs || VALIDADE_RASCUNHO;
     return {
       chave: chave,
-      ler: function () { var r = arm.ler(chave); return r && typeof r === 'object' && 'dados' in r ? r : null; },
+      ler: function () {
+        var r = arm.ler(chave);
+        if (!r || typeof r !== 'object' || !('dados' in r)) return null;
+        if (!(Number(r.em) > agora() - validade)) { arm.apagar(chave); return null; }
+        return r;
+      },
       gravar: function (dados) { var em = agora(); arm.gravar(chave, { dados: dados, em: em }); return { em: em, hora: U.hora(new Date(em).toISOString()) }; },
       apagar: function () { arm.apagar(chave); }
     };

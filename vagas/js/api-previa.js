@@ -970,7 +970,7 @@
       var xs = experiencias(uid);
       return {
         cidade: { slug: c.slug, nome: c.nome }, zona: zonaJson(p.cidade, p.zona), cargos: p.cargos.slice(),
-        experiencias: xs.map(function (x) { return { funcao: x.funcao, meses: R.meses(x.inicio, x.fim, agora()), atual: !x.fim, informal: x.informal }; }),
+        experiencias: xs.map(function (x) { return { funcao: x.funcao, meses: R.meses(x.inicio, x.fim, agora()), atual: !x.fim, informal: x.informal === true }; }),
         experienciaTotalMeses: xs.reduce(function (s, x) { return s + R.meses(x.inicio, x.fim, agora()); }, 0),
         escolaridade: p.escolaridade, turnos: p.turnos.slice(), cnh: p.cnh.slice(), modalidades: p.modalidades.slice(),
         pretensaoCentavos: p.pretensaoCentavos, cursos: p.cursos.slice(), selos: selos(uid), temReferencia: temReferencia(uid, empId || null)
@@ -2473,7 +2473,7 @@
 
     H.vagas_exportar_meus_dados = function () {
       var c = contaAtual(null);
-      if (!c.ok) return c;
+      if (!c.ok && !c.suspensa) return c;   // conta suspensa também baixa os próprios dados (LGPD, art. 18), igual ao banco
       var uid = st.sessao;
       var ct = st.contas[uid];
       return ok({ geradoEm: iso(agora()),

@@ -1087,5 +1087,72 @@ begin
   end loop;
 end $$;
 
+-- Cartão cego: IGUAL ao da 20261022120000, com "prefiro não dizer" (informal null) saindo como false no cartão — para a
+-- empresa, só "Não" (informal true) vira "sem carteira"; o currículo da pessoa continua guardando null.
+create or replace function vagas_interno.cartao(p_user uuid, p_empresa uuid)
+returns jsonb language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object(
+    'cidade', jsonb_build_object('slug', c.slug, 'nome', c.nome),
+    'zona', case when z.id is null then null else jsonb_build_object('slug', z.slug, 'nome', z.nome) end,
+    'cargos', to_jsonb(p.cargos),
+    'experiencias', coalesce((select jsonb_agg(jsonb_build_object('funcao', x.funcao, 'meses', vagas_interno.meses(x.inicio, x.fim),
+        'atual', x.fim is null, 'informal', coalesce(x.informal, false)) order by x.ordem, x.inicio desc)
+      from public.vagas_experiencias x where x.user_id = p.user_id), '[]'::jsonb),
+    'experienciaTotalMeses', coalesce((select sum(vagas_interno.meses(x.inicio, x.fim))::int
+      from public.vagas_experiencias x where x.user_id = p.user_id), 0),
+    'escolaridade', p.escolaridade, 'turnos', to_jsonb(p.turnos), 'cnh', to_jsonb(p.cnh), 'modalidades', to_jsonb(p.modalidades),
+    'pretensaoCentavos', p.pretensao_centavos, 'cursos', to_jsonb(p.cursos), 'selos', vagas_interno.selos(p.user_id),
+    'temReferencia', vagas_interno.tem_referencia(p.user_id, p_empresa))
+  from public.vagas_pessoas p
+  join public.vagas_cidades c on c.id = p.cidade_id
+  left join public.vagas_zonas z on z.id = p.zona_id
+  where p.user_id = p_user;
+$$;
+
+
+-- Baixar meus dados: IGUAL ao da 20261022120000, mas a conta SUSPENSA também baixa os próprios dados (LGPD, art. 18: acesso
+-- vale mesmo com a conta suspensa; a tela da conta suspensa oferece "Baixar meus dados" e "Excluir a conta").
+create or replace function public.vagas_exportar_meus_dados()
+returns json language plpgsql volatile security definer set search_path = '' as $$
+declare
+  v_conta jsonb := vagas_interno.conta_atual(null);
+  v_uid uuid := auth.uid();
+  c public.vagas_contas%rowtype;
+begin
+  if not (v_conta ->> 'ok')::boolean and not coalesce((v_conta ->> 'suspensa')::boolean, false) then return v_conta::json; end if;
+  select * into c from public.vagas_contas where user_id = v_uid;
+  return vagas_interno.ok(jsonb_build_object('geradoEm', disc_interno.iso(now()),
+    'conta', jsonb_build_object('tipo', c.tipo, 'status', c.status, 'email', (select u.email from auth.users u where u.id = v_uid),
+      'criadoEm', disc_interno.iso(c.criado_em), 'confirmadaEm', disc_interno.iso(c.confirmada_em),
+      'termosVersao', c.termos_versao, 'termosAceitosEm', disc_interno.iso(c.termos_aceitos_em)),
+    'consentimentos', coalesce((select jsonb_agg(jsonb_build_object('tipo', x.tipo, 'versao', x.versao, 'aceito', x.aceito,
+        'ate', disc_interno.iso(x.ate), 'em', disc_interno.iso(x.em)) order by x.em) from public.vagas_consentimentos x where x.user_id = v_uid), '[]'::jsonb),
+    'pessoa', vagas_interno.pessoa_json(v_uid),
+    'testes', vagas_interno.testes_da_pessoa(v_uid),
+    'foto', case when vagas_interno.tem_foto(v_uid) then 'Você tem uma foto guardada (só as empresas com Combinou a veem). Baixe pelo seu perfil.' else '' end,
+    'candidaturas', coalesce((select jsonb_agg(vagas_interno.candidatura_pessoa(k) order by k.criado_em) from public.vagas_candidaturas k
+                               where k.pessoa_id = v_uid), '[]'::jsonb),
+    'pulos', coalesce((select jsonb_agg(jsonb_build_object('anuncio', jsonb_build_object('codigo', a.codigo, 'titulo', a.titulo), 'em', disc_interno.iso(p.em))
+                         order by p.em) from public.vagas_pulos p join public.vagas_anuncios a on a.id = p.anuncio_id where p.pessoa_id = v_uid), '[]'::jsonb),
+    'denunciasFeitas', coalesce((select jsonb_agg(jsonb_build_object('alvo', x.alvo, 'motivo', x.motivo, 'detalhe', x.detalhe, 'status', x.status,
+                                   'em', disc_interno.iso(x.criado_em)) order by x.criado_em) from public.vagas_denuncias x where x.autor = v_uid), '[]'::jsonb),
+    'mensagensEnviadas', coalesce((select jsonb_agg(jsonb_build_object('em', disc_interno.iso(m.criado_em), 'texto', m.texto) order by m.criado_em)
+                                     from public.vagas_mensagens m where m.autor_user = v_uid), '[]'::jsonb),
+    'acessosAoContato', coalesce((select jsonb_agg(jsonb_build_object('empresa', l.empresa_nome, 'anuncio', l.anuncio_titulo, 'em', disc_interno.iso(l.em))
+                                    order by l.em) from public.vagas_acessos_contato l where l.pessoa_id = v_uid), '[]'::jsonb),
+    'empresas', coalesce((select jsonb_agg(vagas_interno.empresa_json(e) || jsonb_build_object('papel', m.papel))
+                            from public.vagas_empresa_membros m join public.vagas_empresas e on e.id = m.empresa_id where m.user_id = v_uid), '[]'::jsonb),
+    'operador', coalesce((select jsonb_agg(jsonb_build_object('cidade', x.slug, 'papel', o.papel, 'ativo', o.ativo))
+                            from public.vagas_operadores o join public.vagas_cidades x on x.id = o.cidade_id where o.user_id = v_uid), '[]'::jsonb),
+    'referenciasRecebidas', coalesce((select jsonb_agg(vagas_interno.referencia_json(r, true) || jsonb_build_object('status', r.status,
+        'historico', (select jsonb_agg(jsonb_build_object('acao', h.acao, 'por', h.por, 'em', disc_interno.iso(h.em)) order by h.em)
+                        from public.vagas_referencia_historico h where h.referencia_id = r.id)) order by r.criado_em)
+      from public.vagas_referencias r where r.pessoa_id = v_uid), '[]'::jsonb),
+    'pedidosDeReferencia', coalesce((select jsonb_agg(jsonb_build_object('empresaNome', x.empresa_nome, 'status', x.status,
+        'criadoEm', disc_interno.iso(x.criado_em)) order by x.criado_em) from public.vagas_referencia_convites x where x.pessoa_id = v_uid), '[]'::jsonb)));
+end;
+$$;
+
+
 -- O PostgREST relê o esquema.
 notify pgrst, 'reload schema';
