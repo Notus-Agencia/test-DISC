@@ -111,7 +111,8 @@ O desenho das telas está em `docs/VAGAS-TELAS.md`; os textos longos (termos, pr
   (ainda sem bairros), `zona-rural` "Zona rural e lago" (Zona rural, Geriaçu, Beira do Lago de Serra da Mesa). A equipe abre
   pelo painel (`admCidadeSalvar({slug:'uruacu-go', status:'ativa'})`). A semente fictícia da fundação (20261022: Boa Vista,
   Mucajaí, Cantá, Rorainópolis) passa a `rascunho` UMA vez (marca `piloto_definido` em `vagas_moderacao`; nada é apagado e
-  rodar de novo não desfaz o que o painel mudou). Os exemplos JSON abaixo usam a praça piloto.
+  rodar de novo não desfaz o que o painel mudou). Rodar a semente de novo só acrescenta zona nova: zona que já existe fica como
+  o painel deixou. Os exemplos JSON abaixo usam a praça piloto.
 - **Conta** `pendente` (criada, e-mail não confirmado) → `ativa` (no 1º uso depois de confirmar) | `suspensa`.
   Guarda `termos_versao` + `termos_aceitos_em` (histórico em `vagas_consentimentos`). **O consentimento só é gravado quando a
   conta passa de pendente a ativa (o clique no link)**: antes disso só a versão fica anotada, sem data e sem linha de
@@ -325,6 +326,7 @@ da decisão. Até lá, tudo fica enquanto a conta existir.
 | Lista de espera (`vagas_lista_espera`) | até a cidade abrir + 90 dias, ou a pedido (`vagas_lista_espera_sair`) | RPC pública + job |
 | WhatsApp da lista de espera (opcional) | o mesmo da linha; sai antes se a pessoa pedir (sair pelo e-mail apaga a linha toda; sair pelo WhatsApp apaga só o número). Consentimento implícito: o campo diz para que serve ("só para avisar quando abrir") e `whatsapp_em` guarda quando foi dado | RPC pública + job; operação e equipe veem só contagens |
 | Convites de equipe (`vagas_equipe_convites`) | aberto: 72 h; encerrado ou vencido: apagado depois de 30 dias | a própria `vagas_conta_convite_equipe` limpa a cada convite novo; cascata da empresa |
+| Conta criada pelo convite de equipe e nunca confirmada (sem pedido da própria pessoa) | apagada 30 dias depois de o último convite para aquele e-mail vencer (33 dias da criação, no mínimo); só conta pendente, sem vínculo nenhum | `vagas_interno.contas_convite_limpar()`, a cada convite novo e agendável (`pg_cron`) |
 | Referências profissionais | enquanto a conta da pessoa existir (ela remove quando quiser) | cascata / `vagas_referencia_responder('remover')` |
 | Foto (Storage) | enquanto a conta existir | **só pela ação `excluir` da Function** (apaga o arquivo antes da conta) |
 | Contadores (`vagas_limites`, `vagas_anuncio_vistas`) | 8 dias / só totais por dia | automático |
@@ -405,7 +407,8 @@ encerrada.` (`naoEncontrada`).
 `{"ok":true,"cidade":"uruacu-go","interessados":10}` (repetir o e-mail não duplica; `interessados` aproximado como em
 `vagas_cidades_publicas` — a resposta não revela se o e-mail já estava na lista, nem se veio WhatsApp).
 `whatsapp` (20261024) é OPCIONAL: celular com DDD (`(62) 98888-1111`, `62988881111` ou `5562988881111`; guardado como
-`5562988881111`); veio → substitui o da linha; não veio → o que estava fica. A tela explica no campo para que serve
+`5562988881111`). Ninguém prova ser dono do e-mail, então o PRIMEIRO número gravado para aquele e-mail fica: um número
+diferente depois não troca (a resposta é a mesma); quem quiser trocar sai da lista e entra de novo. A tela explica no campo para que serve
 ("só para avisar quando abrir"). Validação igual na tela: `VAGAS_REGRAS.lerListaEspera(d)`.
 Erros: `Cidade não encontrada.` · `Esta cidade já está aberta: faça o seu cadastro.` (`ativa`) · `E-mail inválido.` ·
 `WhatsApp inválido. Use DDD + número de celular, só os números (11 dígitos).` ·
@@ -686,6 +689,9 @@ contratada depois do Combinou.`
 
 Quem é **dono(a)** convida por e-mail (papel `recrutador`), vê a equipe, cancela convite e remove membro; nunca a última
 pessoa dona. Recrutador(a) vê e usa a empresa (vagas, cartões, conversas), mas não vê nem muda a equipe; pode sair sozinho(a).
+Só **empresa verificada** (`ativa`, CNPJ conferido pela operação) convida: o convite sai por e-mail com o domínio da
+plataforma, e empresa em análise não manda e-mail a ninguém (revisão de segurança, B1). O nome de quem convida só entra no
+e-mail se passar no mesmo filtro de contato e link dos outros textos; se não passar, o e-mail cita só a empresa.
 O convite (`convidarEquipe`, ação `convite_equipe` da `vagas-conta`, §9) é um token de 64 algarismos hexadecimais, de uso
 único, que vale 72 h, só para a conta com AQUELE e-mail, confirmada, e só vira membro depois do aceite. No banco fica só o
 sha256 do token. Limites: 10 convites por empresa por dia, 3 por dia para o mesmo e-mail, 30 por hora por origem; até 20
@@ -701,7 +707,7 @@ Só dono(a). Membros ativos (donos primeiro) e convites (abertos + os encerrados
  "membros":[{"userId":"…","email":"dona@exemplo.com","nome":"Maria Souza","papel":"dono","desde":"…","eu":true,"podeRemover":false},
             {"userId":"…","email":"rita@exemplo.com","nome":"Rita Moraes","papel":"recrutador","desde":"…","eu":false,"podeRemover":true}],
  "convites":[{"id":"…","email":"nova@exemplo.com","papel":"recrutador","status":"pendente","criadoEm":"…","expiraEm":"…"}],
- "limites":{"convitesPorDia":10,"convitesHoje":1,"membrosMax":20,"convitesAbertosMax":20,"validadeHoras":72}}
+ "limites":{"convitesPorDia":10,"convitesHoje":1,"membrosMax":20,"convitesAbertosMax":20,"validadeHoras":72,"podeConvidar":true}}
 ```
 `podeRemover:false` só para a única pessoa dona. O token nunca volta.
 
@@ -713,6 +719,15 @@ Erros: `Convite não encontrado.` · `Este convite já foi aceito. Para tirar o 
 Dono(a) remove qualquer membro; qualquer membro pode sair (`p_membro` = o próprio id). Os convites abertos de quem sai são
 cancelados. `{"ok":true,"removido":true,"saiu":false}` (`saiu:true` quando foi a própria pessoa).
 Erros: `Esta pessoa não está na equipe.` · `A empresa precisa ter pelo menos uma pessoa como dona. Esta pessoa não pode sair da equipe.`
+
+#### `vagas_equipe_tornar_dono(p_empresa, p_membro)` — `VAGAS_API.tornarDono(empresaId, userId)`
+Só dono(a): torna outra pessoa da equipe dona também (as duas ficam donas; depois uma pode sair ou excluir a conta).
+`{"ok":true,"membro":{"userId":"…","papel":"dono"},"duplicado":false}` (já era: `duplicado:true`). Registro `equipe_tornar_dono`.
+Erros: `Só quem é dono(a) da conta da empresa pode ver e mudar a equipe.` · `Esta pessoa não está na equipe.` · `Esta empresa
+está suspensa. Fale com a Gestão sem Caos.` (`suspensa`).
+**A empresa nunca fica sem dona** (revisão de segurança, I2): a última pessoa dona de uma empresa que tem equipe não exclui a
+conta (§9, `excluir`) nem sai da equipe; e, se a conta dela sumir por fora da Function (painel do Supabase), um gatilho faz a
+pessoa mais antiga da equipe virar dona, com registro `dono_automatico` (papel `sistema`).
 
 #### `vagas_equipe_convite(p_token)` — `VAGAS_API.conviteEquipe(token)`
 A tela de aceite (logada com o e-mail convidado) mostra de quem é o convite ANTES do aceite:
@@ -825,6 +840,7 @@ Filtro comum `{cidade?}` (slug, dentro das cidades que a pessoa opera). Erros co
 | `vagas_op_anuncio_decidir(p_anuncio, p_acao, p_motivo)` (`opAnuncioDecidir`) | `'publicar'|'devolver'|'remover'` (motivo = chave de `conteudo/vagas-textos/moderacao.json`; `devolver`: de `em_revisao`/`suspenso` volta a `rascunho` com `statusMotivo`, a empresa corrige e publica de novo) | `{anuncio}` · erros `Vaga não encontrada.` · `Esta vaga não está esperando a moderação.` · `Aprove a empresa antes de publicar a vaga.` · `A data da diária já passou.` · `Informe o motivo.` · `Ação inválida.` (publicar uma suspensa fecha as denúncias abertas como improcedentes) |
 | `vagas_op_denuncias(p_filtro)` (`opDenuncias`) | `{cidade?, status?[]}` (padrão `aberta`) | `{denuncias:[{id, alvo, motivo, detalhe, status, contaNoLimite, criadoEm, decisaoMotivo, decididaEm, anuncio:{…empresa}|null, mensagem:{texto, autor}|null, referencia:{id, funcao, texto, textoStatus, status (visão da empresa), empresa}|null}]}` (nunca quem denunciou) |
 | `vagas_op_denuncia_decidir(p_denuncia, p_dados)` (`opDenunciaDecidir`) | `{decisao:'procedente'|'improcedente', motivo, removerAnuncio?, suspenderEmpresa?, suspenderAutor?, removerReferencia?}` | `{denuncia:{id, status, decisaoMotivo}}` · erros `Denúncia não encontrada.` · `Decisão inválida.` · `Informe o motivo.` · `Sem permissão.` (moderador não suspende) |
+| `vagas_op_empresa_dono(p_empresa, p_email, p_motivo)` (`opEmpresaDono`; revisão de segurança, I2) | e-mail de login de quem JÁ está na equipe; motivo obrigatório | `{empresa:{id}, membro:{papel:'dono'}}` · registro `empresa_dono` com o motivo · operador(a) só em empresa SEM dona ativa (`A empresa já tem uma pessoa dona. Para trocar, fale com a equipe da Gestão sem Caos.`); a equipe em qualquer uma · `Sem permissão.` (moderador ou outra cidade) · `Empresa não encontrada.` · `Informe o motivo.` · `E-mail inválido.` · `Esta pessoa não está na equipe da empresa.` |
 | `vagas_op_moderacao(p_filtro)` (`opModeracao`) | `{cidade?, limite? ≤200}` | `{registros:[{id, em, papel, acao, alvo, alvoId, motivo, dados, cidade}]}` |
 | `vagas_op_referencias(p_filtro)` (`opReferencias`) | `{cidade?, textoStatus?[]}` (padrão `pendente`) | `{referencias:[{id, empresa:{id, nomeFantasia}, funcao, vinculo, texto, textoStatus, textoMotivo, status, criadoEm}]}` (nada da pessoa) |
 | `vagas_op_referencia_decidir(p_referencia, p_acao, p_motivo)` (`opReferenciaDecidir`) | `'aprovar_texto'|'recusar_texto'|'remover'` | `{referencia:{id, status, textoStatus}}` · erros `Referência não encontrada.` · `Este texto não está esperando a moderação.` · `Informe o motivo.` · `Ação inválida.` |
@@ -853,6 +869,12 @@ menor é melhor — `ok` ≤ alvo, `atencao` ≤ 1,3 × alvo, `alerta`; sem valo
    "partes":[{"descricao":"Vagas no ar: 15 ou mais","ok":true},{"descricao":"Contratações: 3 ou mais","ok":false}]},
   {"chave":"pessoa_nao_paga","aplica":true,"atingido":true,"partes":[{"descricao":"Quem procura emprego não paga nada: não existe produto pago para a pessoa","ok":true,"fixa":true}], "…":"…"}]}
 ```
+**Números pequenos protegidos** (revisão de segurança, I1): em cidade de porte `pequena` (ou sem porte), quem operou o mutirão
+sabe quem fez a prova e quando; um contador de pessoas que sobe (ou não) em tempo real revelaria o resultado de alguém. Por isso
+as contagens de PESSOAS — com selo (total e `porTeste`) e contratações (total e `mes`) — são calculadas até o fim de ontem no
+fuso da cidade (`ateOntem:true`) e, abaixo de 3, saem `null` com `poucos:true` (a tela mostra "menos de 3"). Gatilho com número
+protegido: a parte só vem `false` quando o alvo é 3 ou mais (nada além do que "menos de 3" já diz). Cidade `grande`: na hora e sem
+esconder.
 Detalhes por indicador: `vagas_ativas` {porTeste, porArea}; `pessoas_com_selo_por_funcao` {porTeste, alvoPorTeste,
 alvoLancamentoPorTeste}; `vagas_3_interessados_72h` {base, comTres, janelaHoras} (janela do arquivo pelo porte: 7 dias na cidade
 pequena); `vagas_combinou_7d` {base, comCombinou}; `primeira_resposta_empresa_dias` (mediana em dias; candidatura sem resposta
@@ -891,9 +913,13 @@ cidadeNome, convidadoPor}`, com `destino` = `nova` (e-mail sem conta: a Function
 `empresa_pendente` | `empresa` | `outro_tipo` (conta de pessoa/operação: e-mail que explica, sem convite que funcione) |
 `nenhum` (conta só do painel DISC ou suspensa: nada é enviado). Erros: os de conta · `Empresa não encontrada.` · `Só quem é
 dono(a) da conta da empresa pode convidar pessoas para a equipe.` · `Esta empresa está suspensa. Fale com a Gestão sem Caos.`
-(`suspensa`) · `E-mail inválido.` · `Esta pessoa já faz parte da equipe.` · `Muitos convites hoje. Tente de novo amanhã.`
+(`suspensa`) · `Só empresa verificada pela Gestão sem Caos pode convidar pessoas para a equipe.` · `E-mail inválido.` · `Esta pessoa já faz parte da equipe.` · `Muitos convites hoje. Tente de novo amanhã.`
 (`bloqueado`) · `A equipe já tem 20 pessoas. Remova alguém antes de convidar outra.` · `Sua empresa já tem 20 convites
-abertos. Cancele algum antes de convidar outra pessoa.` · `Sem permissão.`
+abertos. Cancele algum antes de convidar outra pessoa.` · `Sem permissão.` (`convidadoPor` vem `''` quando o nome do cadastro
+não passa no filtro de contato e link.)
+`vagas_conta_exclusao_conferir(p_user)` (revisão de segurança, I2; ação `excluir`): `{ok:true}` ou `Você é a única pessoa dona
+de uma empresa que tem equipe. Antes de excluir a conta, torne outra pessoa da equipe dona (aba Equipe da empresa) ou remova a
+equipe.`
 
 ## 9. Edge Function `vagas-conta`
 
@@ -909,7 +935,7 @@ operador pela aba "Vagas") e localhost. CORS não é a proteção: as ações co
 | `esqueci` (`esqueciSenha(email, captcha?)`) | `{acao:'esqueci', email}` | a mesma resposta neutra (nunca mexe em conta do painel DISC) |
 | `assistido` (`cadastroAssistido({...})`, JWT de operador da cidade ou equipe) | `{email, tipo, cidade, empresaId?, nome?, codigoEvento?}` (`empresaId` só de empresa SEM membro ativo) | `{ok:true, enviado:true, email}` · `Este e-mail já tem conta. A pessoa pode entrar ou usar "Esqueci minha senha".` (`existe`) · `Esta empresa já tem acesso. Peça a quem é dono(a) para convidar pelo painel da empresa.` · `Empresa não encontrada.` |
 | `operador` (`convidarOperador({...})`, JWT da equipe) | `{email, cidade, papel, cidadeNome?}` | `{ok:true, enviado:true, email}` ou `{ok:true, existente:true}` · `Este e-mail já tem outra conta. Use um e-mail só para a operação.` |
-| `excluir` (`excluirConta()`, JWT) | `{confirmar:'EXCLUIR'}` | `{ok:true, excluida:true}` (apaga também a foto) · `Para excluir, digite EXCLUIR.` · `Esta conta também acessa o painel DISC. Fale com a Gestão sem Caos para excluir.` · `Conta não encontrada.` |
+| `excluir` (`excluirConta()`, JWT) | `{confirmar:'EXCLUIR'}` | `{ok:true, excluida:true}` (apaga também a foto) · `Para excluir, digite EXCLUIR.` · `Esta conta também acessa o painel DISC. Fale com a Gestão sem Caos para excluir.` · `Conta não encontrada.` · `Você é a única pessoa dona de uma empresa que tem equipe. Antes de excluir a conta, torne outra pessoa da equipe dona (aba Equipe da empresa) ou remova a equipe.` (nada é apagado) |
 | `foto` (`fotoUrl(candidaturaId?)`, JWT) | `{candidatura?}` | `{ok:true, url:'<URL assinada de 5 min>', expiraEm}` · erros de `vagas_conta_foto` (§8.9) |
 | `convite_equipe` (`convidarEquipe(empresaId, email)`, JWT de quem é dono(a); 20261024) | `{acao:'convite_equipe', empresaId, email}` | sempre a MESMA resposta para qualquer e-mail (tenha conta ou não, de qualquer tipo): `{ok:true, enviado:true, mensagem:'Pronto. Se este e-mail puder entrar na equipe, a pessoa recebe o convite em instantes. O convite vale por 3 dias.', email:'n***@e***.com', convite:{id, email, papel, status:'pendente', criadoEm, expiraEm}}` · erros de `vagas_conta_convite_equipe` (§8.9; só `erro` e as marcas) · `Empresa não encontrada.` (id inválido) |
 
@@ -1041,6 +1067,10 @@ VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
     faz a mesma conta na tela, com a mesma reserva.
   - **Ordem:** rodar a 20261022 ou a 20261023 de novo depois da 20261024 volta as funções redefinidas à versão antiga
     (inclusive `vagas_op_resumo` sem `repassePercentual`); rode a 20261024 em seguida.
+  - **Riscos aceitos (revisão de segurança da onda 2):** I4 — no `convite_equipe` (como no `cadastrar`), quando nenhum e-mail
+    é enviado (conta só do painel DISC ou suspensa) a resposta volta mais rápido; quem medir o tempo pode inferir algo do
+    e-mail. Mesma classe já aceita no cadastro; correção possível depois: enviar fora da resposta (`EdgeRuntime.waitUntil`)
+    ou atraso fixo.
   - **Pedidos da operação ainda abertos:** "reverter um ato" (`vagas_op_reverter`) precisa de regra por ação (o que volta, quem
     pode, se avisa a empresa) decidida com a operação/psicologia antes de existir; textos locais da cidade (WhatsApp da praça,
     endereço do balcão, horário do mutirão) ficam para a fase 2 (coluna/tabela nova).

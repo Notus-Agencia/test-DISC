@@ -370,7 +370,11 @@ nada do DISC muda). Contrato técnico: [VAGAS-SPEC.md](VAGAS-SPEC.md); hospedage
    foi carregado). **Para abrir Uruaçu:** painel (grupo "Vagas") ou `admCidadeSalvar({slug:'uruacu-go', status:'ativa'})`
    com o login da equipe — rodar a migração de novo não fecha a cidade. Se alguém rodar a 20261022 ou a 20261023 de novo
    depois, rode a 20261024120000 em seguida (ela recria as funções que aquelas voltariam à versão antiga). Depois de aplicar,
-   **publique de novo a função `vagas-conta`** (item 2): o convite de equipe é a ação nova `convite_equipe`.
+   **publique de novo a função `vagas-conta`** (item 2): o convite de equipe é a ação nova `convite_equipe`, e o `excluir`
+   passa a conferir a última pessoa dona. Limpeza das contas criadas por convite e nunca confirmadas: roda a cada convite novo;
+   para rodar também sem convites, agende no `pg_cron` (Database → Cron) `select vagas_interno.contas_convite_limpar();`
+   uma vez por dia. Confira uma vez no SQL Editor que ela roda sem erro de permissão no `auth.users` (sem permissão ela só
+   devolve 0 e o convite continua funcionando).
 2. **Função `vagas-conta`:** crie como no passo 8 (arquivo `dist/funcoes/vagas-conta/index.ts`) com **Verify JWT
    desligado** (o cadastro é feito por quem ainda não tem login; as ações que exigem login conferem o token sozinhas).
 3. **Segredos** (passo 9): `RESEND_API_KEY` (o mesmo do DISC), `VAGAS_SITE_URL`, e os opcionais `VAGAS_EMAIL_REMETENTE` e
