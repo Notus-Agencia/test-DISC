@@ -283,6 +283,7 @@ export function paginaDocumento({ titulo, descricao, md }) {
     (minuta ? '  <meta name="robots" content="noindex">\n' : '') +
     '  <meta name="color-scheme" content="light">\n  <meta name="theme-color" content="#13283f">\n' +
     '  <script src="js/endereco.js"></script>\n' +
+    '  <script src="js/beta.js"></script>\n  <link rel="stylesheet" href="assets/vagas-beta.css">\n' +
     '  <link rel="icon" type="image/svg+xml" href="comum/marca/gsc-favicon.svg">\n' +
     '  <link rel="icon" type="image/png" sizes="32x32" href="comum/marca/gsc-favicon-32.png">\n' +
     '  <link rel="preload" href="comum/fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>\n' +

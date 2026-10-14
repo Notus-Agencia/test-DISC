@@ -196,7 +196,7 @@ test('sem internet: faixa e a última lista guardada no aparelho, com "Tentar de
   await expect(page.locator('#vg-lista .vg-vaga').first()).toBeVisible();
   // Prévia: uma faixa no alto da tela, uma só.
   await expect(page.locator('#vg-faixa-previa')).toHaveCount(1);
-  await expect(page.locator('#vg-faixa-previa')).toHaveText('Prévia: dados de exemplo, nada aqui é real. Não use sua senha de verdade.');
+  await expect(page.locator('#vg-faixa-previa')).toHaveText('Versão beta: dados de exemplo, nada aqui é real. Não use sua senha de verdade.');
 });
 
 test('vaga: dados, aviso anti-golpe, denúncia anônima com motivo da lista; "Quero" sem conta guarda a intenção e volta com a candidatura', async ({ page }) => {

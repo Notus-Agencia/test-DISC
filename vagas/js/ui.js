@@ -213,12 +213,12 @@
     root.addEventListener('online', fn);
     return function () { root.removeEventListener('online', fn); };
   }
-  // Prévia (dados de mentira): uma faixa no alto de toda tela; a dos testes (#vg-faixa-demo) entra dentro dela.
+  // Prévia (dados de mentira), mostrada como "Versão beta": uma faixa no alto de toda tela; a dos testes (#vg-faixa-demo) entra dentro dela.
   function faixaPrevia() {
     var A = root.VAGAS_API;
     if (!doc || !doc.body || !A || A.modo !== 'previa' || porId('vg-faixa-previa')) return null;
     var pular = doc.querySelector('.pular');
-    return doc.body.insertBefore(el('div', { class: 'faixa-demo', id: 'vg-faixa-previa', role: 'note' }, [el('strong', {}, 'Prévia:'),
+    return doc.body.insertBefore(el('div', { class: 'faixa-demo', id: 'vg-faixa-previa', role: 'note' }, [el('strong', {}, 'Versão beta:'),
       ' dados de exemplo, nada aqui é real. Não use sua senha de verdade.']), pular ? pular.nextSibling : doc.body.firstChild);
   }
 

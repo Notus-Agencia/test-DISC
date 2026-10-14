@@ -388,7 +388,7 @@ test('páginas: um h1, botão de ação no HTML (sem esperar o banco), um vidro,
     for (const id of ['vg-chamada', 'vg-chamada-corpo', 'vg-div-titulo', 'conteudo', 'vg-div-sobre', 'vg-div-rodape']) assert.match(html, new RegExp('id="' + id + '"'), pagina + ': #' + id);
     assert.equal((html.match(/caixa--vidro/g) || []).length, 1, pagina + ': um vidro por página');
     const scripts = [...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]);
-    assert.deepEqual(scripts, ['js/endereco.js', 'js/config.js', 'js/api.js', 'js/ui.js', 'js/divulgacao.js'], pagina);
+    assert.deepEqual(scripts, ['js/endereco.js', 'js/beta.js', 'js/config.js', 'js/api.js', 'js/ui.js', 'js/divulgacao.js'], pagina);
     assert.doesNotMatch(html, /\[NÚMERO DA GESTÃO SEM CAOS\]|\[RAZÃO SOCIAL/, pagina + ': marcadores só pelo script, só na prévia');
   }
   const p = ler(PAGINAS.pessoa);

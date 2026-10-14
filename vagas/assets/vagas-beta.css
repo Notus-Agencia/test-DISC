@@ -1,0 +1,15 @@
+/* Gestão sem Caos Vagas — porta da versão beta (js/beta.js). Cores chapadas, sem degradê. */
+html.beta-trancado body > :not(.vg-beta) { display: none !important; }
+.vg-beta { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; background: var(--fundo); box-sizing: border-box; }
+.vg-beta__cartao { width: 100%; max-width: 420px; background: var(--branco); border-radius: 24px; padding: 32px 24px; box-sizing: border-box; }
+.vg-beta__logo { display: block; width: 247px; max-width: 100%; height: auto; margin-bottom: 28px; }
+.vg-beta__selo { display: inline-block; margin: 0 0 12px; padding: 4px 12px; border-radius: 999px; background: var(--tinta); color: var(--branco); font-size: 13px; font-weight: 700; letter-spacing: .02em; }
+.vg-beta__titulo { margin: 0 0 8px; color: var(--tinta); font-size: 26px; line-height: 1.15; letter-spacing: -.02em; }
+.vg-beta__texto { margin: 0 0 24px; color: var(--ardosia); font-size: 15px; line-height: 1.5; }
+.vg-beta__form { display: flex; flex-direction: column; gap: 8px; }
+.vg-beta__rotulo { color: var(--tinta); font-size: 14px; font-weight: 700; }
+.vg-beta__campo { width: 100%; box-sizing: border-box; min-height: 48px; padding: 12px 16px; border: 1px solid var(--linha); border-radius: 14px; background: var(--branco); color: var(--tinta); font: inherit; font-size: 16px; }
+.vg-beta__campo:focus { outline: 3px solid rgba(243,68,5,.35); outline-offset: 1px; border-color: var(--notus); }
+.vg-beta__erro { min-height: 1.4em; margin: 0; color: var(--notus-forte); font-size: 14px; }
+.vg-beta__erro:empty { min-height: 0; }
+.vg-beta__botao { width: 100%; min-height: 48px; margin-top: 8px; }

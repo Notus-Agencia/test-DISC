@@ -95,7 +95,7 @@ test('faixa "Sem internet": sai quando o servidor responde de novo (VAGAS_API.ao
 test('G2: faixa da prévia em toda tela (uma só; a dos testes entra dentro dela) e aviso de selo de demonstração', () => {
   const ui = ler('vagas/js/ui.js');
   assert.match(ui, /function faixaPrevia\(\) \{[^]*A\.modo !== 'previa' \|\| porId\('vg-faixa-previa'\)\) return null;[^]*class: 'faixa-demo', id: 'vg-faixa-previa', role: 'note'/);
-  assert.match(ui, /'Prévia:'\),\s+' dados de exemplo, nada aqui é real\. Não use sua senha de verdade\.'/);
+  assert.match(ui, /'Versão beta:'\),\s+' dados de exemplo, nada aqui é real\. Não use sua senha de verdade\.'/);
   assert.match(ui, /\n  faixaPrevia\(\);\n\}\)\(/, 'chamada ao carregar o ui.js, em toda página');
   for (const p of fs.readdirSync(path.join(RAIZ, 'vagas')).filter((f) => f.endsWith('.html') && !/^(termos|privacidade)\.html$/.test(f))) {
     const html = ler('vagas/' + p);

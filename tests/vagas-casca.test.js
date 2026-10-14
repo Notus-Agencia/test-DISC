@@ -195,7 +195,7 @@ test('termos.html e privacidade.html gerados: CSP, marca, sem script além do en
     const html = fs.readFileSync(path.join(TELA.VAGAS, rel), 'utf8');
     assert.match(html, /Minuta, em revisão jurídica/);
     assert.match(html, /alt="Gestão sem Caos"/);
-    assert.deepEqual([...html.matchAll(/<script[^>]*src="([^"]+)"/g)].map((m) => m[1]), ['js/endereco.js']);
+    assert.deepEqual([...html.matchAll(/<script[^>]*src="([^"]+)"/g)].map((m) => m[1]), ['js/endereco.js', 'js/beta.js']);
   }
 });
 

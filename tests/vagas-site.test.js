@@ -44,8 +44,13 @@ test('index.html: CSP fechada, sem script inline, redirecionamento antes de tudo
   assert.match(html, /<meta name="robots" content="noindex">/);
 });
 
-test('endereço: disc.gestaosemcaos.com.br/vagas/… vai para vagas.gestaosemcaos.com.br com caminho, parâmetros e âncora', () => {
-  const de = (hostname, pathname, search, hash) => END.destino({ hostname, pathname, search: search || '', hash: hash || '' });
+test('endereço: enquanto o domínio próprio não abre, a beta fica em disc.gestaosemcaos.com.br/vagas/ (não redireciona)', () => {
+  assert.equal(END.LIGADO, false);
+  assert.equal(END.destino({ hostname: 'disc.gestaosemcaos.com.br', pathname: '/vagas/', search: '', hash: '' }), '');
+});
+
+test('endereço (ligado): disc.gestaosemcaos.com.br/vagas/… vai para vagas.gestaosemcaos.com.br com caminho, parâmetros e âncora', () => {
+  const de = (hostname, pathname, search, hash) => END.destino({ hostname, pathname, search: search || '', hash: hash || '' }, true);
   assert.equal(de('disc.gestaosemcaos.com.br', '/vagas/'), 'https://vagas.gestaosemcaos.com.br/');
   assert.equal(de('disc.gestaosemcaos.com.br', '/vagas'), 'https://vagas.gestaosemcaos.com.br/');
   assert.equal(de('disc.gestaosemcaos.com.br', '/vagas/boa-vista-rr/', '?vaga=K7M2QX', '#topo'),

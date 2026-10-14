@@ -75,7 +75,7 @@ test('páginas públicas: CSP, scripts em ordem, nada inline, sem innerHTML, sem
   for (const s of ['js/inicio.js', 'js/cidade.js', 'js/cidade-filtros.js', 'js/vaga.js']) assert.deepEqual(TELA.conferirScript(s), [], s);
   const lista = fs.readFileSync(path.join(TELA.VAGAS, 'cidade.html'), 'utf8');
   const scripts = [...lista.matchAll(/<script[^>]*src="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(scripts, ['js/endereco.js', 'js/config.js', 'js/regras.js', 'js/textos.js', 'js/api.js', 'js/ui.js', 'js/pecas.js', 'js/cidade.js'],
+  assert.deepEqual(scripts, ['js/endereco.js', 'js/beta.js', 'js/config.js', 'js/regras.js', 'js/textos.js', 'js/api.js', 'js/ui.js', 'js/pecas.js', 'js/cidade.js'],
     'a lista carrega só o mínimo (a folha de filtros vem sob demanda)');
 });
 
