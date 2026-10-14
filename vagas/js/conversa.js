@@ -22,6 +22,7 @@
  *     intervaloMs: 20000, api: VAGAS_API, h1: true (nome do cabeçalho é o h1 da tela)
  *   });
  *   c.atualizar() -> Promise · c.parar() (pare ao sair da rota) · c.estado() · c.resposta() · c.enviar(texto) -> Promise
+ *   c.redesenhar() roda de novo cabecalho/antes/acoes com a última resposta (ex.: o nome e a foto chegaram depois, por contatoPessoa)
  *   ctx (dos ganchos) = {lado, estado, resposta, atualizar}
  *
  *   estado = {modo, podeEscrever, faixa, status}; modo: 'sem_conversa' (a empresa ainda não escreveu), 'convite' (status
@@ -280,6 +281,7 @@
       },
       estado: function () { return est; },
       resposta: function () { return resp; },
+      redesenhar: function () { if (resp && vivo) desenharSituacao(); },
       pronto: primeira
     };
   }
