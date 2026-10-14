@@ -33,6 +33,7 @@
 .vg-adm-tabela .num { text-align: right; font-variant-numeric: tabular-nums; }
 .vg-adm-tabela .nao-quebra { white-space: nowrap; }
 .vg-adm-inativo td { color: var(--suave); }
+.vg-adm-situacao { display: block; margin-top: 2px; }
 
 /* Moderação geral: pendências de todas as cidades no topo */
 .vg-adm-pendencias { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }

@@ -175,6 +175,24 @@ test.describe('Operação da praça (prévia)', () => {
     expect(href.startsWith('https://wa.me/?text=')).toBe(true);
     expect(decodeURIComponent(href.split('text=')[1])).toContain('Oi, Carla! Começamos o seu cadastro no Vagas sem Caos.');
     await expect(page.locator('#vg-op-ass-email')).toHaveValue('');
+    // Pendentes: a lista traz o e-mail MASCARADO (vagas_op_assistidos); reenviar pede o e-mail completo.
+    const pend = page.locator('#vg-op-pendentes');
+    const mascaras = await page.evaluate(() => window.VAGAS_API.opAssistidos({}).then((r) => r.contas.map((x) => x.email)));
+    expect(mascaras.length).toBeGreaterThan(0);
+    expect(mascaras.join(' ')).not.toContain('carla.exemplo@exemplo.com');
+    await expect(pend.locator('#vg-op-pendentes-contas > li')).toHaveCount(mascaras.length);
+    await expect(pend.locator('.caixa__titulo')).toHaveText('Pendentes de confirmação (' + mascaras.length + ')');
+    await expect(pend.locator('#vg-op-pendentes-contas > li').first()).toContainText(mascaras[0]);
+    await expect(pend).not.toContainText('carla.exemplo@exemplo.com');
+    await pend.locator('#vg-op-pendentes-contas > li').first().locator('[data-acao="reenviar"]').click();
+    await expect(page.locator('#vg-op-reenviar-email')).toBeFocused();
+    await expect(page.locator('#vg-op-reenviar-email-ajuda')).toHaveText('Digite o e-mail completo de ' + mascaras[0] + '.');
+    await page.click('#vg-op-reenviar');
+    await expect(page.locator('#vg-op-reenviar-email-erro')).toHaveText('E-mail inválido.');
+    await page.fill('#vg-op-reenviar-email', 'carla.exemplo@exemplo.com');
+    await page.click('#vg-op-reenviar');
+    await expect(page.locator('#vg-aviso-geral')).toContainText('Se a conta ainda estiver pendente, o link foi enviado de novo.');
+    await expect(page.locator('#vg-op-reenviar-email')).toHaveValue('');
     await page.fill('#vg-op-ass-email', 'carla.exemplo@exemplo.com');
     await page.check('#vg-op-ass-leu');
     await page.click('#vg-op-ass-criar');
@@ -219,19 +237,40 @@ test.describe('Operação da praça (prévia)', () => {
     expect(erros).toEqual([]);
   });
 
-  test('números, repasse e zonas: contagens (ou os 15 indicadores), as duas situações de repasse e criar/editar/desativar zona', async ({ page }) => {
+  test('números, repasse e zonas: os 15 indicadores do banco (alvo e cor do dado), as duas situações de repasse e criar/editar/desativar zona', async ({ page }) => {
     const erros = coletar(page);
     await entrarComo(page, 'operador@previa.com', 'numeros');
     await expect(page.locator('#vg-op-tela h1')).toHaveText('Números da praça');
-    if (await page.evaluate(() => typeof window.VAGAS_API.opIndicadores === 'function')) {
-      await expect(page.locator('#vg-op-numeros [data-indicador]')).toHaveCount(15);
-    } else {
-      await expect(page.locator('#vg-op-numeros [data-contagem]')).toHaveCount(8);
-      await expect(page.locator('#vg-op-numeros-breve')).toContainText('Em breve');
+    const c = await cidadeAtual(page);
+    const r = await page.evaluate((s) => window.VAGAS_API.opIndicadores(s), c.slug);
+    const blocos = page.locator('#vg-op-numeros [data-indicador]');
+    await expect(blocos).toHaveCount(r.indicadores.length);
+    expect(r.indicadores.length).toBe(15);
+    for (const i of r.indicadores) {
+      await expect(page.locator('#vg-op-numeros [data-indicador="' + i.chave + '"]')).toHaveAttribute('data-cor', i.cor || '');
+      await expect(page.locator('#vg-op-numeros [data-indicador="' + i.chave + '"] .vg-numero__rotulo')).toHaveText(i.nome);
     }
+    await expect(page.locator('#vg-op-gatilhos [data-gatilho]')).toHaveCount(r.gatilhos.length);
+    await expect(page.locator('#vg-op-selos tbody tr')).toHaveCount(5);
+    await expect(page.locator('#vg-op-numeros-breve')).toHaveCount(0);
+    // Repasse: o percentual vem de opResumo (linha de quem chama em vagas_operadores). 0 = operação própria.
     await page.click('#vg-op-aba-repasse');
     await expect(page.locator('#vg-op-tela h1')).toHaveText('Repasse do mês');
-    await expect(page.locator('#vg-op-repasse-propria, #vg-op-repasse-gratis')).toHaveCount(1);
+    expect(c.repassePercentual).toBe(0);
+    await expect(page.locator('#vg-op-repasse-propria')).toContainText('Nesta praça não há repasse');
+    // Praça com parceiro: a equipe muda o repasse da conta de operação e ela passa a ver a sua parte.
+    await page.evaluate(async (slug) => {
+      const A = window.VAGAS_API;
+      await A.sair();
+      await A.entrar('admin@previa.com', 'previa123');
+      await A.admOperadorSalvar({ cidade: slug, email: 'operador@previa.com', papel: 'operador', repassePercentual: 30 });
+      await A.sair();
+      await A.entrar('operador@previa.com', 'previa123');
+    }, c.slug);
+    await page.reload();
+    await expect(page.locator('#vg-op-repasse-blocos')).toContainText('percentual do contrato: 30%');
+    await expect(page.locator('#vg-op-repasse-gratis')).toContainText('Grátis no lançamento');
+    await expect(page.locator('#vg-op-repasse-propria')).toHaveCount(0);
     await page.click('#vg-op-aba-zonas');
     const zonas = page.locator('#vg-op-zonas > li');
     await expect(zonas.first()).toBeVisible();

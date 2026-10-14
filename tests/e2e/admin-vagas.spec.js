@@ -41,6 +41,9 @@ test('com ?vagas=1: grupo Vagas entre Empresas e Vendas; cidades e praças com s
   const n = await cartoes.count();
   await expect(page.locator('#vg-adm-cidades > li[data-status="ativa"]').first()).toContainText('Vagas no ar');
   await expect(page.locator('#aba-n-vg-moderacao')).toHaveText(/^\d+$/);
+  // Praça com entorno: a cidade-polo lista as vizinhas e a vizinha diz de quem é entorno (tudo do dado).
+  await expect(page.locator('#vg-adm-cidades > li', { hasText: 'Praça: ' }).first()).toBeVisible();
+  await expect(page.locator('#vg-adm-cidades > li', { hasText: 'Entorno de ' }).first()).toBeVisible();
 
   // Nova cidade: o endereço é sugerido a partir do nome + UF e ela nasce rascunho.
   await page.click('#vg-adm-nova-cidade');
@@ -109,6 +112,9 @@ test('operadores: lista com papel, contrato e repasse; convidar, editar o repass
   const linha = page.locator('#vg-adm-operadores tr[data-operador="nova.operacao@exemplo.com"]');
   await expect(linha).toContainText('Moderação');
   await expect(linha).toContainText('20%');
+  // Conta do convite ainda não confirmada (vagas_adm_operadores.contaStatus = 'pendente').
+  await expect(linha).toHaveAttribute('data-conta', 'pendente');
+  await expect(linha.locator('.vg-adm-situacao')).toHaveText('aguardando confirmar o e-mail do convite');
   await linha.locator('[data-acao="editar"]').click();
   await expect(page.locator('#vg-adm-op-email')).toHaveAttribute('readonly', '');
   await page.fill('#vg-adm-op-repasse', '0');

@@ -104,6 +104,8 @@ test('cidades: situação, linha da praça (tudo do dado), efeito da mudança, m
   assert.equal(V.linhaPraca(cidades[1], cidades, ops), 'Entorno de Polo: aparece em "incluir entorno" · sem operador');
   assert.equal(V.linhaPraca(cidades[2], cidades, ops), 'operada por parceiro');
   assert.equal(V.linhaPraca(cidades[2], cidades, null), '', 'sem a lista de operadores, não diz nada sobre operação');
+  assert.equal(V.linhaPraca(Object.assign({}, cidades[2], { operadoresAtivos: 2 }), cidades, null), '2 pessoas na operação', 'total de vagas_adm_cidades');
+  assert.equal(V.linhaPraca(Object.assign({}, cidades[2], { operadoresAtivos: 0 }), cidades, null), 'sem operador');
   assert.equal(V.efeitoStatus(cidades[0], 'pausada'), 'Pausar Polo esconde 8 vagas e bloqueia cadastros novos; nada é apagado.');
   assert.match(V.efeitoStatus(Object.assign({}, cidades[0], { status: 'pausada' }), 'ativa'), /^Reativar Polo volta a mostrar/);
   assert.equal(V.faltamParaAtivar(cidades[2]), 88);

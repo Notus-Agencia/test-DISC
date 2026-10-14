@@ -92,11 +92,13 @@
     return { chave: x[0], nome: x[1], unidade: x[2], periodo: x[3], direcao: x[4], alvo: x[5], alvoLancamento: x[6], hipotese: x[7] };
   });
   // Os 5 testes de habilidade (vagas/js/regras.js, TESTES_SELO).
-  var TESTES = [['atendimento', 'Atendimento e recepção'], ['vendas', 'Vendas'], ['administrativo', 'Rotinas administrativas'],
-    ['caixa', 'Operação de caixa'], ['portugues', 'Português para o trabalho']];
+  var TESTES = [['atendimento', 'Atendimento e recepção'], ['vendas', 'Vendas no varejo'], ['administrativo', 'Rotina administrativa'],
+    ['caixa', 'Caixa e matemática prática'], ['portugues', 'Português prático']];
 
   var STATUS_CIDADE = { rascunho: 'Rascunho', lista_espera: 'Lista de espera', ativa: 'Ativa', pausada: 'Pausada' };
   var PAPEIS = { operador: 'Operação', moderador: 'Moderação', admin: 'Equipe', sistema: 'Sistema', empresa: 'Empresa' };
+  // vagas_adm_operadores.contaStatus (a conta de operação, não o acesso à cidade): 'ativa' não precisa de rótulo.
+  var SITUACAO_CONTA = { pendente: 'aguardando confirmar o e-mail do convite', suspensa: 'conta suspensa' };
   var ATOS = {
     anuncio_publicar: 'Publicou a vaga', anuncio_devolver: 'Devolveu a vaga com ajuste', anuncio_remover: 'Removeu a vaga',
     anuncio_assistido: 'Publicou vaga assistida', suspender_por_denuncias: 'Tirou a vaga do ar (3 denúncias)',
@@ -167,6 +169,10 @@
       var parceiro = ops.some(function (o) { return Number(o.repassePercentual) > 0; });
       partes.push(parceiro ? 'operada por parceiro' : 'operação própria');
     } else if (operadores) partes.push('sem operador');
+    else if (typeof c.operadoresAtivos === 'number') {
+      // Sem a lista de operadores: o total de vagas_adm_cidades.
+      partes.push(c.operadoresAtivos ? c.operadoresAtivos + (c.operadoresAtivos === 1 ? ' pessoa na operação' : ' pessoas na operação') : 'sem operador');
+    }
     return partes.join(' · ');
   }
   // Mudança de situação: o efeito em uma frase (confirmação na página, VAGAS-TELAS §5).
@@ -438,21 +444,24 @@
           zonas: [['centro', 'Centro', ['Centro', 'Setor Central', 'Vila Santana', 'Loteamento Santana']], ['regiao-norte', 'Região Norte', ['Francisco Martins']],
             ['regiao-sul', 'Região Sul', ['Setor Sul', 'Setor Sul I']], ['regiao-leste', 'Região Leste', []], ['regiao-oeste', 'Região Oeste', []],
             ['zona-rural', 'Zona rural e lago', ['Zona rural', 'Geriaçu', 'Beira do Lago de Serra da Mesa']]] },
-        { id: 'cid-2', slug: 'cidade-exemplo-a-go', nome: 'Cidade Exemplo A', uf: 'GO', ibge: null, fuso: 'America/Sao_Paulo', status: 'lista_espera', porte: 'pequena',
-          praca: null, metaListaEspera: 200, ordem: 2, contagens: contagens([0, 0, 0, 0, 0, 0, 0, 64]), zonas: [] },
-        { id: 'cid-3', slug: 'cidade-exemplo-b-go', nome: 'Cidade Exemplo B', uf: 'GO', ibge: null, fuso: 'America/Sao_Paulo', status: 'rascunho', porte: null,
-          praca: null, metaListaEspera: null, ordem: 3, contagens: contagens([0, 0, 0, 0, 0, 0, 0, 0]), zonas: [] }
+        // Vizinhas SÓ da prévia (como na prévia do site do Vagas): uma no entorno da praça e uma em lista de espera; mais um rascunho fictício.
+        { id: 'cid-2', slug: 'campinorte-go', nome: 'Campinorte', uf: 'GO', ibge: '5204706', fuso: 'America/Sao_Paulo', status: 'ativa', porte: null,
+          praca: 'uruacu-go', metaListaEspera: null, ordem: 2, contagens: contagens([2, 0, 0, 1, 0, 0, 18, 0]), zonas: [['cidade-toda', 'Campinorte (cidade toda)', []]] },
+        { id: 'cid-3', slug: 'niquelandia-go', nome: 'Niquelândia', uf: 'GO', ibge: '5214606', fuso: 'America/Sao_Paulo', status: 'lista_espera', porte: 'pequena',
+          praca: null, metaListaEspera: 200, ordem: 3, contagens: contagens([0, 0, 0, 0, 0, 0, 0, 64]), zonas: [['cidade-toda', 'Niquelândia (cidade toda)', []]] },
+        { id: 'cid-4', slug: 'cidade-exemplo-go', nome: 'Cidade Exemplo', uf: 'GO', ibge: null, fuso: 'America/Sao_Paulo', status: 'rascunho', porte: null,
+          praca: null, metaListaEspera: null, ordem: 4, contagens: contagens([0, 0, 0, 0, 0, 0, 0, 0]), zonas: [] }
       ].map(function (c) {
         c.zonas = c.zonas.map(function (z, i) { return { slug: z[0], nome: z[1], bairros: z[2], ordem: i + 1, ativa: true }; });
         return c;
       }),
       operadores: [
         { email: 'operador@previa.com', cidade: 'uruacu-go', papel: 'operador', ativo: true, repassePercentual: 0, contratoVersao: CONTRATO_OPERADOR,
-          contratoAceitoEm: iso(t0 - 19 * D), criadoEm: iso(t0 - 20 * D), ultimoAto: { acao: 'cadastro_assistido', em: iso(t0 - 2 * H) } },
+          contaStatus: 'ativa', contratoAceitoEm: iso(t0 - 19 * D), criadoEm: iso(t0 - 20 * D), ultimoAto: { acao: 'cadastro_assistido', em: iso(t0 - 2 * H) } },
         { email: 'moderacao@previa.com', cidade: 'uruacu-go', papel: 'moderador', ativo: true, repassePercentual: 0, contratoVersao: CONTRATO_OPERADOR,
-          contratoAceitoEm: iso(t0 - 12 * D), criadoEm: iso(t0 - 12 * D), ultimoAto: { acao: 'anuncio_publicar', em: iso(t0 - 26 * H) } },
-        { email: 'parceiro@exemplo.com', cidade: 'cidade-exemplo-a-go', papel: 'operador', ativo: true, repassePercentual: 50, contratoVersao: '',
-          contratoAceitoEm: null, criadoEm: iso(t0 - 3 * D), ultimoAto: null }
+          contaStatus: 'ativa', contratoAceitoEm: iso(t0 - 12 * D), criadoEm: iso(t0 - 12 * D), ultimoAto: { acao: 'anuncio_publicar', em: iso(t0 - 26 * H) } },
+        { email: 'parceiro@exemplo.com', cidade: 'niquelandia-go', papel: 'operador', ativo: true, repassePercentual: 50, contratoVersao: '',
+          contaStatus: 'pendente', contratoAceitoEm: null, criadoEm: iso(t0 - 3 * D), ultimoAto: null }
       ],
       moderacao: [
         [2 * H, 'operador', 'cadastro_assistido', 'conta', null, '', 'Conta pendente (mutirão)'],
@@ -461,9 +470,9 @@
         [26 * H, 'moderador', 'anuncio_publicar', 'anuncio', 'anu-3', 'anuncio_ok_apos_revisao', 'Atendente de loja · Loja Exemplo'],
         [30 * H, 'operador', 'empresa_aprovar', 'empresa', 'emp-1', '', 'Clínica Exemplo'],
         [50 * H, 'operador', 'empresa_suspender', 'empresa', 'emp-2', 'empresa_suspensa_golpe', 'Empresa Suspeita (prévia)'],
-        [4 * D, 'admin', 'cidade_salvar', 'cidade', 'cid-2', '', 'Cidade Exemplo A']
+        [4 * D, 'admin', 'cidade_salvar', 'cidade', 'cid-3', '', 'Niquelândia']
       ].map(function (x, i) {
-        return { id: i + 1, em: iso(t0 - x[0]), papel: x[1], acao: x[2], alvo: x[3], alvoId: x[4], motivo: x[5], dados: {}, cidade: i === 6 ? 'cidade-exemplo-a-go' : 'uruacu-go', alvoNome: x[6] };
+        return { id: i + 1, em: iso(t0 - x[0]), papel: x[1], acao: x[2], alvo: x[3], alvoId: x[4], motivo: x[5], dados: {}, cidade: i === 6 ? 'niquelandia-go' : 'uruacu-go', alvoNome: x[6] };
       }),
       seq: 100
     };
@@ -547,7 +556,11 @@
             interessados: c.status === 'lista_espera' ? Math.floor(c.contagens.listaEspera / 10) * 10 : null, metaListaEspera: c.metaListaEspera };
         }) });
       },
-      vagas_adm_cidades: function () { return ok({ cidades: st.cidades }); },
+      vagas_adm_cidades: function () {
+        return ok({ cidades: st.cidades.map(function (c) {
+          return Object.assign({}, c, { operadoresAtivos: st.operadores.filter(function (o) { return o.cidade === c.slug && o.ativo; }).length });
+        }) });
+      },
       vagas_adm_cidade_salvar: function (a) {
         var d = a.p_dados || {};
         var c = cidade(d.slug);
@@ -625,7 +638,7 @@
         var existe = st.operadores.filter(function (x) { return x.email === email && x.cidade === corpo.cidade; })[0];
         if (existe) { existe.ativo = true; existe.papel = corpo.papel === 'moderador' ? 'moderador' : 'operador'; return ok({ existente: true, email: email }); }
         st.operadores.push({ email: email, cidade: corpo.cidade, papel: corpo.papel === 'moderador' ? 'moderador' : 'operador', ativo: true, repassePercentual: 0,
-          contratoVersao: '', contratoAceitoEm: null, criadoEm: iso(agora()), ultimoAto: null });
+          contratoVersao: '', contaStatus: 'pendente', contratoAceitoEm: null, criadoEm: iso(agora()), ultimoAto: null });
         return ok({ enviado: true, email: email });
       },
       estado: function () { return st; }
@@ -885,8 +898,9 @@
     var cid = o.cidade && o.cidade.slug ? o.cidade : { slug: o.cidade, nome: o.cidade };
     var contrato = o.contratoAceitoEm ? 'versão ' + (o.contratoVersao || '?') + ' · aceito ' + quando(o.contratoAceitoEm).replace(/ \d\d:\d\d$/, '') : (o.contratoVersao ? 'versão ' + o.contratoVersao + ' · falta aceitar' : '—');
     var rp = Number(o.repassePercentual) || 0;
-    return el('tr', { 'data-operador': o.email, 'data-cidade': cid.slug, classe: o.ativo === false ? 'vg-adm-inativo' : null }, [
-      el('td', {}, [el('span', { classe: 'seminegrito' }, o.email), o.ativo === false ? el('span', { classe: 't-nota texto-suave' }, ' · desligado') : null]),
+    var situacao = o.ativo === false ? 'desligado' : SITUACAO_CONTA[o.contaStatus] || '';
+    return el('tr', { 'data-operador': o.email, 'data-cidade': cid.slug, 'data-conta': o.contaStatus || null, classe: o.ativo === false ? 'vg-adm-inativo' : null }, [
+      el('td', {}, [el('span', { classe: 'seminegrito' }, o.email), situacao ? el('span', { classe: 't-nota texto-suave vg-adm-situacao' }, situacao) : null]),
       el('td', {}, cid.nome),
       el('td', {}, PAPEIS[o.papel] || o.papel),
       el('td', {}, contrato),

@@ -41,7 +41,7 @@
     var corpoForm = el('div', { id: 'vg-op-ass-corpo' });
     var seg = ctx.segmento({ rotulo: 'Para quem é a conta', valor: tipo, aoMudar: function (v) { tipo = TELAS.assistido.tipo = v; desenhar(); }, opcoes: [
       { id: 'pessoa', idBotao: 'vg-op-ass-pessoa', rotulo: 'Pessoa' }, { id: 'empresa', idBotao: 'vg-op-ass-empresa', rotulo: 'Empresa' }] });
-    var lateral = el('div', { class: 'vg-lateral' }, [pendentes(ctx), el('section', { class: 'caixa caixa--compacta' }, [
+    var lateral = el('div', { class: 'vg-lateral' }, [ctx.podeTudo() ? pendentes(ctx) : null, el('section', { class: 'caixa caixa--compacta' }, [
       el('h2', { class: 'caixa__titulo' }, 'O que você não vê'),
       el('p', { class: 't-rotulo texto-medio' }, 'Currículo, selos, candidaturas, conversas e contato das pessoas. Só o e-mail de cadastro e o status da conta. Isso vale para toda a operação.')])]);
     U.trocar(raiz, [ctx.cabecalho({ sobre: 'Praça', titulo: 'Cadastro assistido',
@@ -116,6 +116,7 @@
         ]));
         nome.value = ''; email.value = ''; leu.checked = false;
         U.anunciar('Conta pendente criada.');
+        recarregarPendentes();
       }, function (er) {
         U.ocupado(criar, false);
         if (er.sessaoExpirada || er.conexao) { U.tratarErro(er); return; }
@@ -175,6 +176,7 @@
           U.trocar(resultado, el('p', { class: 'aviso aviso--ok', role: 'status', id: 'vg-op-ass-ok' },
             'Empresa ' + emp.nomeFantasia + ' cadastrada e verificada. Conta pendente criada para ' + e + ': o link foi enviado e ela só vale depois da confirmação.'));
           form.reset();
+          recarregarPendentes();
           return ctx.atualizarContagens();
         }, function (er) {
           U.ocupado(criar, false);
@@ -190,43 +192,60 @@
     return form;
   }
 
-  // Pendentes de confirmação: com vagas_op_assistidos (pedido ao banco), a lista; sem ela, reenviar o link de um e-mail digitado.
+  // Pendentes de confirmação (só a operação; a moderação não faz cadastro assistido). vagas_op_assistidos devolve o e-mail
+  // MASCARADO (a operação nunca lê contato de pessoa): a lista é só para conferir; para mandar o link de novo, a pessoa (ou o
+  // operador, com ela do lado) digita o e-mail completo. Sem a RPC (banco antigo), só o campo de reenviar.
   function pendentes(ctx) {
-    var caixa = el('section', { class: 'caixa caixa--compacta', id: 'vg-op-pendentes' }, [el('h2', { class: 'caixa__titulo' }, 'Pendentes de confirmação')]);
-    var corpo = el('div', {});
-    caixa.appendChild(corpo);
-    caixa.appendChild(el('p', { class: 't-nota texto-suave vg-op-nota' }, 'Contas não confirmadas em 7 dias são apagadas.'));
-    function reenviar(email, botao) {
-      U.ocupado(botao, true, 'Enviando…');
-      A.reenviarConfirmacao(email).then(function () { U.ocupado(botao, false); U.avisar('Se a conta ainda estiver pendente, o link foi enviado de novo.', { tipo: 'ok', ms: 6000 }); },
-        function (e) { U.ocupado(botao, false); U.avisar(e.message, { tipo: 'erro' }); });
-    }
-    if (typeof A.opAssistidos === 'function') {
-      U.carregando(corpo);
-      A.opAssistidos({ cidade: ctx.cidade().slug }).then(function (r) {
-        var cs = r.contas || [];
-        caixa.firstChild.textContent = 'Pendentes de confirmação (' + cs.length + ')';
-        if (!cs.length) { U.trocar(corpo, el('p', { class: 't-rotulo texto-medio' }, 'Nenhuma conta esperando confirmação.')); return; }
-        U.trocar(corpo, el('ul', { class: 'vg-op-lista-limpa' }, cs.map(function (x) {
-          var b = el('button', { type: 'button', class: 'botao botao--claro botao--pequeno', onclick: function () { reenviar(x.email, b); } }, 'Reenviar link');
-          return el('li', { class: 'vg-item' }, [el('div', { class: 'vg-item__texto' }, [el('p', { class: 'vg-item__titulo' }, x.email),
-            el('p', { class: 'vg-item__sub' }, 'criada ' + U.relativa(x.criadoEm) + (x.codigoEvento ? ' · ' + x.codigoEvento : ''))]), b]);
-        })));
-      }, function () { U.trocar(corpo, el('p', { class: 't-rotulo texto-medio' }, 'Não deu para carregar a lista agora.')); });
-      return caixa;
-    }
-    var campoEmail = entrada('vg-op-reenviar-email', 'email', { inputmode: 'email' });
+    var titulo = el('h2', { class: 'caixa__titulo' }, 'Pendentes de confirmação');
+    var lista = el('div', { id: 'vg-op-pendentes-lista' });
+    var campoEmail = entrada('vg-op-reenviar-email', 'email', { inputmode: 'email', maxlength: '254', 'aria-describedby': 'vg-op-reenviar-email-ajuda' });
     var b = el('button', { type: 'button', class: 'botao botao--claro botao--pequeno', id: 'vg-op-reenviar' }, 'Reenviar link');
+    var ajuda = 'Digite o e-mail completo da pessoa: a lista mostra só o começo, para proteger o contato dela.';
+    var reenviarCampo = campo('vg-op-reenviar-email', 'Mandar o link de novo', campoEmail, { ajuda: ajuda });
     b.addEventListener('click', function () {
       U.limparErroCampo(campoEmail);
       var e = R.normalizarEmail(campoEmail.value);
       if (!e) { U.erroCampo(campoEmail, 'E-mail inválido.'); return; }
-      reenviar(e, b);
+      U.ocupado(b, true, 'Enviando…');
+      A.reenviarConfirmacao(e).then(function () {
+        U.ocupado(b, false);
+        campoEmail.value = '';
+        U.avisar('Se a conta ainda estiver pendente, o link foi enviado de novo.', { tipo: 'ok', ms: 6000 });
+      }, function (er) { U.ocupado(b, false); if (er.sessaoExpirada || er.conexao) { U.tratarErro(er); return; } U.avisar(er.message, { tipo: 'erro' }); });
     });
-    U.trocar(corpo, [el('p', { class: 't-rotulo texto-medio' }, 'A lista das contas pendentes ainda não está disponível. Para mandar o link de novo, digite o e-mail da pessoa.'),
-      campo('vg-op-reenviar-email', 'E-mail', campoEmail), el('div', { class: 'acoes' }, b)]);
+    var caixa = el('section', { class: 'caixa caixa--compacta', id: 'vg-op-pendentes' }, [titulo, lista, reenviarCampo, el('div', { class: 'acoes' }, b),
+      el('p', { class: 't-nota texto-suave vg-op-nota' }, 'Contas não confirmadas em 7 dias são apagadas.')]);
+    function preparar(mascara) {
+      var a = doc.getElementById('vg-op-reenviar-email-ajuda');
+      if (a) a.textContent = 'Digite o e-mail completo de ' + mascara + '.';
+      campoEmail.focus();
+    }
+    if (typeof A.opAssistidos !== 'function') {
+      U.trocar(lista, el('p', { class: 't-rotulo texto-medio' }, 'A lista das contas pendentes ainda não está disponível.'));
+      return caixa;
+    }
+    function carregar() {
+      U.carregando(lista);
+      A.opAssistidos({ cidade: ctx.cidade().slug }).then(function (r) {
+        var cs = r.contas || [];
+        titulo.textContent = 'Pendentes de confirmação (' + cs.length + ')';
+        if (!cs.length) { U.trocar(lista, el('p', { class: 't-rotulo texto-medio', id: 'vg-op-pendentes-vazio' }, 'Nenhuma conta esperando confirmação.')); return; }
+        U.trocar(lista, el('ul', { class: 'vg-op-lista-limpa', id: 'vg-op-pendentes-contas' }, cs.map(function (x) {
+          var bx = el('button', { type: 'button', class: 'botao botao--claro botao--pequeno', 'data-acao': 'reenviar', 'aria-label': 'Reenviar o link para ' + x.email,
+            onclick: function () { preparar(x.email); } }, 'Reenviar');
+          return el('li', { class: 'vg-item', 'data-tipo': x.tipo }, [el('div', { class: 'vg-item__texto' }, [el('p', { class: 'vg-item__titulo' }, x.email),
+            el('p', { class: 'vg-item__sub' }, (x.tipo === 'empresa' ? 'Empresa' : 'Pessoa') + ' · criada ' + U.relativa(x.criadoEm) + (x.codigoEvento ? ' · ' + x.codigoEvento : ''))]), bx]);
+        })));
+      }, function (e) {
+        if (e.sessaoExpirada) { U.tratarErro(e); return; }
+        U.trocar(lista, el('p', { class: 't-rotulo texto-medio' }, 'Não deu para carregar a lista agora.'));
+      });
+    }
+    caixa.recarregar = carregar;   // depois de um cadastro novo
+    carregar();
     return caixa;
   }
+  function recarregarPendentes() { var p = doc.getElementById('vg-op-pendentes'); if (p && typeof p.recarregar === 'function') p.recarregar(); }
 
   // ------------------------------------------------------------------------------------------------- #boletim
   var PERIODOS = [{ id: 'ontem', rotulo: 'Novas desde ontem' }, { id: '24h', rotulo: 'Últimas 24 h' }, { id: 'semana', rotulo: 'Últimos 7 dias' }];
