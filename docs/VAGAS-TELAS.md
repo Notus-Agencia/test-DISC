@@ -64,7 +64,7 @@ Regras que valem para TODAS as telas (não repetidas em cada uma):
 | `entrar.html` | `/entrar.html?token_hash=…&type=…` | pessoa e empresa | celular/computador | entrar, criar conta, esqueci, confirmação (verifyOtp por fetch) |
 | `eu.html` | `#curriculo/1…5`, `#candidaturas`, `#conversa/<id>`, `#quem-viu`, `#dados`, `#referencias`, `#referencia/pedir`, `#referencia/<id>` | pessoa logada | celular | área da pessoa |
 | `testes.html` | `#catalogo`, `#teste/<slug>`, `#prova`, `#resultado/<tentativa>` | pessoa logada | celular | motor dos testes (`vagas/js/testes.js`) |
-| `selo.html` | `/selo?codigo=Q8V3N2KD` | qualquer pessoa | celular | conferência pública |
+| `selo.html` | `/selo?codigo=H4TR9WXE` | qualquer pessoa | celular | conferência pública |
 | `referencia.html` | `/referencia.html?t=<token>` (convite de referência; empresa logada abre com `vagas_referencia_convite`) | empresa | computador | preencher a referência pedida |
 | `referencias.html` | `/referencias.html?t=<token>` (página pública que a pessoa liga) | qualquer pessoa | celular | referências completas da pessoa |
 | `empresa.html` | `#inicio`, `#vagas`, `#vaga/nova`, `#vaga/<id>`, `#vaga/<id>/cartoes`, `#conversas`, `#conversa/<id>`, `#referencias`, `#referencia/dar`, `#banco`, `#compras`, `#comprar/<produto>/<vaga>`, `#dados` | empresa logada | computador | painel da empresa |
@@ -152,14 +152,16 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
 - **Objetivo:** decidir em uma tela: "Quero" ou "Pular". Abre sem JS (HTML montado pela Pages Function) com os botões que, sem JS,
   levam para `entrar.html?voltar=/v/K7M2QX`.
 - **Elementos:** `#vg-voltar` ("Vagas de <cidade>"); `article#vg-vaga` (`data-anuncio`, `data-codigo`): etiquetas
-  (modalidade, "Pede selo: <teste>", "Urgente hoje", "Destaque", "Para hoje"), `h1#vg-vaga-titulo`, bloco da empresa
+  (modalidade, "Selo sugerido: <teste>", "Urgente hoje", "Destaque", "Para hoje"), `h1#vg-vaga-titulo`, bloco da empresa
   (`.vg-iniciais` ou `--confidencial` com "?"; `#vg-vaga-empresa` = nome ou "Empresa confidencial"; `.vg-verificada` "Empresa
   verificada · CNPJ conferido pela Gestão sem Caos. O nome aparece se ela chamar você para conversar."), `#vg-vaga-valor`
   (faixa salarial ou "R$ 120 por dia"), `dl#vg-vaga-dados` (Onde, Horário, Começa, Publicada/fica no ar até; diária: Data,
   Horário, Valor do dia, "Pagamento combinado direto com a empresa"), "O que a pessoa vai fazer" `#vg-vaga-descricao`,
-  "O que precisa" `#vg-vaga-requisitos`, bloco do selo pedido (`.vg-selo--mini`: "Você já tem o selo de …" com nota e data, ou
-  "Você ainda não tem o selo de …" + `#vg-vaga-fazer-teste` "Fazer o teste agora (de 20 a 25 minutos)"; quem não tem o selo **pode**
-  se candidatar), `#vg-aviso-golpe`, links "Denunciar esta vaga" (janela `#vg-janela-denuncia`: motivo em pílulas geradas de
+  "O que precisa" `#vg-vaga-requisitos`, bloco do selo sugerido (`.vg-selo--mini`; psicologia, revisão C 2.2: o selo da vaga é
+  só informação, "sugerido" em todo o produto): rótulo `#vg-vaga-selo-rotulo` "Selo sugerido" ("Seu selo" só para quem já tem);
+  `#vg-vaga-selo-texto` "Esta vaga sugere o teste de … Você pode se candidatar sem ele." (logada) / "… Quem não tem o selo também
+  pode se candidatar." (anônima), ou "Você já tem o selo de …" com nota e data; `#vg-vaga-fazer-teste` "Fazer o teste (20 min)", com
+  os minutos daquele teste no catálogo, sem "agora"), `#vg-aviso-golpe`, links "Denunciar esta vaga" (janela `#vg-janela-denuncia`: motivo em pílulas geradas de
   `VAGAS_REGRAS.MOTIVOS_DENUNCIA` (lista `{chave, texto}`: `golpe`, `documento`/`cobranca`, `discriminacao`, `falsa`, `ofensa`,
   `contato`, `outro` — a tela usa as chaves e textos de `regras.js`, nunca uma lista própria) + `#vg-denuncia-detalhe` ≤ 300 +
   "Enviar denúncia"; anônimo pode denunciar anúncio (`id` = uuid ou código); mensagem e referência só com login;
@@ -252,45 +254,86 @@ eventos · `beleza` Beleza e estética · `saude` Saúde e farmácia · `educaca
   nacionalidade, saúde, antecedentes, CPF/RG.
 
 ### 2.7 Testes de habilidade (`testes.html`) — `pessoa-testes.png`, `pessoa-prova-instrucoes.png`, `pessoa-prova.png`, `pessoa-resultado.png`
-- **Em toda tela de testes (diretriz da psicologia, onda 2):** "O teste é opcional: você pode se candidatar sem ele. Se não for
-  bem, a empresa não fica sabendo; ela só vê o selo, se você ganhar." (`#vg-testes-opcional`, `#vg-instrucoes-opcional`,
-  `#vg-prova-opcional`, `#vg-resultado-opcional`, `#vg-testes-vagas-opcional`). Na prévia, faixa `#vg-faixa-demo` "Questões de
-  demonstração (a prova real usa outro banco)".
+- **"O teste é opcional" (psicologia, revisão C 2.9, com dois-pontos; `avisos.teste_opcional`):** "O teste é opcional: você pode se
+  candidatar sem ele. Se não for bem, a empresa não fica sabendo: ela só vê o selo, se você ganhar." no catálogo (`#vg-testes-opcional`), nas instruções
+  (`#vg-instrucoes-opcional`) e em "Vagas que sugerem este teste" (`#vg-testes-vagas-opcional`). **Não** aparece dentro da prova
+  (leitura a mais em cada questão) nem no resultado com selo; no resultado sem selo vai só a frase curta (ver Resultado). Na prévia,
+  faixa `#vg-faixa-demo` "Questões de demonstração (a prova real usa outro banco)".
+- **Leitura no celular (revisão de UX, fase C):** corpo com 16 px (`--t-campo`), nada abaixo de 13 px, subtítulo em `--medio`
+  (contraste AA sobre o fundo cinza), alvos de toque com 44 px ou mais (botões, links de ação, "Conferir agora", pílula da cidade).
+  Tudo em `assets/vagas-testes.css`, só com tokens.
 - **Catálogo (`#vg-testes-lista`):** 5 itens `.vg-teste` (`#vg-teste-<slug>`, `data-acao`): nome (+ etiqueta "Selo"), linha de info
-  `#vg-teste-<slug>-info` ("15 questões · 20 min · pedido em 9 vagas"; caixa "15 questões · 25 min · pode usar papel e caneta";
-  "Selo válido até … · nota 82 (±10) · pode refazer a partir de …"; "Você começou este teste · faltam N questões"), ação
-  `#vg-teste-<slug>-acao` ("Fazer o teste" / "Refazer o teste" / "Continuar"; ou "Em 18 dias" sem botão). Subtítulos: padroes.md §6
-  "Mostre o que você sabe fazer: faça o teste da função no celular e ganhe o selo de habilidade testada." e "Grátis, no celular,
-  de 20 a 25 minutos cada. O selo mostra o teste, a nota e a data, e vale 12 meses. Pode refazer depois de 30 dias." (minutos,
-  validade e intervalo lidos do catálogo; nunca fixos). Aviso: `avisos.selo_nao_e_psicologico` + "Nenhuma vaga pode cobrar por eles."
-  Sem login, o catálogo e as instruções abrem (o catálogo é público) com "Entrar para começar".
+  `#vg-teste-<slug>-info` ("15 questões · 20 min · sugerido em 9 vagas"; caixa "15 questões · 25 min · pode usar papel e caneta";
+  "Selo válido até … · nota 82 (±10) · pode refazer a partir de …"; prova aberta: "Você começou este teste · faltam 12 questões ·
+  restam 14 min", porque o relógio não para), ação `#vg-teste-<slug>-acao` ("Fazer o teste" / "Refazer o teste" / "Continuar"; ou
+  "Em 18 dias" sem botão). Subtítulos: "Se quiser, faça o teste da sua função no celular e tente o selo de habilidade testada."
+  (psicologia 2.3) e "Grátis, no celular, de 20 a 25 minutos cada. O selo mostra o teste, a nota com a margem e a data, e vale 12
+  meses. Pode refazer depois de 30 dias." (minutos, validade e intervalo lidos do catálogo; nunca fixos). Aviso:
+  `avisos.selo_nao_e_psicologico` + "Os testes são grátis. Ninguém pode cobrar por eles." Sem login, o catálogo e as instruções
+  abrem (o catálogo é público) com "Entrar para começar". A sessão e a lista de cidades saem juntas; a conta e o catálogo, juntos
+  logo depois (2 idas e voltas antes de desenhar, não 4); a contagem de vagas chega depois e só completa a linha.
 - **Instruções (`#vg-instrucoes`):** linhas com ícone do contrato (`VAGAS_TESTES.instrucoes`: 15 questões uma por vez sem voltar;
-  20 min, caixa 25, pelo relógio do servidor; internet cai e a prova espera; encerrar antes conta; o que a prova registra (LGPD);
-  nota e selo), caixa: "Pode usar papel e caneta para as contas. Não use calculadora."; texto fixo de padroes.md §5.7
-  (`avisos.teste_antes`, `#vg-instrucoes-sozinho`); `#vg-prova-comecar` (laranja: "Começar" / "Continuar o teste") e `#vg-prova-depois`.
-- **Prova (`#vg-prova`, `data-questao`):** topo `.vg-prova__topo` com "7 de 15" e `#vg-prova-tempo` (`role="timer"`,
-  `#vg-prova-segundos` "12:05": o tempo TOTAL que falta, do servidor; `--pouco` no último minuto; leitor de tela ouve 5 min e 1 min;
-  sem som); `.vg-prova__barra`; `.vg-prova__apoio` (texto base); `h1#vg-prova-enunciado`; opções `ul#vg-prova-opcoes`
-  (`role="radiogroup"`, `.retrato.vg-opcao` ≥ 56 px, letra A–D, `aria-pressed`; ordem embaralhada pelo servidor); barra fixa
-  `#vg-barra-prova` com "Depois de responder não dá para voltar." e `#vg-prova-responder` (desabilitado até escolher);
-  `#vg-prova-encerrar` (link discreto, confirmação na página: conta como tentativa). Tempo zerado → envia o que estiver marcado
-  (tolerância de 10 s) ou fecha pelo servidor ("tempo esgotado"). Queda de internet: `#vg-prova-reconectando` ("Reconectando… sua
-  resposta está guardada."), escolha em `vg.prova.<tentativa>` e reenvio sozinho. Sair da tela: `beforeunload` só avisa; trocar de
-  aba e copiar texto viram sinal, não anulam.
-- **Resultado (`#vg-resultado`):** "Você ganhou o selo" (componente `#vg-selo` com `#vg-selo-codigo`) ou "Prova concluída" + o texto
-  fixo de padroes.md §5.3 ("Ainda sem selo neste teste. Você pode refazer em 30 dias, de graça.") e "Onde você acertou menos: …";
-  nota com margem ("Nota 53 (±10)"); "Como você foi em cada parte" (`#vg-resultado-partes`, "5 de 6"); padroes.md §6 sobre limites;
-  `#vg-resultado-vagas` "Ver 9 vagas que pedem este selo" (laranja; `#vagas/<slug>`) e `#vg-resultado-compartilhar`
-  (`navigator.share` com `selo.html?codigo=`). As palavras "aprovado"/"reprovado" não aparecem nem para negar.
+  20 min, caixa 25, pelo relógio do servidor, que não para nem se a internet cair; se cair, entra de novo e continua no tempo que
+  sobrou; encerrar antes conta; o que a prova registra, dito de forma informativa: "Se você sair da prova (para atender uma ligação,
+  por exemplo), o relógio continua. Registramos o tempo de cada questão, quando você sai da tela e quando copia texto. Sozinho, esse
+  registro não muda a sua nota nem tira o seu selo."; nota e selo), caixa: "Pode usar papel e caneta para as contas. Não use
+  calculadora."; `avisos.teste_antes` (`#vg-instrucoes-sozinho`: "Faça sozinho(a), sem consultar. O teste mede o que você sabe hoje
+  do básico da função; não mede inteligência nem personalidade." — sem a prova presencial, que não existe); com prova aberta (voltar
+  do celular, catálogo), `#vg-instrucoes-aberta` "Seu teste já começou e o relógio continua contando. Toque em "Continuar o teste"
+  para voltar à questão em que parou."; `#vg-prova-comecar` (laranja: "Começar" / "Continuar o teste") e `#vg-prova-depois`. Vindo
+  do catálogo há menos de 1 minuto, usa o catálogo que já tem (sem nova ida ao servidor).
+- **Prova (`#vg-prova`, `data-questao`):** topo `.vg-prova__topo` com "7 de 15"; `.vg-prova__barra`; `.vg-prova__apoio` (texto base);
+  `h1#vg-prova-enunciado`; opções `ul#vg-prova-opcoes` (`role="radiogroup"`, `.retrato.vg-opcao` ≥ 56 px, letra A–D, `aria-pressed`,
+  `aria-posinset`/`aria-setsize`; ordem embaralhada pelo servidor). Barra fixa `#vg-barra-prova`: dica em destaque (15 px,
+  seminegrito) "Depois de responder não dá para voltar." (vira "Reconectando… sua resposta está guardada." ou "O relógio continuou
+  contando enquanto você estava fora." quando for o caso; some com o celular deitado); o relógio `#vg-prova-tempo` na célula da
+  esquerda, sempre à vista (`role="timer"` com o texto escondido "Tempo que falta:" + `#vg-prova-segundos` "12:05": o tempo TOTAL
+  que falta, do servidor; `--pouco` no último minuto; leitor de tela ouve 5 min, 1 min e "O tempo acabou" uma vez só; sem som); e
+  `#vg-prova-responder` (desabilitado até escolher). `#vg-prova-encerrar` (link discreto; `#vg-confirmar-encerrar` na página:
+  `avisos.teste_encerrar_conta` "Se você encerrar antes do fim, a tentativa conta: este teste só pode ser feito de novo em 30 dias."
+  + "O que ficou sem resposta vale como erro."). Tempo zerado → envia o que estiver marcado (tolerância de 10 s) ou pergunta ao
+  servidor em 1,5 s e, se ele ainda não fechou, de novo depois da tolerância (nada de chamada a cada 2 s). Queda de internet:
+  `#vg-prova-reconectando` + a dica da barra, escolha em `vg.prova.<tentativa>` e reenvio sozinho. Sem o diálogo do navegador
+  "as alterações podem não ser salvas" (a tentativa e a escolha já estão guardadas). O logo e a pílula da cidade tiram da prova:
+  confirmação na página `#vg-confirmar-sair` ("Sair da prova?" · "O relógio continua contando enquanto você estiver fora. Para
+  voltar, abra Testes e toque em "Continuar"." · "Sair" / "Continuar o teste"). Trocar de aba e copiar texto viram sinal, não
+  anulam; quem volta de outro app depois de 30 s lê na barra que o relógio continuou.
+- **Resultado (`#vg-resultado`):** desenhado assim que o resultado chega (a prova que acabou de terminar não pergunta de novo se
+  acabou; a espera diz "Calculando a sua nota…"); a contagem de vagas completa o botão depois. Com selo: "Você ganhou o selo" +
+  `#vg-resultado-cartao` (psicologia 2.5, pelo `exibido` de `meusSelos`: "Ele aparece no seu cartão para as empresas das vagas em
+  que você se candidatar." ou "No seu cartão continua o selo de nota maior que você já tinha neste teste."), componente `#vg-selo`
+  com `#vg-selo-codigo` e `#vg-selo-conferir` com "Conferir agora". Sem selo (psicologia 2.8): h1 "Prova concluída" e
+  `#vg-resultado-sem-selo` "Ainda sem selo neste teste. A empresa não fica sabendo." (`avisos.selo_sem_selo`). Nos dois:
+  `#vg-resultado-nota` "Você acertou N de 15 questões. Nota N (margem de cerca de 10 pontos, para mais ou para menos)." + "O selo
+  sai a partir da nota 60." (sem selo); `#vg-resultado-refazer` "Você pode refazer este teste a partir de DD/MM/AAAA, de graça." (uma
+  vez só); "Como você foi em cada parte" (`#vg-resultado-partes`, "2 de 3" sem quebrar a linha); `#vg-resultado-estudar` "Onde você
+  acertou menos: A; B; C." (ponto e vírgula; não aparece para quem respondeu menos da metade); `#vg-resultado-cada-parte` "Cada parte
+  teve só 3 ou 4 questões: use como pista do que revisar, não como medida exata."; padroes.md §6 sobre limites; sem selo,
+  `#vg-resultado-opcional` "O teste é opcional: você pode se candidatar sem ele."; `#vg-resultado-vagas` "Ver 9 vagas que sugerem
+  este teste" (laranja; `#vagas/<slug>`) e `#vg-resultado-compartilhar` (`navigator.share` com `selo.html?codigo=`). As palavras
+  "aprovado"/"reprovado" não aparecem nem para negar.
+- **Vagas que sugerem este teste (`#vagas/<slug>`):** `#vg-testes-vagas-titulo` "Vagas que sugerem este teste", o aviso "opcional",
+  `ul#vg-testes-vagas` com os cartões (etiqueta "Selo sugerido: …"); vazio: "Nenhuma vaga sugere este teste agora" + "Quem não tem
+  o selo também pode se candidatar."
 - **Não aparece:** gabarito, ranking, comparação com outras pessoas, "aprovado", percentil.
 
 ### 2.8 Conferência pública do selo (`selo.html`) — `pessoa-selo-conferir.png`
-- `form#vg-form-conferir`: `#vg-conferir-codigo` (8 caracteres, maiúsculas automáticas, aceita com ou sem hífen; erro "O código
-  tem 8 letras e números, como Q8V3N2KD") + `#vg-conferir-enviar`. RPC `vagas_selo_publico(p_codigo)` (agente testes).
-- Resultado: `.vg-conferir` (ícone ok + "Selo válido" / relógio + "Selo vencido em 13/10/2026" / "Código não encontrado. Confira as
-  letras ou peça o código de novo à pessoa.") + componente `.vg-selo` completo (teste, nota, data, validade, "Online, sem
-  supervisão", "Emitido pelo Vagas sem Caos…"). Nunca mostra nome, e-mail ou cidade da pessoa. Aviso fixo "O teste é de conhecimento
-  prático da função, feito online e sem supervisão. Ele não confere identidade nem substitui a entrevista. [REVISÃO PSICOLOGIA]".
+- `form#vg-form-conferir`: `#vg-conferir-codigo` (8 caracteres, maiúsculas automáticas, aceita com ou sem hífen; ajuda "São 8
+  letras e números. Pode ser com ou sem hífen."; erro "O código tem 8 letras e números, como H4TR9WXE", exemplo que não é selo da
+  semente da prévia) + `#vg-conferir-enviar`. RPC `vagas_selo_publico(p_codigo)` (agente testes). O endereço passa a ter o código (e
+  mantém o `previa=` quando houver).
+- Resultado (o foco vai para o título; sem `aria-live`, para o leitor de tela não ler duas vezes): `.vg-conferir` (ícone ok + "Selo
+  válido" / relógio + "Selo vencido em 13/10/2026" / alerta + "Selo sem validade" e `#vg-conferir-texto` "Este selo não vale mais.
+  Se quiser, peça à pessoa para fazer o teste de novo." (psicologia 2.6: nunca "cancelado") / "Selo não encontrado. Confira o
+  código.") + componente `.vg-selo` completo (teste, nota, data, validade, "Online, sem supervisão") + `#vg-conferir-emitido`
+  "Emitido pelo Vagas sem Caos, uma ferramenta da Gestão sem Caos. O selo pertence a uma pessoa cadastrada; o nome dela só aparece
+  para a empresa com quem ela combinou de conversar.". Nunca mostra nome, e-mail ou cidade da pessoa. Avisos fixos:
+  `avisos.selo_empresa` (`#vg-conferir-aviso`) e, para quem contrata (psicologia 2.1, `avisos.selo_conferir_empresa`),
+  `#vg-conferir-empresa` "Para quem contrata:
+  a nota tem margem de cerca de 10 pontos, para mais ou para menos, e não serve para ordenar pessoas. Sem selo não quer dizer que
+  a pessoa não sabe: o teste é opcional. A decisão de contratar continua sendo sua." Erro técnico do banco nunca chega a quem
+  confere (fica `avisos.erro_generico`). Na prévia, a faixa geral `#vg-faixa-previa` e, no resultado, `#vg-conferir-demo` "Selo de
+  demonstração. Este é um selo da prévia, com dados de exemplo: não vale como selo de verdade."
   Limite de consultas por IP (resposta "Muitas consultas. Tente em alguns minutos.").
 
 ### 2.9 Minhas candidaturas (`eu.html#candidaturas`) — `pessoa-candidaturas.png`
