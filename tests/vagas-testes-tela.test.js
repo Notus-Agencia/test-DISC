@@ -132,9 +132,16 @@ test('banco de DEMONSTRAÇÃO: cada questão passa no validador das questões re
   assert.equal(TELA.TXT.DEMONSTRACAO, 'Questões de demonstração (a prova real usa outro banco)');
 });
 
-test('rótulos dos selos: a vaga ("Pede selo: …"), o cartão e a conferência usam os nomes do catálogo dos testes', () => {
+test('rótulos dos selos: a vaga ("Selo sugerido: …"), o cartão e a conferência usam os nomes do catálogo dos testes', () => {
   const R = require('../vagas/js/regras.js');
   assert.deepEqual(R.TESTES_SELO.map((x) => [x.id, x.rotulo]), BANCO.map((t) => [t.slug, t.nome]));
+  // Psicologia (revisão C 2.2): "sugerido" em todo o produto; o selo da vaga nunca é "pedido" (soa como exigência).
+  const pecas = fs.readFileSync(path.join(CONF.VAGAS, 'js', 'pecas.js'), 'utf8');
+  assert.ok(pecas.includes("'Selo sugerido: ' + (rotulo(R.TESTES_SELO, a.selo) || a.selo)"));
+  const vaga = fs.readFileSync(path.join(CONF.VAGAS, 'js', 'vaga.js'), 'utf8');
+  assert.ok(!/Pede selo|Selo pedido|pede o selo|teste agora/.test(pecas + vaga));
+  assert.ok(vaga.includes("'Esta vaga sugere o teste de ' + nome + '. ' + (pessoa() ? 'Você pode se candidatar sem ele.' : 'Quem não tem o selo também pode se candidatar.')"));
+  assert.ok(vaga.includes("'Fazer o teste (' + Math.round(Number(t.minutos)) + ' min)'"), 'minutos do catálogo daquele teste');
   // O selo fictício da semente também (a conferência pública e o cartão mostram o nome do selo).
   const x = novo();
   for (const lista of Object.values(x.b.estado().selos)) for (const s of lista) assert.equal(s.nome, BANCO.find((t) => t.slug === s.teste).nome, s.codigo);
@@ -481,11 +488,16 @@ test('catálogo: ação e linha de cada teste (fazer, continuar, esperar os 30 d
   assert.deepEqual(TELA.acaoDoTeste(ITEM, T0), { tipo: 'fazer', selo: null });
   assert.equal(TELA.linhaDoTeste(ITEM, { agora: T0, data: DATA }), '15 questões · 20 min');
   assert.equal(TELA.linhaDoTeste(Object.assign({}, ITEM, { slug: 'caixa', minutos: 25 }), { agora: T0, data: DATA, pedidos: { caixa: 1 } }),
-    '15 questões · 25 min · pode usar papel e caneta · pedido em 1 vaga');
-  assert.equal(TELA.linhaDoTeste(ITEM, { agora: T0, data: DATA, pedidos: { vendas: 3 } }), '15 questões · 20 min · pedido em 3 vagas');
+    '15 questões · 25 min · pode usar papel e caneta · sugerido em 1 vaga');
+  assert.equal(TELA.linhaDoTeste(ITEM, { agora: T0, data: DATA, pedidos: { vendas: 3 } }), '15 questões · 20 min · sugerido em 3 vagas');
   const aberta = Object.assign({}, ITEM, { minha: { aberta: { tentativa: 't', respondidas: 14, total: 15, segundosRestantes: 60 } } });
   assert.equal(TELA.acaoDoTeste(aberta, T0).tipo, 'continuar');
-  assert.equal(TELA.linhaDoTeste(aberta, { agora: T0, data: DATA }), 'Você começou este teste · falta 1 questão');
+  // O relógio não para (psicologia 1.1): a linha diz quanto tempo sobra.
+  assert.equal(TELA.linhaDoTeste(aberta, { agora: T0, data: DATA }), 'Você começou este teste · falta 1 questão · resta 1 min');
+  const aberta2 = Object.assign({}, ITEM, { minha: { aberta: { tentativa: 't', respondidas: 3, total: 15, segundosRestantes: 821 } } });
+  assert.equal(TELA.linhaDoTeste(aberta2, { agora: T0, data: DATA }), 'Você começou este teste · faltam 12 questões · restam 14 min');
+  const semTempo = Object.assign({}, ITEM, { minha: { aberta: { tentativa: 't', respondidas: 3, total: 15 } } });
+  assert.equal(TELA.linhaDoTeste(semTempo, { agora: T0, data: DATA }), 'Você começou este teste · faltam 12 questões');
   const selo = { codigo: 'K7M2QX9A', nota: 82, margem: 10, validoAte: '2027-10-10', situacao: 'valido' };
   const esperando = Object.assign({}, ITEM, { minha: { aberta: null, ultima: { status: 'concluida', nota: 82 }, podeIniciarEm: new Date(T0 + 18 * DIA - 1).toISOString(), selo } });
   assert.deepEqual([TELA.acaoDoTeste(esperando, T0).tipo, TELA.acaoDoTeste(esperando, T0).dias], ['aguardar', 18]);
@@ -500,7 +512,11 @@ test('catálogo: ação e linha de cada teste (fazer, continuar, esperar os 30 d
 test('instruções: as do contrato sem repetir o texto fixo de padroes.md §5.7; caixa com papel e caneta; o que a prova registra (LGPD)', () => {
   const linhas = TELA.linhasInstrucoes(ITEM).map((l) => l.texto);
   assert.ok(linhas.some((l) => /^São 15 questões sobre o básico de vendas no varejo, uma por vez\. Não dá para voltar\.$/.test(l)));
-  assert.ok(linhas.includes('Durante a prova, registramos o tempo de cada questão, a saída da tela e a cópia de texto. Ninguém perde o selo só por isso: uma pessoa da equipe revisa antes de qualquer decisão.'));
+  // Saída da tela: informativa, sem tom de punição, e dizendo que o relógio continua (revisão de UX, fase C).
+  const registro = TELA.linhasInstrucoes(ITEM).filter((l) => l.icone === 'olho').map((l) => l.texto);
+  assert.deepEqual(registro, ['Se você sair da prova (para atender uma ligação, por exemplo), o relógio continua. Registramos o tempo de cada questão, quando você sai da tela e quando copia texto. Sozinho, esse registro não muda a sua nota nem tira o seu selo.']);
+  assert.ok(!linhas.some((l) => /antes de qualquer decisão|presencial/.test(l)));
+  assert.ok(linhas.includes('Se a internet cair, entre de novo e continue de onde parou, no tempo que sobrou.'));
   assert.ok(linhas.some((l) => /a tentativa conta/.test(l)), 'encerrar cedo conta');
   assert.ok(!linhas.some((l) => /^Faça sozinho|^O teste mede/.test(l)), 'essas vão no texto fixo (avisos.teste_antes)');
   assert.ok(!linhas.some((l) => /calculadora/.test(l)));
@@ -508,9 +524,12 @@ test('instruções: as do contrato sem repetir o texto fixo de padroes.md §5.7;
   assert.ok(caixa.some((l) => l.texto === 'Pode usar papel e caneta para as contas. Não use calculadora.'));
   for (const l of caixa) assert.ok(l.icone && l.icone !== 'seta', l.texto);
   const TEXTOS = require('../vagas/js/textos.js');
-  assert.equal(TEXTOS.t('avisos.teste_antes'), 'Faça sozinho(a), sem consultar. A empresa pode pedir a prova presencial. O teste mede o que você sabe hoje do básico da função; não mede inteligência nem personalidade. Pode refazer em 30 dias.',
-    'texto fixo de padroes.md §5.7, palavra por palavra');
-  assert.equal(TEXTOS.t('avisos.selo_sem_selo'), 'Ainda sem selo neste teste. Você pode refazer em 30 dias, de graça.', 'padroes.md §5.3');
+  // Psicologia (revisão C 2.7): sem "a empresa pode pedir a prova presencial" (não existe) e sem repetir o "refazer em 30 dias".
+  assert.equal(TEXTOS.t('avisos.teste_antes'), 'Faça sozinho(a), sem consultar. O teste mede o que você sabe hoje do básico da função; não mede inteligência nem personalidade.');
+  // Psicologia 2.8: o subtítulo do resultado sem selo não repete o "refazer" (ele aparece uma vez só, com a data).
+  assert.equal(TEXTOS.t('avisos.selo_sem_selo'), 'Ainda sem selo neste teste. A empresa não fica sabendo.');
+  // Psicologia 1.1: o relógio não para; encerrar trava só este teste.
+  assert.equal(TEXTOS.t('avisos.teste_encerrar_conta'), 'Se você encerrar antes do fim, a tentativa conta: este teste só pode ser feito de novo em 30 dias.');
 });
 
 test('resultado: barras por competência ("5 de 6"), linhas sem data fixa, onde acertou menos; nunca "aprovado"', () => {
@@ -518,27 +537,42 @@ test('resultado: barras por competência ("5 de 6"), linhas sem data fixa, onde 
     podeIniciarEm: '2026-11-12T15:00:00.000Z', porCompetencia: [{ id: 'a', nome: 'Abordagem', acertos: 3, total: 3 }, { id: 'b', nome: 'Objeções', acertos: 1, total: 3 },
       { id: 'c', nome: 'Troca', acertos: 1, total: 3 }, { id: 'd', nome: 'Pós-venda', acertos: 2, total: 3 }, { id: 'e', nome: 'Produto', acertos: 1, total: 3 }] };
   assert.deepEqual(TELA.partesDoResultado(res)[1], { nome: 'Objeções', acertos: 1, total: 3, texto: '1 de 3', percentual: 33 });
-  assert.deepEqual(TELA.linhasDoResultado(res), ['Você acertou 8 de 15 questões. Nota 53 (±10).',
+  // A margem por extenso no resultado (o "±" sozinho é opaco para quem lê pouco).
+  assert.deepEqual(TELA.linhasDoResultado(res), ['Você acertou 8 de 15 questões. Nota 53 (margem de cerca de 10 pontos, para mais ou para menos).',
     'O tempo acabou antes do fim; as questões sem resposta contaram como erro.', 'O selo sai a partir da nota 60.']);
   assert.equal(TELA.textoRefazer(res, DATA), 'Você pode refazer este teste a partir de 12/11/2026, de graça.');
-  assert.equal(TELA.ondeAcertouMenos(res), 'Objeções, Troca e Produto');
+  // Ponto e vírgula entre as partes (os nomes já têm vírgula e "e"); quem respondeu menos da metade não recebe a lista.
+  assert.equal(TELA.ondeAcertouMenos(res), 'Objeções; Troca; Produto');
+  assert.equal(TELA.ondeAcertouMenos(res, { respondidas: 8 }), 'Objeções; Troca; Produto');
+  assert.equal(TELA.ondeAcertouMenos(res, { respondidas: 7 }), '');
   const comSelo = Object.assign({}, res, { status: 'concluida', acertos: 12, nota: 80, selo: { codigo: 'K7M2QX9A', validoAte: '2027-10-13' } });
-  assert.deepEqual(TELA.linhasDoResultado(comSelo), ['Você acertou 12 de 15 questões. Nota 80 (±10).'], 'o código e a validade estão no selo');
+  assert.deepEqual(TELA.linhasDoResultado(comSelo), ['Você acertou 12 de 15 questões. Nota 80 (margem de cerca de 10 pontos, para mais ou para menos).'], 'o código e a validade estão no selo');
   for (const l of TELA.linhasDoResultado(res).concat(TELA.linhasDoResultado(comSelo))) assert.deepEqual(CONF.conferirTexto(l, 'resultado'), []);
   assert.deepEqual(TELA.contarPedidos([{ selo: 'caixa' }, { selo: null }, { selo: 'caixa' }, { selo: 'vendas' }, {}]), { caixa: 2, vendas: 1 });
-  assert.equal(TELA.textoBotaoVagas(9), 'Ver 9 vagas que pedem este selo');
-  assert.equal(TELA.textoBotaoVagas(1), 'Ver 1 vaga que pede este selo');
+  // Psicologia 2.4: "pedir" soa como exigir; o selo da vaga é sugestão.
+  assert.equal(TELA.textoBotaoVagas(9), 'Ver 9 vagas que sugerem este teste');
+  assert.equal(TELA.textoBotaoVagas(1), 'Ver 1 vaga que sugere este teste');
   assert.equal(TELA.textoBotaoVagas(0), 'Ver vagas');
   // Tempo do catálogo: "de 20 a 25 minutos" (do dado), nunca "15 min".
   assert.equal(TELA.faixaDeMinutos(BANCO), 'de 20 a 25 minutos');
   assert.equal(TELA.faixaDeMinutos([{ minutos: 20 }, { minutos: 20 }]), '20 minutos');
   assert.equal(TELA.faixaDeMinutos([]), '');
-  // Diretriz da psicologia: opcional e a empresa só vê o selo.
-  assert.equal(TELA.TXT.OPCIONAL, 'O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo; ela só vê o selo, se você ganhar.');
+  // Diretriz da psicologia (2.9, com dois-pontos): opcional e a empresa só vê o selo — no catálogo, nas instruções e nas vagas
+  // que sugerem o teste; nunca dentro da prova (leitura a mais em cada questão). No resultado sem selo, só a frase curta (2.8);
+  // com selo, nada.
+  assert.equal(TELA.TXT.OPCIONAL, 'O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo: ela só vê o selo, se você ganhar.');
+  assert.equal(TELA.TXT.OPCIONAL_CURTO, 'O teste é opcional: você pode se candidatar sem ele.');
   const tela = fs.readFileSync(path.join(CONF.VAGAS, 'js', 'testes-tela.js'), 'utf8');
-  for (const id of ['vg-testes-opcional', 'vg-instrucoes-opcional', 'vg-prova-opcional', 'vg-resultado-opcional', 'vg-testes-vagas-opcional']) {
-    assert.ok(new RegExp("id: '" + id + "' \\}, TXT\\.OPCIONAL").test(tela), id);
+  for (const id of ['vg-testes-opcional', 'vg-instrucoes-opcional', 'vg-testes-vagas-opcional']) {
+    assert.ok(new RegExp("id: '" + id + "' \\}, TXT\\.OPCIONAL\\)").test(tela), id);
   }
+  assert.ok(/temSelo \? null : el\('p', \{ class: 'texto-medio', id: 'vg-resultado-opcional' \}, TXT\.OPCIONAL_CURTO\)/.test(tela));
+  assert.ok(!/vg-prova-opcional/.test(tela), 'nada de "opcional" embaixo de cada questão');
+  // Psicologia 2.3 e 2.10: "tente o selo" (não "ganhe"); a margem no subtítulo; grátis e ninguém cobra.
+  assert.equal(TELA.TXT.FRASE_PESSOA, 'Se quiser, faça o teste da sua função no celular e tente o selo de habilidade testada.');
+  assert.ok(tela.includes("'. O selo mostra o teste, a nota com a margem e a data, e vale '"));
+  assert.equal(TELA.TXT.GRATIS, 'Os testes são grátis. Ninguém pode cobrar por eles.');
+  assert.ok(!/ganhe o selo|pedem este selo|pede este selo|beforeunload/.test(CONF.semComentarios(tela)));
   assert.ok(!/15 min/.test(CONF.semComentarios(tela)));
   assert.equal(TELA.juntar(['a']), 'a');
   assert.equal(TELA.linkSelo('k7m2-qx9a'), 'selo.html?codigo=K7M2QX9A');
@@ -562,10 +596,20 @@ test('relógio da prova: mm:ss, laranja com 1 minuto ou menos, avisa uma vez em 
 test('conferência do selo: código no formato (com ou sem hífen); situação válida, vencida (só a data) e cancelada', () => {
   assert.equal(SELO.validarCodigo('q8v3-n2kd'), '');
   assert.equal(SELO.validarCodigo(' Q8V3 N2KD '), '');
-  for (const ruim of ['', 'Q8V3N2K', 'Q8V3N2KD9', 'O0I1O0I1', 'Q8V3-N2K!']) assert.equal(SELO.validarCodigo(ruim), 'O código tem 8 letras e números, como Q8V3N2KD', ruim);
+  // O exemplo não é um código da semente da prévia (lá ele aparecia como selo válido).
+  for (const ruim of ['', 'Q8V3N2K', 'Q8V3N2KD9', 'O0I1O0I1', 'Q8V3-N2K!']) assert.equal(SELO.validarCodigo(ruim), 'O código tem 8 letras e números, como H4TR9WXE', ruim);
+  assert.equal(SELO.validarCodigo('H4TR9WXE'), '');
   assert.deepEqual(SELO.situacao({ situacao: 'valido' }), { tipo: 'valido', icone: 'check', titulo: 'Selo válido' });
   assert.equal(SELO.situacao({ situacao: 'vencido', validoAte: '2026-10-13' }, DATA).titulo, 'Selo vencido em 13/10/2026');
-  assert.equal(SELO.situacao({ situacao: 'revogado' }).tipo, 'revogado');
+  // Psicologia 2.6: "sem validade", nunca "cancelado" (soa como fraude para quem confere).
+  assert.deepEqual(SELO.situacao({ situacao: 'revogado' }), { tipo: 'revogado', icone: 'alerta', titulo: 'Selo sem validade',
+    texto: 'Este selo não vale mais. Se quiser, peça à pessoa para fazer o teste de novo.' });
+  // Psicologia 2.1 e 2.10: a frase para quem contrata (margem, não ordena, sem selo ≠ não sabe, a decisão é sua) e o nome só
+  // para a empresa com quem a pessoa combinou de conversar.
+  assert.equal(SELO.TXT.EMPRESA, 'Para quem contrata: a nota tem margem de cerca de 10 pontos, para mais ou para menos, e não serve para ordenar pessoas. Sem selo não quer dizer que a pessoa não sabe: o teste é opcional. A decisão de contratar continua sendo sua.');
+  assert.ok(SELO.TXT.EMITIDO.endsWith('o nome dela só aparece para a empresa com quem ela combinou de conversar.'));
+  const seloJs = CONF.semComentarios(fs.readFileSync(path.join(CONF.VAGAS, 'js', 'selo.js'), 'utf8'));
+  assert.ok(!/provou|Selo cancelado|Q8V3N2KD|K7M2QX9A/.test(seloJs));
   for (const t of Object.values(SELO.TXT)) assert.deepEqual(CONF.conferirTexto(t, 'selo.js'), []);
 });
 

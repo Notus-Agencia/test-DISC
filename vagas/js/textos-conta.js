@@ -22,7 +22,7 @@
    "modalidade_obrigatoria": "Escolha a modalidade: CLT, temporário, diária, autônomo ou estágio.",
    "titulo_curto": "O título precisa ter entre 5 e 60 letras.",
    "descricao_curta": "Descreva a vaga em pelo menos 40 caracteres.",
-   "selo_sugerido": "Quer pedir o selo de {{teste_nome}}? A pessoa faz o teste de conhecimento prático no celular e você vê a nota com a margem. Não é obrigatório e não substitui a entrevista.",
+   "selo_sugerido": "Quer sugerir o teste de {{teste_nome}}? Quem quiser faz o teste de conhecimento prático no celular, e você vê a nota com a margem. Não é obrigatório e não substitui a entrevista.",
    "area_obrigatoria": "Escolha a área da vaga.",
    "turno_obrigatorio": "Escolha o turno da vaga.",
    "experiencia_obrigatoria": "Escolha a experiência que a vaga pede.",

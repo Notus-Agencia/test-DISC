@@ -1,6 +1,6 @@
 /*
  * Vagas sem Caos — testes de habilidade na tela da pessoa (testes.html), no celular: catálogo, instruções, prova (uma questão
- * por tela), resultado com o selo e as vagas que pedem o selo. UMD: window.VAGAS_TESTES_TELA / module.exports (as funções puras
+ * por tela), resultado com o selo e as vagas que sugerem o teste. UMD: window.VAGAS_TESTES_TELA / module.exports (as funções puras
  * abaixo são testadas no Node; a montagem da tela só roda no navegador).
  *
  * Rotas (docs/VAGAS-TELAS.md §1 e §2.7): #catalogo · #teste/<slug> (instruções) · #prova · #resultado/<tentativa> · #vagas/<slug>.
@@ -13,6 +13,8 @@
  *     "Reconectando…" e reenvia sozinha (reenviar a mesma resposta não muda nada no servidor). A tentativa nunca se perde.
  *   - "Responder" explícito (toque acidental em tela pequena não gasta a questão) e nada de voltar.
  *   - Sair da tela e copiar texto viram só registro (vagas_registrar_sinal); ninguém perde o selo por isso.
+ *   - O relógio fica sempre à vista (na barra fixa, ao lado de "Responder"); sair da prova pela página pede confirmação e
+ *     avisa que o relógio continua; quem volta de outro app lê que o relógio continuou contando.
  *   - Nunca mostra quais questões a pessoa errou: só acertos por competência.
  *   - Datas no fuso da cidade da pessoa (VAGAS_UI.definirFuso), nunca um fuso fixo.
  */
@@ -26,22 +28,34 @@
   var POUCO_TEMPO = 60;              // segundos: o relógio fica laranja (aviso de pouco tempo, sem som)
   var AVISOS_TEMPO = [300, 60];      // anúncios para leitor de tela ("Faltam 5 minutos", "Falta 1 minuto")
   var ESPERA_RECONECTAR = [2, 4, 8, 15];
-  var PAGINAS_VAGAS = 5;             // até 100 vagas da cidade para contar as que pedem cada selo (cidade pequena cabe)
+  var PAGINAS_VAGAS = 5;             // até 100 vagas da cidade para contar as que sugerem cada teste (cidade pequena cabe)
   var CHAVE_ATUAL = 'vg.prova.atual';
+  var FORA_AVISAR_SEG = 30;          // fora da prova por mais que isto: na volta, a barra diz que o relógio continuou
 
-  // Textos desta tela. Os fixos vêm de padroes.md §6 (copiados como estão) e de avisos.json (VAGAS_UI.t); os demais estão
-  // listados no relatório para a revisão da psicologia.
+  // Textos desta tela. Os fixos vêm de padroes.md §6, da revisão da psicologia (revisao-c-psicologia-1, bloco 2) e de
+  // avisos.json (VAGAS_UI.t: teste_antes, selo_sem_selo…); os demais estão listados no relatório para a revisão. Os que só estas
+  // telas usam ficam aqui, e não em avisos.json: textos.js vai na lista pública, que está no limite de 100 KB.
   var TXT = {
-    FRASE_PESSOA: 'Mostre o que você sabe fazer: faça o teste da função no celular e ganhe o selo de habilidade testada.',   // padroes §6
+    // Psicologia 2.9 (com dois-pontos): catálogo, instruções e "Vagas que sugerem este teste"; nunca dentro da prova.
+    OPCIONAL: 'O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo: ela só vê o selo, se você ganhar.',
+    FRASE_PESSOA: 'Se quiser, faça o teste da sua função no celular e tente o selo de habilidade testada.',   // psicologia 2.3
     LIMITES: 'O teste mede conhecimento prático. Não mede inteligência, personalidade nem caráter, e não garante desempenho.',  // padroes §6
     DEMONSTRACAO: 'Questões de demonstração (a prova real usa outro banco)',
-    NENHUMA_VAGA_COBRA: 'Nenhuma vaga pode cobrar por eles.',
+    GRATIS: 'Os testes são grátis. Ninguém pode cobrar por eles.',                                              // psicologia 2.10
     DICA_PROVA: 'Depois de responder não dá para voltar.',
     RECONECTANDO_RESPOSTA: 'Reconectando… sua resposta está guardada.',
     SEM_RESPOSTA_ERRO: 'O que ficou sem resposta vale como erro.',
     QUEM_NAO_TEM: 'Quem não tem o selo também pode se candidatar.',
-    // Diretriz da psicologia (onda 2): em toda tela de testes, o teste é opcional e a empresa só vê o selo.
-    OPCIONAL: 'O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo; ela só vê o selo, se você ganhar.'
+    OPCIONAL_CURTO: 'O teste é opcional: você pode se candidatar sem ele.',                                      // psicologia 2.8
+    CADA_PARTE: 'Cada parte teve só 3 ou 4 questões: use como pista do que revisar, não como medida exata.',      // psicologia 2.8
+    NO_CARTAO: 'Ele aparece no seu cartão para as empresas das vagas em que você se candidatar.',                // psicologia 2.5
+    NO_CARTAO_OUTRO: 'No seu cartão continua o selo de nota maior que você já tinha neste teste.',               // psicologia 2.5
+    // Novos (UX da fase C): ainda passam pela psicologia.
+    ABERTA: 'Seu teste já começou e o relógio continua contando. Toque em "Continuar o teste" para voltar à questão em que parou.',
+    VOLTOU: 'O relógio continuou contando enquanto você estava fora.',
+    SAIR_TITULO: 'Sair da prova?',
+    SAIR_TEXTO: 'O relógio continua contando enquanto você estiver fora. Para voltar, abra Testes e toque em "Continuar".',
+    CALCULANDO: 'Calculando a sua nota…'
   };
 
   // ------------------------------------------------------------------------------------------------- funções puras
@@ -63,14 +77,18 @@
     var m = (item && item.minha) || null;
     var t = agora == null ? Date.now() : agora;
     var selo = m && m.selo && m.selo.situacao !== 'revogado' && m.selo.situacao !== 'vencido' ? m.selo : null;
-    if (m && m.aberta) return { tipo: 'continuar', faltam: Math.max(0, inteiro(m.aberta.total) - inteiro(m.aberta.respondidas)), selo: selo };
+    if (m && m.aberta) {
+      return { tipo: 'continuar', faltam: Math.max(0, inteiro(m.aberta.total) - inteiro(m.aberta.respondidas)), selo: selo,
+        minutos: m.aberta.segundosRestantes == null ? null : Math.ceil(Math.max(0, inteiro(m.aberta.segundosRestantes)) / 60) };
+    }
     if (m && m.podeIniciarEm && Date.parse(m.podeIniciarEm) > t) return { tipo: 'aguardar', dias: diasAte(m.podeIniciarEm, t), quando: m.podeIniciarEm, selo: selo };
     if (m && (m.selo || m.ultima)) return { tipo: 'refazer', selo: selo };
     return { tipo: 'fazer', selo: null };
   }
 
-  // Linha de informação do item (docs/VAGAS-TELAS.md §2.7): "15 questões · 20 min · pedido em 3 vagas" / "Selo válido até … · nota 82 (±10)".
-  // op.data(iso) formata a data no fuso da cidade; op.pedidos = quantas vagas da cidade pedem este selo.
+  // Linha de informação do item (docs/VAGAS-TELAS.md §2.7): "15 questões · 20 min · sugerido em 3 vagas" / "Selo válido até … · nota 82 (±10)"
+  // / "Você começou este teste · faltam 12 questões · restam 14 min" (o relógio não para: a linha diz quanto sobra).
+  // op.data(iso) formata a data no fuso da cidade; op.pedidos = quantas vagas da cidade sugerem este teste.
   function linhaDoTeste(item, op) {
     op = op || {};
     var data = op.data || function (x) { return String(x || ''); };
@@ -80,6 +98,7 @@
     if (a.tipo === 'continuar') {
       partes.push('Você começou este teste');
       partes.push('falta' + (a.faltam === 1 ? ' ' : 'm ') + plural(a.faltam, 'questão', 'questões'));
+      if (a.minutos != null) partes.push('resta' + (a.minutos === 1 ? ' ' : 'm ') + a.minutos + ' min');
       return partes.join(' · ');
     }
     if (a.selo) partes.push('Selo válido até ' + data(a.selo.validoAte) + ' · nota ' + inteiro(a.selo.nota) + ' (±' + (a.selo.margem == null ? 10 : inteiro(a.selo.margem)) + ')');
@@ -91,14 +110,14 @@
       if (item.slug === 'caixa') partes.push('pode usar papel e caneta');
     }
     var n = op.pedidos ? inteiro(op.pedidos[item.slug]) : 0;
-    if (n > 0 && a.tipo !== 'aguardar') partes.push('pedido em ' + plural(n, 'vaga', 'vagas'));
+    if (n > 0 && a.tipo !== 'aguardar') partes.push('sugerido em ' + plural(n, 'vaga', 'vagas'));
     return partes.join(' · ');
   }
 
   // Linhas das instruções com ícone: as do contrato (VAGAS_TESTES.instrucoes) sem as duas que a tela mostra no texto fixo de
   // padroes.md §5.7 (avisos.teste_antes), para não dizer a mesma coisa duas vezes com palavras diferentes.
   var ICONES_INSTRUCAO = [[/^São \d+ questões/, 'lista'], [/^Você tem \d+ minutos/, 'relogio'], [/^Se a internet cair/, 'nuvem'],
-    [/^Se você encerrar/, 'alerta'], [/papel e caneta/, 'moeda'], [/^Durante a prova, registramos/, 'olho'], [/ganha o selo/, 'selo']];
+    [/^Se você encerrar/, 'alerta'], [/papel e caneta/, 'moeda'], [/^Se você sair da prova/, 'olho'], [/ganha o selo/, 'selo']];
   function linhasInstrucoes(teste) {
     return T.instrucoes(teste).filter(function (l) { return !/^Faça sozinho/.test(l) && !/^O teste mede/.test(l); }).map(function (l) {
       var ic = 'seta';
@@ -121,9 +140,16 @@
   function textoRefazer(res, data) {
     return res && res.podeIniciarEm ? 'Você pode refazer este teste a partir de ' + data(res.podeIniciarEm) + ', de graça.' : '';
   }
-  function ondeAcertouMenos(res) { return juntar(T.textoResultado(res).estudar); }
+  // Os nomes das partes já têm vírgula e "e" ("Troca, devolução e direitos do consumidor"): a lista vai com ponto e vírgula.
+  // op.respondidas (quando a tela sabe): quem respondeu menos da metade não recebe a lista (ela diria pouco ou nada).
+  function ondeAcertouMenos(res, op) {
+    var r = res || {};
+    var resp = op && op.respondidas;
+    if (resp != null && inteiro(r.total) > 0 && inteiro(resp) * 2 < inteiro(r.total)) return '';
+    return T.textoResultado(r).estudar.join('; ');
+  }
 
-  // Quantas vagas pedem cada selo (o selo da vaga é só informação: a pessoa vê, a empresa não filtra pessoas por ele).
+  // Quantas vagas sugerem cada teste (o selo da vaga é só informação: a pessoa vê, a empresa não filtra pessoas por ele).
   function contarPedidos(anuncios) {
     var n = {};
     (anuncios || []).forEach(function (a) { if (a && a.selo) n[a.selo] = (n[a.selo] || 0) + 1; });
@@ -137,7 +163,7 @@
     var maior = Math.max.apply(null, m);
     return menor === maior ? menor + ' minutos' : 'de ' + menor + ' a ' + maior + ' minutos';
   }
-  function textoBotaoVagas(n) { return n > 0 ? 'Ver ' + plural(n, 'vaga que pede', 'vagas que pedem') + ' este selo' : 'Ver vagas'; }
+  function textoBotaoVagas(n) { return n > 0 ? 'Ver ' + plural(n, 'vaga que sugere', 'vagas que sugerem') + ' este teste' : 'Ver vagas'; }
 
   // Relógio: "12:05", laranja com 1 minuto ou menos; anúncio para leitor de tela em 5 min e 1 min (só o mais próximo, uma vez:
   // quem abre a prova com 50 s ouve "Falta 1 minuto" e nunca "Faltam 5 minutos" depois). marcar = limites que já não falam.
@@ -175,7 +201,10 @@
   var app = doc.getElementById('app');
   if (!app) return;
 
-  var ctx = { logado: false, eu: null, cidade: null, catalogo: null, vagas: null, roteador: null, vez: 0 };
+  // catalogoPrevio: o catálogo pedido junto com a conta (iniciar), usado pela primeira tela. fim: o que a prova já sabe quando
+  // termina ({tentativa, respondidas, resultado?}), para o resultado não perguntar de novo.
+  var ctx = { logado: false, eu: null, cidade: null, catalogo: null, catalogoEm: 0, catalogoPrevio: null, vagas: null, fim: null,
+    roteador: null, vez: 0 };
   var prova = null;
   // Cada troca de rota ganha um número: resposta que chega depois de a pessoa ter ido para outra tela é ignorada (não desenha
   // por cima da prova, por exemplo).
@@ -199,11 +228,18 @@
   function chavePendente(t) { return 'vg.prova.' + t; }
 
   // ------------------------------------------------------------------------------------------------- dados da tela
+  var CATALOGO_RECENTE_MS = 60000;   // instruções logo depois do catálogo usam o que ele trouxe (uma ida e volta a menos)
   function carregarCatalogo(forcar) {
-    if (ctx.catalogo && !forcar) return Promise.resolve(ctx.catalogo);
-    return A.testesCatalogo().then(function (r) { ctx.catalogo = r; return r; });
+    var previo = ctx.catalogoPrevio;
+    ctx.catalogoPrevio = null;
+    var pedido = previo || (ctx.catalogo && !forcar ? null : A.testesCatalogo());
+    if (!pedido) return Promise.resolve(ctx.catalogo);
+    return pedido.then(function (r) { ctx.catalogo = r; ctx.catalogoEm = agora(); return r; });
   }
-  // Vagas da cidade (até 100) para contar as que pedem cada selo. Falha aqui nunca derruba a tela: a contagem só some.
+  function catalogoRecente() { return !!ctx.catalogo && agora() - ctx.catalogoEm < CATALOGO_RECENTE_MS; }
+  // Depois de começar ou terminar uma prova, o que o catálogo sabia ("Continuar", "Em 30 dias") ficou velho.
+  function esquecerCatalogo() { ctx.catalogo = null; ctx.catalogoPrevio = null; }
+  // Vagas da cidade (até 100) para contar as que sugerem cada teste. Falha aqui nunca derruba a tela: a contagem só some.
   function carregarVagas() {
     if (ctx.vagas) return Promise.resolve(ctx.vagas);
     if (!ctx.cidade) return Promise.resolve([]);
@@ -217,16 +253,15 @@
     }
     return pagina('', 0).then(function (l) { ctx.vagas = l; return l; }, function () { return []; });
   }
-  function carregarCidade() {
+  // r = resposta de A.cidades() (pedida em paralelo com a conta, em iniciar).
+  function definirCidade(r) {
     var slug = (ctx.eu && ctx.eu.pessoa && ctx.eu.pessoa.cidades && ctx.eu.pessoa.cidades[0]) || U.cidadeLembrada();
-    if (!slug) return Promise.resolve();
-    return A.cidades().then(function (r) {
-      var c = (r.cidades || []).filter(function (x) { return x.slug === slug; })[0];
-      if (!c) return;
-      ctx.cidade = { slug: c.slug, nome: c.nome, fuso: c.fuso };
-      U.definirFuso(c.fuso);
-      U.topo({ cidade: { nome: c.nome, slug: c.slug }, aoCidade: function () { U._api.navegar('index.html'); } });
-    }, function () { /* sem a cidade a tela segue (fuso de reserva) */ });
+    if (!slug || !r) return;
+    var c = (r.cidades || []).filter(function (x) { return x.slug === slug; })[0];
+    if (!c) return;
+    ctx.cidade = { slug: c.slug, nome: c.nome, fuso: c.fuso };
+    U.definirFuso(c.fuso);
+    U.topo({ cidade: { nome: c.nome, slug: c.slug }, aoCidade: function () { U._api.navegar('index.html'); } });
   }
 
   // ------------------------------------------------------------------------------------------------- catálogo
@@ -237,7 +272,7 @@
     if (a.tipo === 'continuar') {
       return el('button', { type: 'button', class: 'botao botao--principal vg-teste__acao', id: id, onclick: function (ev) { comecar(slug, ev.currentTarget, null); } }, 'Continuar');
     }
-    if (a.tipo === 'aguardar') return el('span', { class: 'vg-teste__acao t-nota texto-suave', id: id }, 'Em ' + plural(a.dias, 'dia', 'dias'));
+    if (a.tipo === 'aguardar') return el('span', { class: 'vg-teste__acao vg-teste__espera texto-medio', id: id }, 'Em ' + plural(a.dias, 'dia', 'dias'));
     if (a.tipo === 'refazer') return el('a', { class: 'botao botao--claro vg-teste__acao', id: id, href: '#teste/' + slug }, U.t('botoes.refazer_teste') || 'Refazer o teste');
     return el('a', { class: 'botao botao--principal vg-teste__acao', id: id, href: '#teste/' + slug }, U.t('botoes.fazer_teste') || 'Fazer o teste');
   }
@@ -264,12 +299,12 @@
         el('h1', { id: 'vg-testes-titulo', class: 'titulo-pagina', tabindex: '-1' }, 'Testes'),
         el('p', { class: 'subtitulo' }, TXT.FRASE_PESSOA),
         el('p', { class: 'subtitulo', id: 'vg-testes-subtitulo' }, 'Grátis, no celular' + (faixaDeMinutos(r.testes) ? ', ' + faixaDeMinutos(r.testes) + ' cada' : '') +
-          '. O selo mostra o teste, a nota e a data, e vale ' + validade + ' meses. Pode refazer depois de ' + (regras.intervaloDias || 30) + ' dias.'),
+          '. O selo mostra o teste, a nota com a margem e a data, e vale ' + validade + ' meses. Pode refazer depois de ' + (regras.intervaloDias || 30) + ' dias.'),
         el('p', { class: 'aviso', id: 'vg-testes-opcional' }, TXT.OPCIONAL),
         ctx.logado ? null : el('div', { class: 'aviso', id: 'vg-testes-entrar-aviso' }, [el('p', {}, T.MENSAGENS.login),
           el('div', { class: 'acoes' }, el('a', { class: 'botao botao--claro', id: 'vg-testes-entrar', href: U.linkEntrar('testes.html') }, 'Entrar'))]),
         lista,
-        el('p', { class: 'aviso', id: 'vg-testes-aviso' }, [U.t('avisos.selo_nao_e_psicologico'), ' ', TXT.NENHUMA_VAGA_COBRA])
+        el('p', { class: 'aviso', id: 'vg-testes-aviso' }, [U.t('avisos.selo_nao_e_psicologico'), ' ', TXT.GRATIS])
       ]));
       // A contagem de vagas chega depois e só completa a linha de cada teste.
       carregarVagas().then(function (vagas) {
@@ -289,7 +324,7 @@
     fixarNav();
     U.carregando(app);
     var vez = novaVez();
-    return carregarCatalogo(true).then(function (r) {
+    return carregarCatalogo(!catalogoRecente()).then(function (r) {
       if (vez !== ctx.vez) return;
       var t = (r.testes || []).filter(function (x) { return x.slug === slug; })[0];
       if (!t) {
@@ -311,11 +346,13 @@
         el('p', { class: 'sobretitulo' }, 'Teste de habilidade'),
         el('h1', { id: 'vg-instrucoes-titulo', class: 'titulo-pagina', tabindex: '-1' }, t.nome),
         t.descricao ? el('p', { class: 'subtitulo' }, t.descricao) : null,
+        // Quem voltou da prova (voltar do celular, catálogo): o relógio não parou.
+        a.tipo === 'continuar' && ctx.logado ? el('p', { class: 'aviso', id: 'vg-instrucoes-aberta' }, TXT.ABERTA) : null,
         el('ul', { class: 'vg-lista-itens', id: 'vg-instrucoes-lista' }, linhasInstrucoes(t).map(function (l) {
           return el('li', { class: 'vg-item' }, [U.icone(l.icone), el('span', { class: 'vg-item__texto t-corpo' }, l.texto)]);
         })),
         el('p', { class: 'aviso', id: 'vg-instrucoes-sozinho' }, U.t('avisos.teste_antes')),
-        el('p', { class: 't-rotulo texto-medio', id: 'vg-instrucoes-opcional' }, TXT.OPCIONAL),
+        el('p', { class: 'aviso', id: 'vg-instrucoes-opcional' }, TXT.OPCIONAL),
         a.tipo === 'aguardar' && ctx.logado ? el('p', { class: 'aviso', id: 'vg-instrucoes-aguardar' }, 'Você pode fazer de novo a partir de ' + data(a.quando) + '.') : null,
         erro,
         el('div', { class: 'acoes' }, [principal, el('a', { class: 'botao botao--link', href: '#catalogo', id: 'vg-prova-depois' }, 'Deixar para depois')])
@@ -328,6 +365,7 @@
     U.ocupado(botao, true, 'Abrindo…');
     A.iniciarTentativa(slug).then(function (r) {
       var t = r.tentativa;
+      esquecerCatalogo();
       U.armazenamento.gravar(CHAVE_ATUAL, { tentativa: t.id, teste: t.teste, nome: t.nome, total: t.total });
       ir('prova');
     }, function (e) {
@@ -346,7 +384,7 @@
     clearTimeout(prova.esperaFim);
     doc.removeEventListener('visibilitychange', prova.aoEsconder);
     doc.removeEventListener('copy', prova.aoCopiar);
-    root.removeEventListener('beforeunload', prova.aoSair);
+    doc.removeEventListener('click', prova.aoClicarFora, true);
     root.removeEventListener('online', prova.aoVoltar);
     root.removeEventListener('pagehide', prova.aoPagehide);
     root.removeEventListener('pageshow', prova.aoPageshow);
@@ -365,7 +403,7 @@
     A.proximaQuestao(atual.tentativa).then(function (r) {
       if (vez !== ctx.vez) return;
       U.faixaOffline(false);
-      if (r.fim) { irResultado(atual.tentativa); return; }
+      if (r.fim) { irResultado(atual.tentativa, null); return; }
       var est = T.novoEstado({ tentativa: { id: atual.tentativa, teste: atual.teste, nome: atual.nome, total: r.total, respondidas: r.numero - 1,
         segundosRestantes: r.segundosRestantes } }, agora());
       iniciarProva(atual, T.aplicarQuestao(est, r, agora()));
@@ -392,25 +430,55 @@
 
   function iniciarProva(atual, estado) {
     pararProva();
-    prova = { atual: atual, estado: estado, sel: null, enviando: false, esgotou: false, anunciados: [], tentativasEnvio: 0 };
+    esquecerCatalogo();
+    prova = { atual: atual, estado: estado, sel: null, enviando: false, esgotou: false, avisouFim: false, consultasFim: 0, anunciados: [],
+      tentativasEnvio: 0, saiuEm: null };
     var p = prova;
-    // Recarregar ou fechar a página também esconde a tela: pagehide vem antes e marca que não é troca de aba.
-    p.aoEsconder = function () { if (doc.visibilityState === 'hidden' && !p.saindo) sinal('troca_aba'); };
+    // Recarregar ou fechar a página também esconde a tela: pagehide vem antes e marca que não é troca de aba. Sem o diálogo
+    // "as alterações podem não ser salvas": a tentativa e a escolha já estão guardadas.
+    p.aoEsconder = function () {
+      if (doc.visibilityState === 'hidden') {
+        if (!p.saindo) { p.saiuEm = agora(); sinal('troca_aba'); }
+        return;
+      }
+      // Voltou de outro app: o relógio andou. Quem ficou fora um tempo lê isso na barra (até a próxima questão).
+      if (p.saiuEm != null && agora() - p.saiuEm >= FORA_AVISAR_SEG * 1000) { dica(TXT.VOLTOU); U.anunciar(TXT.VOLTOU); }
+      p.saiuEm = null;
+      tique();
+    };
     p.aoPagehide = function () { p.saindo = true; };
     p.aoPageshow = function () { p.saindo = false; };
     root.addEventListener('pagehide', p.aoPagehide);
     root.addEventListener('pageshow', p.aoPageshow);
     p.aoCopiar = function () { sinal('copiar'); };
-    // Sair da página só avisa: a tentativa continua no servidor (e trocar de aba vira sinal, não anula nada).
-    p.aoSair = function (ev) { ev.preventDefault(); ev.returnValue = ''; return ''; };
     p.aoVoltar = function () { if (p.reenvioPendente) { clearTimeout(p.reenvio); enviarResposta(); } };
+    // Link ou botão do topo (logo, pílula da cidade) tira a pessoa da prova: confirma na própria tela, dizendo que o relógio
+    // continua. Âncoras da própria página, a barra e as janelas seguem normais.
+    p.aoClicarFora = function (ev) {
+      if (p.saidaConfirmada || !ev.target || !ev.target.closest) return;
+      var alvo = ev.target.closest('a[href], #vg-cidade');
+      if (!alvo || app.contains(alvo) || alvo.closest('#vg-fixo') || alvo.closest('.vg-janela')) return;
+      var href = alvo.getAttribute('href');
+      if (href && href.charAt(0) === '#') return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      U.confirmar({ id: 'vg-confirmar-sair', titulo: TXT.SAIR_TITULO, texto: TXT.SAIR_TEXTO, sim: 'Sair', nao: 'Continuar o teste' }).then(function (sim) {
+        if (!sim || p !== prova) return;
+        p.saidaConfirmada = true;
+        if (alvo.tagName === 'A') U._api.navegar(alvo.href); else alvo.click();
+      });
+    };
     doc.addEventListener('visibilitychange', p.aoEsconder);
     doc.addEventListener('copy', p.aoCopiar);
-    root.addEventListener('beforeunload', p.aoSair);
+    doc.addEventListener('click', p.aoClicarFora, true);
     root.addEventListener('online', p.aoVoltar);
     var responder = el('button', { type: 'button', class: 'botao botao--principal botao--grande', id: 'vg-prova-responder', disabled: true, onclick: enviarResposta }, 'Responder');
     p.botao = responder;
-    U.fixar(U.barra({ id: 'vg-barra-prova', dica: TXT.DICA_PROVA, botoes: [el('span', { class: 'barra-vazio', 'aria-hidden': 'true' }), responder] }));
+    // O relógio fica na barra fixa, ao lado de "Responder": sempre à vista, mesmo com a questão rolada. O leitor de tela lê o
+    // valor (o texto escondido faz parte do nome do relógio; nada de aria-label por cima).
+    var relogio = el('span', { class: 'vg-tempo', id: 'vg-prova-tempo', role: 'timer' },
+      [U.icone('relogio'), el('span', { class: 'visualmente-oculto' }, 'Tempo que falta: '), el('span', { id: 'vg-prova-segundos' }, '')]);
+    U.fixar(U.barra({ id: 'vg-barra-prova', dica: TXT.DICA_PROVA, botoes: [relogio, responder] }));
     mostrarQuestao();
     p.relogio = setInterval(tique, 500);
     tique();
@@ -419,6 +487,11 @@
   function sinal(tipo) {
     if (!prova) return;
     A.registrarSinal(prova.estado.tentativa, tipo).catch(function () { /* só registro: falha não atrapalha a prova */ });
+  }
+  // Dica da barra: a regra da prova; "Reconectando…" ou "o relógio continuou" quando for o caso.
+  function dica(texto) {
+    var d = doc.getElementById('vg-barra-prova-dica');
+    if (d) d.textContent = texto || TXT.DICA_PROVA;
   }
 
   function mostrarQuestao() {
@@ -429,6 +502,7 @@
     var opcoes = el('ul', { class: 'vg-prova__opcoes', id: 'vg-prova-opcoes', role: 'radiogroup', 'aria-labelledby': 'vg-prova-enunciado' },
       q.alternativas.map(function (texto, i) {
         return el('li', {}, el('button', { type: 'button', class: 'retrato vg-opcao', role: 'radio', 'aria-checked': 'false', 'aria-pressed': 'false',
+          'aria-posinset': String(i + 1), 'aria-setsize': String(q.alternativas.length),
           data: { opcao: i }, onclick: function () { escolher(i); } }, [el('span', { class: 'vg-opcao__letra', 'aria-hidden': 'true' }, 'ABCD'.charAt(i)),
           el('span', { class: 'retrato-texto' }, texto)]));
       }));
@@ -436,9 +510,7 @@
     U.trocar(app, el('section', { class: 'caixa', id: 'vg-prova', 'aria-labelledby': 'vg-prova-enunciado', data: { questao: e.numero, tentativa: e.tentativa } }, [
       el('div', { class: 'vg-prova__topo' }, [
         el('p', { class: 't-rotulo texto-medio', id: 'vg-prova-numero' }, [el('span', { class: 'visualmente-oculto' }, 'Questão '),
-          el('strong', { class: 'progresso-num' }, String(prog.numero)), ' de ' + prog.total]),
-        el('span', { class: 'vg-tempo', id: 'vg-prova-tempo', role: 'timer', 'aria-live': 'off', 'aria-label': 'Tempo que falta' },
-          [U.icone('relogio'), el('span', { id: 'vg-prova-segundos' }, '')])
+          el('strong', { class: 'progresso-num' }, String(prog.numero)), ' de ' + prog.total])
       ]),
       el('div', { class: 'vg-prova__barra trilho', 'aria-hidden': 'true' }, feito),
       q.texto ? el('div', { class: 'vg-prova__apoio', id: 'vg-prova-apoio' }, q.texto) : null,
@@ -446,11 +518,11 @@
       opcoes,
       el('p', { class: 'vg-reconectando', id: 'vg-prova-reconectando', role: 'status', 'aria-live': 'polite', hidden: true },
         [el('span', { class: 'giro', 'aria-hidden': 'true' }), TXT.RECONECTANDO_RESPOSTA]),
-      el('p', { class: 't-nota texto-suave', id: 'vg-prova-opcional' }, TXT.OPCIONAL),
       el('div', { class: 'acoes' }, el('button', { type: 'button', class: 'botao botao--link', id: 'vg-prova-encerrar', onclick: encerrar }, 'Encerrar o teste'))
     ]));
     p.sel = null;
     p.botao.disabled = true;
+    dica(null);
     U.focarTitulo(app);
     try { root.scrollTo(0, 0); } catch (err) { /* ignora */ }
     U.anunciar(prog.texto);
@@ -481,13 +553,19 @@
     escolher(g.alternativa);
     if (g.enviar) enviarResposta();
   }
+  // "Reconectando…" embaixo das alternativas e também na barra (que fica à vista com a questão rolada).
   function reconectando(sim) {
     var r = doc.getElementById('vg-prova-reconectando');
     if (r) r.hidden = !sim;
+    dica(sim ? TXT.RECONECTANDO_RESPOSTA : null);
   }
   function travarOpcoes(sim) {
     var lista = doc.getElementById('vg-prova-opcoes');
     if (lista) Array.prototype.forEach.call(lista.querySelectorAll('button'), function (b) { b.disabled = sim; });
+  }
+  // O servidor deu mais tempo do que o relógio do aparelho achava: um novo "acabou" volta a valer.
+  function conferirTempo(p) {
+    if (T.segundosRestantes(p.estado, agora()) > 0) { p.esgotou = false; p.avisouFim = false; p.consultasFim = 0; }
   }
 
   function enviarResposta() {
@@ -508,9 +586,10 @@
       U.faixaOffline(false);
       U.armazenamento.apagar(chavePendente(p.estado.tentativa));
       U.ocupado(p.botao, false);
-      if (r.fim) { irResultado(p.estado.tentativa); return; }
+      if (r.fim) { irResultado(p.estado.tentativa, { respondidas: r.respondidas }); return; }
       p.estado = T.aplicarResposta(p.estado, r, agora());
       p.esgotou = false;
+      conferirTempo(p);
       mostrarQuestao();
     }, function (e) {
       if (p !== prova) return;
@@ -527,7 +606,7 @@
       reconectando(false);
       U.ocupado(p.botao, false);
       travarOpcoes(false);
-      if (e.resposta && e.resposta.fim) { U.armazenamento.apagar(chavePendente(p.estado.tentativa)); irResultado(p.estado.tentativa); return; }
+      if (e.resposta && e.resposta.fim) { U.armazenamento.apagar(chavePendente(p.estado.tentativa)); irResultado(p.estado.tentativa, { respondidas: p.estado.respondidas }); return; }
       if (e.sessaoExpirada || e.confirmar || e.suspensa) { U.tratarErro(e); return; }
       U.avisar(e.message, { tipo: 'erro' });
       if (erroCodigo(e) === 'fora_de_ordem') { U.armazenamento.apagar(chavePendente(p.estado.tentativa)); carregarQuestao(p.atual, 0, ctx.vez); }
@@ -547,22 +626,26 @@
     if (r.acabou && !p.esgotou) { p.esgotou = true; tempoAcabou(); }
   }
   // Tempo do servidor acabou: a resposta marcada ainda vale (tolerância de 10 s para a questão da tela); sem resposta, a tela
-  // pergunta ao servidor, que fecha a tentativa ("tempo_esgotado") e vai para o resultado.
+  // pergunta ao servidor, que fecha a tentativa ("tempo_esgotado") e vai para o resultado. "O tempo acabou" é anunciado uma vez
+  // só; a primeira pergunta sai em 1,5 s (o relógio do aparelho pode ter corrido na frente) e a seguinte, depois da tolerância.
   function tempoAcabou() {
     var p = prova;
-    U.anunciar(T.tempoPorExtenso(0) + '.');
+    if (!p.avisouFim) { p.avisouFim = true; U.anunciar(T.tempoPorExtenso(0) + '.'); }
     if (p.sel !== null && !p.enviando) { enviarResposta(); return; }
     if (p.enviando) return;
+    var espera = p.consultasFim ? (T.TOLERANCIA_SEG_POR_QUESTAO + 1) * 1000 : 1500;
+    p.consultasFim += 1;
     p.esperaFim = setTimeout(function () {
       if (p !== prova) return;
       A.proximaQuestao(p.estado.tentativa).then(function (r) {
         if (p !== prova) return;
-        if (r.fim) { irResultado(p.estado.tentativa); return; }
+        if (r.fim) { irResultado(p.estado.tentativa, { respondidas: p.estado.respondidas }); return; }
         // O relógio do aparelho correu na frente do servidor: segue com o tempo que o servidor disse.
         p.estado = T.aplicarQuestao(p.estado, r, agora());
+        conferirTempo(p);
         p.esgotou = false;
       }, function () { if (p === prova) p.esgotou = false; });
-    }, 1500);
+    }, espera);
   }
 
   function encerrar() {
@@ -572,35 +655,59 @@
       sim: 'Encerrar', nao: 'Continuar o teste', perigo: true }).then(function (sim) {
       if (!sim || p !== prova) return;
       var t = p.estado.tentativa;
+      var respondidas = p.estado.respondidas;
       pararProva();
-      U.carregando(app);
-      A.finalizar(t).then(function () { irResultado(t); }, function (e) { U.tratarErro(e, { raiz: app, aoTentar: function () { irResultado(t); } }); });
+      U.carregando(app, TXT.CALCULANDO);
+      A.finalizar(t).then(function (r) { irResultado(t, { respondidas: respondidas, resultado: r.resultado }); },
+        function (e) { U.tratarErro(e, { raiz: app, aoTentar: function () { irResultado(t, null); } }); });
     });
   }
-  function irResultado(t) {
+  // fim (quando a prova acabou de terminar nesta tela): {respondidas, resultado?}. O resultado não pergunta de novo se a
+  // tentativa acabou e, com o resultado em mãos, desenha sem esperar o servidor.
+  function irResultado(t, fim) {
     pararProva();
+    esquecerCatalogo();
     var atual = lerAtual();
     if (atual && atual.tentativa === t) U.armazenamento.apagar(CHAVE_ATUAL);
     U.armazenamento.apagar(chavePendente(t));
+    ctx.fim = fim ? { tentativa: t, respondidas: fim.respondidas, resultado: fim.resultado || null } : null;
     ir('resultado/' + t);
   }
 
   // ------------------------------------------------------------------------------------------------- resultado
+  // O selo novo está no cartão? (o cartão mostra 1 selo por teste, o de nota maior). null = não deu para saber.
+  function seloNoCartao(res, meus) {
+    if (!res.selo || !meus || !Array.isArray(meus.selos)) return null;
+    var s = meus.selos.filter(function (x) { return x && x.codigo === res.selo.codigo; })[0];
+    return s ? !!s.exibido : null;
+  }
   function telaResultado(t) {
     pararProva();
     if (!ctx.logado) { U.irParaEntrar({}); return; }
     fixarNav();
-    U.carregando(app);
     var vez = novaVez();
-    // Antes de pedir o resultado, confere que a tentativa acabou: vagas_finalizar ENCERRA uma tentativa aberta.
-    A.proximaQuestao(t).then(function (r) {
+    var fim = ctx.fim && ctx.fim.tentativa === t ? ctx.fim : null;
+    ctx.fim = null;
+    U.carregando(app, TXT.CALCULANDO);
+    // Antes de pedir o resultado, confere que a tentativa acabou (vagas_finalizar ENCERRA uma tentativa aberta); a prova que
+    // acabou de terminar nesta tela já sabe.
+    (fim ? Promise.resolve({ fim: true }) : A.proximaQuestao(t)).then(function (r) {
       if (vez !== ctx.vez) return null;
       if (!r.fim) {
         U.armazenamento.gravar(CHAVE_ATUAL, { tentativa: t, teste: '', nome: '', total: r.total });
         ir('prova');
         return null;
       }
-      return Promise.all([A.finalizar(t), carregarVagas()]).then(function (x) { if (vez === ctx.vez) mostrarResultado(x[0].resultado, contarPedidos(x[1])); });
+      var pedido = fim && fim.resultado ? Promise.resolve({ resultado: fim.resultado }) : A.finalizar(t);
+      // Os selos da pessoa (para saber se o novo está no cartão) vão junto, em paralelo; sem eles a tela segue.
+      var meus = fim && fim.resultado && !fim.resultado.selo ? Promise.resolve(null) : A.meusSelos().catch(function () { return null; });
+      return Promise.all([pedido, meus]).then(function (x) {
+        if (vez !== ctx.vez) return;
+        var res = x[0].resultado;
+        mostrarResultado(res, { cartao: seloNoCartao(res, x[1]), respondidas: fim ? fim.respondidas : null });
+        // A contagem de vagas chega depois e só completa o botão.
+        carregarVagas().then(function (vagas) { if (vez === ctx.vez) botaoVagas(res.teste, contarPedidos(vagas)); });
+      });
     }).catch(function (e) {
       if (vez !== ctx.vez) return;
       if (erroCodigo(e) === 'tentativa_inexistente') {
@@ -609,6 +716,13 @@
       }
       U.tratarErro(e, { raiz: app, aoTentar: function () { telaResultado(t); } });
     });
+  }
+  function botaoVagas(teste, pedidos) {
+    var b = doc.getElementById('vg-resultado-vagas');
+    if (!b) return;
+    var n = pedidos ? inteiro(pedidos[teste]) : 0;
+    b.textContent = textoBotaoVagas(n);
+    b.setAttribute('href', n > 0 ? '#vagas/' + teste : hrefVagas());
   }
   // Peça do selo da casca; o código ganha o id que os testes e a tela de compartilhar usam (#vg-selo-codigo).
   function pecaDoSelo(res) {
@@ -625,31 +739,37 @@
     if (n && typeof n.share === 'function') { n.share(dados).catch(function () { /* a pessoa desistiu de compartilhar */ }); return; }
     U.copiar(link).then(function () { U.avisar('Copiado', { tipo: 'ok' }); }, function (e) { U.avisar(e.message, { tipo: 'erro' }); });
   }
-  function mostrarResultado(res, pedidos) {
+  // op.cartao: true/false/null (o selo novo está no cartão?); op.respondidas: quantas a pessoa respondeu, quando a tela sabe.
+  function mostrarResultado(res, op) {
+    op = op || {};
     var temSelo = !!res.selo;
-    var n = pedidos ? inteiro(pedidos[res.teste]) : 0;
     var refazer = textoRefazer(res, data);
-    var menos = temSelo ? '' : ondeAcertouMenos(res);
+    var menos = ondeAcertouMenos(res, { respondidas: op.respondidas });
     var partes = partesDoResultado(res);
-    var botaoVagas = el('a', { class: 'botao botao--laranja botao--grande', id: 'vg-resultado-vagas', href: n > 0 ? '#vagas/' + res.teste : hrefVagas() }, textoBotaoVagas(n));
+    var subtitulo = temSelo
+      ? (op.cartao == null ? null : el('p', { class: 'subtitulo', id: 'vg-resultado-cartao' }, op.cartao ? TXT.NO_CARTAO : TXT.NO_CARTAO_OUTRO))
+      : el('p', { class: 'subtitulo', id: 'vg-resultado-sem-selo' }, U.t('avisos.selo_sem_selo'));
+    var botao = el('a', { class: 'botao botao--laranja botao--grande', id: 'vg-resultado-vagas', href: hrefVagas() }, textoBotaoVagas(0));
     U.trocar(app, el('section', { class: 'caixa surgir', id: 'vg-resultado', 'aria-labelledby': 'vg-resultado-titulo', data: { selo: temSelo ? 'sim' : 'nao', status: res.status } }, [
       el('p', { class: 'sobretitulo' }, res.nome),
       el('h1', { id: 'vg-resultado-titulo', class: 'titulo-pagina', tabindex: '-1' }, temSelo ? 'Você ganhou o selo' : 'Prova concluída'),
-      temSelo ? el('p', { class: 'subtitulo' }, 'Ele já aparece no seu cartão para as empresas.') : el('p', { class: 'subtitulo', id: 'vg-resultado-sem-selo' }, U.t('avisos.selo_sem_selo')),
+      subtitulo,
       temSelo ? el('div', { id: 'vg-selo', class: 'vg-resultado__selo' }, pecaDoSelo(res)) : null,
-      temSelo ? el('p', { class: 't-nota texto-suave', id: 'vg-selo-conferir' }, [U.t('avisos.selo_conferir', { codigo: T.formatarCodigo(res.selo.codigo) }), ' ',
+      temSelo ? el('p', { class: 'texto-medio', id: 'vg-selo-conferir' }, [U.t('avisos.selo_conferir', { codigo: T.formatarCodigo(res.selo.codigo) }), ' ',
         el('a', { href: linkSelo(res.selo.codigo), id: 'vg-selo-conferir-link' }, 'Conferir agora')]) : null,
       el('div', { class: 't-corpo', id: 'vg-resultado-nota' }, linhasDoResultado(res).map(function (l) { return el('p', {}, l); })),
-      refazer ? el('p', { class: 't-rotulo texto-medio', id: 'vg-resultado-refazer' }, refazer) : null,
+      refazer ? el('p', { class: 't-corpo texto-medio', id: 'vg-resultado-refazer' }, refazer) : null,
       el('h2', { class: 'caixa__titulo vg-resultado__partes-titulo' }, 'Como você foi em cada parte'),
       el('ul', { class: 'vg-linhas', id: 'vg-resultado-partes' }, partes.map(function (x) {
         return el('li', {}, [el('div', { class: 'progresso-topo' }, [el('span', {}, x.nome), el('span', { class: 'tabular' }, x.texto)]),
           el('div', { class: 'vg-prova__barra trilho', 'aria-hidden': 'true' }, el('span', { class: 'vg-prova__feito', style: { width: x.percentual + '%' } }))]);
       })),
-      menos ? el('p', { class: 't-rotulo', id: 'vg-resultado-estudar' }, U.t('avisos.selo_sem_selo_competencias', { competencias: menos })) : null,
+      menos ? el('p', { id: 'vg-resultado-estudar' }, U.t('avisos.selo_sem_selo_competencias', { competencias: menos })) : null,
+      el('p', { class: 'texto-medio', id: 'vg-resultado-cada-parte' }, TXT.CADA_PARTE),
       el('p', { class: 'aviso', id: 'vg-resultado-limites' }, TXT.LIMITES),
-      el('p', { class: 't-rotulo texto-medio', id: 'vg-resultado-opcional' }, TXT.OPCIONAL),
-      el('div', { class: 'acoes acoes-coluna' }, [botaoVagas,
+      // Sem selo: só o lembrete curto (a frase de cima já diz que a empresa não fica sabendo). Com selo, não se aplica.
+      temSelo ? null : el('p', { class: 'texto-medio', id: 'vg-resultado-opcional' }, TXT.OPCIONAL_CURTO),
+      el('div', { class: 'acoes acoes-coluna' }, [botao,
         temSelo ? el('button', { type: 'button', class: 'botao botao--claro botao--grande', id: 'vg-resultado-compartilhar', onclick: function () { compartilhar(res); } },
           [U.icone('compartilhar'), 'Compartilhar o selo']) : null,
         el('a', { class: 'botao botao--link', href: '#catalogo', id: 'vg-resultado-voltar' }, 'Voltar aos testes')])
@@ -657,7 +777,7 @@
     U.anunciar(temSelo ? 'Você ganhou o selo.' : 'Prova concluída.');
   }
 
-  // ------------------------------------------------------------------------------------------------- vagas que pedem o selo
+  // ------------------------------------------------------------------------------------------------- vagas que sugerem o teste
   function telaVagas(slug) {
     pararProva();
     fixarNav();
@@ -668,7 +788,7 @@
       var t = (x[0].testes || []).filter(function (y) { return y.slug === slug; })[0];
       var vagas = x[1].filter(function (a) { return a.selo === slug; });
       var cab = [el('p', { class: 'sobretitulo' }, t ? t.nome : 'Habilidade testada'),
-        el('h1', { id: 'vg-testes-vagas-titulo', class: 'titulo-pagina', tabindex: '-1' }, 'Vagas que pedem este selo'),
+        el('h1', { id: 'vg-testes-vagas-titulo', class: 'titulo-pagina', tabindex: '-1' }, 'Vagas que sugerem este teste'),
         el('p', { class: 'subtitulo' }, ctx.cidade ? 'Vagas de ' + ctx.cidade.nome + '.' : ''),
         el('p', { class: 'aviso', id: 'vg-testes-vagas-opcional' }, TXT.OPCIONAL)];
       var corpo = vagas.length
@@ -677,20 +797,24 @@
       U.trocar(app, el('section', { 'aria-labelledby': 'vg-testes-vagas-titulo' }, cab.concat([corpo,
         el('div', { class: 'acoes' }, el('a', { class: 'botao botao--link', href: '#catalogo', id: 'vg-testes-vagas-voltar' }, 'Voltar aos testes'))])));
       if (!vagas.length) {
-        U.vazio(corpo, { titulo: 'Nenhuma vaga pede este selo agora', texto: TXT.QUEM_NAO_TEM, botao: { rotulo: 'Ver todas as vagas', href: hrefVagas(), id: 'vg-testes-vagas-todas' } });
+        U.vazio(corpo, { titulo: 'Nenhuma vaga sugere este teste agora', texto: TXT.QUEM_NAO_TEM, botao: { rotulo: 'Ver todas as vagas', href: hrefVagas(), id: 'vg-testes-vagas-todas' } });
       }
     }, function (e) { if (vez === ctx.vez) U.tratarErro(e, { raiz: app, aoTentar: function () { telaVagas(slug); } }); });
   }
 
   // ------------------------------------------------------------------------------------------------- início
+  // Em 3G, cada ida e volta conta: a lista de cidades (pública) sai junto com a sessão, e o catálogo sai junto com a conta.
   function iniciar() {
     U.topo({});
     marcarDemonstracao();
     U.aoVoltarInternet(function () { U.faixaOffline(false); });
+    var cidades = A.cidades().then(null, function () { return null; /* sem a cidade a tela segue (fuso de reserva) */ });
     A.sessao().then(function () { return true; }, function (e) { if (e && e.sessaoExpirada) return false; throw e; }).then(function (logado) {
-      if (!logado) return null;
-      return U.exigirConta({ tipo: 'pessoa', raiz: app }).then(function (eu) { ctx.logado = true; ctx.eu = eu; });
-    }).then(carregarCidade).then(function () {
+      ctx.catalogoPrevio = A.testesCatalogo();
+      ctx.catalogoPrevio.then(null, function () { /* a tela que usar mostra o erro */ });
+      var conta = logado ? U.exigirConta({ tipo: 'pessoa', raiz: app }).then(function (eu) { ctx.logado = true; ctx.eu = eu; }) : Promise.resolve();
+      return Promise.all([conta, cidades]).then(function (x) { definirCidade(x[1]); });
+    }).then(function () {
       ctx.roteador = U.roteador({ raiz: app, padrao: 'catalogo', rotas: {
         catalogo: telaCatalogo, 'teste/': telaInstrucoes, prova: telaProva, 'resultado/': telaResultado, 'vagas/': telaVagas,
         '*': function () { ir('catalogo'); } } });

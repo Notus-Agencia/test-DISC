@@ -13,10 +13,15 @@
   var T = nodeJs ? require('./testes.js') : root.VAGAS_TESTES;
   var U = nodeJs ? require('./ui.js') : root.VAGAS_UI;
 
+  // O exemplo do código não é de nenhum selo da semente da prévia. EMPRESA: a frase própria para quem contrata (psicologia,
+  // revisão C 2.1: margem, não ordena pessoas, sem selo não quer dizer que não sabe, a decisão é da empresa); fica aqui, e não
+  // em avisos.json, porque textos.js vai na lista pública, que está no limite de 100 KB.
   var TXT = {
-    FORMATO: 'O código tem 8 letras e números, como Q8V3N2KD',                                                 // VAGAS-TELAS §2.8
-    EMITIDO: 'Emitido pelo Vagas sem Caos, uma ferramenta da Gestão sem Caos. O selo pertence a uma pessoa cadastrada; o nome dela só aparece para quem ela autorizou.',
-    EMPRESA: 'Veja quem já provou o básico da função: o selo mostra teste, data e nota. A decisão de contratar continua sendo sua.'   // padroes §6
+    EMPRESA: 'Para quem contrata: a nota tem margem de cerca de 10 pontos, para mais ou para menos, e não serve para ordenar pessoas. Sem selo não quer dizer que a pessoa não sabe: o teste é opcional. A decisão de contratar continua sendo sua.',
+    FORMATO: 'O código tem 8 letras e números, como H4TR9WXE',                                                 // VAGAS-TELAS §2.8
+    EMITIDO: 'Emitido pelo Vagas sem Caos, uma ferramenta da Gestão sem Caos. O selo pertence a uma pessoa cadastrada; o nome dela só aparece para a empresa com quem ela combinou de conversar.',
+    SEM_VALIDADE: 'Este selo não vale mais. Se quiser, peça à pessoa para fazer o teste de novo.',            // psicologia 2.6
+    DEMONSTRACAO: 'Prévia com selos de demonstração: nenhum selo desta página vale de verdade.'
   };
 
   // '' quando o código está no formato (8 letras e números do alfabeto do selo, com ou sem hífen/espaço); senão a mensagem do campo.
@@ -25,7 +30,7 @@
   function situacao(selo, data) {
     var s = selo || {};
     var d = data || function (x) { return String(x || ''); };
-    if (s.situacao === 'revogado') return { tipo: 'revogado', icone: 'alerta', titulo: 'Selo cancelado' };
+    if (s.situacao === 'revogado') return { tipo: 'revogado', icone: 'alerta', titulo: 'Selo sem validade', texto: TXT.SEM_VALIDADE };
     if (s.situacao === 'vencido') return { tipo: 'vencido', icone: 'relogio', titulo: 'Selo vencido em ' + d(s.validoAte) };
     return { tipo: 'valido', icone: 'check', titulo: 'Selo válido' };
   }
@@ -44,7 +49,8 @@
   var campo = el('input', { id: 'vg-conferir-codigo', class: 'entrada codigo', type: 'text', name: 'codigo', maxlength: '12', autocomplete: 'off',
     autocapitalize: 'characters', spellcheck: 'false', inputmode: 'text', 'aria-describedby': 'vg-conferir-ajuda' });
   var enviar = el('button', { type: 'submit', class: 'botao botao--principal botao--grande', id: 'vg-conferir-enviar' }, 'Conferir');
-  var resultado = el('div', { id: 'vg-conferir-resultado', 'aria-live': 'polite' });
+  // Sem aria-live: o foco vai para o título do resultado, que o leitor de tela lê uma vez só.
+  var resultado = el('div', { id: 'vg-conferir-resultado' });
   // Maiúsculas automáticas enquanto a pessoa digita (o código não tem minúsculas).
   campo.addEventListener('input', function () {
     var pos = campo.selectionStart;
@@ -58,9 +64,10 @@
     U.trocar(resultado, [
       el('div', { class: 'vg-conferir', id: 'vg-conferir-situacao', data: { situacao: s.tipo } }, [
         el('span', { class: s.tipo === 'valido' ? 'vg-conferir__ok' : 'vg-iniciais' }, U.icone(s.icone)),
-        el('h2', { class: 't-titulo seminegrito', id: 'vg-conferir-titulo', tabindex: '-1' }, s.titulo)]),
+        el('h2', { class: 't-titulo seminegrito', id: 'vg-conferir-titulo', tabindex: '-1' }, s.titulo),
+        s.texto ? el('p', { class: 'texto-medio', id: 'vg-conferir-texto' }, s.texto) : null]),
       el('div', { id: 'vg-selo' }, P.selo(selo)),
-      el('p', { class: 't-nota texto-suave', id: 'vg-conferir-emitido' }, TXT.EMITIDO)
+      el('p', { class: 'texto-medio', id: 'vg-conferir-emitido' }, TXT.EMITIDO)
     ]);
     var titulo = doc.getElementById('vg-conferir-titulo');
     if (titulo) titulo.focus();
@@ -75,8 +82,9 @@
     if (erro) { U.limpar(resultado); U.erroCampo(campo, erro); campo.focus(); return; }
     var codigo = T.normalizarCodigo(campo.value);
     campo.value = T.formatarCodigo(codigo);
-    // O endereço passa a ter o código (dá para mandar o link adiante).
-    try { root.history.replaceState(null, '', root.location.pathname + '?codigo=' + codigo); } catch (e) { /* sem history */ }
+    // O endereço passa a ter o código (dá para mandar o link adiante); a marca da prévia continua no endereço.
+    var previa = /[?&]previa=([^&#]*)/.exec(root.location.search || '');
+    try { root.history.replaceState(null, '', root.location.pathname + '?codigo=' + codigo + (previa ? '&previa=' + previa[1] : '')); } catch (e) { /* sem history */ }
     U.ocupado(enviar, true, 'Conferindo…');
     U.carregando(resultado);
     A.seloPublico(codigo).then(function (r) {
@@ -85,12 +93,22 @@
     }, function (e) {
       U.ocupado(enviar, false);
       if (e.conexao) { U.tratarErro(e, { raiz: resultado, aoTentar: conferir }); return; }
-      mostrarErro(e.message);
+      // Mensagem técnica (banco desatualizado) nunca chega a quem confere: fica a genérica.
+      mostrarErro(e.bancoDesatualizado ? U.t('avisos.erro_generico') : e.message);
     });
+  }
+
+  // Prévia: os selos são de demonstração (a faixa geral da prévia, quando existir, já diz isso).
+  function marcarDemonstracao() {
+    if (!A || A.modo !== 'previa' || doc.getElementById('vg-faixa-previa') || doc.getElementById('vg-faixa-demo')) return;
+    var faixa = el('div', { class: 'faixa-demo', id: 'vg-faixa-demo', role: 'note' }, el('strong', {}, TXT.DEMONSTRACAO));
+    var pular = doc.querySelector('.pular');
+    doc.body.insertBefore(faixa, pular ? pular.nextSibling : doc.body.firstChild);
   }
 
   function iniciar() {
     U.topo({});
+    marcarDemonstracao();
     var form = el('form', { class: 'formulario', id: 'vg-form-conferir', novalidate: 'novalidate', onsubmit: function (ev) { ev.preventDefault(); conferir(); } }, [
       el('div', { class: 'campo' }, [el('label', { class: 'campo__rotulo', for: 'vg-conferir-codigo' }, 'Código do selo'),
         el('span', { class: 'campo__ajuda', id: 'vg-conferir-ajuda' }, 'São 8 letras e números. Pode ser com ou sem hífen.'), campo]),
@@ -102,7 +120,7 @@
       form,
       resultado,
       el('p', { class: 'aviso', id: 'vg-conferir-aviso' }, U.t('avisos.selo_empresa')),
-      el('p', { class: 't-nota texto-suave', id: 'vg-conferir-empresa' }, TXT.EMPRESA)
+      el('p', { class: 'texto-medio', id: 'vg-conferir-empresa' }, TXT.EMPRESA)
     ]));
     var inicial = U.parametro('codigo');
     if (inicial) { campo.value = String(inicial).toUpperCase().slice(0, 12); conferir(); } else U.focarTitulo(app);

@@ -592,7 +592,7 @@ test('selo: conferência pública sem dados da pessoa, limite por origem, vencid
   assert.equal((await pessoa(ADMIN, 'vagas_revogar_selo', ['CCCC2222', 'x'])).codigo, 'selo_inexistente');
   const rev = await anon('vagas_selo_publico', ['BBBB2222']);
   assert.deepEqual([rev.selo.situacao, rev.selo.nota], ['revogado', null]);
-  assert.equal(T.exibirSelo(rev.selo).rotuloSituacao, 'Cancelado pela equipe');
+  assert.equal(T.exibirSelo(rev.selo).rotuloSituacao, 'Sem validade');
   cartao = (await db.query(`select vagas_interno.selos_cartao($1) as c`, [P1])).rows[0].c;
   assert.deepEqual(cartao.map((x) => x.codigo), [s1.codigo], 'revogado sai do cartão');
 
