@@ -42,7 +42,7 @@ test('operador.html e os scripts do operador seguem as regras da casca (CSP, nad
 test('LGPD na interface: o operador só chama RPCs de operação, nunca de pessoa, currículo, contato, foto ou conversa', () => {
   const PERMITIDAS = new Set(['eu', 'cidades', 'anuncios', 'opResumo', 'opEmpresas', 'opEmpresaDecidir', 'opEmpresaCadastrar', 'opVincularMembro', 'opAnuncios',
     'opAnuncioDecidir', 'opDenuncias', 'opDenunciaDecidir', 'opModeracao', 'opReferencias', 'opReferenciaDecidir', 'opIndicadores', 'opAssistidos',
-    'admZonaSalvar', 'cadastroAssistido', 'reenviarConfirmacao', 'sair']);
+    'opEmpresaDono', 'admZonaSalvar', 'cadastroAssistido', 'reenviarConfirmacao', 'sair']);
   const usadas = new Set();
   for (const s of SCRIPTS) {
     const js = TELA.semComentarios(fs.readFileSync(path.join(TELA.VAGAS, s), 'utf8'));
@@ -171,6 +171,24 @@ test('números da praça: valor com unidade, alvo (menor é melhor = "até"), co
   assert.equal(f({ chave: 'vagas_ativas', unidade: 'vagas', valor: 3, alvo: null, cor: null }).alvo, 'sem alvo definido', 'cidade sem porte: sem alvo e sem cor');
   const sem = f({ chave: 'vagas_combinou_7d', unidade: '%', valor: null, alvo: 60, semBase: true, cor: null });
   assert.equal(sem.valor, '—');
+});
+
+test('números pequenos de pessoas (cidade pequena): "menos de 3" e "contado até ontem", nunca 0; a tabela de selos idem', () => {
+  const f = (x) => O.formatarIndicador(Object.assign({ nome: 'N', direcao: 'maior_melhor', hipotese: false }, x));
+  let r = f({ chave: 'pessoas_com_selo_por_funcao', unidade: 'pessoas', valor: null, alvo: 400, alvoLancamento: 150, cor: null, poucos: true, ateOntem: true,
+    detalhe: { porTeste: { atendimento: null, vendas: null } } });
+  assert.deepEqual([r.valor, r.cor, r.barra, r.semDado, r.poucos, r.ateOntem, r.nota], ['menos de 3', null, null, false, true, true, 'contado até ontem']);
+  r = f({ chave: 'contratacoes', unidade: 'contratações', valor: 5, alvo: 3, cor: 'ok', poucos: true, ateOntem: true, detalhe: { mes: null } });
+  assert.deepEqual([r.valor, r.poucos, r.nota], ['5', false, 'menos de 3 no mês · desde a abertura · contado até ontem']);
+  r = f({ chave: 'contratacoes', unidade: 'contratações', valor: null, alvo: 3, cor: null, poucos: true, ateOntem: true, detalhe: { mes: null } });
+  assert.deepEqual([r.valor, r.cor, r.barra], ['menos de 3', null, null]);
+  // Cidade grande: na hora e sem esconder (sem ateOntem); "sem dado" continua "—".
+  r = f({ chave: 'contratacoes', unidade: 'contratações', valor: 0, alvo: null, detalhe: { mes: 0 } });
+  assert.deepEqual([r.valor, r.nota], ['0', '0 no mês · desde a abertura']);
+  assert.equal(f({ chave: 'emails_mes', unidade: 'e-mails', valor: null, semDado: true, poucos: true }).valor, '—', 'semDado vence');
+  assert.deepEqual([null, undefined, 0, 7, 1234].map(O.contagemProtegida), ['menos de 3', '0', '0', '7', '1.234']);
+  assert.match(O.NOTA_PROTEGIDOS, /até ontem/);
+  assert.match(O.NOTA_PROTEGIDOS, /menos de 3/);
 });
 
 test('gatilhos e contagens: situação por partes (ok, não, manual, sem dado, regra fixa) e as 8 contagens do resumo', () => {

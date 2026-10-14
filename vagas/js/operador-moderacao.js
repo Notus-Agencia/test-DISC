@@ -14,6 +14,7 @@
   var O = root.VAGAS_OPERADOR;
   var P = root.VAGAS_PECAS;
   var R = root.VAGAS_REGRAS;
+  var doc = root.document;
   var el = U.el;
   var TELAS = root.VAGAS_OP_TELAS = root.VAGAS_OP_TELAS || {};
 
@@ -42,7 +43,12 @@
   var DECISOES = { anuncio_publicar: 'Publicou a vaga', anuncio_devolver: 'Devolveu a vaga com ajuste', anuncio_remover: 'Removeu a vaga',
     empresa_aprovar: 'Conferiu e liberou a empresa', empresa_recusar: 'Recusou o cadastro da empresa', empresa_suspender: 'Suspendeu a empresa',
     empresa_reativar: 'Reativou a empresa', referencia_aprovar_texto: 'Publicou o texto da referência', referencia_recusar_texto: 'Não publicou o texto da referência',
-    referencia_remover: 'Removeu a referência', denuncia_procedente: 'Denúncia procedente', denuncia_improcedente: 'Denúncia improcedente' };
+    referencia_remover: 'Removeu a referência', denuncia_procedente: 'Denúncia procedente', denuncia_improcedente: 'Denúncia improcedente',
+    empresa_dono: 'Nomeou a pessoa dona da empresa', dono_automatico: 'A pessoa mais antiga da equipe virou dona',
+    equipe_tornar_dono: 'A empresa tornou outra pessoa dona', equipe_convidar: 'A empresa convidou alguém para a equipe',
+    equipe_convite_cancelar: 'A empresa cancelou um convite', equipe_aceitar: 'Uma pessoa entrou na equipe da empresa',
+    equipe_remover: 'A empresa tirou alguém da equipe', equipe_sair: 'Uma pessoa saiu da equipe da empresa',
+    empresa_vincular_membro: 'Deu acesso à empresa', empresa_cadastrar: 'Cadastrou a empresa no balcão' };
 
   TELAS.fila = function (raiz, ctx) {
     var c = ctx.cidade();
@@ -353,7 +359,7 @@
         A.opModeracao({ cidade: c.slug, limite: 200 })]).then(function (r) {
         var vagas = (r[0].anuncios || []).filter(function (a) { return a.empresaId === e.id || (a.empresa && a.empresa.id === e.id); });
         var hist = (r[1].registros || []).filter(function (m) { return m.alvoId === e.id || vagas.some(function (a) { return a.id === m.alvoId; }); });
-        var vincular = e.membros ? null : formVincular(ctx, e, function () { j.fechar(); carregar(); });
+        var vincular = e.membros ? formDona(ctx, e, function () { j.fechar(); carregar(); }) : formVincular(ctx, e, function () { j.fechar(); carregar(); });
         U.trocar(corpoJ, [
           el('dl', { class: 'vg-op-dl' }, [el('dt', {}, 'CNPJ'), el('dd', {}, (e.cnpjFormatado || '') + (e.mei ? ' (MEI)' : '')),
             el('dt', {}, 'Razão social'), el('dd', {}, e.razaoSocial || '—'), el('dt', {}, 'Setor'), el('dd', {}, e.setor || '—'),
@@ -391,5 +397,54 @@
     return el('div', { class: 'campo vg-op-vincular' }, [
       el('label', { class: 'campo__rotulo', for: 'vg-op-vincular-email' }, 'Ninguém acessa esta empresa ainda. E-mail da conta de empresa que a pessoa responsável já criou'),
       campo, el('div', { class: 'acoes' }, b)]);
+  }
+
+  // Empresa com equipe mas SEM pessoa dona (vagas_op_empresa_dono): nomear alguém que JÁ está na equipe, com motivo (fica no
+  // registro). O operador só consegue quando a empresa está sem dona (o banco responde se já tiver); a equipe, em qualquer uma.
+  // O resumo das empresas não diz se há dona: o formulário fica recolhido atrás de um botão.
+  function formDona(ctx, e, depois) {
+    if (!ctx.podeTudo() || typeof A.opEmpresaDono !== 'function') return null;
+    var caixa = el('section', { class: 'vg-op-dona', id: 'vg-op-dona' });
+    var abrir = el('button', { type: 'button', class: 'botao botao--claro botao--pequeno', id: 'vg-op-dona-abrir', 'aria-expanded': 'false' }, 'A empresa ficou sem pessoa dona?');
+    abrir.addEventListener('click', function () {
+      abrir.setAttribute('aria-expanded', 'true');
+      U.trocar(caixa, formulario());
+      var c = doc.getElementById('vg-op-dona-email');
+      if (c) c.focus();
+    });
+    function formulario() {
+      var email = el('input', { class: 'entrada', type: 'email', id: 'vg-op-dona-email', inputmode: 'email', autocomplete: 'off', maxlength: '254' });
+      var motivo = el('textarea', { class: 'entrada', id: 'vg-op-dona-motivo', rows: '3', maxlength: '300', 'aria-describedby': 'vg-op-dona-motivo-ajuda' });
+      var erro = el('div', { id: 'vg-op-dona-resultado', 'aria-live': 'polite' });
+      var b = el('button', { type: 'button', class: 'botao botao--principal', id: 'vg-op-dona-salvar' }, 'Nomear pessoa dona');
+      b.addEventListener('click', function () {
+        [email, motivo].forEach(U.limparErroCampo);
+        U.limpar(erro);
+        var em = R.normalizarEmail(email.value);
+        var mt = motivo.value.replace(/\s+/g, ' ').trim();
+        var ok = true;
+        if (!em) { U.erroCampo(email, 'E-mail inválido.'); ok = false; }
+        if (!mt) { U.erroCampo(motivo, 'Informe o motivo.'); ok = false; }
+        if (!ok) return;
+        U.ocupado(b, true, 'Salvando…');
+        A.opEmpresaDono(e.id, em, mt).then(function () {
+          U.avisar('Pronto: ' + em + ' agora é a pessoa dona de ' + e.nomeFantasia + '.', { tipo: 'ok', ms: 6000 });
+          depois();
+        }, function (er) {
+          U.ocupado(b, false);
+          if (er.sessaoExpirada || er.conexao) { U.tratarErro(er); return; }
+          U.trocar(erro, el('p', { class: 'aviso aviso--erro', role: 'alert', id: 'vg-op-dona-erro' }, er.message));
+        });
+      });
+      return [el('h3', { class: 'caixa__titulo' }, 'Nomear a pessoa dona'),
+        el('p', { class: 't-rotulo texto-medio' }, 'A pessoa dona convida e tira pessoas da equipe da empresa. Use só quando a empresa ficou sem ' +
+          'ninguém nesse papel. Precisa ser alguém que já está na equipe.'),
+        el('div', { class: 'campo' }, [el('label', { class: 'campo__rotulo', for: 'vg-op-dona-email' }, 'E-mail de quem já está na equipe'), email]),
+        el('div', { class: 'campo' }, [el('label', { class: 'campo__rotulo', for: 'vg-op-dona-motivo' }, 'Motivo'), motivo,
+          el('span', { class: 'campo__ajuda', id: 'vg-op-dona-motivo-ajuda' }, 'Fica no registro de moderação. Até 300 caracteres.')]),
+        erro, el('div', { class: 'acoes' }, b)];
+    }
+    U.trocar(caixa, el('div', { class: 'acoes' }, abrir));
+    return caixa;
   }
 })(typeof self !== 'undefined' ? self : this);

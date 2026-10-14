@@ -357,9 +357,10 @@
         el('div', { class: 'vg-rolagem' }, el('table', { class: 'vg-tabela', id: 'vg-op-selos' }, [
           el('thead', {}, el('tr', {}, [el('th', { scope: 'col' }, 'Teste'), el('th', { scope: 'col', class: 'num' }, 'Com selo'), el('th', { scope: 'col', class: 'num' }, 'Vagas no ar que citam o teste')])),
           el('tbody', {}, (R.TESTES_SELO || []).map(function (t) {
-            return el('tr', {}, [el('td', {}, t.rotulo), el('td', { class: 'num' }, O.numeroBr(porTeste[t.id] || 0)), el('td', { class: 'num' }, O.numeroBr(pedem[t.id] || 0))]);
+            return el('tr', { data: { teste: t.id } }, [el('td', {}, t.rotulo), el('td', { class: 'num' }, O.contagemProtegida(porTeste[t.id])),
+              el('td', { class: 'num' }, O.numeroBr(pedem[t.id] || 0))]);
           }))])),
-        el('p', { class: 't-nota texto-suave' }, 'Contagem de selos válidos, para acompanhar a praça. Nunca aparece para empresa.')]);
+        el('p', { class: 't-nota texto-suave' }, 'Contagem de selos válidos' + (selos.bruto.ateOntem ? ', até ontem' : '') + ', para acompanhar a praça. Nunca aparece para empresa.')]);
     }
     var gat = (r.gatilhos || []).map(O.formatarGatilho);
     var gatilhos = gat.length ? el('section', { class: 'caixa vg-op-secao', id: 'vg-op-gatilhos' }, [el('h2', { class: 'caixa__titulo' }, 'Gatilhos da proposta'),
@@ -372,7 +373,8 @@
           }))]);
       }))]) : null;
     var praca = (r.praca || []).length > 1 ? el('p', { class: 't-nota texto-suave' }, 'Praça: ' + r.praca.map(function (x) { return x.nome; }).join(', ') + '.') : null;
-    return [praca, blocos, tabelaSelos, gatilhos, r.geradoEm ? el('p', { class: 't-nota texto-suave vg-op-nota' }, 'Calculado ' + U.relativa(r.geradoEm) + ', às ' + U.hora(r.geradoEm) + '.') : null];
+    var protegidos = inds.some(function (x) { return x.bruto.ateOntem; }) ? el('p', { class: 'aviso vg-op-nota', id: 'vg-op-numeros-protegidos' }, O.NOTA_PROTEGIDOS) : null;
+    return [praca, blocos, protegidos, tabelaSelos, gatilhos, r.geradoEm ? el('p', { class: 't-nota texto-suave vg-op-nota' }, 'Calculado ' + U.relativa(r.geradoEm) + ', às ' + U.hora(r.geradoEm) + '.') : null];
   }
 
   // ------------------------------------------------------------------------------------------------- #repasse

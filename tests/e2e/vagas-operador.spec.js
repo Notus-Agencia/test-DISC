@@ -215,6 +215,62 @@ test.describe('Operação da praça (prévia)', () => {
     expect(erros).toEqual([]);
   });
 
+  test('empresa sem pessoa dona: o operador só nomeia quando não há dona (o banco responde); a equipe nomeia alguém da equipe, com motivo', async ({ page }) => {
+    const erros = coletar(page);
+    await page.goto(BASE + 'entrar.html');
+    // Uma empresa com equipe: a da conta de recrutadora da prévia (pelo dado, sem nome fixo).
+    const emp = await page.evaluate(async () => {
+      const A = window.VAGAS_API;
+      const eu = await A.entrar('recrutador@previa.com', 'previa123');
+      const e = eu.empresas.filter((x) => x.papel !== 'dono')[0];
+      await A.sair();
+      return e;
+    });
+    expect(emp).toBeTruthy();
+    const abrirEmpresa = async () => {
+      await page.click('#vg-op-aba-empresas');
+      const linha = page.locator('#vg-op-empresas tr[data-empresa="' + emp.id + '"]');
+      await linha.locator('[data-acao="ver"]').click();
+      await expect(page.locator('#vg-op-empresa .vg-op-dl')).toBeVisible();
+    };
+    await entrarComo(page, 'operador@previa.com', 'fila');
+    await abrirEmpresa();
+    await page.click('#vg-op-dona-abrir');
+    await expect(page.locator('#vg-op-dona-email')).toBeFocused();
+    await page.fill('#vg-op-dona-email', 'recrutador@previa.com');
+    await page.click('#vg-op-dona-salvar');
+    await expect(page.locator('#vg-op-dona-motivo-erro')).toHaveText('Informe o motivo.');
+    await page.fill('#vg-op-dona-motivo', 'A dona saiu da empresa e ninguém mais consegue convidar.');
+    await page.click('#vg-op-dona-salvar');
+    await expect(page.locator('#vg-op-dona-erro')).toContainText('A empresa já tem uma pessoa dona.');
+    await page.click('#vg-op-empresa-fechar');
+    // A equipe da Gestão sem Caos nomeia em qualquer empresa (só quem já está na equipe).
+    await page.evaluate(async () => { await window.VAGAS_API.sair(); await window.VAGAS_API.entrar('admin@previa.com', 'previa123'); });
+    await page.reload();
+    const cid = await page.evaluate((id) => window.VAGAS_API.opEmpresas({}).then((r) => r.empresas.filter((e) => e.id === id)[0].cidade), emp.id);
+    await page.locator('#vg-op-cidade .vg-chip', { hasText: cid.nome }).click();
+    await abrirEmpresa();
+    await page.click('#vg-op-dona-abrir');
+    await page.fill('#vg-op-dona-email', 'ninguem.da.equipe@exemplo.com');
+    await page.fill('#vg-op-dona-motivo', 'A dona saiu da empresa e ninguém mais consegue convidar.');
+    await page.click('#vg-op-dona-salvar');
+    await expect(page.locator('#vg-op-dona-erro')).toHaveText('Esta pessoa não está na equipe da empresa.');
+    await page.fill('#vg-op-dona-email', 'recrutador@previa.com');
+    await page.click('#vg-op-dona-salvar');
+    await expect(page.locator('#vg-aviso-geral')).toContainText('recrutador@previa.com agora é a pessoa dona de ' + emp.nomeFantasia + '.');
+    await expect(page.locator('#vg-op-empresa')).toHaveCount(0);
+    const reg = await page.evaluate(() => window.VAGAS_API.opModeracao({ limite: 5 }).then((r) => r.registros.filter((m) => m.acao === 'empresa_dono')[0]));
+    expect(reg.motivo).toBe('A dona saiu da empresa e ninguém mais consegue convidar.');
+    const papel = await page.evaluate(async (id) => {
+      const A = window.VAGAS_API;
+      await A.sair();
+      const eu = await A.entrar('recrutador@previa.com', 'previa123');
+      return eu.empresas.filter((x) => x.id === id)[0].papel;
+    }, emp.id);
+    expect(papel).toBe('dono');
+    expect(erros).toEqual([]);
+  });
+
   test('boletim do dia: texto pronto do modelo, com a cidade do dado e os links curtos; copiar', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const erros = coletar(page);
@@ -253,6 +309,19 @@ test.describe('Operação da praça (prévia)', () => {
     await expect(page.locator('#vg-op-gatilhos [data-gatilho]')).toHaveCount(r.gatilhos.length);
     await expect(page.locator('#vg-op-selos tbody tr')).toHaveCount(5);
     await expect(page.locator('#vg-op-numeros-breve')).toHaveCount(0);
+    // Números pequenos de pessoas (cidade pequena): "menos de 3" e "contado até ontem", nunca 0.
+    const protegidos = r.indicadores.filter((i) => i.ateOntem);
+    if (protegidos.length) await expect(page.locator('#vg-op-numeros-protegidos')).toContainText('até ontem');
+    else await expect(page.locator('#vg-op-numeros-protegidos')).toHaveCount(0);
+    for (const i of protegidos) {
+      const bloco = page.locator('#vg-op-numeros [data-indicador="' + i.chave + '"]');
+      await expect(bloco).toContainText('contado até ontem');
+      if (i.valor === null && i.poucos) await expect(bloco.locator('.vg-numero__valor')).toHaveText('menos de 3');
+    }
+    const porTeste = r.indicadores.filter((i) => i.chave === 'pessoas_com_selo_por_funcao')[0].detalhe.porTeste || {};
+    for (const [teste, n] of Object.entries(porTeste)) {
+      await expect(page.locator('#vg-op-selos tr[data-teste="' + teste + '"] td').nth(1)).toHaveText(n === null ? 'menos de 3' : String(n));
+    }
     // Repasse: o percentual vem de opResumo (linha de quem chama em vagas_operadores). 0 = operação própria.
     await page.click('#vg-op-aba-repasse');
     await expect(page.locator('#vg-op-tela h1')).toHaveText('Repasse do mês');

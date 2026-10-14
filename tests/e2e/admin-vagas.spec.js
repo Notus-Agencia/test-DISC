@@ -166,6 +166,11 @@ test('números da praça: 15 indicadores com alvo, etiqueta de cor e gatilhos; t
   await expect(page.locator('#vg-adm-numeros [data-indicador="receita_liquida_centavos"]')).toContainText('Grátis no lançamento');
   await expect(page.locator('#vg-adm-selos tbody tr')).toHaveCount(5);
   await expect(page.locator('#vg-adm-gatilhos > ul > li')).toHaveCount(5);
+  // Números pequenos de pessoas protegidos (cidade pequena): "menos de 3" e "contado até ontem", nunca 0.
+  await expect(page.locator('#vg-adm-numeros-protegidos')).toContainText('até ontem');
+  await expect(page.locator('#vg-adm-numeros [data-indicador="contratacoes"] .vg-adm-numero__valor')).toHaveText('menos de 3');
+  await expect(page.locator('#vg-adm-numeros [data-indicador="contratacoes"]')).toContainText('contado até ontem');
+  await expect(page.locator('#vg-adm-selos tbody')).toContainText('menos de 3');
   const sobre = page.locator('#vista-vg-numeros .sobretitulo');
   const antes = await sobre.innerText();
   await page.click('#vg-adm-num-cidade');

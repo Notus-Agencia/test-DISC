@@ -38,6 +38,7 @@
 .vg-op-lista { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: var(--t-rotulo); }
 .vg-op-lista-limpa { list-style: none; margin: 0; padding: 0; }
 .vg-op-vincular { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--linha); }
+.vg-op-dona { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--linha); display: grid; gap: 12px; }
 
 /* Cadastro assistido. */
 .vg-op-intro { margin-bottom: 16px; }

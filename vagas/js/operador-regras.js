@@ -173,6 +173,10 @@
   // ------------------------------------------------------------------------------------------------- números da praça
   // >>> MESMO CÓDIGO em js/admin-vagas.js (o teste compara as saídas). Entrada: um item de vagas_op_indicadores().indicadores.
   var CORES_PADRAO = { ok: 'No alvo', atencao: 'Perto do alvo', alerta: 'Longe do alvo' };
+  var POUCOS = 'menos de 3';
+  var ATE_ONTEM = 'contado até ontem';
+  var NOTA_PROTEGIDOS = 'Pessoas com selo e contratações são contadas até ontem e, abaixo de 3, aparecem como "menos de 3": numa cidade ' +
+    'pequena, um número que muda na hora mostraria o resultado de alguém que você viu no mutirão.';
   var SEM_DADO = {
     empresas_buscando_semana: 'Fase 2: a busca no banco de talentos ainda não existe.',
     empresas_pagantes: 'Grátis no lançamento: ainda não há vendas.',
@@ -221,6 +225,7 @@
       return 'mediana' + (d.semRespostaEm7DiasPct != null ? ' · ' + numeroBr(d.semRespostaEm7DiasPct) + '% sem resposta em 7 dias' : '');
     }
     if (c === 'contratacoes' && d.mes != null) return numeroBr(d.mes) + ' no mês · desde a abertura';
+    if (c === 'contratacoes' && d.mes === null && ind.poucos) return POUCOS + ' no mês · desde a abertura';
     if (c === 'denuncia_tempo_decisao_h') {
       var abertas = d.abertasMais24h != null ? numeroBr(d.abertasMais24h) + ' aberta(s) há mais de 24 h' : '';
       return ind.semBase ? ('Nenhuma denúncia decidida ainda.' + (abertas ? ' ' + abertas : '')) : 'mediana das últimas 30' + (abertas ? ' · ' + abertas : '');
@@ -255,12 +260,18 @@
       else barra = a <= 0 ? 100 : Math.min(100, Math.round(100 * v / a));
     }
     var cor = temValor && temAlvo && ind.cor ? ind.cor : null;
+    // Números pequenos de pessoas protegidos (cidade pequena): abaixo de 3 o banco manda null + poucos, contados até ontem.
+    var poucos = !temValor && !ind.semDado && !!ind.poucos;
+    var nota = ind.semDado ? (SEM_DADO[ind.chave] || 'Ainda sem dado.') : detalheIndicador(ind);
+    if (ind.ateOntem && !ind.semDado) nota = (nota ? nota + ' · ' : '') + ATE_ONTEM;
     return {
-      chave: ind.chave || '', nome: ind.nome || '', valor: temValor ? valorComUnidade(ind.valor, ind.unidade) : '—', alvo: alvo,
-      cor: cor, corRotulo: cor ? (rotulosCor[cor] || '') : '', barra: barra, hipotese: !!ind.hipotese, semDado: !temValor,
-      nota: ind.semDado ? (SEM_DADO[ind.chave] || 'Ainda sem dado.') : detalheIndicador(ind)
+      chave: ind.chave || '', nome: ind.nome || '', valor: temValor ? valorComUnidade(ind.valor, ind.unidade) : poucos ? POUCOS : '—', alvo: alvo,
+      cor: cor, corRotulo: cor ? (rotulosCor[cor] || '') : '', barra: barra, hipotese: !!ind.hipotese, semDado: !temValor && !poucos,
+      poucos: poucos, ateOntem: !!ind.ateOntem, nota: nota
     };
   }
+  // Contagem protegida (porTeste dos selos): null = menos de 3; sem a chave = 0.
+  function contagemProtegida(v) { return v === null ? POUCOS : numeroBr(Number(v) || 0); }
   var SITUACAO_GATILHO = { sim: 'Atingido', nao: 'Ainda não', conferir: 'Falta conferir', fora: 'Não se aplica', fixa: 'Regra fixa' };
   function formatarGatilho(g) {
     g = g || {};
@@ -290,7 +301,8 @@
     motivosPara: motivosPara, motivosDenuncia: motivosDenuncia, porQueNaFila: porQueNaFila, sinaisDoAnuncio: sinaisDoAnuncio, marcarTrecho: marcarTrecho,
     atrasada: atrasada, rotuloPapel: rotuloPapel, slugZona: slugZona, codigoEvento: codigoEvento, REPASSE: REPASSE,
     numeroBr: numeroBr, valorComUnidade: valorComUnidade, formatarIndicador: formatarIndicador, formatarGatilho: formatarGatilho,
-    contagensResumo: contagensResumo, CORES_PADRAO: CORES_PADRAO
+    contagensResumo: contagensResumo, contagemProtegida: contagemProtegida, CORES_PADRAO: CORES_PADRAO, POUCOS: POUCOS,
+    NOTA_PROTEGIDOS: NOTA_PROTEGIDOS
   };
   if (nodeJs) module.exports = VAGAS_OPERADOR;
   else root.VAGAS_OPERADOR = VAGAS_OPERADOR;

@@ -107,7 +107,11 @@
     referencia_aprovar_texto: 'Publicou o texto da referência', referencia_recusar_texto: 'Não publicou o texto da referência',
     referencia_remover: 'Removeu a referência', denuncia_procedente: 'Denúncia procedente', denuncia_improcedente: 'Denúncia improcedente',
     conta_suspender: 'Suspendeu uma conta', cadastro_assistido: 'Cadastro assistido', cidade_salvar: 'Alterou a cidade',
-    zona_salvar: 'Alterou uma zona', operador_salvar: 'Alterou um operador'
+    zona_salvar: 'Alterou uma zona', operador_salvar: 'Alterou um operador',
+    empresa_dono: 'Nomeou a pessoa dona da empresa', dono_automatico: 'A pessoa mais antiga da equipe virou dona',
+    equipe_tornar_dono: 'A empresa tornou outra pessoa dona', equipe_convidar: 'A empresa convidou alguém para a equipe',
+    equipe_convite_cancelar: 'A empresa cancelou um convite', equipe_aceitar: 'Uma pessoa entrou na equipe da empresa',
+    equipe_remover: 'A empresa tirou alguém da equipe', equipe_sair: 'Uma pessoa saiu da equipe da empresa'
   };
   var ALVOS = { anuncio: 'Vaga', empresa: 'Empresa', denuncia: 'Denúncia', referencia: 'Referência', conta: 'Conta', cidade: 'Cidade',
     zona: 'Zona', operador: 'Operador' };
@@ -264,6 +268,10 @@
 
   // >>> MESMO CÓDIGO de vagas/js/operador-regras.js (o painel não enxerga vagas/; tests/admin-vagas.test.js compara as saídas).
   var CORES_PADRAO = { ok: 'No alvo', atencao: 'Perto do alvo', alerta: 'Longe do alvo' };
+  var POUCOS = 'menos de 3';
+  var ATE_ONTEM = 'contado até ontem';
+  var NOTA_PROTEGIDOS = 'Pessoas com selo e contratações são contadas até ontem e, abaixo de 3, aparecem como "menos de 3": numa cidade ' +
+    'pequena, um número que muda na hora mostraria o resultado de alguém que você viu no mutirão.';
   var SEM_DADO = {
     empresas_buscando_semana: 'Fase 2: a busca no banco de talentos ainda não existe.',
     empresas_pagantes: 'Grátis no lançamento: ainda não há vendas.',
@@ -312,6 +320,7 @@
       return 'mediana' + (d.semRespostaEm7DiasPct != null ? ' · ' + numeroBr(d.semRespostaEm7DiasPct) + '% sem resposta em 7 dias' : '');
     }
     if (c === 'contratacoes' && d.mes != null) return numeroBr(d.mes) + ' no mês · desde a abertura';
+    if (c === 'contratacoes' && d.mes === null && ind.poucos) return POUCOS + ' no mês · desde a abertura';
     if (c === 'denuncia_tempo_decisao_h') {
       var abertas = d.abertasMais24h != null ? numeroBr(d.abertasMais24h) + ' aberta(s) há mais de 24 h' : '';
       return ind.semBase ? ('Nenhuma denúncia decidida ainda.' + (abertas ? ' ' + abertas : '')) : 'mediana das últimas 30' + (abertas ? ' · ' + abertas : '');
@@ -346,12 +355,18 @@
       else barra = a <= 0 ? 100 : Math.min(100, Math.round(100 * v / a));
     }
     var cor = temValor && temAlvo && ind.cor ? ind.cor : null;
+    // Números pequenos de pessoas protegidos (cidade pequena): abaixo de 3 o banco manda null + poucos, contados até ontem.
+    var poucos = !temValor && !ind.semDado && !!ind.poucos;
+    var nota = ind.semDado ? (SEM_DADO[ind.chave] || 'Ainda sem dado.') : detalheIndicador(ind);
+    if (ind.ateOntem && !ind.semDado) nota = (nota ? nota + ' · ' : '') + ATE_ONTEM;
     return {
-      chave: ind.chave || '', nome: ind.nome || '', valor: temValor ? valorComUnidade(ind.valor, ind.unidade) : '—', alvo: alvo,
-      cor: cor, corRotulo: cor ? (rotulosCor[cor] || '') : '', barra: barra, hipotese: !!ind.hipotese, semDado: !temValor,
-      nota: ind.semDado ? (SEM_DADO[ind.chave] || 'Ainda sem dado.') : detalheIndicador(ind)
+      chave: ind.chave || '', nome: ind.nome || '', valor: temValor ? valorComUnidade(ind.valor, ind.unidade) : poucos ? POUCOS : '—', alvo: alvo,
+      cor: cor, corRotulo: cor ? (rotulosCor[cor] || '') : '', barra: barra, hipotese: !!ind.hipotese, semDado: !temValor && !poucos,
+      poucos: poucos, ateOntem: !!ind.ateOntem, nota: nota
     };
   }
+  // Contagem protegida (porTeste dos selos): null = menos de 3; sem a chave = 0.
+  function contagemProtegida(v) { return v === null ? POUCOS : numeroBr(Number(v) || 0); }
   var SITUACAO_GATILHO = { sim: 'Atingido', nao: 'Ainda não', conferir: 'Falta conferir', fora: 'Não se aplica', fixa: 'Regra fixa' };
   function formatarGatilho(g) {
     g = g || {};
@@ -489,7 +504,8 @@
       var valores = {
         vagas_ativas: [k.anunciosNoAr, 'ok', { porTeste: { atendimento: 3, vendas: 2, administrativo: 1, caixa: 2, portugues: 0 },
           porArea: aberta ? [{ area: 'atendimento', nome: 'Atendimento e recepção', valor: 4 }, { area: 'caixa', nome: 'Caixa e operação de loja', valor: 3 }, { area: 'cozinha', nome: 'Cozinha e restaurante', valor: 2 }] : [] }],
-        pessoas_com_selo_por_funcao: [aberta ? 58 : 0, null, { porTeste: aberta ? { atendimento: 24, vendas: 12, administrativo: 9, caixa: 10, portugues: 3 } : {} }],
+        pessoas_com_selo_por_funcao: [aberta ? 58 : 0, null, { porTeste: aberta ? { atendimento: 24, vendas: 12, administrativo: 9, caixa: 11, portugues: 2 }
+          : { atendimento: 0, vendas: 0, administrativo: 0, caixa: 0, portugues: 0 } }],
         vagas_3_interessados_72h: [aberta ? 33 : null, null, aberta ? { base: 9, comTres: 3, janelaHoras: 168 } : {}, !aberta],
         vagas_combinou_7d: [aberta ? 44 : null, null, aberta ? { base: 9, comCombinou: 4 } : {}, !aberta],
         primeira_resposta_empresa_dias: [aberta ? 2.4 : null, null, aberta ? { base: 41, semRespostaEm7DiasPct: 12 } : {}, !aberta],
@@ -516,6 +532,22 @@
         return { chave: i.chave, nome: i.nome, unidade: i.unidade, periodo: i.periodo, direcao: i.direcao, hipotese: i.hipotese, valor: x[0],
           alvo: alvo, alvoLancamento: lanc, cor: x[4] ? null : cor(x[0], alvo, i.direcao), semDado: !!x[4], semBase: !!x[3], detalhe: x[2] };
       });
+      // Números pequenos de PESSOAS protegidos (igual a vagas_op_indicadores): fora da cidade grande, selos e contratações
+      // contados até ontem e, abaixo de 3, null com poucos:true.
+      if (porte !== 'grande') {
+        lista.forEach(function (i) {
+          if (i.chave !== 'pessoas_com_selo_por_funcao' && i.chave !== 'contratacoes') return;
+          i.ateOntem = true;
+          var d = i.detalhe;
+          var parciais = i.chave === 'contratacoes' ? ['mes'] : [];
+          var pt = d.porTeste || null;
+          var poucos = i.valor < 3 || parciais.some(function (k) { return d[k] < 3; }) || (pt ? Object.keys(pt).some(function (t) { return pt[t] < 3; }) : false);
+          parciais.forEach(function (k) { if (d[k] < 3) d[k] = null; });
+          if (pt) Object.keys(pt).forEach(function (t) { if (pt[t] < 3) pt[t] = null; });
+          if (i.valor < 3) { i.valor = null; i.cor = null; }
+          i.poucos = poucos;
+        });
+      }
       var v = function (ch) { return lista.filter(function (i) { return i.chave === ch; })[0]; };
       var aplica = porte === 'pequena';
       var parte = function (desc, okv, extra) { return Object.assign({ descricao: desc, ok: okv }, extra || {}); };
@@ -1098,9 +1130,12 @@
       tabela = el('section', { classe: 'caixa vg-adm-secao' }, [el('h3', { classe: 'caixa__titulo' }, 'Pessoas com selo, por teste'),
         el('table', { classe: 'vg-adm-tabela', id: 'vg-adm-selos' }, [
           el('thead', {}, el('tr', {}, [el('th', { scope: 'col' }, 'Teste'), el('th', { scope: 'col', classe: 'num' }, 'Com selo'), el('th', { scope: 'col', classe: 'num' }, 'Vagas no ar que citam o teste')])),
-          el('tbody', {}, TESTES.map(function (t) { return el('tr', {}, [el('td', {}, t[1]), el('td', { classe: 'num' }, numeroBr(porTeste[t[0]] || 0)), el('td', { classe: 'num' }, numeroBr(pedem[t[0]] || 0))]); }))]),
-        el('p', { classe: 't-nota texto-suave' }, 'Contagem de selos válidos, para acompanhar a praça. Nunca aparece para empresa.')]);
+          el('tbody', {}, TESTES.map(function (t) {
+            return el('tr', { 'data-teste': t[0] }, [el('td', {}, t[1]), el('td', { classe: 'num' }, contagemProtegida(porTeste[t[0]])), el('td', { classe: 'num' }, numeroBr(pedem[t[0]] || 0))]);
+          }))]),
+        el('p', { classe: 't-nota texto-suave' }, 'Contagem de selos válidos' + (selos.bruto.ateOntem ? ', até ontem' : '') + ', para acompanhar a praça. Nunca aparece para empresa.')]);
     }
+    var protegidos = inds.some(function (x) { return x.bruto.ateOntem; }) ? el('p', { classe: 'aviso vg-adm-nota', id: 'vg-adm-numeros-protegidos' }, NOTA_PROTEGIDOS) : null;
     var gat = (r.gatilhos || []).map(formatarGatilho);
     var gatilhos = gat.length ? el('section', { classe: 'caixa vg-adm-secao', id: 'vg-adm-gatilhos' }, [el('h3', { classe: 'caixa__titulo' }, 'Gatilhos da proposta'),
       el('ul', { classe: 'vg-adm-gatilhos' }, gat.map(function (g) {
@@ -1113,7 +1148,7 @@
       }))]) : null;
     var praca = (r.praca || []).length > 1 ? el('p', { classe: 't-nota texto-suave' }, 'Praça: ' + r.praca.map(function (x) { return x.nome; }).join(', ') + '.') : null;
     var semPorte = r.cidade && !r.cidade.porte ? el('p', { classe: 'aviso vg-adm-nota', id: 'vg-adm-sem-porte' }, 'Esta cidade ainda não tem porte cadastrado: os números saem sem alvo e sem cor. Defina o porte em Cidades e praças > Editar.') : null;
-    return [semPorte, praca, cartoes, tabela, gatilhos];
+    return [semPorte, praca, cartoes, protegidos, tabela, gatilhos];
   }
 
   // ------------------------------------------------------------------------------------------------- entrada
@@ -1129,7 +1164,7 @@
     efeitoStatus: efeitoStatus, faltamParaAtivar: faltamParaAtivar, slugCidade: slugCidade, lerCidade: lerCidade, lerOperador: lerOperador,
     rotuloAto: rotuloAto, tituloMotivo: tituloMotivo, reversao: reversao, pendencias: pendencias, filtrarAtos: filtrarAtos,
     numeroBr: numeroBr, valorComUnidade: valorComUnidade, formatarIndicador: formatarIndicador, formatarGatilho: formatarGatilho, contagensResumo: contagensResumo,
-    criarSimulada: criarSimulada, criarSupabase: criarSupabase,
+    contagemProtegida: contagemProtegida, NOTA_PROTEGIDOS: NOTA_PROTEGIDOS, criarSimulada: criarSimulada, criarSupabase: criarSupabase,
     bancoConferido: bancoConferido, banco: function () { return est.banco; }, esquecer: esquecer, mostrar: mostrar
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = DISC_ADMIN_VAGAS;
