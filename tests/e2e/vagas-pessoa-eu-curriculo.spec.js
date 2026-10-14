@@ -166,7 +166,7 @@ test('conta nova: 5 passos com erro no campo certo, rascunho no aparelho, cartã
   await expect(page.locator('#vg-cv-concluir')).toHaveClass(/botao--laranja/);
   await page.click('#vg-cv-concluir');
   await expect(page.locator('#vg-cv-pronto-titulo')).toHaveText('Currículo salvo');
-  await expect(page.locator('#vg-cv-pronto')).toContainText('Mostre o que você sabe fazer: faça o teste da função no celular e ganhe o selo de habilidade testada.');
+  await expect(page.locator('#vg-cv-pronto')).toContainText('Se quiser, faça o teste da sua função no celular e tente o selo de habilidade testada.');
   await expect(page.locator('#vg-nav-eu')).toHaveAttribute('aria-current', 'page');
   const banco = await page.evaluate(async () => ({ m: await window.VAGAS_API.minhaPessoa(), r: localStorage.getItem('vg.rascunho.curriculo') }));
   expect(banco.m.completo).toBe(true);

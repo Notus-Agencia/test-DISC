@@ -44,9 +44,12 @@ test('listas transcritas: títulos dos motivos = moderacao.json; indicadores = i
 });
 
 test('quando o grupo aparece: Supabase só com a migração do Vagas (versaoBanco) e a sessão do painel; prévia só com ?vagas=1 ou CONFIG.VAGAS_PAINEL', () => {
-  const cfg = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'pub' };
+  const cfg = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_ANON_KEY: 'pub', VAGAS_PAINEL: true };
   const api = { sessaoAtual: () => Promise.resolve({ ok: true, token: 't' }) };
   assert.equal(V.disponivel({ supabase: true, config: cfg, discApi: api, banco: true }), true);
+  assert.equal(V.disponivel({ supabase: true, config: Object.assign({}, cfg, { VAGAS_PAINEL: false }), discApi: api, banco: true }), false,
+    'escondido no painel de verdade até o dono ligar VAGAS_PAINEL');
+  assert.equal(require('../js/config.js').VAGAS_PAINEL, false, 'o site no ar sai com o grupo Vagas desligado');
   assert.equal(V.disponivel({ supabase: true, config: cfg, discApi: api, banco: null }), false, 'antes de conferir o banco, não aparece');
   assert.equal(V.disponivel({ supabase: true, config: cfg, discApi: api, banco: false }), false);
   assert.equal(V.disponivel({ supabase: true, config: cfg, discApi: {}, banco: true }), false, 'sem sessaoAtual no cliente');

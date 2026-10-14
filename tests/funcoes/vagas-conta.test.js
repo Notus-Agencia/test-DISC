@@ -37,7 +37,8 @@ function preparar(op) {
       const u = usuarios.find((x) => x.email === email);
       if (!u) return { ok: true, existe: false };
       return { ok: true, existe: true, userId: u.id, produto: (u.app && u.app.produto) || '', confirmada: !!u.confirmada,
-        conta: contas[u.id] ? { tipo: contas[u.id].tipo, status: contas[u.id].status || 'pendente' } : null, admin: admins.has(u.id) };
+        conta: contas[u.id] ? { tipo: contas[u.id].tipo, status: contas[u.id].status || 'pendente', assistidaCidade: contas[u.id].cidade || null } : null,
+        admin: admins.has(u.id) };
     },
     async registrar(userId, dados) {
       if (op.registroFalha) return { ok: false, erro: 'Empresa não encontrada.' };
@@ -268,6 +269,42 @@ test('reenviar e esqueci: só para conta do Vagas; mesma resposta para quem não
   assert.deepEqual(w.links.slice(1), [{ tipo: 'recovery', email: 'pendente@x.com' }, { tipo: 'recovery', email: 'confirmada@x.com' }]);
   assert.equal(w.enviados.filter((e) => e.subject === 'Crie uma nova senha — Vagas sem Caos').length, 2);
   assert.ok(w.enviados.every((e) => e.to[0] !== 'dono@gestaosemcaos.com.br'), 'nunca mexe na conta do painel');
+});
+
+test('reenviar pela operação (JWT): sem captcha e com o limite reenviar_op; operador só para conta assistida da cidade dele', async () => {
+  const usuarios = () => [
+    { id: 'op1', email: 'op@x.com', confirmada: true, app: { produto: 'vagas' }, conta: { tipo: 'operador' }, operador: [{ cidade: 'boa-vista-rr', papel: 'operador' }] },
+    { id: 'mod1', email: 'mod@x.com', confirmada: true, app: { produto: 'vagas' }, conta: { tipo: 'operador' }, operador: [{ cidade: 'boa-vista-rr', papel: 'moderador' }] },
+    { id: 'eq', email: 'equipe@gestaosemcaos.com.br', confirmada: true, app: {} },
+    { id: 'p', email: 'pessoa@x.com', confirmada: true, app: { produto: 'vagas' }, conta: { tipo: 'pessoa', status: 'ativa' } },
+    { id: 'a1', email: 'assistida@x.com', confirmada: false, app: { produto: 'vagas' }, conta: { tipo: 'pessoa', assistidaPor: 'op1', cidade: 'boa-vista-rr' } },
+    { id: 'a2', email: 'outra-cidade@x.com', confirmada: false, app: { produto: 'vagas' }, conta: { tipo: 'pessoa', assistidaPor: 'op9', cidade: 'mucajai-rr' } },
+    { id: 's1', email: 'solta@x.com', confirmada: false, app: { produto: 'vagas' }, conta: { tipo: 'pessoa' } }];
+  const jwts = { 'jwt-op': 'op1', 'jwt-mod': 'mod1', 'jwt-eq': 'eq', 'jwt-pessoa': 'p' };
+  const w = preparar({ env: { TURNSTILE_SECRET: 'segredo-turnstile' }, usuarios: usuarios(), admins: ['eq'], jwts });
+  const reenviar = (email, jwt) => chamar(w.base, { acao: 'reenviar', email }, { jwt });
+  // Sem JWT, com JWT inválido, de moderador(a) ou de pessoa: o captcha de sempre.
+  for (const jwt of [undefined, 'jwt-invalido', 'jwt-mod', 'jwt-pessoa']) {
+    assert.deepEqual((await reenviar('assistida@x.com', jwt)).json, { ok: false, erro: VAGAS_MSG_CAPTCHA, captcha: true }, String(jwt));
+  }
+  assert.deepEqual([w.links.length, w.chamadasLimite.length], [0, 0]);
+  // Operador(a): sem captcha; só a conta assistida da cidade dele recebe; a resposta é a mesma (neutra) para todas.
+  for (const email of ['assistida@x.com', 'outra-cidade@x.com', 'solta@x.com', 'pessoa@x.com', 'ninguem@x.com']) {
+    assert.deepEqual((await reenviar(email, 'jwt-op')).json, NEUTRA(email), email);
+  }
+  assert.deepEqual(w.links.map((l) => l.email), ['assistida@x.com']);
+  assert.deepEqual(w.enviados.map((e) => [e.to[0], e.subject]), [['assistida@x.com', 'Confirme seu e-mail — Vagas sem Caos']]);
+  assert.ok(w.chamadasLimite.every((c) => c.acao === 'reenviar_op' && c.ator === 'op1') && w.chamadasLimite.length === 5);
+  // Equipe: qualquer conta do Vagas ainda pendente (nunca a confirmada).
+  for (const email of ['outra-cidade@x.com', 'solta@x.com', 'pessoa@x.com']) assert.deepEqual((await reenviar(email, 'jwt-eq')).json, NEUTRA(email));
+  assert.deepEqual(w.links.map((l) => l.email), ['assistida@x.com', 'outra-cidade@x.com', 'solta@x.com']);
+  assert.deepEqual(w.chamadasLimite.slice(5).map((c) => [c.acao, c.ator]), [['reenviar_op', 'eq'], ['reenviar_op', 'eq'], ['reenviar_op', 'eq']]);
+  assert.equal(w.captchas.length, 0, 'operação e equipe não passam pelo Turnstile');
+  // O limite próprio vale: bloqueado, nada sai.
+  const b = preparar({ usuarios: usuarios(), admins: ['eq'], jwts, bloquear: true });
+  assert.deepEqual((await chamar(b.base, { acao: 'reenviar', email: 'assistida@x.com' }, { jwt: 'jwt-op' })).json,
+    { ok: false, erro: 'Muitas tentativas. Tente de novo mais tarde.', bloqueado: true });
+  assert.equal(b.links.length, 0);
 });
 
 test('assistido: só operador(a) da cidade ou equipe; conta pendente com quem fez e o mutirão; link só para a pessoa', async () => {

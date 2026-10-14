@@ -250,6 +250,7 @@ para que o vazamento de uma versão não valha para sempre.
 ## Pendências
 
 - Juízes (notas F, I e T da análise da função e "necessária?" por questão, Lawshe), piloto e Angoff (corte 60 provisório).
+- Acessibilidade: tempo extra configurável por tentativa (pessoa com deficiência; LBI, art. 3º, VI, e art. 34, § 3º). Até lá, no mutirão, alguém da equipe pode ler as questões em voz baixa, exceto no teste de português (`conteudo/vagas-operacao/roteiro-mutirao.md` §2).
 - Onde guardar a cópia privada (repositório privado de conteúdo) e quem tem acesso: decisão do dono.
 - Alternativas numéricas: o motor embaralha todas; a recomendação de itens é mostrar números em ordem crescente. Decidir
   com a psicologia (precisaria de um campo `ordem_fixa` na questão e de não embaralhar nesses casos).

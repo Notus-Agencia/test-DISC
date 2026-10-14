@@ -26,7 +26,7 @@
 
   // Textos fixos desta tela (docs/VAGAS-TELAS.md §2.5 e §3.1; os de aceite vêm de consentimentos.json).
   var TXT = {
-    frase: 'Vagas da sua cidade com habilidade testada. Grátis para quem procura emprego.',
+    frase: 'Vagas da sua cidade, num lugar só. Grátis para quem procura emprego.',
     emailIncompleto: 'Esse e-mail parece incompleto. Confira se tem o ".com" no fim.',
     nome: 'Escreva o seu nome',
     marcar: 'Marque a caixa para continuar',
@@ -35,7 +35,7 @@
     novaSenha: 'Escolha uma senha de 8 a 72 caracteres para entrar no Vagas sem Caos.',
     linkExpirado: 'O link expirou ou já foi usado. Peça outro na tela de entrada.',
     cnpj: 'CNPJ inválido. Confira os 14 números.',
-    empresaTitulo: 'Vagas da sua cidade com quem fez o teste da função.',
+    empresaTitulo: 'Anuncie vagas e veja o que a pessoa sabe antes da entrevista.',
     empresaApoio: 'Você publica em 5 minutos, recebe cartões sem nome por ordem de chegada e conversa só com quem também quer a vaga. Uma empresa do grupo Gestão sem Caos.',
     empresaNota: 'Sem senha agora: você cria a senha ao abrir o link do e-mail. Depois disso, a operação confere o CNPJ (em geral no mesmo dia útil). Você já pode escrever a vaga enquanto espera.'
   };

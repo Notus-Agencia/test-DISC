@@ -12,33 +12,10 @@
  *   erro.resposta (o JSON {ok:false, erro, ...}), erro.sessaoExpirada, erro.confirmar (e-mail não confirmado),
  *   erro.bancoDesatualizado (migração não aplicada), erro.conexao (sem internet / servidor fora).
  *
- * Métodos (nome -> RPC; ver METODOS): públicos — cidades, areas, anuncios(filtro), anuncio(codigo), anuncioVista(codigo), listaEspera(dados), listaEsperaSair(dados),
- *   denunciar(dados), referenciasPublicas(token), seloPublico(codigo) (RPC da migração dos testes), versaoBanco; conta — eu,
- *   aceitarTermos(dados), exportarMeusDados; pessoa — minhaPessoa, salvarPessoa(dados), feed(filtro), quero(anuncioId), pular(anuncioId),
- *   retirar(candId), minhasCandidaturas, verEmpresa(candId), combinar(candId), recusar(candId), quemViuMeuContato, cortarAcesso(candId);
- *   empresa — cadastrarEmpresa(dados), salvarEmpresa(empresaId, dados), minhasEmpresas, salvarAnuncio(dados), publicarAnuncio(anuncioId),
- *   acaoAnuncio(anuncioId, acao), anunciosDaEmpresa(empresaId), anuncioNumeros(anuncioId), cartoes(anuncioId, filtro),
- *   decidir(candId, decisao), contatoPessoa(candId), marcarContratada(candId); conversa — conversa(candId),
- *   enviarMensagem(candId, texto, idCliente?), minhasConversas, conversasDaEmpresa(empresaId); referência — oferecerReferencia(dados),
- *   pedirReferencia(dados), conviteReferencia(token), responderReferencia(refId, acao), minhasReferencias, referenciasDaEmpresa(empresaId),
- *   publicarReferencias(ligar); operação — opResumo, opEmpresas(filtro), opEmpresaDecidir(id, acao, motivo), opEmpresaCadastrar(dados),
- *   opVincularMembro(empresaId, email), opAnuncios(filtro), opAnuncioSalvar(dados) (vaga assistida), opAnuncioDecidir(id, acao, motivo), opDenuncias(filtro),
- *   opDenunciaDecidir(id, dados), opModeracao(filtro), opReferencias(filtro), opReferenciaDecidir(id, acao, motivo),
- *   indicadores(cidade) = opIndicadores(cidade) (painel da praça: só números agregados; migração 20261024),
- *   opAssistidos(filtro) (cadastros assistidos pendentes, e-mail mascarado; 20261024);
- *   equipe da empresa (20261024) — equipeDaEmpresa(empresaId), cancelarConvite(conviteId), removerMembro(empresaId, userId),
- *   tornarDono(empresaId, userId), conviteEquipe(token), aceitarConviteEquipe(token); operação: opEmpresaDono(empresaId, email, motivo);
- *   equipe da Gestão sem Caos — admCidadeSalvar(dados), admZonaSalvar(dados), admOperadorSalvar(dados), admCidades(),
- *   admOperadores(filtro) (as duas da 20261024); aviso de abertura (SPEC §6.7) — admAvisoResumo(cidade),
- *   admAvisoWhatsapp(cidade), admAvisoWhatsappFeito(id), avisarListaEspera(cidade, limite?), listaEsperaSairLink(token).
- * Conta e sessão: cadastrar({email, tipo, nome?, termosVersao?, captcha?}), reenviarConfirmacao(email, captcha?),
- *   esqueciSenha(email, captcha?), cadastroAssistido({email, tipo, cidade, empresaId?, nome?, codigoEvento?}),
- *   convidarOperador({email, cidade, papel, cidadeNome?}), convidarEquipe(empresaId, email) (só dono(a); resposta neutra),
- *   excluirConta(), entrar(email, senha) -> resposta de eu(),
- *   sair(), sessao() -> {ok, usuario:{id, email}}, linkDoEndereco(location) -> {tokenHash, tipo} | null,
- *   conviteDoEndereco(location) -> token do convite de equipe (?convite=…) | '', RECURSOS ({listaEsperaWhatsapp, preAberturaEmpresas,
- *   origemListaEspera}); listaEspera({…, origem?, site?, captcha?}): com captcha vai pela vagas-conta (Turnstile).
- *   confirmarLink({tokenHash, tipo}) -> {ok, tipo, precisaSenha:true}, definirSenha(senha) -> {ok}.
+ * Métodos: um por RPC (tabela METODOS abaixo; contrato em docs/VAGAS-SPEC.md §8), mais os da Edge Function vagas-conta e do
+ *   Auth: cadastrar, reenviarConfirmacao, esqueciSenha, cadastroAssistido, convidarOperador, convidarEquipe, avisarListaEspera,
+ *   excluirConta, entrar, sair, sessao, linkDoEndereco, conviteDoEndereco, confirmarLink, definirSenha (SPEC §9 e §10).
+ *   RECURSOS ({listaEsperaWhatsapp, preAberturaEmpresas, origemListaEspera}); listaEspera com captcha vai pela vagas-conta.
  * Foto OPCIONAL da pessoa (bucket privado 'vagas-fotos' do Storage): enviarFoto(arquivo File/Blob jpg|png|webp ≤ 1 MB) -> {ok, temFoto},
  *   apagarFoto() -> {ok, temFoto:false}, fotoUrl(candidaturaId?) -> {ok, url, expiraEm} (URL assinada de 5 min pela Edge Function:
  *   sem candidatura = a própria; com candidatura = só a empresa daquela candidatura, depois do Combinou). contatoPessoa(candId)
@@ -112,6 +89,7 @@
     combinar: { rpc: 'vagas_combinar', p: ['p_candidatura'] },
     recusar: { rpc: 'vagas_recusar', p: ['p_candidatura'] },
     quemViuMeuContato: { rpc: 'vagas_quem_viu_meu_contato', p: [] },
+    fotoConsentimento: { rpc: 'vagas_foto_consentimento', p: ['p_aceito'] },
     cortarAcesso: { rpc: 'vagas_cortar_acesso', p: ['p_candidatura'] },
     cadastrarEmpresa: { rpc: 'vagas_empresa_cadastrar', p: ['p_dados'] },
     salvarEmpresa: { rpc: 'vagas_empresa_salvar', p: ['p_empresa', 'p_dados'] },
@@ -365,8 +343,9 @@
       });
     }
 
+    // comSessao: true = exige login; 'talvez' = manda a sessão se houver (reenviar: a operação reenvia sem captcha).
     function funcao(corpo, comSessao) {
-      return (comSessao ? token(true) : Promise.resolve(null)).then(function (tk) {
+      return (comSessao ? token(comSessao === true) : Promise.resolve(null)).then(function (tk) {
         return pedir('/functions/v1/vagas-conta', { headers: cabecalhos(tk), body: JSON.stringify(corpo) }).then(function (r) {
           if (r.status === 404) throw erroDe({ ok: false, erro: MSG_FUNCAO, naoConfigurado: true });
           if (!r.json) throw erroDe({ ok: false, erro: MSG_RECUSA });
@@ -386,7 +365,7 @@
       d = d || {};
       return funcao({ acao: 'cadastrar', email: d.email, tipo: d.tipo, nome: d.nome || '', termosVersao: d.termosVersao || versaoTermos, captcha: d.captcha || '' }, false);
     };
-    api.reenviarConfirmacao = function (email, captcha) { return funcao({ acao: 'reenviar', email: email, captcha: captcha || '' }, false); };
+    api.reenviarConfirmacao = function (email, captcha) { return funcao({ acao: 'reenviar', email: email, captcha: captcha || '' }, 'talvez'); };
     api.esqueciSenha = function (email, captcha) { return funcao({ acao: 'esqueci', email: email, captcha: captcha || '' }, false); };
     api.cadastroAssistido = function (d) { return funcao(Object.assign({ acao: 'assistido' }, d || {}), true); };
     api.convidarOperador = function (d) { return funcao(Object.assign({ acao: 'operador' }, d || {}), true); };
@@ -439,12 +418,16 @@
       });
     };
     // Foto: grava/apaga direto no Storage com o login da pessoa (as políticas só deixam o próprio <id>/foto.jpg); a URL para ver
-    // vem assinada pela Edge Function (o banco confere o Combinou).
+    // vem assinada pela Edge Function (o banco confere o Combinou). O aceite 'foto_opcional' é gravado ANTES de enviar e a
+    // retirada DEPOIS de apagar (banco sem a 20261024120005: segue sem gravar).
+    function consentirFoto(v) {
+      return api.fotoConsentimento(v).then(null, function (e) { if (v && !e.bancoDesatualizado) throw e; });
+    }
     api.enviarFoto = function (arquivo) {
       if (!arquivo || TIPOS_FOTO.indexOf(arquivo.type) < 0 || !(arquivo.size > 0) || arquivo.size > LIMITE_FOTO) {
         return Promise.reject(erroDe({ ok: false, erro: MSG_FOTO }));
       }
-      return token(true).then(function (tk) {
+      return consentirFoto(true).then(function () { return token(true); }).then(function (tk) {
         var uid = sessaoGuardada().user.id;
         return pedir(CAMINHO_FOTOS + '/' + uid + '/foto.jpg', { headers: { apikey: chave, Authorization: 'Bearer ' + tk, 'Content-Type': arquivo.type,
           'x-upsert': 'true', 'cache-control': '60' }, body: arquivo }).then(function (r) {
@@ -459,7 +442,7 @@
         var uid = sessaoGuardada().user.id;
         return pedir(CAMINHO_FOTOS, { method: 'DELETE', headers: cabecalhos(tk), body: JSON.stringify({ prefixes: [uid + '/foto.jpg'] }) }).then(function (r) {
           if (r.status < 200 || r.status >= 300) throw erroDe({ ok: false, erro: MSG_FOTO_FALHA });
-          return { ok: true, temFoto: false };
+          return consentirFoto(false).then(function () { return { ok: true, temFoto: false }; });
         });
       });
     };

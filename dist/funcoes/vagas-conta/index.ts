@@ -522,7 +522,9 @@ async function registrarEnvio(db, r) {
 //       tipo passa a ser o pedido agora: quem tem o e-mail decide, mesmo que um terceiro tenha "pré-registrado" com outro);
 //       já confirmada = e-mail "você já tem conta"; conta de outro produto (painel DISC) = nada é enviado.
 //       O consentimento (termos/privacidade com data) só é gravado no banco quando a pessoa clica no link, nunca antes.
-//   reenviar {email, captcha?}  -> link novo de confirmação (só conta do Vagas não confirmada). Resposta neutra.
+//   reenviar {email, captcha?}  -> link novo de confirmação (só conta do Vagas não confirmada). Resposta neutra. Com JWT de
+//       operador(a) ou da equipe: sem captcha, limite 'reenviar_op' por quem age, e o operador só para conta assistida da
+//       cidade dele (20261024120005).
 //   esqueci {email, captcha?}   -> link "Crie uma nova senha" (só conta do Vagas). Resposta neutra.
 //   assistido (JWT de operador(a) da cidade ou da equipe) {email, tipo, cidade, empresaId?, nome?, codigoEvento?}
 //       Cadastro assistido: a conta nasce PENDENTE e só vale quando a pessoa confirma pelo link (é o consentimento dela).
@@ -768,15 +770,22 @@ async function acaoVagasCadastrar(base, corpo, origem) {
   return vagasNeutro(email);
 }
 
-async function acaoVagasReenviar(base, corpo, origem) {
+// quem (JWT, opcional): operador(a) de alguma cidade ou a equipe reenviam SEM captcha (a tela do operador não tem o "não sou
+// robô"), com o limite próprio 'reenviar_op' por quem age (20261024120005); o operador só reenvia para conta assistida da
+// cidade dele (consultar.conta.assistidaCidade) e a equipe para qualquer conta do Vagas pendente. Sem JWT ou com JWT de outra
+// conta: o caminho de sempre (captcha). A resposta é a mesma (neutra) em todos os casos.
+async function acaoVagasReenviar(base, corpo, origem, quem) {
   const email = emailVagas(corpo.email);
   if (!email) return erro(VAGAS_MSG_EMAIL_INVALIDO);
   if (!vagasEmailConfigurado(base)) return erro(VAGAS_MSG_EMAIL_NAO_CONFIGURADO, { naoConfigurado: true });
-  if (!(await conferirCaptchaVagas(base, corpo.captcha, origem.cf))) return erro(VAGAS_MSG_CAPTCHA, { captcha: true });
-  const lim = await base.db.limite('reenviar', origem.cf, origem.xff, email, null);
+  const ops = quem && Array.isArray(quem.operador) ? quem.operador.filter((o) => o && o.papel === 'operador').map((o) => o.cidade) : [];
+  const operacao = !!quem && (quem.admin === true || ops.length > 0);
+  if (!operacao && !(await conferirCaptchaVagas(base, corpo.captcha, origem.cf))) return erro(VAGAS_MSG_CAPTCHA, { captcha: true });
+  const lim = await base.db.limite(operacao ? 'reenviar_op' : 'reenviar', origem.cf, origem.xff, email, operacao ? quem.id : null);
   if (!lim || lim.ok !== true) return lim || erro(MSG_ERRO_INTERNO);
   const c = await base.db.consultar(email);
-  if (c.existe && (c.produto === 'vagas' || c.conta) && !c.confirmada) {
+  const daCidade = !operacao || quem.admin === true || (!!c.conta && !!c.conta.assistidaCidade && ops.includes(c.conta.assistidaCidade));
+  if (c.existe && (c.produto === 'vagas' || c.conta) && !c.confirmada && daCidade) {
     const l = await linkConfirmacaoVagas(base, email);
     await enviarEmailVagas(base, email, c.conta && c.conta.tipo === 'operador' ? 'operador' : 'confirmar', { url: linkVagas(base.env, l.hash, l.tipo) });
   }
@@ -1132,7 +1141,7 @@ async function atenderVagasConta(req, base) {
     const origem = origemVagas(req);
     let r;
     if (corpo.acao === 'cadastrar') r = await acaoVagasCadastrar(base, corpo, origem);
-    else if (corpo.acao === 'reenviar') r = await acaoVagasReenviar(base, corpo, origem);
+    else if (corpo.acao === 'reenviar') r = await acaoVagasReenviar(base, corpo, origem, await quemChamaVagas(base, req).catch(() => null));
     else if (corpo.acao === 'esqueci') r = await acaoVagasEsqueci(base, corpo, origem);
     else if (corpo.acao === 'assistido') r = await acaoVagasAssistido(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'operador') r = await acaoVagasOperador(base, corpo, origem, await quemChamaVagas(base, req));

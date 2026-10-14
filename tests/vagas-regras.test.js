@@ -10,7 +10,7 @@ const R = require('../vagas/js/regras.js');
 
 // A 20261024 (onda 2) acrescenta e redefine RPCs (painel da praça, equipe da empresa, lista de espera com WhatsApp).
 const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql', '20261024120003_vagas_aviso_reforco.sql',
-  '20261024120004_vagas_pre_abertura.sql']
+  '20261024120004_vagas_pre_abertura.sql', '20261024120005_vagas_fase_c.sql']
   .map((f) => fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', f), 'utf8')).join('\n');
 const FONTE = fs.readFileSync(path.join(__dirname, '..', 'vagas', 'js', 'regras.js'), 'utf8');
 const AGORA = Date.parse('2026-10-13T15:00:00Z');
@@ -156,8 +156,8 @@ test('anúncio "como produto": campos fechados (chaves do design), salário obri
     [150000, 180000, true, ['outro'], ['saude', 'comissao'], null]);
   assert.match(e({ descricao: 'Procuramos atendente de boa aparência para o balcão da loja.' }), /aparencia|aparência/i);
   assert.match(e({ requisitoOutro: 'Ligar 95 99876-5432' }), /^Tire o telefone/);
-  // Listas iguais às do banco.
-  const lista = (nome) => /select array\[([^\]]+)\]/.exec(SQL.slice(SQL.indexOf('function vagas_interno.' + nome + '()')))[1].match(/'([a-z_0-9-]+)'/g).map((x) => x.slice(1, -1));
+  // Listas iguais às do banco (a definição mais nova de cada uma).
+  const lista = (nome) => /select array\[([^\]]+)\]/.exec(SQL.slice(SQL.lastIndexOf('function vagas_interno.' + nome + '()')))[1].match(/'([a-z_0-9-]+)'/g).map((x) => x.slice(1, -1));
   assert.deepEqual(lista('turnos_vaga'), R.TURNOS_VAGA.map((x) => x.id));
   assert.deepEqual(lista('experiencias_vaga'), R.EXPERIENCIAS_VAGA.map((x) => x.id));
   assert.deepEqual(lista('escolaridades_vaga'), R.ESCOLARIDADES_VAGA.map((x) => x.id));
@@ -246,4 +246,21 @@ test('onda 2: catálogo do painel da praça = conteudo/vagas-operacao/indicadore
   assert.deepEqual(R.STATUS_CONVITE_EQUIPE.map((s) => s.id), ['pendente', 'vencido', 'aceito', 'cancelado']);
   assert.deepEqual(R.PAPEIS_EMPRESA.map((s) => s.id), ['dono', 'recrutador']);
   assert.equal(R.MSG.CONVITE_INVALIDO, 'Convite inválido ou vencido. Peça um convite novo a quem é dono(a) da empresa.');
+});
+
+test('CLT art. 442-A (20261024120005): experiência pedida na vaga = não precisa | ajuda | até 6 meses; os ids antigos viram 6_meses', () => {
+  assert.deepEqual(R.EXPERIENCIAS_VAGA.map((x) => [x.id, x.rotulo]), [['nao_precisa', 'Não precisa de experiência'],
+    ['ajuda', 'Ajuda ter, mas não é obrigatória'], ['6_meses', 'Pelo menos 6 meses na função']]);
+  const base = { area: 'atendimento', funcao: 'Atendente', modalidade: 'clt', quantidade: 1, turno: 'comercial', escolaridade: 'medio',
+    descricao: 'Atendimento no balcão, organização de prateleiras e apoio no caixa. Escala 6x1 com folga no domingo.',
+    salarioDe: 162100, inicio: 'imediato' };
+  for (const [entrada, sai] of [['nao_precisa', 'nao_precisa'], ['ajuda', 'ajuda'], ['6_meses', '6_meses'], ['ate_1', '6_meses'], ['1_a_3', '6_meses'], ['mais_3', '6_meses']]) {
+    const l = R.lerAnuncio(Object.assign({}, base, { experiencia: entrada }), '2026-10-13');
+    assert.equal(l.ok, true, entrada + ': ' + l.erro);
+    assert.equal(l.campos.experiencia, sai, entrada);
+  }
+  assert.equal(R.lerAnuncio(Object.assign({}, base, { experiencia: '2_anos' }), '2026-10-13').erro, 'Escolha a experiência que a vaga pede.');
+  // O banco converte do mesmo jeito e atualiza as vagas que já existem.
+  assert.match(SQL, /when disc_interno\.texto\(d -> 'experiencia'\) in \('ate_1', '1_a_3', 'mais_3'\) then '6_meses'/);
+  assert.match(SQL, /update public\.vagas_anuncios set experiencia = '6_meses' where experiencia in \('ate_1', '1_a_3', 'mais_3'\)/);
 });

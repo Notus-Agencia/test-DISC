@@ -14,8 +14,7 @@ da prévia** (repositório público; precisam ser reescritas antes de ir a qualq
 1. **Marca**: FEITA e integrada (logo em todas as telas e e-mails, prévia separada de produção, peso 95,9 KB).
 2. **Testes**: FEITO e integrado (psicologia, celular; questões de demonstração reescritas e conferidas em privado: nenhuma parecida com as reais).
 3. **Empresa**: FEITA e integrada (experiência até 6 meses, selo sugerido, sem duplicar, convite no celular, pré-abertura).
-4. **Banco (migração 0005)**: a empresa não pode ver se a pessoa aceitou ou recusou a referência; ids novos de
-   experiência; vagas_cartoes ignora escolaridade/experiência mínimas; pedidos abertos das telas.
+4. **Banco (migração 0005)**: FEITA e integrada (referência sem a decisão da pessoa, experiência até 6 meses, cartões sem filtros de escolaridade/experiência, moderador não suspende, pedidos das telas).
 5. **Revisão de segurança** das migrações 0003/0004/0005 antes de enviar à principal (o envio aplica em produção).
 6. **Revisões que faltam**: telas da pessoa e da operação (psicologia, código, celular).
 7. **Prévia completa do app** para o dono; envio só depois da aprovação.

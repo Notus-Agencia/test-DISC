@@ -33,7 +33,7 @@ Regras de toda parceria:
 
 **O que ganham.** Mais um canal para as vagas que já recebem, com vaga conferida e link para WhatsApp; um lugar para indicar quem pergunta por emprego.
 
-**O que pedimos.** (1) Folheto no balcão ("faça o teste da função no celular e apareça para as empresas daqui"); (2) se houver posto do Sine na cidade, autorização para republicar as vagas públicas dele **com crédito** ("fonte: Sine"), e só depois de conferir que a vaga existe.
+**O que pedimos.** (1) Folheto no balcão ("faça seu currículo no celular e apareça para as empresas daqui. Se quiser, faça o teste da sua função"); (2) se houver posto do Sine na cidade, autorização para republicar as vagas públicas dele **com crédito** ("fonte: Sine"), e só depois de conferir que a vaga existe.
 
 **O que damos.** Crédito ao Sine nas vagas dele; números mensais sem dados de pessoas.
 

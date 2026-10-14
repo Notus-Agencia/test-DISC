@@ -12,7 +12,7 @@ const CHAVE = 'sb_publishable_teste';
 // A 20261024 (onda 2) acrescenta e redefine RPCs (painel da praça, equipe da empresa, lista de espera com WhatsApp).
 // A 20261024120002 acrescenta o aviso de abertura da lista de espera (painel da equipe e o link público de saída).
 const SQL = ['20261022120000_vagas.sql', '20261024120000_vagas_onda2.sql', '20261024120002_vagas_aviso_abertura.sql', '20261024120003_vagas_aviso_reforco.sql',
-  '20261024120004_vagas_pre_abertura.sql']
+  '20261024120004_vagas_pre_abertura.sql', '20261024120005_vagas_fase_c.sql']
   .map((f) => fs.readFileSync(path.join(__dirname, '..', 'supabase', 'migrations', f), 'utf8')).join('\n');
 const SQL_FUNDACAO = SQL;   // o teste de contrato junta a migração dos testes (20261023) a esta
 
@@ -218,7 +218,8 @@ test('foto: grava e apaga direto no Storage com o login da pessoa; URL assinada 
     ['/storage/v1/object/vagas-fotos', () => resposta(200, [{ name: 'u1/foto.jpg' }])],
     ['/functions/v1/vagas-conta', (c) => (assinar ? resposta(200, { ok: true, url: 'https://exemplo.supabase.co/storage/v1/object/sign/vagas-fotos/p/foto.jpg?token=t',
       expiraEm: '2026-10-13T15:05:00.000Z', pedido: c.corpo }) : resposta(200, { ok: false, erro: 'A foto só aparece depois do Combinou.', semCombinou: true }))],
-    ['/rest/v1/rpc/vagas_contato_pessoa', () => resposta(200, { ok: true, pessoa: { nome: 'Ana', temFoto: true } })]
+    ['/rest/v1/rpc/vagas_contato_pessoa', () => resposta(200, { ok: true, pessoa: { nome: 'Ana', temFoto: true } })],
+    ['/rest/v1/rpc/vagas_foto_consentimento', (c) => resposta(200, { ok: true, fotoOpcional: c.corpo.p_aceito, duplicado: false })]
   ], arm);
   const FOTO = 'A foto precisa ser JPG, PNG ou WEBP, com até 1 MB.';
   await assert.rejects(api.enviarFoto({ type: 'image/gif', size: 10 }), (e) => e.message === FOTO);
@@ -226,18 +227,36 @@ test('foto: grava e apaga direto no Storage com o login da pessoa; URL assinada 
   assert.equal(fetch.chamadas.length, 0, 'nada vai para a rede sem passar na conferência');
   const corpo = { type: 'image/jpeg', size: 150000 };
   fetch.chamadas.length = 0;
-  const falsoFetch = (url, o) => { fetch.chamadas.push({ url, metodo: o.method, cabecalhos: o.headers, corpoBruto: o.body }); return Promise.resolve(resposta(200, { Key: 'x' })); };
+  // O aceite 'foto_opcional' (vagas_foto_consentimento, 20261024120005) é gravado ANTES do envio.
+  let consentimento = () => resposta(200, { ok: true, fotoOpcional: true, duplicado: false });
+  const falsoFetch = (url, o) => {
+    fetch.chamadas.push({ url, metodo: o.method, cabecalhos: o.headers, corpoBruto: o.body });
+    return Promise.resolve(/vagas_foto_consentimento$/.test(url) ? consentimento() : resposta(200, { Key: 'x' }));
+  };
   const api2 = API.criar({ modo: 'supabase', url: URL_SB, chave: CHAVE, fetch: falsoFetch, armazenamento: arm, agora: () => relogio });
   assert.deepEqual(await api2.enviarFoto(corpo), { ok: true, temFoto: true });
+  assert.deepEqual([fetch.chamadas[0].url, JSON.parse(fetch.chamadas[0].corpoBruto)], [URL_SB + '/rest/v1/rpc/vagas_foto_consentimento', { p_aceito: true }]);
+  fetch.chamadas.shift();
   const up = fetch.chamadas[0];
   assert.equal(up.url, URL_SB + '/storage/v1/object/vagas-fotos/u1/foto.jpg');
   assert.equal(up.metodo, 'POST');
   assert.deepEqual([up.cabecalhos.Authorization, up.cabecalhos['Content-Type'], up.cabecalhos['x-upsert']], ['Bearer tok1', 'image/jpeg', 'true']);
   assert.equal(up.corpoBruto, corpo, 'o arquivo vai como está');
+  // Banco sem a migração: a foto vai assim mesmo. Aceite recusado (ex.: sessão): a foto NÃO vai.
+  fetch.chamadas.length = 0;
+  consentimento = () => resposta(404, { code: 'PGRST202' });
+  assert.deepEqual(await api2.enviarFoto(corpo), { ok: true, temFoto: true });
+  assert.equal(fetch.chamadas.length, 2);
+  fetch.chamadas.length = 0;
+  consentimento = () => resposta(200, { ok: false, erro: 'Só para quem procura emprego.' });
+  await assert.rejects(api2.enviarFoto(corpo), (e) => e.message === 'Só para quem procura emprego.');
+  assert.equal(fetch.chamadas.length, 1, 'sem o aceite gravado, nada vai para o Storage');
   assert.deepEqual(await api.apagarFoto(), { ok: true, temFoto: false });
   const del = fetch.chamadas.find((c) => c.metodo === 'DELETE');
   assert.equal(del.url, URL_SB + '/storage/v1/object/vagas-fotos');
   assert.deepEqual(del.corpo, { prefixes: ['u1/foto.jpg'] });
+  const retirada = fetch.chamadas.slice(fetch.chamadas.indexOf(del) + 1).find((c) => /vagas_foto_consentimento$/.test(c.url));
+  assert.deepEqual(retirada.corpo, { p_aceito: false }, 'a retirada do aceite vai DEPOIS de apagar');
   const url = await api.fotoUrl('11111111-2222-3333-4444-555555555555');
   assert.deepEqual(url.pedido, { acao: 'foto', candidatura: '11111111-2222-3333-4444-555555555555' });
   const ct = await api.contatoPessoa('11111111-2222-3333-4444-555555555555');
@@ -299,4 +318,18 @@ test('RECURSOS da onda 2 e a lista de espera pelo Turnstile: com captcha vai pel
   await api.listaEspera({ cidade: 'niquelandia-go', email: 'a@b.com', origem: 'radio' });
   assert.equal(fetch.chamadas[1].url, URL_SB + '/rest/v1/rpc/vagas_lista_espera_entrar');
   assert.deepEqual(fetch.chamadas[1].corpo, { p_dados: { cidade: 'niquelandia-go', email: 'a@b.com', origem: 'radio' } });
+});
+
+test('reenviarConfirmacao: manda a sessão quando há (a operação reenvia sem captcha, 20261024120005); sem sessão, sem login', async () => {
+  const rota = [['/functions/v1/vagas-conta', (c) => resposta(200, { ok: true, enviado: true, pedido: c.corpo })]];
+  const sem = criar(rota);
+  await sem.api.reenviarConfirmacao('a@b.com', 'cap');
+  assert.deepEqual(sem.fetch.chamadas[0].corpo, { acao: 'reenviar', email: 'a@b.com', captcha: 'cap' });
+  assert.equal(sem.fetch.chamadas[0].cabecalhos.Authorization, undefined);
+  const arm = memoria();
+  arm.setItem(API.CHAVE_SESSAO, JSON.stringify({ access_token: 'tok-op', refresh_token: 'r', expires_at: Math.floor(relogio / 1000) + 3600, user: { id: 'op', email: '' } }));
+  const com = criar(rota, arm);
+  await com.api.reenviarConfirmacao('a@b.com');
+  assert.deepEqual([com.fetch.chamadas[0].corpo, com.fetch.chamadas[0].cabecalhos.Authorization],
+    [{ acao: 'reenviar', email: 'a@b.com', captcha: '' }, 'Bearer tok-op']);
 });

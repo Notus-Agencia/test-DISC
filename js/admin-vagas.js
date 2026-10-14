@@ -180,7 +180,8 @@
     if (!op.supabase) return false;
     var api = op.discApi;
     var cfg = op.config || {};
-    return !!(api && typeof api.sessaoAtual === 'function' && cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && op.banco === true);
+    // No painel de verdade, só com CONFIG.VAGAS_PAINEL ligado: o grupo fica escondido até o dono aprovar a prévia.
+    return !!(cfg.VAGAS_PAINEL === true && api && typeof api.sessaoAtual === 'function' && cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && op.banco === true);
   }
 
   function rotuloStatusCidade(c) {

@@ -14,7 +14,7 @@
 ## Porta a porta (5 minutos)
 
 **Minuto 1 · Quem sou e por que estou aqui**
-> "Oi, [nome]. Eu sou [nome], da Gestão sem Caos. Estamos abrindo o Vagas sem Caos em Uruaçu: um mural de vagas só daqui. Quem se candidata faz antes um teste do básico da função. Posso te mostrar em 3 minutos?"
+> "Oi, [nome]. Eu sou [nome], da Gestão sem Caos. Estamos abrindo o Vagas sem Caos em Uruaçu: um mural de vagas só daqui. Quem se candidata pode fazer antes um teste do básico da função, e você vê o selo. Posso te mostrar em 3 minutos?"
 
 **Minuto 2 · A dor** (deixe a pessoa falar; anote)
 > "Como você contrata hoje? Quanto tempo leva? Já contratou alguém que, em 15 dias, não sabia dar o troco ou atender cliente?"
@@ -22,9 +22,9 @@
 Dores comuns em cidade pequena (use a que aparecer): "só vem indicado de alguém e nem sempre dá certo"; "ponho no grupo de WhatsApp e chegam 80 mensagens"; "site grande manda gente de outro estado"; "não tenho tempo de entrevistar"; "aqui todo mundo se conhece, não quero que saibam que estou contratando".
 
 **Minuto 3 · O que é e o que é grátis**
-> "Funciona assim: você me diz a vaga e eu cadastro agora, com você. A vaga aparece para quem é de Uruaçu. A pessoa faz um teste de 15 questões no celular, de 20 a 25 minutos: atendimento, caixa, vendas, administrativo ou português. Quem vai bem ganha o selo de habilidade testada, com a nota e a data."
+> "Funciona assim: você me diz a vaga e eu cadastro agora, com você. A vaga aparece para quem é de Uruaçu. Quem quiser faz um teste de 15 questões no celular, de 20 a 25 minutos: atendimento, caixa, vendas, administrativo ou português. Com nota 60 ou mais, ganha o selo de habilidade testada, com a nota, a margem e a data. O teste é opcional: sem selo não quer dizer que a pessoa não sabe."
 >
-> "Você recebe os cartões por ordem de chegada. Sem nome e sem foto: só bairro, experiência, escolaridade, turno, CNH, pretensão e o selo. Você marca 'Quero conversar' em quem interessa. Se a pessoa também quiser, aparece o nome e o botão do WhatsApp. O selo mostra quem já sabe o básico; a entrevista e a experiência fazem o resto. A decisão de contratar continua sendo sua."
+> "Você recebe os cartões por ordem de chegada. Sem nome e sem foto: só a região da cidade, experiência, escolaridade, turno, CNH, pretensão e o selo. Você marca 'Quero conversar' em quem interessa. Se a pessoa também quiser, aparece o nome e o botão do WhatsApp. O selo mostra quem foi bem no teste do básico; a entrevista e a experiência fazem o resto. A nota tem margem de uns 10 pontos: serve para conversar, não para ordenar as pessoas. A decisão de contratar continua sendo sua."
 >
 > "Agora é grátis: publicar, receber candidatos, conversar. Só vamos cobrar quando o mural estiver cheio, e só por extras. Para quem procura emprego é grátis sempre."
 
@@ -45,7 +45,7 @@ Sem vaga agora?
 ## Por WhatsApp (uma mensagem; depois, áudio curto se responder)
 
 Texto base [Marca], ajustado para Uruaçu:
-> "Oi, [nome]! Aqui é [nome], da Gestão sem Caos. Estamos abrindo o Vagas sem Caos, um mural só de Uruaçu. Quem se candidata faz antes um teste do básico da função. Tem vaga aberta ou para abrir até [mês]? Eu cadastro para você em 5 minutos, sem custo nesta fase. Você recebe os interessados e decide com quem conversar. Pode ser?"
+> "Oi, [nome]! Aqui é [nome], da Gestão sem Caos. Estamos abrindo o Vagas sem Caos, um mural só de Uruaçu. Quem se candidata pode fazer antes um teste do básico da função, e você vê o selo. Tem vaga aberta ou para abrir até [mês]? Eu cadastro para você em 5 minutos, sem custo nesta fase. Você recebe os interessados e decide com quem conversar. Pode ser?"
 
 Respondeu "sim":
 > "Ótimo. Me manda: função, bairro do trabalho, turno, faixa salarial (ou valor da diária) e o e-mail de quem vai receber. Eu cadastro e te mando o link da vaga para conferir."
@@ -56,18 +56,18 @@ Confira o CNPJ na Receita antes de publicar. Respondeu "depois": retorno em 7 di
 
 | A empresa diz | Você responde |
 |---|---|
-| **"Já uso grupo de WhatsApp."** | "Ótimo, continue. O boletim do dia vai para os grupos com o link da sua vaga. A diferença é o que chega para você: cartões organizados, de gente daqui, com o teste feito. E o seu número não fica exposto." |
-| **"Site grande de vaga é maior."** | "É, e serve bem para vaga de escritório em capital. Aqui a vaga é de Uruaçu, para quem mora em Uruaçu. A gente confere o CNPJ de toda empresa, e a pessoa mostra o básico da função antes. E não tem mensalidade que renova sozinha." |
+| **"Já uso grupo de WhatsApp."** | "Ótimo, continue. O boletim do dia vai para os grupos com o link da sua vaga. A diferença é o que chega para você: cartões organizados, de gente daqui, e você vê o selo de quem fez o teste. E o seu número não fica exposto." |
+| **"Site grande de vaga é maior."** | "É, e serve bem para vaga de escritório em capital. Aqui a vaga é de Uruaçu, para quem mora em Uruaçu. A gente confere o CNPJ de toda empresa, e quem quiser mostra o básico da função num teste. E não tem mensalidade que renova sozinha." |
 | **"Aqui todo mundo se conhece; não quero que saibam da vaga."** | "Dá para publicar como **vaga confidencial**: o nome da empresa não aparece. A pessoa vê função, bairro e faixa salarial. O nome da empresa só aparece para ela quando ela aceita conversar com você, e só aí o contato dela é liberado." (Só empresa com CNPJ conferido.) |
 | **"Quanto custa depois?"** | "Nada agora. Depois, continua grátis publicar 2 vagas. Os extras: destaque, R$ 39 por 30 dias; 'urgente hoje' para diária, R$ 9,90; e a vaga assistida, R$ 199, em que eu escrevo a vaga com você, divulgo no boletim e na rádio e marco uma data de prova presencial anunciada na própria vaga. Quem entra agora tem preço de fundador. Tudo pago antes, sem renovação automática." (Valores: HIPÓTESE.) |
 | **"Não tenho tempo para olhar candidato."** | "Por isso o cartão é curto e chega por ordem de chegada. Na vaga assistida eu cuido da divulgação e te lembro de responder; quem lê e decide é você." |
 | **"Quero ver a foto, saber a idade."** | "Não dá, e é melhor assim: a lei proíbe escolher por idade, sexo, cor ou estado civil (Lei 9.029/1995; CLT, art. 373-A). O cartão mostra o que você pode usar. Na entrevista você conhece a pessoa." |
-| **"Teste online, a pessoa cola."** | "Pode acontecer. Por isso o selo diz 'online, sem supervisão' e tem um código que você confere no site. Todo mês tem mutirão com prova presencial e documento conferido. O selo mostra quem já sabe o básico; a entrevista faz o resto." |
+| **"Teste online, a pessoa cola."** | "Pode acontecer. Por isso o selo diz 'online, sem supervisão' e tem um código que você confere no site. Ele não substitui a entrevista: é nela que você confere o que a pessoa sabe." |
 | **"Preciso de gente para um dia."** | "Entra também: diária com data, horário e valor, no ar de 2 a 7 dias, candidatura em 1 toque. Vocês acertam o pagamento direto. Só lembro: diarista 3 ou mais dias por semana na mesma casa é emprego doméstico (LC 150/2015)." |
 | **"Vocês cobram do candidato?"** | "Nunca. Em Uruaçu a pessoa não paga nada. Se alguém pedir dinheiro em nosso nome, é golpe, e a gente denuncia." |
 | **"Posso avisar que fulano foi ruim?"** | "Não, e é de propósito: referência negativa pública vira 'lista suja', que é ilegal e dá processo. Aqui a referência é só positiva e factual, e a pessoa precisa autorizar. Quem você não recomenda, você não indica." |
 | **"Quero dar referência para a equipe toda."** | "Pode: uma por pessoa, até 20 por mês (regra de partida). Cada uma passa por uma conferência do texto em até 24 h." |
-| **"E o DISC, vocês fazem?"** | "O Mapa DISC é da consultoria e entra **depois** que você contratar, na integração. Na seleção, não: a lei reserva isso ao psicólogo. Aqui o que conta é a habilidade testada." |
+| **"E o DISC, vocês fazem?"** | "O Mapa DISC é da consultoria e entra **depois** que você contratar, na integração, se a pessoa quiser. Na seleção, não: a lei reserva esse tipo de teste ao psicólogo. E o resultado não serve para decidir se a pessoa fica depois da experiência." |
 
 ## Depois da visita (mesmo dia)
 

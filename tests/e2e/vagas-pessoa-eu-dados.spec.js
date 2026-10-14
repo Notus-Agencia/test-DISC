@@ -172,14 +172,14 @@ test('referências: pendente primeiro com "Ler e decidir"; aceita "Visível"; oc
   await page.click('#vg-confirmar-remover-ref-sim');
   await expect(page.locator('#vg-aviso-geral')).toContainText('Referência excluída.');
   await expect(page.locator('#vg-ref-lista .vg-ref')).toHaveCount(1);
-  // A empresa autora continua vendo "aceita" (veto P2): nada do que a pessoa fez aparece para ela.
+  // A empresa autora vê só "enviada" (veto P2): nada do que a pessoa fez aparece para ela.
   const visaoEmpresa = await page.evaluate(async () => {
     await window.VAGAS_API.entrar('empresa6@previa.com', 'previa123');
     const eu = await window.VAGAS_API.eu();
     const r = await window.VAGAS_API.referenciasDaEmpresa(eu.empresas[0].id);
     return r.referencias.map((x) => x.status);
   });
-  expect(visaoEmpresa).toEqual(['aceita']);
+  expect(visaoEmpresa).toEqual(['enviada']);
   expect(erros).toEqual([]);
 });
 
