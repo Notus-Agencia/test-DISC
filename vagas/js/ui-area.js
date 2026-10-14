@@ -5,7 +5,8 @@
  * API:
  *   rotaPara(rotas, hash, padrao) -> {chave, resto, hash} (puro: a chave mais longa que serve; 'curriculo/' serve 'curriculo/3')
  *   roteador({rotas: {'inicio': fn, 'conversa/': fn(resto)}, padrao, raiz, aoTrocar, focarNoInicio}) -> {ir(hash), atual(), resolver()}
- *     (foco no h1 da raiz e rolagem ao topo a cada troca, como o teste DISC)
+ *     (foco no h1 da raiz e rolagem ao topo a cada troca, como o teste DISC). As âncoras do "Pular para o conteúdo" (#conteudo, #app)
+ *     não são rota: o foco vai para o elemento e o endereço volta para a rota atual.
  *   exigirConta({tipo: 'pessoa'|'empresa'|'operador', raiz?}) -> Promise<resposta de VAGAS_API.eu()>
  *     sem sessão -> entrar.html?voltar=<esta página>; conta assistida sem aceite -> entrar.html?termos=1&voltar=…;
  *     conta de outro tipo -> mensagem na raiz com "Sair e entrar com outra conta". Nesses casos a Promise nunca resolve.
@@ -40,7 +41,8 @@
     var primeira = true;
     var atual = null;
     function resolver() {
-      var r = rotaPara(op.rotas, root.location.hash, op.padrao);
+      var h = /^#(conteudo|app)$/.test(root.location.hash || '') ? '' : root.location.hash;   // âncora do "Pular" não é rota
+      var r = rotaPara(op.rotas, h, op.padrao);
       atual = r;
       var fn = r.chave !== null ? op.rotas[r.chave] : null;
       var saida = fn ? fn(r.resto, r.hash) : null;
@@ -51,7 +53,17 @@
       });
       return r;
     }
-    root.addEventListener('hashchange', resolver);
+    function aoMudarHash() {
+      var m = /^#(conteudo|app)$/.exec(root.location.hash || '');
+      if (m && atual) {
+        try { if (root.history && root.history.replaceState) root.history.replaceState(null, '', '#' + atual.hash); } catch (e) { /* segue */ }
+        var alvo = doc && doc.getElementById(m[1]);
+        if (alvo) { if (!alvo.hasAttribute('tabindex')) alvo.setAttribute('tabindex', '-1'); alvo.focus(); }
+        return;
+      }
+      resolver();
+    }
+    root.addEventListener('hashchange', aoMudarHash);
     resolver();
     return {
       ir: function (h) { if (root.location.hash.replace(/^#/, '') === h) resolver(); else root.location.hash = h; },

@@ -337,9 +337,11 @@
       U.faixa({ id: 'vg-faixa-cidade', texto: nomeCidade() ? U.t('avisos.cidade_pausada', { cidade: nomeCidade() })
         : (textoDoBanco || 'As vagas desta cidade estão pausadas no momento.') });
       var outra = outraAtiva();
-      U.vazio(app, { id: 'vg-vazio-cidade', h1: true, titulo: 'Sem vagas por enquanto', texto: (nomeCidade() ? '' : 'Seus dados e seus selos continuam valendo. ') + (outra ? 'Você pode ver as vagas de ' + outra.nome + ' ou fazer um teste.' : 'Você pode fazer um teste enquanto isso.'),
+      var escolher = !outra && cidades.some(function (c) { return c.slug !== slug; });
+      U.vazio(app, { id: 'vg-vazio-cidade', h1: true, titulo: 'Sem vagas por enquanto', texto: (nomeCidade() ? '' : 'Seus dados e seus selos continuam valendo. ') +
+        (outra ? 'Você pode ver as vagas de ' + outra.nome + ' ou fazer um teste.' : escolher ? 'Você pode escolher outra cidade ou fazer um teste enquanto isso.' : 'Você pode fazer um teste enquanto isso.'),
         botao: outra ? { rotulo: 'Ver vagas de ' + outra.nome, href: 'cidade.html?cidade=' + encodeURIComponent(outra.slug), id: 'vg-pausada-outra' }
-          : cidades.some(function (c) { return c.slug !== slug; }) ? { rotulo: 'Escolher outra cidade', href: 'index.html?escolher=1', id: 'vg-pausada-outra' } : null,
+          : escolher ? { rotulo: 'Escolher outra cidade', href: 'index.html?escolher=1', id: 'vg-pausada-outra' } : null,
         botao2: { rotulo: 'Fazer um teste', href: 'testes.html', id: 'vg-pausada-testes' } });
       U.focarTitulo(app);
     }
