@@ -129,7 +129,45 @@ test('textos da lista: total só a partir de 10 (o banco devolve em dezenas); ci
   assert.equal(D.textoEspera(c), 'O Vagas sem Caos ainda não chegou em Cidade Nova. Deixe seu e-mail e avisamos quando abrir. 120 pessoas já estão na lista.');
   assert.equal(D.textoEspera(Object.assign({}, c, { interessados: 0 })), 'O Vagas sem Caos ainda não chegou em Cidade Nova. Entre na lista e avisamos quando chegar.');
   assert.equal(D.preencher(D.FRASES.lgpd, { cidade: 'Cidade Nova' }),
-    'Ao tocar no botão, você aceita receber o aviso de quando Cidade Nova abrir. Usamos o e-mail e o WhatsApp só para isso. Guardamos até a cidade abrir e mais 90 dias, e você pode sair da lista quando quiser.');
+    'Ao tocar no botão, você aceita receber o aviso de quando Cidade Nova abrir. Usamos o e-mail e o WhatsApp só para isso: depois do aviso, ou 30 dias após a abertura, apagamos. Você pode sair da lista quando quiser.');
+  // Retenção da 20261024120002 (SPEC §7.1): avisada por tudo o que pediu, ou 30 dias depois da abertura. A regra antiga sumiu de tudo.
+  for (const t of [D.FRASES.lgpd, D.FRASES.lgpdSoEmail]) assert.match(t, /depois do aviso, ou 30 dias após a abertura, apagamos/);
+  const spec = fs.readFileSync(path.join(RAIZ, 'docs/VAGAS-SPEC.md'), 'utf8');
+  assert.match(spec, /Lista de espera \(`vagas_lista_espera`\) \| até a pessoa ser avisada da abertura por tudo o que pediu.*ou 30 dias depois da abertura/);
+  const priv = fs.readFileSync(path.join(RAIZ, 'conteudo/vagas-textos/aviso-de-privacidade.md'), 'utf8');
+  assert.match(priv, /\| Lista de espera \(e-mail, WhatsApp, cidade, perfil, origem\) \| até você ser avisado\(a\) da abertura por tudo o que pediu .*ou 30 dias depois da abertura da cidade/);
+  for (const [nome, t] of [['divulgacao.js', ler('js/divulgacao.js')], ['emprego.html', ler('emprego.html')], ['empresas.html', ler('empresas.html')], ['privacidade', priv]]) {
+    assert.ok(!/mais 90 dias/.test(t), nome + ': a retenção antiga ("até abrir e mais 90 dias") não aparece mais');
+  }
+});
+
+test('sair da lista pelo link do e-mail (?sair=<token>#sair): token de 64 hexadecimais, tirado do endereço; #sair sem token abre o formulário', () => {
+  const tk = 'ab'.repeat(32);
+  assert.equal(D.lerTokenSair(tk.toUpperCase()), tk, 'maiúsculas e minúsculas tanto faz');
+  for (const ruim of ['', 'ab', 'g'.repeat(64), tk + 'a', ' ', null, '<script>']) assert.equal(D.lerTokenSair(ruim), '', JSON.stringify(ruim));
+  assert.deepEqual(D.pedidoSair('?cidade=uruacu-go&sair=' + tk, '#sair'), { token: tk, noEndereco: true, abrirFormulario: false });
+  assert.deepEqual(D.pedidoSair('?sair=' + tk, ''), { token: tk, noEndereco: true, abrirFormulario: false }, 'sem o #sair também vale');
+  assert.deepEqual(D.pedidoSair('?cidade=uruacu-go', '#sair'), { token: '', noEndereco: false, abrirFormulario: true }, '#sair sem token: formulário com e-mail');
+  assert.deepEqual(D.pedidoSair('?sair=estragado', '#sair'), { token: '', noEndereco: true, abrirFormulario: true }, 'token estragado: formulário, e sai do endereço');
+  assert.deepEqual(D.pedidoSair('?sair', ''), { token: '', noEndereco: true, abrirFormulario: true });
+  assert.deepEqual(D.pedidoSair('?cidade=uruacu-go&de=radio', ''), { token: '', noEndereco: false, abrirFormulario: false });
+  assert.deepEqual(D.pedidoSair('', '#vg-chamada'), { token: '', noEndereco: false, abrirFormulario: false });
+  assert.equal(D.buscaSemSair('?cidade=uruacu-go&sair=' + tk), '?cidade=uruacu-go', 'o resto do endereço fica');
+  assert.equal(D.buscaSemSair('?sair=' + tk + '&cidade=uruacu-go&de=radio'), '?cidade=uruacu-go&de=radio');
+  assert.equal(D.buscaSemSair('?sair=' + tk), '');
+  assert.equal(D.buscaSemSair('?%73air=' + tk), '', 'nome codificado também sai');
+  assert.equal(D.buscaSemSair(''), '');
+  // O link que o e-mail do aviso monta (função compartilhada da vagas-conta) é o que a página entende.
+  const fn = fs.readFileSync(path.join(RAIZ, 'supabase/funcoes-compartilhadas/vagas-conta.js'), 'utf8');
+  assert.match(fn, /'\/emprego\.html\?cidade=' \+ c \+ t \+ '#sair'/);
+  assert.match(fn, /'\/empresas\.html\?cidade=' \+ c \+ t \+ '#sair'/);
+  assert.match(fn, /'&sair=' \+ sairToken/);
+  // A página nunca guarda o token: nada de armazenamento com ele, e o endereço é trocado com replaceState.
+  const js = ler('js/divulgacao.js');
+  assert.match(js, /history\.replaceState\(/);
+  assert.ok(!/(localStorage|sessionStorage)[^;\n]*tokenSair|tokenSair[^;\n]*(localStorage|sessionStorage)/.test(js), 'token fora do armazenamento');
+  assert.match(js, /API\.listaEsperaSairLink\(tokenSair\)/);
+  for (const k of ['saiuTitulo', 'saiuTexto', 'saindoTitulo']) assert.deepEqual(TELA.conferirTexto(D.FRASES[k], k), []);
 });
 
 test('"Mandar no WhatsApp": novidade local curta, com o link (origem indicação) e o aviso anti-golpe', () => {

@@ -62,7 +62,10 @@ Na prova presencial (fase 2), o operador confere o seu documento na hora, para d
 - **e-mail** (obrigatório) e **WhatsApp** (opcional), para o aviso;
 - a **cidade** e se você procura trabalho ou representa uma empresa;
 - de onde você veio, quando o link tiver a marca de uma campanha (rádio, cartaz, grupo, canal, escola, mutirão, indicação), só para sabermos que canal funciona;
-- a data em que entrou e, se deixou o WhatsApp, a data em que o informou.
+- a data em que entrou e, se deixou o WhatsApp, a data em que o informou;
+- se e quando você já foi avisado(a) por e-mail e pelo WhatsApp.
+
+Quando a cidade abre, mandamos um e-mail, com um link para sair da lista. Se você deixou o WhatsApp, uma pessoa da equipe da Gestão sem Caos manda uma mensagem pelo WhatsApp da Gestão sem Caos, um número por vez, sem envio automático. É um aviso só por canal: quando você já foi avisado(a) por tudo o que pediu, o seu contato sai da lista.
 
 O WhatsApp não é confirmado por código: confira o número. Se alguém deixar o seu contato sem você pedir, use "Quero sair da lista" (item 6) e ele sai.
 
@@ -118,7 +121,7 @@ Você vê, na tela "Quem viu meu contato", cada empresa que abriu o seu contato 
 | Registros de acesso (IP, data) | 6 meses (Marco Civil, art. 15) |
 | Compras e notas fiscais | 5 anos (legislação fiscal) |
 | Aceites de termos e consentimentos | enquanto a conta existir e por 5 anos depois, como prova |
-| Lista de espera (e-mail, WhatsApp, cidade, perfil, origem) | até a cidade abrir e mais 90 dias, ou até você pedir para sair, o que vier primeiro [REVISÃO JURÍDICA: confirmar se os 90 dias depois do aviso se justificam] |
+| Lista de espera (e-mail, WhatsApp, cidade, perfil, origem) | até você ser avisado(a) da abertura por tudo o que pediu (e-mail e, se deixou, WhatsApp), ou 30 dias depois da abertura da cidade, o que vier primeiro; antes disso, quando você pedir para sair |
 
 Quando você apaga a conta, os dados pessoais são eliminados. Ficam só o que a lei obriga a guardar (acima) e dados anonimizados.
 
@@ -137,7 +140,7 @@ Na tela **"Meus dados"** você faz sozinho(a), na hora:
 
 Para o que não dá para fazer na tela (por exemplo, pedir revisão de uma decisão ou reclamar), escreva para o(a) encarregado(a). Respondemos em até 15 dias. Se não ficar satisfeito(a), você pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).
 
-**Lista de espera:** para sair, abra a página de onde entrou (`/emprego` ou `/empresas`), toque em "Quero sair da lista" e escreva o e-mail que você deixou: ele sai na hora, com o WhatsApp. A resposta é sempre a mesma, para ninguém descobrir se um e-mail estava na lista. Também dá para pedir pelo contato da seção 12. A lista de espera não cria conta: nada dela aparece para empresas, e a operação da cidade vê só a contagem.
+**Lista de espera:** para sair, abra a página de onde entrou (`/emprego` ou `/empresas`), toque em "Quero sair da lista" e escreva o e-mail que você deixou: ele sai na hora, com o WhatsApp. O e-mail do aviso de abertura também traz o link "Sair da lista de espera", que tira você na hora, sem pedir nada. A resposta é sempre a mesma, para ninguém descobrir se um e-mail estava na lista. Também dá para pedir pelo contato da seção 12. A lista de espera não cria conta: nada dela aparece para empresas, e o operador da cidade vê só a contagem. Para o aviso pelo WhatsApp, a equipe da Gestão sem Caos vê um número por vez, e cada consulta fica registrada.
 
 ## 7. Com quem compartilhamos
 
@@ -154,7 +157,7 @@ Não vendemos nem alugamos dados. Compartilhamos só com:
 
 Quando o dado sai do Brasil (hospedagem), isso é feito com base no art. 33 da LGPD, com cláusulas contratuais de proteção.
 
-[REVISÃO JURÍDICA: se o aviso da lista de espera for enviado pela API oficial do WhatsApp, incluir a Meta entre os prestadores, com a transferência internacional (art. 33) e a opção "não pedi / sair" na primeira mensagem.]
+[REVISÃO JURÍDICA: o aviso da lista de espera pelo WhatsApp é mandado à mão, por uma pessoa da equipe, pelo WhatsApp da Gestão sem Caos (sem envio automático; a mensagem diz que é a única sobre a lista). Avaliar se a Meta (WhatsApp) entra entre os prestadores, com a transferência internacional (art. 33). Se um dia o envio passar para a API oficial do WhatsApp, incluir a Meta e a opção "não pedi / sair" na mensagem.]
 
 ## 8. Segurança
 

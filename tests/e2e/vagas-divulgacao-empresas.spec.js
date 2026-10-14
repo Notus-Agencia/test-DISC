@@ -158,3 +158,39 @@ test('fora da prévia sem número: a empresa não vê botão de WhatsApp nem mar
   await expect(page.locator('body')).not.toContainText('[NÚMERO DA GESTÃO SEM CAOS]');
   await expect(page.locator('body')).not.toContainText('[RAZÃO SOCIAL');
 });
+
+test('empresa: #sair abre o formulário de sair com o e-mail; o link do e-mail do aviso (?sair=<token>) tira a empresa da lista', async ({ page }) => {
+  const erros = vigiarErros(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const cidade = await prepararCidade(page, 'lista_espera');
+  await page.goto(BASE + 'empresas.html?cidade=' + cidade.slug + '#sair');
+  await expect(page.locator('#vg-chamada #vg-sair')).toHaveAttribute('open', '');
+  await expect(page.locator('#vg-sair-email')).toBeFocused();
+  await expect(page.locator('#vg-espera-lgpd')).toContainText('depois do aviso, ou 30 dias após a abertura, apagamos.');
+  await page.fill('#vg-espera-email', 'loja@exemplo.com');
+  await page.fill('#vg-espera-whatsapp', '(62) 98888-3434');
+  await page.click('#vg-espera-enviar');
+  await expect(page.locator('#vg-espera-ok')).toBeVisible();
+  // A equipe abre a cidade e manda o e-mail do aviso; com o WhatsApp ainda por avisar, a linha fica com o token do e-mail.
+  const linhas = await page.evaluate(async (slug) => {
+    const api = window.VAGAS_API;
+    await api.entrar('admin@previa.com', 'previa123');
+    await api.admCidadeSalvar({ slug, status: 'ativa' });
+    await api.avisarListaEspera(slug, 50);
+    await api.sair();
+    const k = Object.keys(localStorage).filter((x) => /^vagas_previa_v\d+$/.test(x)).sort().pop();
+    return JSON.parse(localStorage.getItem(k)).listaEspera.filter((l) => l.cidade === slug);
+  }, cidade.slug);
+  expect(linhas.map((l) => l.perfil)).toEqual(['empresa']);
+  await page.goto(BASE + 'empresas.html?cidade=' + cidade.slug + '&sair=' + linhas[0].sairToken + '#sair');
+  await expect(page.locator('#vg-sair-link-titulo')).toHaveText('Você saiu da lista de espera');
+  await expect(page.locator('#vg-sair-link')).toBeFocused();
+  expect(new URL(page.url()).search).toBe('?cidade=' + cidade.slug);
+  const resta = await page.evaluate((slug) => {
+    const k = Object.keys(localStorage).filter((x) => /^vagas_previa_v\d+$/.test(x)).sort().pop();
+    return JSON.parse(localStorage.getItem(k)).listaEspera.filter((l) => l.cidade === slug);
+  }, cidade.slug);
+  expect(resta).toEqual([]);
+  await expect(page.locator('#vg-chamada-titulo')).toHaveText('Cadastre sua empresa');
+  expect(erros).toEqual([]);
+});

@@ -178,6 +178,10 @@ body.vg-div.vg-com-barra { padding-bottom: calc(112px + env(safe-area-inset-bott
 /* O que o Tab alcança não fica escondido atrás da barra */
 html { scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
 
+/* ---------- Saiu da lista pelo link do e-mail do aviso de abertura (?sair=<token>) ---------- */
+.vg-div-saiu { margin: 0 0 12px; background: var(--ok-fundo); }
+.vg-div-saiu .vg-estado { padding: 8px 0 0; }
+
 /* ---------- Só na prévia: "ver como" (cidade em espera | cidade aberta) ---------- */
 .vg-div-previa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; font-size: var(--t-rotulo); color: var(--medio); }
 .vg-div-previa .segmento { margin-bottom: 0; background: var(--branco); }

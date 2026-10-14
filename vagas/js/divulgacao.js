@@ -7,7 +7,10 @@
  *   - diz no topo a situação da cidade (chegando / já abriu), sempre com o nome vindo do dado, nunca fixo;
  *   - monta a chamada: lista de espera (e-mail obrigatório + WhatsApp opcional quando RECURSOS.listaEsperaWhatsapp) ou cidade
  *     aberta ("Ver as vagas de {cidade}" / "Cadastrar minha empresa");
- *   - "Mandar no WhatsApp" (texto pronto), o WhatsApp da Gestão sem Caos e a barra fixa com a ação principal.
+ *   - "Mandar no WhatsApp" (texto pronto), o WhatsApp da Gestão sem Caos e a barra fixa com a ação principal;
+ *   - sair da lista: ?sair=<token>#sair (link do e-mail do aviso de abertura) chama VAGAS_API.listaEsperaSairLink(token) e
+ *     confirma, com a resposta sempre igual; o token sai da barra de endereço na hora (history.replaceState) e nunca é guardado.
+ *     "#sair" sem token abre o formulário de sair com o e-mail (listaEsperaSair).
  * Recursos opcionais do banco, todos atrás de VAGAS_API.RECURSOS (sem a marca, a página faz como antes):
  *   preAberturaEmpresas (empresa cadastra antes de a cidade abrir) · origemListaEspera (manda ?de= como "origem") ·
  *   canalWhatsapp na cidade (link do Canal do WhatsApp da cidade).
@@ -73,8 +76,10 @@
     ajudaEmail: 'Para avisar quando abrir. Nada de propaganda. Quem usa Android já tem e-mail: o Gmail do celular.',
     ajudaEmailEmpresa: 'Para avisar quando abrir. Nada de propaganda.',
     ajudaWhatsapp: 'É por ele que avisamos quando abrir. Só para isso.',
-    lgpd: 'Ao tocar no botão, você aceita receber o aviso de quando {{cidade}} abrir. Usamos o e-mail e o WhatsApp só para isso. Guardamos até a cidade abrir e mais 90 dias, e você pode sair da lista quando quiser.',
-    lgpdSoEmail: 'Ao tocar no botão, você aceita receber o aviso de quando {{cidade}} abrir. Usamos o e-mail só para isso. Guardamos até a cidade abrir e mais 90 dias, e você pode sair da lista quando quiser.',
+    // Retenção da 20261024120002 (SPEC §6.7 e §7.1): a linha some quando a pessoa foi avisada por tudo o que pediu, ou 30 dias
+    // depois da abertura, o que vier primeiro.
+    lgpd: 'Ao tocar no botão, você aceita receber o aviso de quando {{cidade}} abrir. Usamos o e-mail e o WhatsApp só para isso: depois do aviso, ou 30 dias após a abertura, apagamos. Você pode sair da lista quando quiser.',
+    lgpdSoEmail: 'Ao tocar no botão, você aceita receber o aviso de quando {{cidade}} abrir. Usamos o e-mail só para isso: depois do aviso, ou 30 dias após a abertura, apagamos. Você pode sair da lista quando quiser.',
     okWhatsapp: 'Avisamos no seu WhatsApp também.',
     canal: 'Não usa e-mail? Siga o Canal do Vagas sem Caos em {{cidade}} no WhatsApp',
     sairAbrir: 'Quero sair da lista',
@@ -83,6 +88,10 @@
     sairTextoSoEmail: 'Escreva o e-mail que você deixou na lista. Ele sai da lista.',
     sairBotao: 'Sair da lista',
     sairOk: 'Pronto. Se este e-mail estava na lista, ele saiu.',
+    // Link "Sair da lista de espera" do e-mail do aviso de abertura (?sair=<token>): resposta do banco sempre igual.
+    saiuTitulo: 'Você saiu da lista de espera',
+    saiuTexto: 'Pronto. O contato que você deixou foi apagado da lista, e o aviso de abertura não vai mais para você.',
+    saindoTitulo: 'Sair da lista de espera',
     ativaTitulo: 'Já tem vaga em {{cidade}}',
     ativaTexto: 'Veja as vagas. Para se candidatar, você cria a conta e faz o currículo em 5 passos, pelo celular.',
     ativaEmpresaTitulo: 'Cadastre sua empresa',
@@ -259,6 +268,29 @@
     var u = texto(url).trim();
     return /^https:\/\/(www\.)?whatsapp\.com\/channel\/[A-Za-z0-9_-]{6,64}$/.test(u) ? u : '';
   }
+  // Sair da lista (SPEC §6.7 e §8.1): o e-mail do aviso de abertura traz ?sair=<token de 64 hexadecimais>#sair. Com token válido,
+  // a página chama listaEsperaSairLink(token); sem token válido, "#sair" (ou um ?sair= estragado) só abre o formulário de sair
+  // com o e-mail. O token nunca é guardado: a página o tira do endereço (buscaSemSair) assim que o lê.
+  function decodificar(s) { try { return decodeURIComponent(texto(s).replace(/\+/g, ' ')); } catch (e) { return ''; } }
+  function lerTokenSair(v) { var t = texto(v).trim().toLowerCase(); return /^[0-9a-f]{64}$/.test(t) ? t : ''; }
+  function pedidoSair(busca, hash) {
+    var tem = false;
+    var token = '';
+    texto(busca).replace(/^\?/, '').split('&').forEach(function (par) {
+      var i = par.indexOf('=');
+      if (!par || decodificar(i < 0 ? par : par.slice(0, i)) !== 'sair') return;
+      tem = true;
+      if (!token) token = lerTokenSair(decodificar(i < 0 ? '' : par.slice(i + 1)));
+    });
+    return { token: token, noEndereco: tem, abrirFormulario: !token && (tem || texto(hash) === '#sair') };
+  }
+  function buscaSemSair(busca) {
+    var partes = texto(busca).replace(/^\?/, '').split('&').filter(function (par) {
+      var i = par.indexOf('=');
+      return par && decodificar(i < 0 ? par : par.slice(0, i)) !== 'sair';
+    });
+    return partes.length ? '?' + partes.join('&') : '';
+  }
 
   var PURO = {
     WHATSAPP_GESTAO: WHATSAPP_GESTAO, MARCADOR_EMPRESA: MARCADOR_EMPRESA, SITE: SITE, ENDERECO: ENDERECO, ORIGENS: ORIGENS, TEXTOS: TEXTOS, FRASES: FRASES,
@@ -266,7 +298,7 @@
     lerOrigem: lerOrigem, lerEspera: lerEspera, escolherCidade: escolherCidade, outrasCidades: outrasCidades, situacao: situacao,
     visaoPrevia: visaoPrevia, aplicarVisao: aplicarVisao, textoEspera: textoEspera, textosTopo: textosTopo, destinos: destinos, acoesTopo: acoesTopo,
     linkPagina: linkPagina, textoAmigo: textoAmigo, textoContato: textoContato, numeroGestao: numeroGestao, mostrarWhatsapp: mostrarWhatsapp,
-    canalValido: canalValido
+    canalValido: canalValido, lerTokenSair: lerTokenSair, pedidoSair: pedidoSair, buscaSemSair: buscaSemSair
   };
   if (typeof module !== 'undefined' && module.exports) { module.exports = PURO; return; }
 
@@ -285,20 +317,33 @@
   var estado = { cidade: null, real: null, sit: null, cidades: [] };
   var observador = null;
   var barra = null;
+  // Pedido de saída no endereço (link do e-mail do aviso de abertura): lido uma vez; o token sai da barra de endereço na hora
+  // e fica só na memória desta aba (nunca no armazenamento do aparelho).
+  var loc = root.location || {};
+  var pedido = pedidoSair(loc.search, loc.hash);
+  var tokenSair = pedido.token;
+  var abrirSair = pedido.abrirFormulario;
+  if (pedido.noEndereco) {
+    try { root.history.replaceState(root.history.state, '', loc.pathname + buscaSemSair(loc.search) + (tokenSair ? '' : loc.hash)); } catch (e) { /* sem history: segue */ }
+  }
 
   function porId(id) { return doc.getElementById(id); }
   function focar(n) { try { n.focus({ preventScroll: true }); } catch (e) { n.focus(); } }
 
-  // A prévia precisa de regras.js antes do api-previa.js (no modo supabase a página não baixa esse arquivo).
+  // A prévia precisa de regras.js antes do api-previa.js (no modo supabase a página não baixa esse arquivo). Uma vez só.
+  var regras = null;
   function garantirRegras() {
     var cfg = root.VAGAS_CONFIG || {};
     if (cfg.MODO === 'supabase' || root.VAGAS_REGRAS) return Promise.resolve();
-    return new Promise(function (res) {
-      var s = doc.createElement('script');
-      s.src = SCRIPT ? SCRIPT.replace(/divulgacao\.js(\?.*)?$/, 'regras.js') : 'js/regras.js';
-      s.onload = res; s.onerror = res;
-      doc.head.appendChild(s);
-    });
+    if (!regras) {
+      regras = new Promise(function (res) {
+        var s = doc.createElement('script');
+        s.src = SCRIPT ? SCRIPT.replace(/divulgacao\.js(\?.*)?$/, 'regras.js') : 'js/regras.js';
+        s.onload = res; s.onerror = res;
+        doc.head.appendChild(s);
+      });
+    }
+    return regras;
   }
 
   // ---- prévia: "ver como" (sessionStorage: some quando a aba fecha; nunca no modo supabase)
@@ -642,6 +687,35 @@
     ]);
   }
 
+  // ---- sair da lista: pelo link do e-mail (token, sem pedir nada) ou abrindo o formulário com o e-mail (#sair)
+  function sairPeloLink() {
+    var principal = porId('conteudo');
+    if (!tokenSair || !principal) return Promise.resolve();
+    if (typeof API.listaEsperaSairLink !== 'function') { tokenSair = ''; abrirSair = true; return Promise.resolve(); }
+    var caixa = porId('vg-sair-link');
+    if (!caixa) {
+      caixa = el('section', { class: 'caixa vg-div-saiu', id: 'vg-sair-link', 'aria-labelledby': 'vg-sair-link-titulo', tabindex: '-1' });
+      principal.insertBefore(caixa, principal.querySelector('.vg-div-hero') || principal.firstChild);
+    }
+    var corpo = el('div', { class: 'vg-div-saiu__corpo' });
+    U.trocar(caixa, [el('h2', { class: 'vg-div-chamada__titulo', id: 'vg-sair-link-titulo' }, FRASES.saindoTitulo), corpo]);
+    U.carregando(corpo, FRASES.saindo);
+    return garantirRegras().then(function () { return API.listaEsperaSairLink(tokenSair); }).then(function () {
+      tokenSair = '';
+      U.trocar(caixa, [el('h2', { class: 'vg-div-chamada__titulo', id: 'vg-sair-link-titulo' }, FRASES.saiuTitulo),
+        el('p', { class: 'vg-div-chamada__texto', id: 'vg-sair-link-ok' }, FRASES.saiuTexto)]);
+      U.anunciar(FRASES.saiuTitulo + '. ' + FRASES.saiuTexto);
+      focar(caixa);
+    }).catch(function (e) { U.tratarErro(e, { raiz: corpo, aoTentar: sairPeloLink }); });
+  }
+  function abrirFormularioSair() {
+    var bloco = porId('vg-sair');
+    if (!bloco) return;
+    bloco.open = true;
+    try { bloco.scrollIntoView({ block: 'center' }); } catch (e) { bloco.scrollIntoView(); }
+    focar(porId('vg-sair-email') || bloco);
+  }
+
   // ---- carregar
   function carregar() {
     var raiz = porId('vg-chamada-corpo');
@@ -658,6 +732,7 @@
       atualizarAmigo();
       montarAjuda();
       montarRodape();
+      if (abrirSair) { abrirSair = false; abrirFormularioSair(); }
     }).catch(function (e) {
       if (raiz) U.tratarErro(e, { raiz: raiz, aoTentar: carregar });
     });
@@ -668,5 +743,7 @@
   if (topoAcao) topoAcao.addEventListener('click', aoClicarAcao);
   montarBarra();
   montarRodape();
+  sairPeloLink();
   carregar();
+  if (root.addEventListener) root.addEventListener('hashchange', function () { if (loc.hash === '#sair') abrirFormularioSair(); });
 })(typeof self !== 'undefined' ? self : this);

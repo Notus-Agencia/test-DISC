@@ -168,6 +168,56 @@ test('cidade aberta: primeiro "Ver as vagas de {cidade}", depois "Criar minha co
   expect(erros).toEqual([]);
 });
 
+test('aviso de abertura: o link do e-mail (?sair=<token>#sair) tira da lista sem pedir nada e o token some do endereço; #sair sem token abre o formulário', async ({ page }) => {
+  const erros = vigiarErros(page);
+  const cidade = await prepararCidade(page, 'lista_espera');
+  await page.goto(BASE + 'emprego.html?cidade=' + cidade.slug);
+  await page.fill('#vg-espera-email', 'aviso@exemplo.com');
+  await page.fill('#vg-espera-whatsapp', '(62) 98888-1212');
+  await page.click('#vg-espera-enviar');
+  await expect(page.locator('#vg-espera-ok')).toBeVisible();
+  // A equipe abre a cidade e manda o e-mail do aviso; com o WhatsApp ainda por avisar, a linha fica, com o token de saída do e-mail.
+  await page.evaluate(async (slug) => {
+    const api = window.VAGAS_API;
+    await api.entrar('admin@previa.com', 'previa123');
+    await api.admCidadeSalvar({ slug, status: 'ativa' });
+    await api.avisarListaEspera(slug, 50);
+    await api.sair();
+  }, cidade.slug);
+  const linhas = await listaPrevia(page, cidade.slug);
+  expect(linhas.length).toBe(1);
+  const token = linhas[0].sairToken;
+  expect(token).toMatch(/^[0-9a-f]{64}$/);
+
+  const link = BASE + 'emprego.html?cidade=' + cidade.slug + '&sair=' + token + '#sair';
+  await page.goto(link);
+  await expect(page.locator('#vg-sair-link-titulo')).toHaveText('Você saiu da lista de espera');
+  await expect(page.locator('#vg-sair-link-ok')).toHaveText('Pronto. O contato que você deixou foi apagado da lista, e o aviso de abertura não vai mais para você.');
+  await expect(page.locator('#vg-sair-link')).toBeFocused();
+  const url = new URL(page.url());
+  expect([url.search, url.hash]).toEqual(['?cidade=' + cidade.slug, '']);
+  expect(page.url()).not.toContain(token);
+  expect(await listaPrevia(page, cidade.slug)).toEqual([]);
+  // Nada guardado no aparelho com o token (fora o banco de mentira da prévia, que faz o papel do servidor).
+  expect(await page.evaluate((t) => [localStorage, sessionStorage].some((s) => Object.keys(s).some((k) => !/^vagas_previa/.test(k) && String(s.getItem(k)).includes(t))), token)).toBe(false);
+  // A página segue normal: a cidade abriu.
+  await expect(page.locator('#vg-chamada-titulo')).toHaveText('Já tem vaga em ' + cidade.nome);
+  await semRolagemLateral(page);
+
+  // O mesmo link de novo (já usado): a mesma resposta, sem revelar nada.
+  await page.goto(link);
+  await expect(page.locator('#vg-sair-link-ok')).toHaveText('Pronto. O contato que você deixou foi apagado da lista, e o aviso de abertura não vai mais para você.');
+
+  // Token estragado (ou só #sair): abre o formulário de sair com o e-mail, e o ?sair= some do endereço.
+  await page.goto(BASE + 'emprego.html?cidade=' + cidade.slug + '&sair=estragado#sair');
+  await expect(page.locator('#vg-sair')).toHaveAttribute('open', '');
+  await expect(page.locator('#vg-sair-email')).toBeFocused();
+  const url2 = new URL(page.url());
+  expect([url2.search, url2.hash]).toEqual(['?cidade=' + cidade.slug, '#sair']);
+  await expect(page.locator('#vg-sair-link')).toHaveCount(0);
+  expect(erros).toEqual([]);
+});
+
 test('sem ?cidade=: primeira cidade-polo; perguntas abrem sem script; sem conexão o topo continua usável e "Tentar de novo" volta', async ({ page }) => {
   const cidade = await prepararCidade(page, 'lista_espera');   // ordem 0: vira a primeira da lista
   await page.goto(BASE + 'emprego.html');
@@ -222,7 +272,7 @@ test('banco sem o WhatsApp da lista (RECURSOS.listaEsperaWhatsapp falso): só o 
   await page.goto(BASE + 'emprego.html?cidade=' + cidade.slug);
   await expect(page.locator('#vg-espera-email')).toBeVisible();
   await expect(page.locator('#vg-espera-whatsapp')).toHaveCount(0);
-  await expect(page.locator('#vg-espera-lgpd')).toContainText('Usamos o e-mail só para isso.');
+  await expect(page.locator('#vg-espera-lgpd')).toContainText('Usamos o e-mail só para isso: depois do aviso, ou 30 dias após a abertura, apagamos.');
   await espiarEnvios(page);
   await page.fill('#vg-espera-email', 'so.email@exemplo.com');
   await page.click('#vg-espera-enviar');
