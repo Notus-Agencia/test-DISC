@@ -181,7 +181,8 @@ test('referência — veto P2: ocultar e remover não mudam nada do que a empres
   assert.equal(antes.cartoes.cartoes[0].cartao.temReferencia, false);
   assert.equal(antes.contato.pessoa.referencias.length, 0);
   assert.equal(antes.oferta.erro, 'Sua empresa já deu referência para esta pessoa. Para mudar, ela precisa pedir de novo pelo link de pedido de referência.');
-  assert.equal(antes.denuncia.erro, 'Referência não encontrada.');
+  // R4-1: a denúncia de referência responde sempre {recebida:true} (e a da empresa autora não é gravada).
+  assert.deepEqual(antes.denuncia, { ok: true, recebida: true });
   for (const acao of ['ocultar', 'mostrar', 'ocultar', 'remover']) {
     await ok(b.rpc('vagas_referencia_responder', { p_referencia: ref.id, p_acao: acao }));
     assert.deepEqual(await foto(), antes, acao);
@@ -961,4 +962,52 @@ test('fase C na prévia (20261024120005): semDona, alvoNome/quem, "aceita sem ex
     assert.ok(a.quem.every((q) => q.empresa === a.empresa && [null, 'dono', 'recrutador'].includes(q.papel)));
   }
   assert.ok(!JSON.stringify(acessos).includes('@'));
+});
+
+test('4ª revisão na prévia (20261024120005): denúncia de referência com resposta única, referências das minhas empresas, pré-abertura e foto', async () => {
+  const b = novo();
+  const st = b.estado();
+  const ana = st.usuarios.find((u) => u.email === 'pessoa@previa.com');
+  const dona = st.usuarios.find((u) => u.email === 'empresa@previa.com');
+  const refsAna = st.referencias.filter((r) => r.pessoaId === ana.id);
+  assert.ok(refsAna.length >= 1);
+  // R4-1: de outra conta, a denúncia de referência responde sempre igual (sem "duplicado"), para qualquer id.
+  await entrar(b, 'empresa6@previa.com');
+  for (const id of [refsAna[0].id, refsAna[0].id, '11111111-2222-3333-4444-555555555555']) {
+    assert.deepEqual(await b.rpc('vagas_denunciar', { p_dados: { alvo: 'referencia', id, motivo: 'outro' } }), { ok: true, recebida: true });
+  }
+  await ok(b.conta.sair());
+  // R4-5: a dona do Mercadinho que também é dona da empresa que deu a referência não a vê pelo Mercadinho.
+  const repositor = st.anuncios.find((a) => a.titulo === 'Repositor(a) de mercadorias');
+  await entrar(b, 'pessoa@previa.com');
+  const cand = (await ok(b.rpc('vagas_quero', { p_anuncio: repositor.id }))).candidatura.id;
+  await ok(b.conta.sair());
+  await entrar(b, 'empresa@previa.com');
+  const temRef = async () => (await ok(b.rpc('vagas_cartoes', { p_anuncio: repositor.id, p_filtro: {} }))).cartoes.find((c) => c.candidaturaId === cand).cartao.temReferencia;
+  assert.equal(await temRef(), true);
+  refsAna.forEach((r) => st.membros.push({ empresaId: r.empresaId, userId: dona.id, papel: 'dono', ativo: true, criadoEm: AGORA }));
+  assert.equal(await temRef(), false);
+  // R4-4: pausar e retomar com a cidade pausada não marcam a vaga como pré-abertura (só a 1ª publicação marca).
+  const uru = st.cidades.find((c) => c.slug === 'uruacu-go');
+  uru.status = 'pausada';
+  await ok(b.rpc('vagas_anuncio_acao', { p_anuncio: repositor.id, p_acao: 'pausar' }));
+  await ok(b.rpc('vagas_anuncio_acao', { p_anuncio: repositor.id, p_acao: 'retomar' }));
+  assert.equal(!!repositor.preAbertura, false);
+  uru.status = 'ativa';
+  await ok(b.conta.sair());
+  // R4-7: a empresa do Combinou só vê a foto com o último aceite = true.
+  const api = API.criar({ modo: 'previa', backend: b });
+  await api.entrar('pessoa@previa.com', PREVIA.SENHA_PREVIA);
+  await api.enviarFoto({ type: 'image/jpeg', size: 120000, dataUrl: 'data:image/jpeg;base64,AAAA' });
+  await api.sair();
+  await api.entrar('empresa6@previa.com', PREVIA.SENHA_PREVIA);
+  const rest = (await api.minhasEmpresas()).empresas[0];
+  const comb = (await api.conversasDaEmpresa(rest.id)).conversas.find((c) => c.status === 'combinou');
+  assert.equal((await api.fotoUrl(comb.candidaturaId)).url, 'data:image/jpeg;base64,AAAA');
+  await api.sair();
+  await api.entrar('pessoa@previa.com', PREVIA.SENHA_PREVIA);
+  await api.fotoConsentimento(false);
+  await api.sair();
+  await api.entrar('empresa6@previa.com', PREVIA.SENHA_PREVIA);
+  await assert.rejects(api.fotoUrl(comb.candidaturaId), (e) => e.semFoto === true && e.message === 'Esta pessoa não pôs foto.');
 });

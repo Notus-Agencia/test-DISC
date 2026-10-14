@@ -925,7 +925,9 @@
       return r;
     }
     // Pré-abertura (20261024120004): vaga publicada numa cidade que ainda não abriu fica marcada (a validade conta da abertura).
-    function marcarPublicada(an) { an.preAbertura = cidade(an.cidade).status !== 'ativa'; }
+    // Pré-abertura: só na 1ª publicação (publicadoEm ainda vazio); pausar/retomar, renovar e a moderação devolver ao ar não
+    // marcam de novo (R4-4, 20261024120005: senão a vaga voltaria ao topo a cada reabertura da cidade).
+    function marcarPublicada(an, primeira) { if (primeira) an.preAbertura = cidade(an.cidade).status !== 'ativa'; }
     function anuncioEmpresa(a) {
       var r = anuncioDetalhe(a, true);
       var c = cidade(a.cidade);
@@ -945,8 +947,9 @@
     // a pessoa fez (aceitar, recusar, ocultar, remover, publicar).
     function referenciaStatusEmpresa(r) { return r.status === 'removida' && r.removidaPor === 'moderacao' ? 'removida' : 'enviada'; }
     // No perfil da pessoa, a empresa vê só referência visível de OUTRA empresa (a própria nunca aparece).
+    // R4-5 (20261024120005): nem a de nenhuma empresa de quem vê (a dona de duas empresas não descobre, pela B, o aceite da A).
     function referenciaParaEmpresa(r, empresas) {
-      return referenciaVisivel(r) && (empresas || []).indexOf(r.empresaId) < 0;
+      return referenciaVisivel(r) && (empresas || []).concat(minhasEmpresasIds()).indexOf(r.empresaId) < 0;
     }
     // Cartão cego: só "tem referência de empresa verificada" (veto P1).
     function temReferencia(uid, empId) {
@@ -1216,13 +1219,16 @@
           status: 'aberta', criadoEm: agora() });
       } else if (d.alvo === 'referencia') {
         if (!uid) return erro('Entre na sua conta para denunciar uma referência.', { sessaoExpirada: true });
+        if (!reUuid(id)) return erro('Referência não encontrada.');
+        // R4-1 (veto P2, 20261024120005): a resposta é SEMPRE {recebida:true}, sem "duplicado", para qualquer id; grava só
+        // quando quem denuncia vê a referência (a própria pessoa, ou visível e de outra empresa) e ainda não denunciou.
         var r = st.referencias.filter(function (x) { return x.id === id && x.status !== 'removida'; })[0];
-        // Só a própria pessoa ou quem vê a referência; a empresa autora nunca (a resposta não pode denunciar a ocultação).
-        if (!r || minhasEmpresasIds().indexOf(r.empresaId) >= 0 || !(r.pessoaId === uid || referenciaVisivel(r))) return erro('Referência não encontrada.');
-        if (st.denuncias.some(function (x) { return x.alvo === 'referencia' && x.referenciaId === r.id && x.autor === uid; })) return ok({ recebida: true, duplicado: true });
-        var er = empresa(r.empresaId);
-        st.denuncias.push({ id: novoId(), alvo: 'referencia', referenciaId: r.id, empresaId: er.id, cidade: er.cidade, autor: uid, contaNoLimite: false,
-          motivo: motivo, detalhe: detalhe, textoDenunciado: r.texto, status: 'aberta', criadoEm: agora() });
+        if (r && minhasEmpresasIds().indexOf(r.empresaId) < 0 && (r.pessoaId === uid || referenciaVisivel(r)) &&
+            !st.denuncias.some(function (x) { return x.alvo === 'referencia' && x.referenciaId === r.id && x.autor === uid; })) {
+          var er = empresa(r.empresaId);
+          st.denuncias.push({ id: novoId(), alvo: 'referencia', referenciaId: r.id, empresaId: er.id, cidade: er.cidade, autor: uid, contaNoLimite: false,
+            motivo: motivo, detalhe: detalhe, textoDenunciado: r.texto, status: 'aberta', criadoEm: agora() });
+        }
       } else {
         return erro('Denúncia inválida.');
       }
@@ -1636,8 +1642,9 @@
       if (!g.ok) return g;
       an = g.an;
       if (d.publicar === true && an.status !== 'publicado' && an.status !== 'pausado') {
+        var primeiraVez = an.publicadoEm == null;
         an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = an.publicadoEm || agora(); an.expiraEm = expiraCalculada(an); an.encerradoEm = null;
-        marcarPublicada(an);
+        marcarPublicada(an, primeiraVez);
       }
       registrar(an.cidade, papel, 'anuncio_assistido', 'anuncio', an.id, '', { publicado: an.status === 'publicado' });
       return ok({ anuncio: anuncioEmpresa(an) });
@@ -1663,7 +1670,7 @@
       if (an.modalidade === 'diaria' && an.diaria.data < hoje(cobj.fuso)) return erro('A data da diária já passou. Escolha outra data.');
       var revisao = e.status !== 'ativa' || st.anuncios.filter(function (x) { return x.empresaId === e.id && x.publicadoEm != null; }).length < 3;
       if (revisao) { an.status = 'em_revisao'; an.statusMotivo = ''; }
-      else { an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = agora(); an.expiraEm = expiraCalculada(an); marcarPublicada(an); }
+      else { var primeira = an.publicadoEm == null; an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = agora(); an.expiraEm = expiraCalculada(an); marcarPublicada(an, primeira); }
       tocar(an);
       return ok({ anuncio: anuncioEmpresa(an), emRevisao: revisao });
     };
@@ -1683,14 +1690,13 @@
         if (an.status !== 'pausado') return erro('Só dá para retomar uma vaga pausada.');
         if (an.expiraEm <= agora()) return erro('O prazo desta vaga acabou. Use "Renovar".');
         if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.');
-        an.status = 'publicado'; marcarPublicada(an);
+        an.status = 'publicado';
       } else if (acao === 'encerrar') {
         if (an.status !== 'encerrado') { an.status = 'encerrado'; an.encerradoEm = agora(); }
       } else if (acao === 'renovar') {
         if (an.modalidade === 'diaria') return erro('Para outra data, crie uma diária nova.');
         if (['publicado', 'pausado', 'encerrado'].indexOf(an.status) < 0) return erro('Só dá para renovar uma vaga que já foi publicada.');
         if (e.status !== 'ativa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.');
-        if (an.status !== 'publicado') marcarPublicada(an);
         an.status = 'publicado'; an.encerradoEm = null; an.expiraEm = expiraCalculada(an);
       } else return erro('Ação inválida.');
       tocar(an);
@@ -2185,8 +2191,9 @@
         if (an.status !== 'em_revisao' && an.status !== 'suspenso') return erro('Esta vaga não está esperando a moderação.');
         if (e.status !== 'ativa') return erro('Aprove a empresa antes de publicar a vaga.');
         if (an.modalidade === 'diaria' && an.diaria.data < hoje(cidade(an.cidade).fuso)) return erro('A data da diária já passou.');
+        var primeiraPub = an.publicadoEm == null;
         if (an.status === 'em_revisao' || an.expiraEm == null || an.expiraEm <= agora()) { an.publicadoEm = an.publicadoEm || agora(); an.expiraEm = expiraCalculada(an); }
-        if (an.status !== 'publicado') marcarPublicada(an);
+        if (an.status !== 'publicado') marcarPublicada(an, primeiraPub);
         an.status = 'publicado'; an.statusMotivo = '';
         st.denuncias.forEach(function (d) {
           if (d.anuncioId === an.id && d.alvo === 'anuncio' && d.status === 'aberta') {
@@ -3158,7 +3165,9 @@
           if (k.status !== 'combinou' && k.status !== 'contratada') return erro('A foto só aparece depois do Combinou.', { semCombinou: true });
           if (k.contatoCortadoEm != null) return erro('A pessoa deixou de compartilhar o contato com a sua empresa.', { contatoCortado: true });
           if (empresa(k.empresaId).status !== 'ativa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.', { suspensa: true });
-          if (!temFoto(k.pessoaId)) return erro('Esta pessoa não pôs foto.', { semFoto: true });
+          // R4-7 (20261024120005): a empresa só vê a foto com o último aceite 'foto_opcional' = true.
+          var aceite = st.consentimentos.filter(function (x) { return x.userId === k.pessoaId && x.tipo === 'foto_opcional'; }).pop();
+          if (!temFoto(k.pessoaId) || !aceite || aceite.aceito !== true) return erro('Esta pessoa não pôs foto.', { semFoto: true });
           dono = k.pessoaId;
         } else if (!temFoto(uid)) return erro('Sem foto.', { semFoto: true });
         return ok({ url: st.fotos[dono], expiraEm: iso(agora() + 300000) });

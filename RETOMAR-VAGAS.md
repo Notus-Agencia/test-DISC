@@ -16,8 +16,8 @@ Cada uma é uma foto do código, sem o histórico intermediário.
    sai o "Uma empresa do grupo"). A equipe de design fez três montagens (A: logo | Vagas, recomendada; B: "VAGAS"
    embaixo; C: etiqueta). Falta o dono escolher; depois trocar topo, rodapé, imagens do WhatsApp, e-mails (PNG),
    textos ("a Gestão sem Caos Vagas"), documentos, testes e CLAUDE.md.
-2. **Revisão de segurança (rodada 4)**: achados em correção na 0005 (detalhes no relatório privado da sessão); uma
-   nova conferência rápida antes da produção e o Turnstile ligado antes da divulgação.
+2. **Revisão de segurança (rodada 4)**: achados corrigidos na seção 7 da 0005; falta a conferência rápida (rodada 5)
+   antes da produção e o Turnstile ligado antes da divulgação (`lista_espera_captcha` só depois do TURNSTILE_SECRET).
 3. **Revisões que faltam**: telas da pessoa e da operação (código, celular, acessibilidade).
 4. **Prévia completa do app** para o dono; envio só depois da aprovação.
 5. **No lançamento**: `MODO: 'supabase'` em `vagas/js/config.js`; ligar o pg_cron e agendar
