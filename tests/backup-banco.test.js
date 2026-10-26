@@ -63,3 +63,15 @@ test('script: copia o DISC, o Vagas, as migrações e as contas; a cópia aberta
   assert.match(codigo, /--output "\$SAIDA\/backup-\$DIA\.tar\.gpg" "\$TMP\/backup\.tar"/);
   assert.match(codigo, /pg_restore" --list/);
 });
+
+test('robô: pausa com data para acabar; sem segredos não roda nada e, com eles, a cópia segue normal', () => {
+  const m = /PAUSA_ATE: '(\d{4}-\d{2}-\d{2})'/.exec(robo);
+  assert.ok(m, 'PAUSA_ATE com data AAAA-MM-DD');
+  assert.ok(!Number.isNaN(Date.parse(m[1] + 'T00:00:00Z')));
+  const aviso = robo.slice(robo.indexOf('- name: Segredos ausentes'), robo.indexOf('- uses: actions/checkout'));
+  assert.match(aviso, /< "\$PAUSA_ATE" \]\][\s\S]*?::notice::[\s\S]*?exit 0[\s\S]*?::error::[\s\S]*?exit 1/);
+  const depois = robo.slice(robo.indexOf('- uses: actions/checkout'));
+  const passos = depois.split(/\n      - /).length;
+  const guardados = (depois.match(/if: env\.SUPABASE_DB_URL != '' && env\.BACKUP_SENHA != ''/g) || []).length;
+  assert.equal(guardados, passos, 'cada passo depois do aviso só roda com os segredos');
+});

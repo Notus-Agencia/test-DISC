@@ -29,16 +29,25 @@ jobs:
     env:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       BACKUP_SENHA: ${{ secrets.BACKUP_SENHA }}
+      # Pausa pedida pelo dono (3 dias): até esta data (UTC, exclusiva), segredo ausente vira só um aviso, sem e-mail
+      # de falha. Depois dela, volta a falhar alto. Com os segredos cadastrados, a cópia roda normal mesmo na pausa.
+      PAUSA_ATE: '2026-10-29'
     steps:
       - name: Segredos ausentes
         if: env.SUPABASE_DB_URL == '' || env.BACKUP_SENHA == ''
         run: |
+          if [[ "$(date -u +%F)" < "$PAUSA_ATE" ]]; then
+            echo "::notice::Backup em pausa até $PAUSA_ATE: SUPABASE_DB_URL e/ou BACKUP_SENHA ainda não configurados, nenhuma cópia foi feita. Veja docs/BACKUP.md."
+            exit 0
+          fi
           echo "::error::SUPABASE_DB_URL e/ou BACKUP_SENHA não configurados nos Secrets do GitHub: nenhuma cópia foi feita. Veja docs/BACKUP.md."
           exit 1
 
       - uses: actions/checkout@v4
+        if: env.SUPABASE_DB_URL != '' && env.BACKUP_SENHA != ''
 
       - name: Instalar o pg_dump 17 (mesma versão do banco)
+        if: env.SUPABASE_DB_URL != '' && env.BACKUP_SENHA != ''
         run: |
           set -eu
           sudo apt-get update -qq
@@ -49,6 +58,7 @@ jobs:
 
       - name: Copiar e trancar
         id: copia
+        if: env.SUPABASE_DB_URL != '' && env.BACKUP_SENHA != ''
         env:
           PG_BIN: /usr/lib/postgresql/17/bin/
         run: |
@@ -56,6 +66,7 @@ jobs:
           echo "dia=$(date -u +%F)" >> "$GITHUB_OUTPUT"
 
       - name: Guardar a cópia (90 dias)
+        if: env.SUPABASE_DB_URL != '' && env.BACKUP_SENHA != ''
         uses: actions/upload-artifact@v4
         with:
           name: backup-${{ steps.copia.outputs.dia }}
