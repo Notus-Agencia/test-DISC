@@ -8,16 +8,16 @@ uma vez (passo 2).
 
 Sem configuração, o Supabase envia como "Supabase Auth <noreply@mail.app.supabase.io>", com limite de poucos e-mails por
 hora e **só para e-mails da equipe do projeto Supabase** (convites para outras pessoas não chegam). Para enviar como
-"Gestão sem Caos <nao-responda@gestaosemcaos.com.br>":
+"Gestão sem Caos <contato@disc.gestaosemcaos.com.br>":
 
-1. Crie uma conta grátis em **resend.com** → **Domains → Add domain** → `gestaosemcaos.com.br`.
+1. Crie uma conta grátis em **resend.com** → **Domains → Add domain** → `disc.gestaosemcaos.com.br` (já aparece como Verified desde 26/10/2026).
 2. Copie os registros DNS que o Resend mostrar (SPF/DKIM) para o DNS do domínio e espere ficar **Verified**.
 3. Resend → **API Keys → Create** (permissão *Sending access*). Não cole a chave em conversa nenhuma.
 4. Supabase → **Authentication → Emails → SMTP Settings → Enable custom SMTP**:
-   - Sender email: `nao-responda@gestaosemcaos.com.br` · Sender name: `Gestão sem Caos`
+   - Sender email: `contato@disc.gestaosemcaos.com.br` · Sender name: `Gestão sem Caos`
    - Host: `smtp.resend.com` · Port: `465` · Username: `resend` · Password: a chave do Resend
 5. Aproveite a mesma chave para o e-mail com o link do relatório comprado: Supabase → **Edge Functions → Secrets** →
-   `RESEND_API_KEY` = a chave, e `EMAIL_REMETENTE` = `Gestão sem Caos <nao-responda@gestaosemcaos.com.br>`. A aba **Conexões** do painel testa o envio.
+   `RESEND_API_KEY` = a chave, e `EMAIL_REMETENTE` = `Gestão sem Caos <contato@disc.gestaosemcaos.com.br>`. A aba **Conexões** do painel testa o envio.
    A mesma chave liga o botão **"Enviar por e-mail"** dos relatórios no painel (só o link, com o visual da marca, até 30
    envios por hora por administrador; o link usa o `SITE_URL`) e o **"Enviar para meu e-mail"** do relatório comprado.
 
