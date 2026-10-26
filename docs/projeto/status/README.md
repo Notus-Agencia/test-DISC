@@ -13,7 +13,7 @@ Atualizado em 26/10/2026.
 Produção: `claude/disc-test-selection-system-61ot0f` (último commit de 26/10: pausa do backup até 29/10). Nenhuma sessão de frente
 aberta; a sessão antiga da nuvem é só consulta.
 
-ClickUp: tarefa-resumo do plano na lista "Sistema Painel DISC" (link na tarefa e em `referencias.md`).
+ClickUp: tarefa-resumo https://app.clickup.com/t/17tv3prdkut na lista "Sistema Painel DISC".
 
 ## Passa-bastão de cada sessão
 

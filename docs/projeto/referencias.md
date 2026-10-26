@@ -55,7 +55,7 @@ segredos das Edge Functions do Supabase e nos painéis do Stripe, da Resend e do
 ## ClickUp
 
 - Espaço Consultoria GSC → pasta Projetos Ativos → lista **Sistema Painel DISC** (id `901329221416`).
-- Tarefa-resumo do plano: criada pela S0 em 26/10/2026 (link em `status/README.md`).
+- Tarefa-resumo do plano: https://app.clickup.com/t/17tv3prdkut (26/10/2026); tarefas "VOCÊ:" do dono na mesma lista.
 - Para o produto de seleção: pasta própria "Recrutamento e Seleção" (campos do DISC, uma lista por processo).
 
 ## Sessões
