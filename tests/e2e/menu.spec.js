@@ -34,11 +34,11 @@ test('menu lateral: grupos, item ativo com marca laranja, contador, usuário emb
   const menu = await page.locator('#menu-lateral').boundingBox();
   const vista = await page.locator('#vista-lista').boundingBox();
   expect(vista.x).toBeGreaterThanOrEqual(menu.x + menu.width);
-  // Usuário no pé do menu: Minha foto, Trocar senha e Sair.
+  // Usuário no pé do menu: Minha foto, Segurança e Sair.
   await expect(page.locator('#menu-lateral #usuario-area')).toBeVisible();
   await page.click('#btn-usuario');
   await expect(page.locator('#menu-usuario')).toBeVisible();
-  await expect(page.locator('#menu-usuario .usuario__item')).toHaveText(['Minha foto', 'Trocar senha', 'Sair']);
+  await expect(page.locator('#menu-usuario .usuario__item')).toHaveText(['Minha foto', 'Segurança', 'Sair']);
   await page.keyboard.press('Escape');
   await page.locator('.aba[data-aba="empresas"]').click();
   await expect(page.locator('.aba[aria-current="page"]')).toHaveAttribute('data-aba', 'empresas');

@@ -41,3 +41,7 @@ verify_jwt = false
 # as ações de operação e exclusão conferem o JWT sozinhas; limites por origem e por e-mail no banco.
 [functions.vagas-conta]
 verify_jwt = false
+
+# Chave de acesso do painel (digital ou rosto): confere o JWT do admin sozinha (criar, listar, tirar); entrar é público e confere a assinatura da chave.
+[functions.chave-acesso]
+verify_jwt = false
