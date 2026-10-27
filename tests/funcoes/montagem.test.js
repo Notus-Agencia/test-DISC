@@ -14,11 +14,11 @@ import { criarDb } from '../../supabase/funcoes-compartilhadas/supabase-adaptado
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SITE = 'https://disc.gestaosemcaos.com.br';
 const VENDAS = ['pagamento', 'asaas-webhook', 'infinitepay-webhook', 'stripe-webhook'];
-const SEM_MOTOR = VENDAS.concat(['clima', 'vagas-conta']); // não precisam do motor do relatório
+const SEM_MOTOR = VENDAS.concat(['clima', 'vagas-conta', 'chave-acesso']); // não precisam do motor do relatório
 const IMPORT_SUPABASE = "import { createClient } from 'jsr:@supabase/supabase-js@2';";
 
 test('gerados em dia: motores-gerado.js e dist/funcoes/<nome>/index.ts (rode npm run montar:funcoes)', () => {
-  assert.deepEqual(funcoes(), ['admin', 'asaas-webhook', 'clickup-webhook', 'clima', 'disc-sync', 'infinitepay-webhook', 'pagamento', 'stripe-webhook', 'vagas-conta']);
+  assert.deepEqual(funcoes(), ['admin', 'asaas-webhook', 'chave-acesso', 'clickup-webhook', 'clima', 'disc-sync', 'infinitepay-webhook', 'pagamento', 'stripe-webhook', 'vagas-conta']);
   for (const g of gerarTudo()) {
     assert.ok(existsSync(g.caminho), g.caminho);
     assert.equal(readFileSync(g.caminho, 'utf8'), g.conteudo, g.caminho + ' desatualizado: rode npm run montar:funcoes');
@@ -31,7 +31,9 @@ test('dist/funcoes: um arquivo autocontido por função (só o import jsr do sup
     const txt = readFileSync(join(RAIZ, 'dist', 'funcoes', nome, 'index.ts'), 'utf8');
     assert.ok(txt.startsWith('// @ts-nocheck\n'), nome);
     const imports = txt.split('\n').filter((l) => /^\s*import\s/.test(l) || /^\s*export\s/.test(l));
-    assert.deepEqual(imports, [IMPORT_SUPABASE], nome);
+    // chave-acesso também importa a SimpleWebAuthn (npm:, versão fixa) para conferir a assinatura da chave
+    const esperado = nome === 'chave-acesso' ? [IMPORT_SUPABASE, "import * as webauthn from 'npm:@simplewebauthn/server@13.3.3';"] : [IMPORT_SUPABASE];
+    assert.deepEqual(imports, esperado, nome);
     assert.ok(!/from\s+['"]\.\.?\//.test(txt), nome + ' sem imports relativos');
     if (!SEM_MOTOR.includes(nome)) assert.ok(txt.includes(motor.trim()), nome + ' embute js/relatorio-motor.js');
     else assert.ok(!txt.includes('DISC_RELATORIO'), nome + ' não precisa do motor');

@@ -1841,6 +1841,24 @@
           return { ok: true, email: String((s && s.user && s.user.email) || '') };
         }, function () { return { ok: true, email: '' }; });
       }),
+      // --- chave de acesso (digital ou rosto; Edge Function chave-acesso) ---
+      // Com a sessão aberta o supabase-js manda o JWT (criar, listar, tirar); sem sessão vai a chave pública (entrar).
+      chaveAcesso: seguro(function (acao, dados) {
+        var corpo = { acao: String(acao || '') };
+        if (dados) for (var k in dados) if (Object.prototype.hasOwnProperty.call(dados, k)) corpo[k] = dados[k];
+        return invocar('chave-acesso', corpo);
+      }),
+      // Troca o token que a função devolveu depois de conferir a chave pela MESMA sessão do login por senha.
+      entrarComChave: seguro(function (tokenHash) {
+        exigir(tokenHash, 'Chave de acesso inválida.');
+        return Promise.resolve().then(function () { return cliente().auth.verifyOtp({ token_hash: String(tokenHash), type: 'magiclink' }); })
+          .then(function (r) {
+            if (r && r.error) throw erroDoAuth(r.error, MSG_LOGIN_INVALIDO);
+            var s = r && r.data && r.data.session;
+            if (!s) throw recusa(MSG_LOGIN_INVALIDO);
+            return concluirEntrada(s);
+          }, function (err) { throw ehFalhaDeRede(err) ? new Error(MSG_CONEXAO) : err; });
+      }),
       sessaoAtual: seguro(function () {
         return sessaoGuardada().then(function (s) {
           if (!s || !s.access_token) throw erroSessao();
@@ -2602,7 +2620,7 @@
   }
 
   // Métodos que o painel usa só no Supabase (além dos de DISC_API.METODOS).
-  var EXTRAS = ['recuperarSenha', 'linkDeAcesso', 'definirNovaSenha', 'sessaoAtual', 'emailDaSessao', 'convidarUsuario', 'removerUsuario'];
+  var EXTRAS = ['recuperarSenha', 'linkDeAcesso', 'definirNovaSenha', 'sessaoAtual', 'emailDaSessao', 'convidarUsuario', 'removerUsuario', 'chaveAcesso', 'entrarComChave'];
 
   /** Liga no lugar do DISC_API quando CONFIG.BACKEND === 'supabase' (o objeto continua o mesmo). */
   function instalar(alvo, cfg, opcoes) {

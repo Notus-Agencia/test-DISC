@@ -10,3 +10,9 @@ supabase.js
     cp package/dist/umd/supabase.js assets/vendor/supabase.js
     cp package/LICENSE assets/vendor/supabase-js-LICENSE.txt
   (e atualize a versão e o SHA-256 acima; rode npm test e npm run test:e2e)
+
+webauthn.js
+  Pacote:   @simplewebauthn/browser 13.3.0 (npm), build minificada (cria a global "SimpleWebAuthnBrowser")
+  Licença:  MIT
+  SHA-256:  cf4469953efcb5617a870ae3f022b3ad48aee8c06012ccdafcabc73058f123a0
+  Uso:      chave de acesso (digital ou rosto) do painel, em js/admin-chave.js. A conferência da chave é da função chave-acesso.

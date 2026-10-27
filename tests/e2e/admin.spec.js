@@ -1057,9 +1057,9 @@ test.describe('Admin na prévia (API_URL "simulada")', () => {
     await expect(page.locator('#usuario-nome')).toHaveText('Nova Administradora');
     await expect(page.locator('.aba[data-aba="usuarios"]')).toBeVisible();
 
-    // Trocar senha pelo menu do usuário
+    // Trocar a senha pela janela Segurança do menu do usuário
     await abrirMenuUsuario(page);
-    await page.click('#btn-trocar-senha');
+    await page.click('#btn-seguranca');
     await page.fill('#ts-atual', 'senha-nova-1');
     await page.fill('#ts-nova', 'outra-senha-2');
     await page.fill('#ts-confirmar', 'outra-senha-2');

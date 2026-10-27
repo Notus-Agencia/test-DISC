@@ -8038,15 +8038,19 @@
     });
   }
 
-  function janelaTrocarSenha() {
+  // Segurança (menu do usuário): trocar a senha e, só com o Supabase e um aparelho com digital/rosto, a chave de acesso.
+  function janelaSeguranca() {
+    var chave = SUPABASE && root.DISC_ADMIN_CHAVE ? root.DISC_ADMIN_CHAVE.bloco() : null;
     abrirJanela({
       id: 'janela-trocar-senha',
-      titulo: 'Trocar senha',
+      titulo: 'Segurança',
       botao: 'Trocar senha',
       corpo: [
+        el('h3', { classe: 'janela__sub', texto: 'Senha' }),
         campoTexto('ts-atual', 'Senha atual', { type: 'password', autocomplete: 'current-password' }),
         campoTexto('ts-nova', 'Nova senha (mínimo 8 caracteres)', { type: 'password', autocomplete: 'new-password' }),
-        campoTexto('ts-confirmar', 'Confirmar nova senha', { type: 'password', autocomplete: 'new-password' })
+        campoTexto('ts-confirmar', 'Confirmar nova senha', { type: 'password', autocomplete: 'new-password' }),
+        chave
       ],
       aoConfirmar: function () {
         var atual = $('ts-atual').value, nova = $('ts-nova').value, conf = $('ts-confirmar').value;
@@ -9658,7 +9662,28 @@
     if ($('btn-menu')) $('btn-menu').setAttribute('aria-expanded', 'false');
   }
 
+  // Entrou (senha ou chave de acesso): só administrador abre o painel.
+  function concluirLogin(resp) {
+    if (!resp || !resp.ok || !resp.token) throw new Error((resp && resp.erro) || 'E-mail ou senha incorretos.');
+    // Gestor (desativado nesta versão) ou, no Supabase, usuário sem convite: encerra a sessão e não entra.
+    if (!resp.usuario || resp.usuario.papel !== 'admin') recusarNaoAdmin(resp);
+    return iniciarSessao(resp).then(function () {
+      if (primeiroAdmin(resp)) avisar(MSG_PRIMEIRO_ADMIN, 'ok');
+    });
+  }
+
+  // Chave de acesso na sugestão do campo de e-mail (só Supabase; a tela de entrar não ganha botão).
+  function oferecerChaveNaEntrada() {
+    if (!SUPABASE || !root.DISC_ADMIN_CHAVE) return;
+    root.DISC_ADMIN_CHAVE.oferecerNaEntrada($('campo-email'), function (resp) {
+      return concluirLogin(resp).catch(function (err) {
+        erroNoForm('erro-login', (err && err.message) || 'Não foi possível entrar.');
+      });
+    });
+  }
+
   function entrarPainel() {
+    if (SUPABASE && root.DISC_ADMIN_CHAVE) root.DISC_ADMIN_CHAVE.parar();
     // A tela do endereço (#processo/…; F5 ou volta depois de a sessão expirar) é aberta depois de carregar os dados.
     var rota = lerRota(hashDaPagina());
     rotaPendente = rota.aba === 'lista' && !rota.detalhe ? null : rota;
@@ -9771,6 +9796,7 @@
   // expirou: aviso "Sua sessão expirou"; mensagem: outro aviso no mesmo lugar (ex.: "Senha definida…").
   function mostrarLogin(expirou, mensagem) {
     mostrarForm('form-login');
+    oferecerChaveNaEntrada();
     var aviso = $('aviso-sessao');
     aviso.textContent = mensagem || 'Sua sessão expirou. Entre de novo.';
     aviso.hidden = !(expirou || mensagem);
@@ -9967,7 +9993,7 @@
       if (!$('usuario-area').contains(e.target)) fecharMenuUsuario();
     });
     $('btn-sair').addEventListener('click', function () { fecharMenuUsuario(); seguirSePuder(sair); });
-    $('btn-trocar-senha').addEventListener('click', function () { fecharMenuUsuario(); fecharGaveta(); janelaTrocarSenha(); });
+    $('btn-seguranca').addEventListener('click', function () { fecharMenuUsuario(); fecharGaveta(); janelaSeguranca(); });
     $('btn-minha-foto').addEventListener('click', function () { fecharMenuUsuario(); fecharGaveta(); janelaMinhaFoto(); });
 
     // Login
@@ -9980,14 +10006,7 @@
       if (!email || !senha) { erroNoForm('erro-login', 'Informe o e-mail e a senha.'); return; }
       var btn = $('btn-entrar');
       btn.disabled = true; btn.textContent = 'Verificando…';
-      Promise.resolve().then(function () { return root.DISC_API.login(email, senha); }).then(function (resp) {
-        if (!resp || !resp.ok || !resp.token) throw new Error((resp && resp.erro) || 'E-mail ou senha incorretos.');
-        // Gestor (desativado nesta versão) ou, no Supabase, usuário sem convite: encerra a sessão e não entra.
-        if (!resp.usuario || resp.usuario.papel !== 'admin') recusarNaoAdmin(resp);
-        return iniciarSessao(resp).then(function () {
-          if (primeiroAdmin(resp)) avisar(MSG_PRIMEIRO_ADMIN, 'ok');
-        });
-      }).catch(function (err) {
+      Promise.resolve().then(function () { return root.DISC_API.login(email, senha); }).then(concluirLogin).catch(function (err) {
         erroNoForm('erro-login', (err && err.message) || 'Não foi possível entrar.');
       }).then(function () { btn.disabled = false; btn.textContent = 'Entrar'; });
     });
