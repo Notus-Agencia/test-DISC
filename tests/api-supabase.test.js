@@ -1417,3 +1417,17 @@ test('listarEnviosEmail: lê o histórico (envios_email, RLS de admin) por tipo 
   // Sem sessão: pede login.
   await assert.rejects(nova().api.listarEnviosEmail('', { referencias: [R1] }), (err) => err.sessaoExpirada === true);
 });
+
+test('chave de acesso: as opções vêm sem "ok" (SimpleWebAuthn) e passam; ok:false segue sendo erro', async () => {
+  const opcoes = { challenge: 'abc', rp: { id: 'disc.gestaosemcaos.com.br' }, user: { id: 'u' } };
+  const { api, e } = nova({ funcoes: { 'chave-acesso': (b) => {
+    if (b.acao === 'criar-opcoes' || b.acao === 'entrar-opcoes') return { data: opcoes, error: null };
+    if (b.acao === 'listar') return { data: { ok: false, erro: 'limite' }, error: null };
+    return { data: { ok: true, aparelhos: [] }, error: null };
+  } } });
+  assert.deepEqual(await api.chaveAcesso('criar-opcoes'), opcoes);
+  assert.deepEqual(await api.chaveAcesso('entrar-opcoes'), opcoes);
+  assert.deepEqual(await api.chaveAcesso('tirar', { id: 1 }), { ok: true, aparelhos: [] });
+  await assert.rejects(api.chaveAcesso('listar'), /limite/);
+  assert.deepEqual(e.invocacoes.map((x) => x.body.acao), ['criar-opcoes', 'entrar-opcoes', 'tirar', 'listar']);
+});
