@@ -1331,7 +1331,7 @@ ul.vd-linhas.caixa { padding-top: 8px; padding-bottom: 8px; }
 .janela__sub, .chave__titulo { font-size: var(--t-corpo); font-weight: 600; color: var(--tinta); }
 .chave { display: grid; gap: 12px; padding-top: 16px; border-top: 1px solid var(--linha); }
 .chave[hidden] { display: none; }
-.chave > .botao { justify-self: start; }
+
 .chave__lista { list-style: none; margin: 0; padding: 0; border: 1px solid var(--linha); border-radius: 14px; }
 .chave__lista:empty { display: none; }
 .chave__item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
@@ -1339,3 +1339,8 @@ ul.vd-linhas.caixa { padding-top: 8px; padding-bottom: 8px; }
 .chave__texto { display: grid; gap: 2px; }
 .chave__item .botao { margin-left: auto; }
 .chave__aviso:empty { display: none; }
+
+/* Janela Segurança: a senha e a chave de acesso são partes separadas, cada uma com o seu botão */
+.janela__bloco { display: grid; gap: 12px; }
+.janela__bloco > .botao { justify-self: start; }
+.chave > .botao { justify-self: start; }
