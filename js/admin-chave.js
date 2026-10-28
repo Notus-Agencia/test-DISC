@@ -128,7 +128,7 @@
         if (recusada(x)) return;
         dizer(x && x.name === 'InvalidStateError' ? 'Este aparelho já tem uma chave de acesso.'
           : x && x.message === 'limite' ? 'Já são 10 aparelhos. Tire um antes de criar outro.'
-          : 'Não deu para criar a chave de acesso. Tente de novo.');
+          : 'Não deu para criar a chave de acesso. Tente de novo. (' + ((x && (x.name || x.message)) || 'erro') + ')');
       });
     });
 

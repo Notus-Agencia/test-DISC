@@ -2961,18 +2961,18 @@
     var anterior = document.activeElement;
     var erro = el('p', { classe: 'campo__erro janela__erro', id: 'janela-erro', role: 'alert' });
     var btnOk = el('button', { type: 'submit', classe: 'botao botao--principal', id: 'janela-ok', texto: opcoes.botao || 'Salvar' });
-    var btnCancelar = el('button', { type: 'button', classe: 'botao botao--claro', id: 'janela-cancelar', texto: 'Cancelar' });
+    var btnCancelar = el('button', { type: 'button', classe: 'botao botao--claro', id: 'janela-cancelar', texto: opcoes.okNoCorpo ? 'Fechar' : 'Cancelar' });
     var form = el('form', { classe: 'caixa caixa--ampla vidro-janela janela__caixa surgir', id: opcoes.id || null, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'janela-titulo', novalidate: true }, [
       el('h2', { id: 'janela-titulo', classe: 'confirmar__titulo', texto: opcoes.titulo }),
       opcoes.texto ? el('p', { classe: 'texto-medio t-corpo', texto: opcoes.texto }) : null,
       el('div', { classe: 'janela__corpo' }, opcoes.corpo || []),
       erro,
-      el('div', { classe: 'confirmar__acoes' }, [btnCancelar, btnOk])
+      el('div', { classe: 'confirmar__acoes' }, opcoes.okNoCorpo ? [btnCancelar] : [btnCancelar, btnOk])
     ]);
     var fundo = el('div', { classe: 'confirmar janela', id: 'janela' }, form);
     var aberta = true;
     var sujo = false;
-    var ctrl = { fechar: fechar, form: form, sujo: function () { return sujo && aberta; } };
+    var ctrl = { fechar: fechar, form: form, ok: btnOk, sujo: function () { return sujo && aberta; } };
     function fechar() {
       if (!aberta) return;
       aberta = false;
@@ -8041,17 +8041,19 @@
   // Segurança (menu do usuário): trocar a senha e, só com o Supabase e um aparelho com digital/rosto, a chave de acesso.
   function janelaSeguranca() {
     var chave = SUPABASE && root.DISC_ADMIN_CHAVE ? root.DISC_ADMIN_CHAVE.bloco() : null;
-    abrirJanela({
+    // Duas partes separadas, cada uma com o seu botão: a senha (o botão "Trocar senha" é só dela) e a chave de acesso.
+    var secaoSenha = el('section', { classe: 'janela__bloco' }, [
+      el('h3', { classe: 'janela__sub', texto: 'Senha' }),
+      campoTexto('ts-atual', 'Senha atual', { type: 'password', autocomplete: 'current-password' }),
+      campoTexto('ts-nova', 'Nova senha (mínimo 8 caracteres)', { type: 'password', autocomplete: 'new-password' }),
+      campoTexto('ts-confirmar', 'Confirmar nova senha', { type: 'password', autocomplete: 'new-password' })
+    ]);
+    var janela = abrirJanela({
       id: 'janela-trocar-senha',
       titulo: 'Segurança',
       botao: 'Trocar senha',
-      corpo: [
-        el('h3', { classe: 'janela__sub', texto: 'Senha' }),
-        campoTexto('ts-atual', 'Senha atual', { type: 'password', autocomplete: 'current-password' }),
-        campoTexto('ts-nova', 'Nova senha (mínimo 8 caracteres)', { type: 'password', autocomplete: 'new-password' }),
-        campoTexto('ts-confirmar', 'Confirmar nova senha', { type: 'password', autocomplete: 'new-password' }),
-        chave
-      ],
+      okNoCorpo: true,
+      corpo: [secaoSenha, chave],
       aoConfirmar: function () {
         var atual = $('ts-atual').value, nova = $('ts-nova').value, conf = $('ts-confirmar').value;
         if (!atual) throw new Error('Informe a senha atual.');
@@ -8060,6 +8062,7 @@
         return api('trocarSenha', atual, nova).then(function () { avisar('Senha trocada.', 'ok'); });
       }
     });
+    secaoSenha.appendChild(janela.ok);
   }
 
   /* ---------- Importação de códigos (plano B do participante) ---------- */
