@@ -1108,7 +1108,8 @@
       if (!ctx || typeof ctx.json !== 'function') return Promise.resolve(null);
       return Promise.resolve().then(function () { return ctx.clone ? ctx.clone().json() : ctx.json(); }).catch(function () { return null; });
     }
-    function invocar(nome, corpo, limiteMs) {
+    // semOk: a resposta vale sem o campo ok (as opções da chave de acesso vêm direto da SimpleWebAuthn); ok:false ainda é erro.
+    function invocar(nome, corpo, limiteMs, semOk) {
       var controle = typeof AbortController !== 'undefined' ? new AbortController() : null;
       var opcoesInvoke = { body: corpo };
       if (controle) opcoesInvoke.signal = controle.signal;
@@ -1135,7 +1136,7 @@
         .then(function (data) {
           if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) { data = null; } }
           if (!data || typeof data !== 'object') throw new Error('Resposta inesperada do servidor. Confira se as Edge Functions do Supabase estão publicadas.');
-          if (data.ok !== true) throw erroDaResposta(data);
+          if (semOk ? data.ok === false : data.ok !== true) throw erroDaResposta(data);
           return data;
         });
     }
@@ -1846,7 +1847,7 @@
       chaveAcesso: seguro(function (acao, dados) {
         var corpo = { acao: String(acao || '') };
         if (dados) for (var k in dados) if (Object.prototype.hasOwnProperty.call(dados, k)) corpo[k] = dados[k];
-        return invocar('chave-acesso', corpo);
+        return invocar('chave-acesso', corpo, null, /-opcoes$/.test(corpo.acao));
       }),
       // Troca o token que a função devolveu depois de conferir a chave pela MESMA sessão do login por senha.
       entrarComChave: seguro(function (tokenHash) {
