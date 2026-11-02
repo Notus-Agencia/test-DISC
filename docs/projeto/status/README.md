@@ -2,7 +2,7 @@
 
 Atualizado em 26/10/2026.
 
-**PAUSA (decisão do dono, 26/10):** S1, S2 e SV paradas para poupar o limite semanal de uso, até o BI e o Kommo fecharem a semana. Cada uma grava o passa-bastão em `status/` e não começa trabalho novo. Exceção: o dono segue cadastrando os 2 segredos do backup até 29/10. Ao retomar: Sonnet alto em validação e código simples, Opus alto só no difícil.
+**RETOMADA (dono, 02/11):** S1, S2 e SV voltaram ao trabalho (a pausa de 26/10 acabou). Migração do GitHub Actions para o EasyPanel (backup, manter-ativo, publicação) a cargo da S1. Segredos do backup seguem na lista do dono. Modelos: Sonnet alto em validação e código simples, Opus alto só no difícil.
 
 Passa-bastão até agora: S1 f0 PR https://github.com/Notus-Agencia/test-DISC/pull/2 (`status/S1.md`, ramo `s1/f0-fundacao`); SV: 97 casos de V1 em `validacao/V1.md` (ramo `sv/v1-casos`, sem push); S2 f0: conferência em andamento, passa-bastão em `status/S2.md`.
 
