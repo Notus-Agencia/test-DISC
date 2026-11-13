@@ -1,0 +1,11 @@
+# Rotinas do DISC na VPS: cópia de segurança diária do banco (scripts/backup-banco.sh) e "despertador" do Supabase.
+# Lê SUPABASE_DB_URL, BACKUP_SENHA e SUPABASE_ANON_KEY dos secrets do servidor (/run/secrets), nunca do repositório.
+FROM alpine:3.21
+RUN apk add --no-cache bash gnupg tar curl tzdata rclone postgresql17-client
+ENV TZ=America/Sao_Paulo
+COPY scripts/backup-banco.sh /app/backup-banco.sh
+COPY vps/rotina.sh /app/rotina.sh
+COPY vps/crontab /etc/crontabs/root
+RUN chmod +x /app/*.sh
+VOLUME /backups
+CMD ["crond", "-f", "-l", "8"]
