@@ -12,7 +12,7 @@ não tem Docker): o primeiro `docker build` na VPS é o primeiro teste.
 1. Criar os 4 segredos no Swarm (o valor nunca vai para o chat nem para o repositório): `supabase_db_url` (URI do *Session pooler*),
    `backup_senha` (20+ caracteres, guardada também fora do servidor), `supabase_anon_key` (chave pública), `rclone_conf` (só se houver 2ª cópia).
    Ex.: `printf '%s' '<valor>' | docker secret create backup_senha -`
-2. Copiar `vps/disc-stack.yaml` para `/opt/stacks/disc.yaml` e preencher os marcadores (imagem, rótulos do proxy iguais aos do BI, rede do proxy).
+2. Copiar `vps/disc-stack.yaml` para `/opt/stacks/disc.yaml` e preencher os marcadores (`<TAG>`, `SUPABASE_URL`, `RCLONE_DESTINO`). Os rótulos do Traefik (rede `notus-net`, resolvedor `le`, `websecure`) já estão no modelo. Subir com `docker stack deploy -c /opt/stacks/disc.yaml disc` (stack nova; não toca nas outras).
 
 ## 2. Publicar (a cada mudança, depois do "pode publicar" do dono)
 Do computador, na pasta do repositório, no commit aprovado:
