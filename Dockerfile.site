@@ -1,0 +1,17 @@
+# Site estático do DISC (HTMLs da raiz, assets/, js/ e a versão beta de vagas/), servido pelo nginx.
+# Só entra o que o site precisa: docs/, supabase/, tests/, scripts/, conteudo/, dist/ e apps-script/ ficam de fora
+# (mesma lista do _config.yml do GitHub Pages). Passo a passo de publicação: docs/VPS-PUBLICACAO.md.
+FROM nginx:1.27-alpine
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY *.html /usr/share/nginx/html/
+COPY assets/ /usr/share/nginx/html/assets/
+COPY js/ /usr/share/nginx/html/js/
+COPY vagas/ /usr/share/nginx/html/vagas/
+
+# vagas/functions e os arquivos _headers/_redirects/_routes.json são do Cloudflare Pages; aqui não valem nada.
+RUN rm -rf /usr/share/nginx/html/vagas/functions \
+           /usr/share/nginx/html/vagas/_headers /usr/share/nginx/html/vagas/_redirects /usr/share/nginx/html/vagas/_routes.json
+
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1/healthz || exit 1

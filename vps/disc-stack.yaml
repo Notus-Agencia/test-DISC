@@ -1,0 +1,36 @@
+# Stack do DISC na VPS (Docker Swarm). Modelo: copiar para /opt/stacks/disc.yaml no servidor e ajustar os marcadores <...>.
+# Sem segredo aqui: os segredos são criados no servidor (docker secret create) e só citados pelo nome.
+# Passo a passo: docs/VPS-PUBLICACAO.md.
+version: "3.8"
+
+services:
+  site:
+    image: disc-site:<TAG>            # ex.: disc-site:2026-11-12-ab12cd3 (data + commit; permite voltar atrás)
+    deploy:
+      replicas: 1
+      update_config: { order: start-first, failure_action: rollback }
+      labels:
+        # <PROXY>: o mesmo proxy reverso que serve o BI (rótulos iguais aos do BI; trocar só o domínio e a porta 80)
+        - "<rótulos do proxy para disc.gestaosemcaos.com.br -> porta 80>"
+    networks: [<REDE-DO-PROXY>]
+
+  rotinas:
+    image: disc-rotinas:<TAG>
+    environment:
+      SUPABASE_URL: <https://REF.supabase.co>     # endereço público, não é segredo
+      RCLONE_DESTINO: "<remoto:pasta>"            # 2ª cópia fora do servidor; apagar a linha se não usar
+    secrets: [supabase_db_url, backup_senha, supabase_anon_key, rclone_conf]
+    volumes: [disc_backups:/backups]
+    deploy: { replicas: 1 }
+
+secrets:
+  supabase_db_url: { external: true }
+  backup_senha:    { external: true }
+  supabase_anon_key: { external: true }
+  rclone_conf:     { external: true }
+
+volumes:
+  disc_backups:
+
+networks:
+  <REDE-DO-PROXY>: { external: true }

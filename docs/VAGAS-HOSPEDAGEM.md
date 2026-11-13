@@ -1,5 +1,7 @@
 # Vagas sem Caos — hospedagem e publicação
 
+> **12/11/2026:** o DISC (`disc.`, com `vagas/` beta) deixa o GitHub Pages e vai para a VPS (`docs/VPS-PUBLICACAO.md`). O Vagas definitivo continua no Cloudflare Pages; `equipe.` e a Fase 1 abaixo precisam ser revistos (o redirecionamento deixa de depender do Pages).
+
 Como o site de vagas (`vagas/`) vai ao ar, o que acontece a cada push, o que precisa estar pronto antes de abrir ao
 público e como testar. Passo a passo com botões para o dono: guia "Hospedagem" (scratchpad `vagas/guia-hospedagem/guia.html`).
 Contrato do banco e das RPCs: `docs/VAGAS-SPEC.md`. Supabase em geral: `docs/SUPABASE.md`.
