@@ -550,7 +550,7 @@
     selecao: {
       titulo: 'Selecionar candidatos para uma vaga', curto: 'Seleção de candidatos',
       quem: 'Quem responde: candidatos a uma vaga.',
-      resultado: 'Gera o relatório do processo seletivo: candidatos em ordem pelas notas das etapas, com a aderência de cada um ao perfil DISC da vaga.'
+      resultado: 'Gera o relatório do processo seletivo: candidatos em ordem pelas notas das etapas. O DISC aparece só como descrição do perfil, fora da classificação.'
     },
     equipe: {
       titulo: 'Conhecer a equipe de uma empresa', curto: 'Avaliação de equipe',
@@ -1282,7 +1282,7 @@
       responde: 'Como a equipe se organiza, onde combina e onde pode haver atrito, o que falta no time e como liderar cada um.' },
     { chave: 'processo', modelo: 'processo', titulo: 'Processo seletivo', alvo: 'processo',
       paraQuem: 'Para quem contratou a seleção.',
-      responde: 'Quem participou, como cada candidato pontuou nas etapas, a aderência ao perfil da vaga e a recomendação final.' }
+      responde: 'Quem participou, como cada candidato pontuou nas etapas, o perfil DISC (sem nota) e a recomendação final.' }
   ];
   var NOMES_MODELO = { pessoa: 'Pessoa', lideranca: 'Como liderar', equipe: 'Equipe', processo: 'Processo seletivo' };
 

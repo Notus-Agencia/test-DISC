@@ -30,10 +30,9 @@ test('formatação pt-BR: número com 1 casa, moeda, porcentagem, datas', () => 
   assert.equal(V.periodo(null), '');
 });
 
-test('rótulos de situação, aderência e confiabilidade', () => {
+test('rótulos de situação e confiabilidade', () => {
   assert.equal(V.rotuloSituacao('aprovado'), 'Aprovado');
   assert.equal(V.rotuloSituacao('nao_recomendado'), 'Não recomendado');
-  assert.equal(V.rotuloAderencia('ideal'), 'Ideal');
   assert.equal(V.rotuloConfiabilidade('baixa'), 'Pouco confiável');
   assert.equal(V.rotuloSituacao('xyz'), '—');
 });
@@ -116,7 +115,7 @@ test('escapa todo texto vindo do relatório (XSS)', () => {
   rel.ranking.linhas[1].situacao = '"><script>x</script>';
   rel.etapas[0].nome = ataque;
   rel.etapas[0].id = '"><b>';
-  rel.disc.quadro[0].aderencia = '"><i>';
+  rel.disc.quadro[0].confiabilidade = '"><i>';
   rel.atracao.porStatus[0].status = ataque;
   const html = V.montarHtml(rel);
   assert.ok(!html.includes('<img src=x'), 'img injetada');

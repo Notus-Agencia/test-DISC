@@ -141,18 +141,8 @@ test('ranking: empate no total desempata pelo técnico e depois pelo nome', () =
 // DISC, nomes e funil
 // ---------------------------------------------------------------------------
 
-test('aderência DISC', () => {
-  assert.equal(M.aderenciaDisc('CD', 'CD', { nivel: 'alta' }), 'ideal');
-  assert.equal(M.aderenciaDisc('CS', 'C', 'alta'), 'ideal', 'ideal de 1 letra: primeira letra igual');
-  assert.equal(M.aderenciaDisc('CS', 'CD', 'alta'), 'boa');
-  assert.equal(M.aderenciaDisc('C', 'CD', 'media'), 'boa');
-  assert.equal(M.aderenciaDisc('DC', 'CD', 'alta'), 'media');
-  assert.equal(M.aderenciaDisc('IC', 'CD', 'alta'), 'media');
-  assert.equal(M.aderenciaDisc('IS', 'CD', 'alta'), 'baixa');
-  assert.equal(M.aderenciaDisc('CD', 'CD', { nivel: 'baixa' }), 'indefinida', 'confiabilidade baixa');
-  assert.equal(M.aderenciaDisc('', 'CD', 'alta'), 'indefinida');
-  assert.equal(M.aderenciaDisc('CD', '', 'alta'), 'indefinida');
-  assert.equal(M.aderenciaDisc('cd', 'cd', 'indisponivel'), 'ideal');
+test('o DISC não gera aderência nem entra na classificação (decisão de 17/11/2026)', () => {
+  assert.equal(M.aderenciaDisc, undefined);
 });
 
 test('primeiroNome: primeiro nome + inicial do sobrenome, nunca o nome completo', () => {
@@ -205,8 +195,7 @@ test('fixture: gera o relatório completo no formato do contrato', () => {
   assert.equal(r.sumario.recomendacao.situacao, 'aprovado');
   assert.ok(r.sumario.leituras.length >= 2 && r.sumario.leituras.length <= 4);
   const titulos = r.sumario.leituras.map((l) => l.titulo).join(' | ');
-  assert.match(titulos, /O DISC confirma a técnica/);
-  assert.match(titulos, /Fábio E\. tem contraindicação em três instrumentos/);
+  assert.doesNotMatch(titulos, /confirma a técnica|perfil ideal|contraindicação/i, 'leituras sem julgar o perfil');
   assert.match(titulos, /Helena H\..*não é confiável/);
 
   assert.equal(r.atracao.total, 40);
@@ -225,10 +214,11 @@ test('fixture: gera o relatório completo no formato do contrato', () => {
 
   assert.equal(r.disc.perfilIdeal, 'CD');
   assert.equal(r.disc.quadro.length, 8);
-  assert.deepEqual(r.disc.quadro.filter((q) => q.aderencia === 'ideal').map((q) => q.nome), ['Bruna T.', 'Carla M.']);
-  assert.equal(r.disc.quadro.find((q) => q.nome === 'Helena H.').aderencia, 'indefinida');
-  assert.equal(r.disc.quadro.find((q) => q.nome === 'Fábio E.').aderencia, 'baixa');
-  assert.ok(r.disc.achados.length >= 3);
+  assert.ok(r.disc.quadro.every((q) => !('aderencia' in q)), 'quadro sem aderência');
+  const pos = (nome) => r.ranking.linhas.find((l) => l.nome === nome).posicao;
+  const ordem = r.disc.quadro.map((q) => pos(q.nome));
+  assert.deepEqual(ordem, ordem.slice().sort((x, y) => x - y), 'quadro DISC na ordem do ranking');
+  assert.ok(r.disc.achados.length >= 1);
 
   assert.equal(r.ranking.pesoPendente, 25);
   assert.deepEqual(r.ranking.formula.map((f) => f.pesoNormalizado), [40, 20, 13.3, 26.7, null]);
@@ -301,7 +291,7 @@ test('privacidade: nenhum dado sensível, contato ou nome completo sai no relat�
     assert.ok(!PROIBIDAS.test(t), id + ': ' + r.textos[id].texto);
   });
   r.ranking.linhas.forEach((l) => assert.deepEqual(Object.keys(l).sort(),
-    ['aderencia', 'analiseTextoId', 'bonus', 'disc', 'incompleto', 'nome', 'notas', 'posicao', 'situacao', 'tecnico', 'total']));
+    ['analiseTextoId', 'bonus', 'disc', 'incompleto', 'nome', 'notas', 'posicao', 'situacao', 'tecnico', 'total']));
 });
 
 test('determinístico: mesma entrada, mesma saída; sem data, geradoEm fica nulo', () => {

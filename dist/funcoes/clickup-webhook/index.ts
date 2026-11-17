@@ -3468,7 +3468,7 @@ const __motoresDisc = {};
  *    idade ou dados pessoais como critério.
  *
  * API: montar(processoDados, opcoes?), calcularScore(candidato, config, aplicadas?),
- *      aderenciaDisc(codigo, perfilIdeal, confiabilidade), primeiroNome(nome), funil(candidatos, status).
+ *      primeiroNome(nome), funil(candidatos, status).
  */
 var DISC_RELATORIO = (function () {
   'use strict';
@@ -3488,7 +3488,6 @@ var DISC_RELATORIO = (function () {
     C: 'rigor e atenção às regras'
   };
   var NOME_LETRA = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Cauteloso' };
-  var ORDEM_ADERENCIA = { ideal: 0, boa: 1, media: 2, baixa: 3, indefinida: 4 };
 
   // ---------------------------------------------------------------------------
   // Utilitários
@@ -3744,16 +3743,6 @@ var DISC_RELATORIO = (function () {
     return n === 'alta' || n === 'media' || n === 'baixa' ? n : 'indisponivel';
   }
 
-  function aderenciaDisc(codigo, perfilIdeal, confiabilidade) {
-    var c = codigoLimpo(codigo), ideal = codigoLimpo(perfilIdeal);
-    if (!c || !ideal) return 'indefinida';
-    if (nivelConfiabilidade(confiabilidade) === 'baixa') return 'indefinida';
-    if (c === ideal || (ideal.length === 1 && c.charAt(0) === ideal)) return 'ideal';
-    if (c.charAt(0) === ideal.charAt(0)) return 'boa';
-    if (ideal.indexOf(c.charAt(0)) >= 0 || (c.length > 1 && ideal.indexOf(c.charAt(1)) >= 0)) return 'media';
-    return 'baixa';
-  }
-
   function descreverIdeal(ideal) {
     if (!ideal) return '';
     var a = ideal.charAt(0), b = ideal.charAt(1);
@@ -3901,8 +3890,7 @@ var DISC_RELATORIO = (function () {
       var notas = {};
       cfg.etapas.forEach(function (e) { notas[e.id] = aplicada[e.id] ? notaDe(c, e.id) : null; });
       return {
-        id: c.id, nome: curto[c.id], notas: notas, score: s, disc: d,
-        aderencia: d ? aderenciaDisc(d.codigo, cfg.perfilIdeal, d.nivel) : 'indefinida'
+        id: c.id, nome: curto[c.id], notas: notas, score: s, disc: d
       };
     });
     linhas.sort(function (a, b) {
@@ -3999,12 +3987,6 @@ var DISC_RELATORIO = (function () {
         if (porTec.id !== lider.id) rt.push('O bônus (+' + fmt(lider.score.bonus) + ') decide a liderança: só na parte técnica, ' + porTec.nome + ' estaria à frente (' + fmt1(porTec.score.tecnico) + ' contra ' + fmt1(lider.score.tecnico) + ').');
         else if (lider.score.bonusDetalhe.length) rt.push('Lidera também na parte técnica; o bônus (' + juntar(lider.score.bonusDetalhe.map(function (b) { return minuscula(b.nome); })) + ') só amplia a vantagem.');
       }
-      if (lider.disc && ideal) {
-        if (lider.aderencia === 'ideal') rt.push('O DISC (' + lider.disc.codigo + ') é exatamente o perfil pedido para a vaga.');
-        else if (lider.aderencia === 'boa') rt.push('O DISC (' + lider.disc.codigo + ') tem o traço principal do perfil pedido (' + ideal + ').');
-        else if (lider.aderencia === 'baixa') rt.push('Ponto de atenção: o DISC (' + lider.disc.codigo + ') se afasta do perfil ' + ideal + '. Vale testar isso na entrevista.');
-        else if (lider.aderencia === 'indefinida') rt.push('O DISC desta candidatura não é confiável e não entrou na leitura.');
-      } else if (!lider.disc && ideal) rt.push('Ainda falta o DISC para completar a leitura.');
       if (etapasPend.length) rt.push('Recomendação preliminar: ' + pendTexto + ' (' + fmt(pctPendente) + '% do peso) ainda não ' + (etapasPend.length > 1 ? 'foram aplicadas.' : 'foi aplicada.'));
       T('recomendacao', rt.join(' '));
       recomendacao = { nome: lider.nome, score: lider.score.total, situacao: lider.score.situacao, textoId: 'recomendacao' };
@@ -4019,39 +4001,6 @@ var DISC_RELATORIO = (function () {
       var id = T('leitura' + (leituras.length + 1), corpo);
       leituras.push({ titulo: titulo, textoId: id });
     }
-    var topo = Math.max(aprovados.length, Math.min(3, linhas.length));
-    var idealLin = linhas.filter(function (l) { return l.aderencia === 'ideal'; });
-    if (ideal && idealLin.length && linhas.length > 1) {
-      var noTopo = idealLin.filter(function (l) { return l.posicao <= topo; });
-      if (noTopo.length === idealLin.length) {
-        leitura('O DISC confirma a técnica',
-          juntar(nomesDe(idealLin)) + (idealLin.length > 1 ? ' têm' : ' tem') + ' o perfil ' + ideal + ', o pedido para a vaga, e ' +
-          (idealLin.length > 1 ? 'estão' : 'está') + ' entre os ' + extenso(topo) + ' primeiros do ranking (' +
-          juntar(idealLin.map(function (l) { return l.posicao + 'º'; })) + '). Testes técnicos e perfil comportamental apontam na mesma direção.');
-      } else if (!noTopo.length) {
-        leitura('O perfil ideal ficou fora do topo',
-          juntar(nomesDe(idealLin)) + (idealLin.length > 1 ? ' têm' : ' tem') + ' o perfil ' + ideal + ', mas ' + (idealLin.length > 1 ? 'aparecem' : 'aparece') + ' só em ' +
-          idealLin.map(function (l) { return l.posicao + 'º'; }).join(', ') + ' no ranking. O comportamento ajuda, mas não compensou a técnica. A entrevista pode mostrar se vale apostar no perfil.');
-      } else {
-        leitura('O DISC confirma parte do ranking',
-          juntar(nomesDe(noTopo)) + ' une perfil ' + ideal + ' e boa posição técnica. ' + juntar(nomesDe(idealLin.filter(function (l) { return l.posicao > topo; }))) +
-          ' também tem o perfil, mas ficou mais abaixo: a técnica pesou contra.');
-      }
-    } else if (ideal && linhas.length > 1 && linhas.some(function (l) { return l.disc; })) {
-      leitura('Ninguém no perfil exato',
-        'Nenhuma candidatura finalista tem o perfil ' + ideal + '. A decisão deve se apoiar mais nos testes técnicos, e a entrevista precisa checar ' + TRACO[ideal.charAt(0)] + ', o traço que a vaga mais pede.');
-    }
-    // contraindicação por vários instrumentos
-    naoRec.forEach(function (l) {
-      if (l.aderencia !== 'baixa') return;
-      var baixas = notasBaixas(l);
-      if (!baixas.length) return;
-      var n = 1 + baixas.length;
-      var partes = ['o DISC ' + l.disc.codigo + ' (longe do perfil ' + ideal + ')'].concat(baixas.map(function (b) { return 'a nota ' + fmt(b.n) + ' em ' + minuscula(b.e.nome); }));
-      var extra = l.score.bonus > 0 ? ' Nem o bônus (+' + fmt(l.score.bonus) + ') leva o score à faixa de avaliação.' : '';
-      leitura(l.nome + ' tem contraindicação em ' + extenso(n) + ' instrumentos',
-        maiuscula(juntar(partes)) + ' apontam na mesma direção. O score final (' + fmt1(l.score.total) + ') fica abaixo de ' + fmt(cfg.faixaAvaliar) + ' pontos.' + extra);
-    });
     // confiabilidade baixa
     linhas.forEach(function (l) {
       if (!l.disc || l.disc.nivel !== 'baixa') return;
@@ -4192,52 +4141,27 @@ var DISC_RELATORIO = (function () {
     var explic = [];
     if (cfg.explicacaoPerfil) explic.push(semPontoFinal(cfg.explicacaoPerfil) + '.');
     else if (ideal) explic.push('O perfil pedido para a vaga é ' + descreverIdeal(ideal) + ': ' + TRACO[ideal.charAt(0)] + (ideal.charAt(1) ? ', com apoio de ' + TRACO[ideal.charAt(1)] : '') + '.');
-    explic.push('O DISC não dá nota: serve para calibrar a leitura dos testes e orientar a gestão nos primeiros meses.');
+    explic.push('O DISC não dá nota nem entra na classificação: descreve estilo de comportamento e serve para a integração e a gestão depois da contratação.');
     T('disc-explicacao', explic.join(' '));
 
     var quadro = linhas.slice().sort(function (a, b) {
-      return ORDEM_ADERENCIA[a.aderencia] - ORDEM_ADERENCIA[b.aderencia] || a.posicao - b.posicao;
+      return a.posicao - b.posicao;
     }).map(function (l) {
       var d = l.disc || {};
       return {
         nome: l.nome, D: l.disc ? d.D : null, I: l.disc ? d.I : null, S: l.disc ? d.S : null, C: l.disc ? d.C : null,
-        codigo: l.disc ? d.codigo : null, aderencia: l.aderencia, confiabilidade: l.disc ? d.nivel : 'indisponivel'
+        codigo: l.disc ? d.codigo : null, confiabilidade: l.disc ? d.nivel : 'indisponivel'
       };
     });
 
     var achados = [];
     var na = 0;
     function achado(tipo, titulo, corpo) { na++; achados.push({ tipo: tipo, titulo: titulo, textoId: T('disc-achado' + na, corpo) }); }
-    if (idealLin.length) {
-      achado('destaque', juntar(nomesDe(idealLin)) + ': perfil ' + ideal + ', o pedido',
-        (idealLin.length > 1 ? 'Têm' : 'Tem') + ' exatamente o perfil que a vaga pede: ' + TRACO[ideal.charAt(0)] + (ideal.charAt(1) ? ' com ' + TRACO[ideal.charAt(1)] : '') + '. ' +
-        'No ranking: ' + idealLin.map(function (l) { return l.nome + ' em ' + l.posicao + 'º'; }).join(', ') + '.');
-    }
-    var boas = linhas.filter(function (l) { return l.aderencia === 'boa'; });
-    if (boas.length) {
-      achado('info', juntar(nomesDe(boas)) + ': traço principal certo',
-        'Perfis ' + juntar(boas.map(function (l) { return l.disc.codigo; }).filter(function (c, i, a) { return a.indexOf(c) === i; })) + ': o traço principal (' + ideal.charAt(0) + ') é o da vaga, com outro segundo traço. ' +
-        'Bom encaixe; o ajuste fica no ritmo, a ser acompanhado na integração.');
-    }
     linhas.filter(function (l) { return l.disc && l.disc.nivel === 'baixa'; }).forEach(function (l) {
       achado('alerta', l.nome + ': resultado não confiável',
         'O teste indicou ' + l.disc.codigo + ', mas as respostas têm sinais de inconsistência' + (l.disc.motivos.length ? ' (' + minuscula(semPontoFinal(l.disc.motivos[0])) + ')' : '') + '. ' +
         'Não considere este perfil na decisão; a entrevista é a fonte mais segura.');
     });
-    linhas.filter(function (l) { return l.aderencia === 'baixa'; }).forEach(function (l) {
-      var forte = LETRAS.slice().sort(function (a, b) { return (l.disc[b] || 0) - (l.disc[a] || 0); });
-      var letraIdeal = ideal.charAt(0);
-      var baixas = notasBaixas(l);
-      achado('alerta', l.nome + ': perfil ' + l.disc.codigo + ', distante do pedido',
-        'Os traços mais fortes são ' + NOME_LETRA[forte[0]] + ' (' + forte[0] + ') e ' + NOME_LETRA[forte[1]] + ' (' + forte[1] + '), ligados a ' + TRACO[forte[0]] + '. ' +
-        NOME_LETRA[letraIdeal] + ' (' + letraIdeal + '), o traço principal da vaga, aparece com só ' + fmt(l.disc[letraIdeal]) + '%. ' +
-        (baixas.length ? 'As notas técnicas confirmam o desencaixe para a função.' : 'A técnica compensa em parte, mas o perfil pede acompanhamento próximo.'));
-    });
-    var medias = linhas.filter(function (l) { return l.aderencia === 'media'; });
-    if (medias.length) {
-      achado('info', juntar(nomesDe(medias)) + ': encaixe parcial',
-        'O traço pedido aparece, mas não como o principal (' + juntar(medias.map(function (l) { return l.nome + ': ' + l.disc.codigo; })) + '). Vale observar na entrevista como ' + (medias.length > 1 ? 'reagem' : 'reage') + ' a tarefas de ' + TRACO[ideal.charAt(0)] + '.');
-    }
     var semDisc = linhas.filter(function (l) { return !l.disc; });
     if (semDisc.length) {
       achado('info', 'Sem DISC: ' + juntar(nomesDe(semDisc)),
@@ -4256,7 +4180,7 @@ var DISC_RELATORIO = (function () {
       T(id, analisar(l, i));
       return {
         posicao: l.posicao, nome: l.nome, notas: l.notas, tecnico: l.score.tecnico, bonus: l.score.bonus, total: l.score.total,
-        situacao: l.score.situacao, disc: l.disc ? l.disc.codigo : null, aderencia: l.aderencia, incompleto: l.score.incompleto,
+        situacao: l.score.situacao, disc: l.disc ? l.disc.codigo : null, incompleto: l.score.incompleto,
         analiseTextoId: id
       };
     });
@@ -4288,14 +4212,7 @@ var DISC_RELATORIO = (function () {
       if (sc.bonusDetalhe.length) det.push('bônus de ' + fmt(sc.bonus) + ' por ' + juntar(sc.bonusDetalhe.map(function (b) { return minuscula(b.nome); })));
       if (det.length) s.push(maiuscula(juntar(det)) + '.');
       if (l.disc) {
-        var ad = {
-          ideal: 'DISC ' + l.disc.codigo + ', o perfil pedido.',
-          boa: 'DISC ' + l.disc.codigo + ', com o traço principal da vaga.',
-          media: 'DISC ' + l.disc.codigo + ', encaixe parcial com o perfil.',
-          baixa: 'DISC ' + l.disc.codigo + ', distante do perfil pedido.',
-          indefinida: 'DISC sem confiabilidade: decidir pela entrevista.'
-        }[l.aderencia];
-        if (ad) s.push(ad);
+        s.push(l.disc.nivel === 'baixa' ? 'DISC sem confiabilidade: decidir pela entrevista.' : 'DISC ' + l.disc.codigo + '.');
       } else s.push('Sem DISC respondido.');
       if (sc.incompleto) s.push('Faltam notas em ' + juntar(sc.faltando.map(function (id) { return minuscula(nomeEtapa(id)); })) + ' (contaram como zero).');
       return s.join(' ');
@@ -4377,7 +4294,6 @@ var DISC_RELATORIO = (function () {
     VERSAO: VERSAO,
     montar: montar,
     calcularScore: calcularScore,
-    aderenciaDisc: aderenciaDisc,
     primeiroNome: primeiroNome,
     funil: funil,
     etapasAplicadas: etapasAplicadas,
