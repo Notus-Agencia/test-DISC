@@ -1,6 +1,6 @@
-# Teste DISC para processo seletivo
+# Mapa DISC da Gestão sem Caos
 
-Sistema simples para aplicar o **teste de perfil comportamental DISC** aos candidatos de um processo seletivo e, depois, gerar um **Guia para a Liderança** de quem foi aprovado. O guia explica ao gestor como se comunicar, delegar, motivar, dar feedback e acompanhar a pessoa nos primeiros 30 dias.
+Sistema simples para aplicar o **teste de perfil comportamental DISC** às pessoas da equipe e, depois da contratação, gerar um **Guia para a Liderança** de cada uma. O DISC descreve estilo de comportamento e serve para a integração, a equipe e a liderança; não entra na classificação de candidatos nem decide vaga. O guia explica ao gestor como se comunicar, delegar, motivar, dar feedback e acompanhar a pessoa nos primeiros 30 dias.
 
 - **Candidato:** abre um link no celular ou no computador, informa nome completo e telefone (WhatsApp), autoriza o uso dos dados e responde 25 grupos de palavras. Leva cerca de 10 minutos.
 - **Recrutador:** abre o painel (`admin.html`), vê os resultados, filtra, marca quem foi aprovado e abre o Guia para a Liderança, que pode ser impresso, salvo em PDF ou copiado.
@@ -89,7 +89,7 @@ O código também é o **plano B** quando há servidor: se o envio falhar (inter
 
 Mande o link do site (ex.: `https://seu-usuario.github.io/teste-disc/`) por WhatsApp ou e-mail. Sugestão de mensagem:
 
-> Olá, [nome]! Como parte do processo seletivo, faça este teste de perfil comportamental (cerca de 10 minutos, pelo celular): [link]. Não há respostas certas ou erradas. Se aparecer um código no final, me mande por aqui.
+> Olá, [nome]! Faça este teste de perfil comportamental (cerca de 10 minutos, pelo celular): [link]. Não há respostas certas ou erradas. Se aparecer um código no final, me mande por aqui.
 
 Cada candidato informa **nome completo** e **telefone com DDD**, que é como você o identifica depois. Se a página for fechada no meio, o progresso fica salvo no aparelho por até 7 dias, e ele continua de onde parou.
 
