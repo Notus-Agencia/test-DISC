@@ -10,9 +10,9 @@ não tem Docker): o primeiro `docker build` na VPS é o primeiro teste.
 
 ## 1. Preparar a VPS (uma vez; o dono ou a sessão com acesso liberado)
 1. Criar os 4 segredos no Swarm (o valor nunca vai para o chat nem para o repositório): `supabase_db_url` (URI do *Session pooler*),
-   `backup_senha` (20+ caracteres, guardada também fora do servidor), `supabase_anon_key` (chave pública), `rclone_conf` (só se houver 2ª cópia).
+   `backup_senha` (20+ caracteres, guardada também fora do servidor), `supabase_anon_key` (chave pública).
    Ex.: `printf '%s' '<valor>' | docker secret create backup_senha -`
-2. Copiar `vps/disc-stack.yaml` para `/opt/stacks/disc.yaml` e preencher os marcadores (`<TAG>`, `SUPABASE_URL`, `RCLONE_DESTINO`). Os rótulos do Traefik (rede `notus-net`, resolvedor `le`, `websecure`) já estão no modelo. Subir com `docker stack deploy -c /opt/stacks/disc.yaml disc` (stack nova; não toca nas outras).
+2. Copiar `vps/disc-stack.yaml` para `/opt/stacks/disc.yaml` e preencher os marcadores (`<TAG>`, `SUPABASE_URL`). Os rótulos do Traefik (rede `notus-net`, resolvedor `le`, `websecure`) já estão no modelo. Subir com `docker stack deploy -c /opt/stacks/disc.yaml disc` (stack nova; não toca nas outras).
 
 ## 2. Publicar (a cada mudança, depois do "pode publicar" do dono)
 Do computador, na pasta do repositório, no commit aprovado:
@@ -41,7 +41,6 @@ Outros subdomínios (`vagas.`, `equipe.`) ficam como estão; `equipe.` segue o p
 ## 5. Backup e despertador
 - Imagem `disc-rotinas`: backup todo dia às 03:41 (Brasília) em `/backups` (volume `disc_backups`), guarda 90 dias, grava `ULTIMA-COPIA-BOA`;
   despertador do Supabase a cada 3 dias. Logs: `docker service logs disc_rotinas`.
-- **2ª cópia fora do servidor** (recomendada: o disco da VPS é ponto único de falha): `rclone` envia a cópia (já trancada) para um destino
-  do dono (por exemplo uma pasta do Google Drive ou um armazenamento em nuvem), via o segredo `rclone_conf`.
+- **2ª cópia fora da VPS:** todo dia o **Mac do dono** puxa a pasta de cópias por `rsync` (a cópia já vem trancada com a `BACKUP_SENHA`; sem ela ninguém abre). As cópias ficam no volume `disc_backups` (na VPS: `/var/lib/docker/volumes/disc_disc_backups/_data`). Sem `rclone` e sem conta de nuvem. Exemplo, rodado no Mac: `rsync -a <VPS>:/var/lib/docker/volumes/disc_disc_backups/_data/ ~/Backups/disc/`.
 - **Teste na hora:** `docker exec $(docker ps -qf name=disc_rotinas) /app/rotina.sh backup` e conferir `ls /backups`; depois abrir com `gpg -d` e `pg_restore --list` (como em `docs/BACKUP.md`). "Pronto" = 3 dias de cópia boa.
 - Depois da virada, apagar `.github/workflows/backup-banco.yml` e `manter-ativo.yml` (para não falharem no GitHub).

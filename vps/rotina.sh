@@ -10,11 +10,6 @@ case "${1:-}" in
     PG_BIN=/usr/libexec/postgresql17/ bash /app/backup-banco.sh "$DIR"
     # guarda 90 dias, como o robô antigo
     find "$DIR" -name 'backup-*.tar.gpg' -mtime +90 -delete
-    # 2ª cópia fora do servidor (opcional): RCLONE_DESTINO = "remoto:pasta", com o remoto configurado em /run/secrets/rclone_conf
-    if [ -n "${RCLONE_DESTINO:-}" ]; then
-      rclone --config /run/secrets/rclone_conf copy "$DIR" "$RCLONE_DESTINO" --include 'backup-*.tar.gpg' --max-age 2d
-      echo "2ª cópia enviada para $RCLONE_DESTINO"
-    fi
     date -u +%FT%TZ > "$DIR/ULTIMA-COPIA-BOA"
     ;;
   despertar)

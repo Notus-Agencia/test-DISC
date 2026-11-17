@@ -26,8 +26,7 @@ services:
     image: disc-rotinas:<TAG>
     environment:
       SUPABASE_URL: <https://REF.supabase.co>     # endereço público, não é segredo
-      RCLONE_DESTINO: "<remoto:pasta>"            # 2ª cópia fora do servidor; apagar a linha se não usar
-    secrets: [supabase_db_url, backup_senha, supabase_anon_key, rclone_conf]
+    secrets: [supabase_db_url, backup_senha, supabase_anon_key]
     volumes: [disc_backups:/backups]
     deploy:
       replicas: 1
@@ -38,7 +37,6 @@ secrets:
   supabase_db_url: { external: true }
   backup_senha:    { external: true }
   supabase_anon_key: { external: true }
-  rclone_conf:     { external: true }
 
 volumes:
   disc_backups:

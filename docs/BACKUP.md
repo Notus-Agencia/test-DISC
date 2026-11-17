@@ -1,7 +1,7 @@
 # Cópia de segurança do banco (Supabase)
 
 > **Mudança de rumo (12/11/2026):** o robô do GitHub Actions sai (limite de gastos) e o backup passa a rodar na VPS, como serviço `disc_rotinas`,
-> lendo `SUPABASE_DB_URL` e `BACKUP_SENHA` dos secrets do servidor, com 2ª cópia fora do servidor. Veja `docs/VPS-PUBLICACAO.md`. O texto abaixo vale até a virada; o `scripts/backup-banco.sh` e a restauração são os mesmos.
+> lendo `SUPABASE_DB_URL` e `BACKUP_SENHA` dos secrets do servidor, com a 2ª cópia puxada todo dia pelo Mac do dono (`rsync`), sem nuvem. Veja `docs/VPS-PUBLICACAO.md`. O texto abaixo vale até a virada; o `scripts/backup-banco.sh` e a restauração são os mesmos.
 
 O plano grátis do Supabase **não faz backup**. Até o plano Pro valer a pena (quando houver cadastros de verdade no Vagas),
 um robô do GitHub copia o banco todo dia, tranca a cópia com uma senha e guarda por 90 dias.
