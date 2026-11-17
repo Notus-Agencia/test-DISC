@@ -121,11 +121,9 @@
   }
 
   var ROTULO_SITUACAO = { aprovado: 'Aprovado', avaliar: 'Avaliar', nao_recomendado: 'Não recomendado' };
-  var ROTULO_ADERENCIA = { ideal: 'Ideal', boa: 'Boa', media: 'Média', baixa: 'Baixa', indefinida: 'Indefinida' };
   var ROTULO_CONFIABILIDADE = { alta: 'Confiável', media: 'Atenção', baixa: 'Pouco confiável', indisponivel: 'Sem validação' };
 
   function rotuloSituacao(s) { return ROTULO_SITUACAO[s] || '—'; }
-  function rotuloAderencia(a) { return ROTULO_ADERENCIA[a] || '—'; }
   function rotuloConfiabilidade(c) { return ROTULO_CONFIABILIDADE[c] || '—'; }
   function classeSegura(v) { return String(v || '').replace(/[^a-z_]/g, ''); }
 
@@ -554,8 +552,7 @@
         '<ul class="quadro-disc">' + quadro.map(function (q) {
           return '<li class="quadro-disc__item">' +
             '<div class="quadro-disc__cab">' + avatarSeFoto(q.nome, q.foto, 32, 'avatar--quadro') + '<strong>' + esc(q.nome) + '</strong><span class="quadro-disc__cod">' + esc(q.codigo || '—') + '</span>' +
-            '<span class="quadro-disc__selos">' + selo('ad-' + classeSegura(q.aderencia), 'Aderência ' + rotuloAderencia(q.aderencia).toLowerCase()) +
-            selo('cf-' + classeSegura(q.confiabilidade), rotuloConfiabilidade(q.confiabilidade)) + '</span></div>' +
+            '<span class="quadro-disc__selos">' + selo('cf-' + classeSegura(q.confiabilidade), rotuloConfiabilidade(q.confiabilidade)) + '</span></div>' +
             barraDisc(q) + '</li>';
         }).join('') + '</ul>';
     } else {
@@ -2647,7 +2644,6 @@
     data: data,
     periodo: periodo,
     rotuloSituacao: rotuloSituacao,
-    rotuloAderencia: rotuloAderencia,
     rotuloConfiabilidade: rotuloConfiabilidade,
     tokenDaUrl: tokenDaUrl,
     previaDaUrl: previaDaUrl,
