@@ -198,7 +198,7 @@ test('o cliente não tem chave secreta nem supabase-js; config.js só com a chav
   const fonte = fs.readFileSync(path.join(__dirname, '..', 'vagas', 'js', 'api.js'), 'utf8');
   assert.ok(!/service_role|sb_secret_|createClient\(/.test(fonte));
   const cfg = require('../vagas/js/config.js');
-  assert.equal(cfg.MODO, 'previa');
+  assert.equal(cfg.MODO, 'supabase');
   assert.match(cfg.SUPABASE_ANON_KEY, /^sb_publishable_/);
   assert.match(cfg.SUPABASE_URL, /^https:\/\/[a-z0-9]+\.supabase\.co$/);
   const texto = fs.readFileSync(path.join(__dirname, '..', 'vagas', 'js', 'config.js'), 'utf8');

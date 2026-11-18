@@ -8,8 +8,8 @@ const B = require('../vagas/js/beta.js');
 
 const sha = (t) => crypto.createHash('sha256').update(t).digest('hex');
 
-test('tranca no domínio oficial até o código certo estar guardado', () => {
-  const h = B.CODIGO_SHA256;
+test('tranca no domínio oficial até o código certo estar guardado (lógica; hoje a trava está desligada)', () => {
+  const h = sha('qualquer-codigo');
   assert.equal(B.precisa('disc.gestaosemcaos.com.br', null, h), true);
   assert.equal(B.precisa('vagas.gestaosemcaos.com.br', 'outro', h), true);
   assert.equal(B.precisa('gestaosemcaos.com.br', null, h), true);
@@ -17,7 +17,7 @@ test('tranca no domínio oficial até o código certo estar guardado', () => {
 });
 
 test('não tranca fora do domínio oficial nem sem código configurado', () => {
-  const h = B.CODIGO_SHA256;
+  const h = sha('qualquer-codigo');
   for (const host of ['localhost', '127.0.0.1', 'gsc-vagas.pages.dev', 'gestaosemcaos.com.br.exemplo.com', '']) {
     assert.equal(B.precisa(host, null, h), false, host);
   }
@@ -27,8 +27,7 @@ test('não tranca fora do domínio oficial nem sem código configurado', () => {
 test('o código é comparado sem espaços nas pontas e sem diferença de maiúsculas', () => {
   assert.equal(B.normalizar('  Vagas-Beta-4817 '), 'vagas-beta-4817');
   assert.equal(B.normalizar(null), '');
-  assert.match(B.CODIGO_SHA256, /^[0-9a-f]{64}$/);
-  assert.equal(sha(B.normalizar(' VAGAS-BETA-4817')), B.CODIGO_SHA256);
+  assert.equal(B.CODIGO_SHA256, '', 'beta aberta ao público (18/11/2026): sem código de acesso');
 });
 
 test('a chave guardada não começa com vg. (o "Sair" do site não apaga a liberação)', () => {
