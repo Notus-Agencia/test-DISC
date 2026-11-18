@@ -11,7 +11,7 @@
 (function (root) {
   'use strict';
   // SHA-256 do código de acesso normalizado. Trocar o código: node -e "console.log(require('crypto').createHash('sha256').update('<código>').digest('hex'))"
-  var CODIGO_SHA256 = 'a4eca3781faaf31a3f4d59a6552dabed5167a154b0caf2ed1bc0b73e1f237bd6';
+  var CODIGO_SHA256 = '';
   var CHAVE = 'gsc_vagas_beta';   // fora do prefixo vg.: o "Sair" do site não apaga
   var CLASSE = 'beta-trancado';
 

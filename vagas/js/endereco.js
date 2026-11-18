@@ -9,7 +9,7 @@
 (function (root) {
   'use strict';
   var ALVO = 'https://vagas.gestaosemcaos.com.br';
-  var LIGADO = false;
+  var LIGADO = true;
   // Onde o site de vagas mora de verdade (ou é testado): não redireciona.
   function proprio(host) {
     return host === 'vagas.gestaosemcaos.com.br' || host === 'localhost' || host === '127.0.0.1' || /\.pages\.dev$/.test(host);

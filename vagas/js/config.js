@@ -14,7 +14,7 @@
  */
 (function (root) {
   var CONFIG = {
-    MODO: 'previa',
+    MODO: 'supabase',
     SUPABASE_URL: 'https://tevpqngqzxcswmticjnr.supabase.co',
     SUPABASE_ANON_KEY: 'sb_publishable_8B735nOKFWn-CC8dYpr1sg_RQs5y_W-',
     SITE_URL: 'https://vagas.gestaosemcaos.com.br',
