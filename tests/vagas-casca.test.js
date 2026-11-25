@@ -154,7 +154,7 @@ test('textos gerados: só o que as telas usam (sem regra do servidor, sem lista 
   assert.ok(conta.mensagem.aviso_empresa && conta.foto.explicacao);
   // avisos.*: os das telas sem conta (lista, início, selo, testes) em textos.js; o resto em textos-conta.js, sem repetir nenhum.
   const pub = M.avisosPublicos();
-  for (const k of ['cidade_pausada', 'nunca_pague', 'erro_generico', 'conta_suspensa', 'selo_nota', 'teste_antes', 'selo_empresa']) assert.ok(k in basicos.avisos, k);
+  for (const k of ['nunca_pague', 'erro_generico', 'conta_suspensa', 'selo_nota', 'teste_antes', 'selo_empresa']) assert.ok(k in basicos.avisos, k);
   for (const k of Object.keys(basicos.avisos)) assert.ok(pub.has(k), k);
   for (const k of Object.keys(conta.avisos)) assert.ok(!(k in basicos.avisos), k);
   assert.deepEqual(Object.keys({ ...basicos.avisos, ...conta.avisos }).sort(), Object.keys(M.textosDaTela().avisos).sort());

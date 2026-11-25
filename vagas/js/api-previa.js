@@ -880,7 +880,7 @@
     function noAr(a) {
       var e = empresa(a.empresaId);
       var c = cidade(a.cidade);
-      return a.status === 'publicado' && a.expiraEm > agora() && !!e && e.status === 'ativa' && !!c && c.status === 'ativa' &&
+      return a.status === 'publicado' && a.expiraEm > agora() && !!e && (e.status === 'ativa' || e.status === 'em_analise') && !!c && c.status === 'ativa' &&
         (a.modalidade !== 'diaria' || a.diaria.data >= hoje(c.fuso));
     }
     function expiraCalculada(a) {
@@ -1643,9 +1643,6 @@
       if (papel === 'moderador') return erro(R.MSG.SEM_PERMISSAO);
       if (an && an.status === 'removido') return erro('Esta vaga foi removida pela moderação e não pode ser editada.');
       if (e.status === 'suspensa') return erro('Esta empresa está suspensa. Fale com a Gestão sem Caos.');
-      if (d.publicar === true && e.status !== 'ativa' && (!an || (an.status !== 'publicado' && an.status !== 'pausado'))) {
-        return erro('Aprove a empresa antes de publicar a vaga.');
-      }
       var g = gravarAnuncio(d, e, an);
       if (!g.ok) return g;
       an = g.an;
@@ -1676,11 +1673,10 @@
       var cobj = cidade(an.cidade);
       if (!aceitaEmpresas(cobj)) return erro(R.MSG.CIDADE_FECHADA);
       if (an.modalidade === 'diaria' && an.diaria.data < hoje(cobj.fuso)) return erro('A data da diária já passou. Escolha outra data.');
-      var revisao = e.status !== 'ativa' || st.anuncios.filter(function (x) { return x.empresaId === e.id && x.publicadoEm != null; }).length < 3;
-      if (revisao) { an.status = 'em_revisao'; an.statusMotivo = ''; }
-      else { var primeira = an.publicadoEm == null; an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = agora(); an.expiraEm = expiraCalculada(an); marcarPublicada(an, primeira); }
+      // v2: sem revisão ANTES de ir ao ar (nem para empresa em análise, nem nas 3 primeiras vagas); a equipe revisa depois.
+      var primeira = an.publicadoEm == null; an.status = 'publicado'; an.statusMotivo = ''; an.publicadoEm = agora(); an.expiraEm = expiraCalculada(an); marcarPublicada(an, primeira);
       tocar(an);
-      return ok({ anuncio: anuncioEmpresa(an), emRevisao: revisao });
+      return ok({ anuncio: anuncioEmpresa(an), emRevisao: false });
     };
 
     H.vagas_anuncio_acao = function (a) {
@@ -2198,7 +2194,6 @@
       var motivo = R.limparTexto(a.p_motivo, 300);
       if (a.p_acao === 'publicar') {
         if (an.status !== 'em_revisao' && an.status !== 'suspenso') return erro('Esta vaga não está esperando a moderação.');
-        if (e.status !== 'ativa') return erro('Aprove a empresa antes de publicar a vaga.');
         if (an.modalidade === 'diaria' && an.diaria.data < hoje(cidade(an.cidade).fuso)) return erro('A data da diária já passou.');
         var primeiraPub = an.publicadoEm == null;
         if (an.status === 'em_revisao' || an.expiraEm == null || an.expiraEm <= agora()) { an.publicadoEm = an.publicadoEm || agora(); an.expiraEm = expiraCalculada(an); }

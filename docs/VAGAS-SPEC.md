@@ -1287,3 +1287,126 @@ VAGAS_API.anuncios({ cidade: 'uruacu-go', paraHoje: true })
 10. Revisar: zonas/bairros de Uruaçu com a operação; textos jurídicos com advogado(a) (inclusive o WhatsApp opcional da lista
    de espera e a retenção dos convites, §7.1); lista de pontos fortes e textos com a psicologia (inclusive os e-mails
    `convite-equipe.html` e `convite-equipe-outra-conta.html`).
+
+## 14. v2 — banco (redesenho de 24/11/2026)
+
+Migrações **aditivas e idempotentes**, aplicadas depois da `20261024120005_vagas_fase_c` (e da `20261027120000_chave_acesso`, de outra
+frente), nesta ordem:
+
+1. `20261101120000_vagas_v2_base`: colunas e tabelas novas, restrições relaxadas, buckets privados, filtro de texto contextual,
+   estados da empresa, fim das 3 travas;
+2. `20261101120001_vagas_v2_pessoa`: leitura pública e tudo da pessoa (`vagas_v2_base`, `_vaga`, `_texto_checar`, `_eu`, perfil,
+   currículo, candidatura, conversa, denúncia);
+3. `20261101120002_vagas_v2_empresa`: vagas, candidatos, chamar, entrevista, equipe, verificação e as funções só de servidor;
+4. `20261101120003_vagas_v2_equipe`: fila "Revisar depois", decisões da equipe, aviso a quem se candidatou, migração da lista de
+   espera. Cada uma recria `versao_banco()` (a última devolve `20261101120003`).
+
+Depois delas vem a `20261102120000_*` (códigos de entrada, do dono do servidor). Nada é aplicado sozinho: o dono publica.
+
+### 14.1 RPCs `vagas_v2_*`
+
+Contrato único: `vagas/js/v2/contrato.js` (um argumento `p_dados jsonb`, resposta `{ok:true,...}` ou `{ok:false, erro, codigo}`,
+camelCase). Todas `security definer` com `search_path` vazio, `auth.uid()`, EXECUTE só para `authenticated`; `base`, `vaga` e
+`textoChecar` também para `anon`. Os testes (`tests/supabase/vagas_v2*.test.js`) conferem cada resposta com `VSC_CONTRATO.validar()`.
+
+- Público: `vagas_v2_base` (até 500 vagas abertas da região, setores, cidades com bairros, empresas; sem número de candidatos, dado
+  pessoal nem CNPJ; banco novo devolve listas vazias), `vagas_v2_vaga`, `vagas_v2_texto_checar`.
+- Pessoa: `vagas_v2_eu`, `_perfil_salvar`, `_curriculo_guardar`, `_curriculo_apagar`, `_vaga_salvar`, `_vaga_esconder`, `_alerta_salvar`,
+  `_alerta_apagar`, `_candidatar`, `_candidaturas`, `_candidatura_retirar`, `_entrevista_responder`, `_whatsapp_liberar`, `_conversa`,
+  `_mensagem_enviar`, `_quem_viu`, `_denunciar`.
+- Empresa: `_minhas_empresas`, `_empresa_salvar`, `_vaga_publicar`, `_vaga_editar`, `_vaga_acao`, `_vagas_da_empresa`, `_candidatos`,
+  `_candidato`, `_candidato_mover`, `_whatsapp_chamar`, `_entrevista_marcar`, `_equipe_convidar`, `_equipe`, `_verificacao`,
+  `_verificacao_documento`, `_verificacao_reenviar`.
+- Equipe da cidade: `_op_revisar_depois`, `_op_revisar_decidir`, `_op_avisar_candidatos`.
+
+Acréscimos opcionais ao contrato (campos novos, nada removido): `VAGA.diaria` e `VAGA.confidencial`; `textoChecar.forte`;
+`candidatar.duplicado`; `mensagemEnviar.alerta`; `eu.avisos`; `curriculoGuardar.removido` e `curriculoApagar.removido` (caminho do objeto,
+para o adaptador também remover no Storage); `equipeConvidar.convite.token` (link para copiar; o e-mail sai pela função de servidor).
+
+### 14.2 Empresa: estados, prazo e limites
+
+A empresa criada pela v2 nasce `status='em_analise'` com `verificacao_estado='em_verificacao'`, `verificacao_prazo_em = agora + 7 dias` e a
+consulta do CNPJ em `consulta_cnpj`. O estado que a tela vê é calculado na leitura (`vagas_interno.v2_estado_empresa`), sem agendador:
+
+| Estado | Quando | Vagas |
+|---|---|---|
+| `verificada` | `status='ativa'` com `cnpj_conferido_em` | no ar, sem limite próprio |
+| `em_verificacao` | em análise, dentro do prazo | no ar, com os limites abaixo |
+| `precisa_ajuste` | a equipe recusou (motivo livre) | fora do ar; "Corrigir e pedir nova conferência" |
+| `vencida` | prazo de 7 dias passou sem verificar | fora do ar **sem apagar nada**; reenviar recomeça os 7 dias |
+| `suspensa` | a equipe (ou denúncia de cobrança com sinal na conversa) suspendeu | fora do ar |
+
+`vagas_interno.no_ar` aceita empresa `ativa` ou em verificação (nem vencida, nem recusada, nem suspensa) e cidade `ativa` ou
+`lista_espera`. Saíram as 3 travas: "empresa precisa estar ativa", "aprove a empresa antes de publicar" e a revisão das 3 primeiras
+vagas. Limites da empresa **em verificação** (verificada entre parênteses): 3 vagas no ar ao mesmo tempo (sem limite), 3 novas por dia
+(30), confidencial não (sim), conversa só pelo site, 3 mensagens seguidas, 100 por dia (300), convites de equipe até 2, até 20
+liberações de WhatsApp por dia por empresa, 2 denúncias de contas diferentes tiram a vaga do ar (3). A 4ª vaga no ar fica `rascunho`
+com mensagem clara. Verificação: `verificacao_estado`, `verificacao_motivo`, `verificacao_pedida_em`, documentos em
+`vagas_empresa_documentos` (bucket `vagas-verificacao`).
+
+### 14.3 Publicar: "publica já, verifica depois"
+
+`vagas_v2_vaga_publicar` passa a vaga pelo filtro de texto e: texto barrado → `{ok:false, codigo:'texto_barrado', barra:[{campo, trecho,
+motivo, mensagem}]}`; **sinal forte** (cobrança ambígua como "adesão" ou "investimento", WhatsApp igual ao de empresa suspensa) →
+`estado:'revisao_rapida'` (status `em_revisao` + `segurada`, fora do ar até a equipe liberar); caso contrário vai ao ar na hora
+(`estado:'no_ar'`); **sinal fraco** ("ganhe até", "renda extra", salário muito acima do comum, CNPJ com menos de 90 dias, mais de 3 vagas
+em 1 hora, texto igual ao de outra empresa) publica e entra no topo de "Revisar depois". Editar vaga no ar de empresa em verificação
+também manda para "Revisar depois". Salário é sempre um valor (nunca "a combinar"); diária exige dia, hora e valor e aceita
+`repete` (volta toda semana, sem agendador). Campos que o modelo antigo não tem ficam em `vagas_anuncios.extra` (atividades,
+diferenciais, perguntas, horário, bairro, urgente, PcD, repete, rótulo PJ); PJ é `freelancer` com `extra.tipoRotulo='PJ'`.
+
+### 14.4 Filtro de texto contextual (proposta §5.5)
+
+`vagas_interno.padroes_texto()` (ordem, tipo, nível, alvo, padrão) e `niveis_do_contexto(ctx)`; `conferir_lista(texto, ctx)` devolve
+`{barra, forte, fraco}` e `conferir_texto` o primeiro trecho barrado. O espelho em `vagas/js/regras.js` (`PADROES`, `niveisDoContexto`,
+`conferirLista`, `conferirTexto`) dá o MESMO resultado (teste de paridade com um corpus, em todos os contextos). Contextos novos:
+`vaga` (barra cobrança, contato, link, documento, dado sensível e discriminação; forte: cobrança ambígua; fraco: promessa de ganho) e
+`conversa` (permissivo: data, CEP e endereço passam; barra cobrança, telefone, e-mail, link e dado sensível; documento e "taxa" só
+alertam, a faixa âmbar). "Receber em dinheiro, cartão e Pix" e "taxa de entrega por corrida" passam; "A vaga também é para pessoa com
+deficiência" passa e liga o selo PcD; "Pague R$ 50 do uniforme" e "mulheres de 18 a 30 anos" barram. A mensagem nunca acusa: diz o que
+tirar e o que escrever no lugar.
+
+### 14.5 Candidatura, privacidade e etapas
+
+`vagas_candidaturas` ganha `etapa` (`nova`, `vista`, `em conversa`, `entrevista marcada`, `contratada`, `não seguiu`), `forma`, `respostas`,
+`mensagem`, `id_local` (reenvio idempotente), marcos e `entrevista`. O `status` antigo continua coerente e **nunca vira `combinou`** numa
+candidatura v2 (as RPCs antigas não abrem contato). Regra 1A: empresa verificada recebe nome, arquivo e WhatsApp juntos; em verificação
+vê só o primeiro nome e o resumo, até a pessoa tocar em "Liberar meu WhatsApp" (por candidatura). Candidatura antiga só abre o contato
+depois do Combinou. Cada abertura de currículo, contato e arquivo grava em `vagas_acessos_contato` (`tipo_acesso`), lido por "quem viu
+meu currículo". A equipe/operador/admin nunca lê pessoa, currículo, contato nem candidatura (nenhuma política, nenhuma RPC).
+
+### 14.6 Funções só de servidor (EXECUTE só `service_role`)
+
+`vagas_v2_conta_garantir_servidor(p_uid, p_dados)`, `vagas_v2_empresa_criar_servidor(p_uid, p_dados)` (CNPJ já consultado pelo servidor;
+recusa CNPJ não ativo e CNPJ de empresa suspensa; razão social não passa pelo filtro de contato; até 5 empresas por conta),
+`vagas_v2_arquivo_link_servidor(p_uid, p_candidatura)`, `vagas_v2_documento_link_servidor(p_uid, p_documento)`,
+`vagas_v2_avisos_pendentes_servidor`, `vagas_v2_avisos_marcar_servidor` e `vagas_v2_migrar_lista_espera_servidor`. As de link só
+conferem a permissão, registram o acesso e devolvem o caminho no bucket; assinar o link de 5 minutos é da função de servidor.
+
+### 14.7 Storage
+
+Buckets privados `vagas-curriculos` (até 10 MB; pdf, doc, docx, jpeg, png, heic, heif) e `vagas-verificacao` (até 10 MB; pdf, jpeg,
+png). A pessoa grava, lê e apaga só o próprio prefixo `<user_id>/…`; a empresa não lê currículo direto (só por link assinado). Membro
+da empresa grava e lê só `vagas-verificacao/<empresa_id>/…`.
+
+### 14.8 O que ficou escondido, sem apagar
+
+Testes de habilidade e selos, referências, banco de talentos, lista de espera (os inscritos com conta viram alertas; a tabela fica),
+pulos (lidos como "escondidas"), pré-abertura, zonas (viram bairros por agrupamento) e as RPCs antigas continuam no banco e nas
+tabelas; só saem da navegação. Dado existente não muda ao aplicar as migrações (testado).
+
+### 14.9 Moderação e avisos
+
+`vagas_v2_op_revisar_decidir`: `verificar_empresa`, `pedir_documento` (recado livre), `tirar_do_ar` (motivo + recado), `suspender_empresa`,
+`recusar_empresa` e `liberar` (a segurada vai ao ar; vaga que já está no ar só sai da fila). Tudo grava em `vagas_moderacao` (só
+inclusão). `vagas_v2_op_avisar_candidatos` só funciona com a vaga fora do ar: grava um aviso por pessoa em `vagas_avisos_pessoa` (a
+equipe recebe só a contagem; quem envia por e-mail ou WhatsApp é a função de servidor, lendo a fila).
+
+## 15. v2 — telas, adaptador e entrada por código (24/11/2026)
+
+- **Contrato único**: `vagas/js/v2/contrato.js` (métodos `VSC_API.*`, RPCs `vagas_v2_*` com um argumento `p_dados jsonb`, formas das respostas, `validar()`).
+- **Adaptador**: `vagas/js/v2/api-v2.js` (`window.VSC_API`): modo `supabase` (RPC, Edge Function `vagas-conta`, Storage) ou `previa` (só `?previa=1` fora do domínio oficial; arquivos de `vagas/js/v2/previa/` carregados sob demanda).
+- **Entrar sem senha**: código de 6 números por E-MAIL (Resend); canal WhatsApp desligado por configuração (`CANAL_WHATSAPP`, `VAGAS_CANAL_WHATSAPP`), ponto de encaixe para o WAHA em `enviarCodigoWhatsappVagas`. Detalhes: `docs/projeto/status/vagas-v2-servidor.md`.
+- **Telas**: ver `docs/VAGAS-TELAS.md` (quadro v2). Pessoa e empresa são SPAs por hash; páginas antigas redirecionam.
+- **Ordem para publicar, pendências do dono e o que ficou para depois**: `docs/projeto/status/vagas-v2.md`.
+

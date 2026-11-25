@@ -1,0 +1,853 @@
+/* ==========================================================================
+   VAGAS SEM CAOS · SISTEMA VISUAL (v2, 24/11/2026)
+   Base: previa aprovada, com a decisão 7B do dono: cor de ação = laranja queimado #C2410C (não o azul da prévia).
+   Contrastes conferidos (WCAG, texto 4,5:1 e componente 3:1):
+     claro:  ação #C2410C com texto branco 5,18:1 · hover #A83A0A 6,41:1 · pressionado #8F3108 8,04:1 · texto/link em laranja #B3380A sobre branco 6,02:1
+     escuro: ação #FF8A57 com texto #1A0A03 8,29:1 · hover #FF9A6B 9,27:1 · link #FFA079 sobre #121212 ≥ 8:1
+     erro (rosa-carmim, longe do laranja de ação): #B0103C com texto branco 7,03:1 (claro) · #FF7A9A sobre #121212 7,58:1 (escuro)
+   O laranja de ação NUNCA é a única marca de erro: erro tem ícone + palavra ("Erro:" ou o motivo) + cor carmim distinta.
+   Atributos no <html>: data-theme (nenhum segue o aparelho | "light" | "dark") · data-fx ("off" sem vidro nem movimento)
+   · data-vidro ("off" camadas sólidas). Fonte: Plus Jakarta Sans, hospedada em vagas/comum/fonts (nada de Google Fonts).
+   ========================================================================== */
+@font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:200 800;font-display:swap;
+  src:url("../../comum/fonts/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:200 800;font-display:swap;
+  src:url("../../comum/fonts/plus-jakarta-sans-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+
+/* ==========================================================================
+   1. TOKENS (tema claro, paleta azul)
+   ========================================================================== */
+:root{
+  color-scheme:light;
+
+  /* ---------- letra ---------- */
+  --f:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+
+  /* margens laterais com a área segura do aparelho */
+  --gl:max(16px,env(safe-area-inset-left,0px));
+  --gr:max(16px,env(safe-area-inset-right,0px));
+  --sb:env(safe-area-inset-bottom,0px);
+
+  /* ---------- neutros levemente frios ---------- */
+  --t-bg:#FFFFFF;            /* fundo da página */
+  --t-surface:#FFFFFF;       /* cartão */
+  --t-panel:#F5F6F8;         /* área agrupada: coluna do quadro, área de soltar, fundo do computador */
+  --t-subtle:#EEF0F3;        /* campo, chip, etiqueta */
+  --t-hover:#E6E9ED;         /* com o mouse em cima */
+  --t-raised:#FFFFFF;        /* peça escolhida no segmentado */
+  --t-border:#E1E4E9;        /* linha fina: divisória e borda de cartão */
+  --t-field-line:#D3D8DE;    /* linha do campo e tracejado (decorativa) */
+  --t-border-input:#868E99;  /* borda forte (3:1): contorno de "Nova", etapa futura */
+  --t-edge:#E1E4E9;          /* borda de camada que flutua */
+  --t-text:#0F141A;          /* texto principal */
+  --t-text-soft:#434A55;     /* texto secundário */
+  --t-text-muted:#5D6571;    /* texto mudo: data, contagem, dica, placeholder */
+
+  /* ---------- status: bg = fundo suave | fg = texto e ícone | fill = ponto, barra, ícone cheio ---------- */
+  --c-ok-bg:#E7F5EE;   --c-ok-fg:#0D5A3A;   --c-ok-fill:#138A5B;   --c-ok-on:#FFFFFF;  /* verde: deu certo, verificada, contratada */
+  --c-warn-bg:#FDF3E3; --c-warn-fg:#6A3F00; --c-warn-fill:#B46A00;                     /* âmbar: atenção sem urgência */
+  --c-crit-bg:#FFEAF0; --c-crit-fg:#8F0F33; --c-crit-fill:#B0103C; --t-on-danger:#FFFFFF; /* vermelho: erro, apagar */
+  --c-info-bg:#EAF2FE; --c-info-fg:#0B4A8F; --c-info-fill:#2F7FD8;                     /* azul claro: SÓ "responda a empresa" */
+  --c-calm-bg:#EEF2F6; --c-calm-fg:#3A4654; --c-calm-fill:#67737F;                     /* neutro frio: fluxo normal, aviso fixo */
+
+  /* ---------- ação (paleta azul) ----------
+     action = fundo do botão principal e contador | on-action = texto por cima
+     soft = fundo de seleção | line = barra da aba, borda do chip marcado
+     ink = texto e ícone na cor de ação | edge = contorno do botão */
+  --t-action:#C2410C; --t-action-hover:#A83A0A; --t-action-press:#8F3108; --t-on-action:#FFFFFF;
+  --t-action-soft:#FFF1E8; --t-action-line:#C2410C; --t-action-ink:#B3380A; --t-action-edge:#C2410C;
+  --t-link:#B3380A; --t-focus:#C2410C;
+
+  /* ---------- camadas ---------- */
+  --t-scrim:rgb(9 12 16 / .44);          /* fundo atrás da folha e da janela: só escurece */
+  --toast-bg:#151A21; --toast-fg:#FFFFFF; --toast-bd:#151A21;
+  --mostra-claro:block; --mostra-escuro:none;   /* logo colorido no claro, negativo no escuro */
+
+  /* ---------- vidro (camadas que flutuam) ---------- */
+  --g-tinta:rgb(250 251 253 / .78);        /* barras: topo, de baixo, candidatar */
+  --g-tinta-densa:rgb(250 251 253 / .88);  /* folha e janela */
+  --g-borda:rgb(15 20 26 / .08);           /* 1 px clara */
+  --g-brilho:inset 0 1px 0 rgb(255 255 255 / .7);  /* brilho interno no alto da peça */
+  --g-solido:#FFFFFF; --g-solido-denso:#FFFFFF;    /* quando o vidro desliga */
+
+  /* ---------- elevação (só no que flutua) ---------- */
+  --sh:16 24 40;
+  --e-1n:0 1px 2px rgb(var(--sh) / .06);
+  --e-2n:0 1px 2px rgb(var(--sh) / .05), 0 4px 12px rgb(var(--sh) / .07);
+  --e-3n:0 2px 6px rgb(var(--sh) / .07), 0 12px 28px rgb(var(--sh) / .12);
+  --e-4n:0 4px 12px rgb(var(--sh) / .10), 0 24px 56px rgb(var(--sh) / .20);
+  --e-btn:0 1px 2px rgb(var(--sh) / .14);
+  --e-btn-up:0 2px 4px rgb(var(--sh) / .10), 0 6px 14px rgb(var(--sh) / .12);
+  --e-bg-1:#FFFFFF; --e-bg-2:#FFFFFF; --e-bg-3:#FFFFFF; --e-bg-4:#FFFFFF;  /* no escuro sobe clareando */
+
+  /* ---------- movimento ---------- */
+  --ease:cubic-bezier(.2,.8,.2,1);          /* padrão: entrar, hover, apertar */
+  --ease-in:cubic-bezier(.4,0,1,1);         /* sair */
+  --ease-sheet:cubic-bezier(.32,.72,0,1);   /* folha que sobe */
+  --ease-spring:cubic-bezier(.3,1.3,.5,1);  /* mola suave (trocada pela linear() abaixo) */
+  --dur-press:100ms; --dur-hover:140ms; --dur-menu:180ms; --dur-enter:220ms; --dur-sheet:280ms; --dur-exit:100ms;
+  --fx-press:.97;      /* toque: leve escala */
+  --fx-lift:-1px;      /* cartão sobe 1 px no hover */
+  --fx-sobe:8px;       /* entrada de lista e toast */
+  --fx-pop:.96;        /* janela nasce em 96% */
+  --fx-cascata:30ms;   /* intervalo da cascata */
+
+  /* ---------- letra: escala (px inteiro) ---------- */
+  --fs-11:11px; --fs-12:12px; --fs-13:13px; --fs-14:14px; --fs-15:15px; --fs-16:16px; --fs-17:17px;
+  --fs-18:18px; --fs-20:20px; --fs-24:24px; --fs-28:28px; --fs-32:32px; --fs-40:40px;
+  --lh-11:14px; --lh-12:16px; --lh-13:18px; --lh-14:20px; --lh-15:22px; --lh-16:24px; --lh-17:24px;
+  --lh-18:26px; --lh-20:28px; --lh-24:30px; --lh-28:34px; --lh-32:38px; --lh-40:46px;
+
+  /* ---------- espaço (grade de 4) ---------- */
+  --s-1:4px; --s-2:8px; --s-3:12px; --s-4:16px; --s-5:20px; --s-6:24px; --s-8:32px; --s-10:40px; --s-12:48px; --s-16:64px;
+
+  /* ---------- raios ---------- */
+  --r-6:6px; --r-8:8px; --r-10:10px; --r-12:12px; --r-16:16px; --r-20:20px; --r-24:24px; --r-pill:999px;
+
+  /* ---------- alturas (celular primeiro; o computador reduz abaixo) ---------- */
+  --h-btn:44px; --h-btn-g:48px; --h-btn-p:36px; --h-input:48px; --h-busca:56px; --h-chip:40px;
+  --h-toque:44px; --h-ibtn:44px; --h-topo:56px; --h-barra:64px;
+
+  /* ---------- empilhamento ---------- */
+  --z-topo:40; --z-barra:41; --z-pop:50; --z-folha:60; --z-toast:80;
+}
+
+/* computador com mouse: controles mais baixos (a letra do campo continua 16 px) */
+@media (min-width:761px) and (hover:hover) and (pointer:fine){
+  :root{--h-btn:40px; --h-btn-p:32px; --h-input:44px; --h-chip:36px; --h-ibtn:36px; --h-topo:64px}
+}
+
+/* mola de verdade (passa uns 3% e volta) onde o navegador aceita linear() */
+@supports (animation-timing-function:linear(0, 1)){
+  :root{--ease-spring:linear(0, .06, .21, .4, .58, .73, .85, .93, .98, 1.01, 1.025, 1.03, 1.028, 1.022, 1.015, 1.009, 1.004, 1.001, 1)}
+}
+
+
+/* ==========================================================================
+   2. TEMA ESCURO (3 estados: segue o aparelho, claro fixo, escuro fixo)
+   O bloco do @media e o do [data-theme="dark"] são IGUAIS (o script de contraste confere).
+   ========================================================================== */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --t-bg:#0E1013; --t-surface:#16191E; --t-panel:#121418; --t-subtle:#1F2329; --t-hover:#282D34; --t-raised:#2B3038;
+    --t-border:#2A2F36; --t-field-line:#3B414A; --t-border-input:#7A838F; --t-edge:#363C45;
+    --t-text:#F0F2F5; --t-text-soft:#C2C8D0; --t-text-muted:#97A0AB;
+    --c-ok-bg:#11281C;   --c-ok-fg:#9ADDB9;   --c-ok-fill:#35B67E;   --c-ok-on:#06150D;
+    --c-warn-bg:#322310; --c-warn-fg:#F3C68C; --c-warn-fill:#EBA445;
+    --c-crit-bg:#3A1522; --c-crit-fg:#FFB3C6; --c-crit-fill:#FF7A9A; --t-on-danger:#2A0610;
+    --c-info-bg:#13263A; --c-info-fg:#A9CFFA; --c-info-fill:#5FA4F0;
+    --c-calm-bg:#1F252C; --c-calm-fg:#C7D0DA; --c-calm-fill:#94A0AD;
+    --t-action:#FF8A57; --t-action-hover:#FF9A6B; --t-action-press:#F57A45; --t-on-action:#1A0A03;
+    --t-action-soft:#2A1A12; --t-action-line:#FF8A57; --t-action-ink:#FFA079; --t-action-edge:#FF8A57;
+    --t-link:#FFA079; --t-focus:#FF8A57;
+    --t-scrim:rgb(0 0 0 / .56);
+    --toast-bg:#2C313A; --toast-fg:#F0F2F5; --toast-bd:#3A404A;
+    --mostra-claro:none; --mostra-escuro:block;
+    --g-tinta:rgb(22 25 30 / .78); --g-tinta-densa:rgb(30 34 40 / .88);
+    --g-borda:rgb(255 255 255 / .10); --g-brilho:inset 0 1px 0 rgb(255 255 255 / .07);
+    --g-solido:#1E2228; --g-solido-denso:#23272E;
+    --sh:0 0 0;
+    --e-1n:0 1px 2px rgb(0 0 0 / .40);
+    --e-2n:0 1px 2px rgb(0 0 0 / .35), 0 4px 12px rgb(0 0 0 / .35);
+    --e-3n:0 2px 6px rgb(0 0 0 / .40), 0 12px 28px rgb(0 0 0 / .45);
+    --e-4n:0 4px 12px rgb(0 0 0 / .45), 0 24px 56px rgb(0 0 0 / .55);
+    --e-btn:0 1px 2px rgb(0 0 0 / .40);
+    --e-btn-up:0 2px 4px rgb(0 0 0 / .35), 0 6px 14px rgb(0 0 0 / .35);
+    --e-bg-1:#16191E; --e-bg-2:#191C22; --e-bg-3:#1E2228; --e-bg-4:#23272E;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --t-bg:#0E1013; --t-surface:#16191E; --t-panel:#121418; --t-subtle:#1F2329; --t-hover:#282D34; --t-raised:#2B3038;
+  --t-border:#2A2F36; --t-field-line:#3B414A; --t-border-input:#7A838F; --t-edge:#363C45;
+  --t-text:#F0F2F5; --t-text-soft:#C2C8D0; --t-text-muted:#97A0AB;
+  --c-ok-bg:#11281C;   --c-ok-fg:#9ADDB9;   --c-ok-fill:#35B67E;   --c-ok-on:#06150D;
+  --c-warn-bg:#322310; --c-warn-fg:#F3C68C; --c-warn-fill:#EBA445;
+  --c-crit-bg:#3A1522; --c-crit-fg:#FFB3C6; --c-crit-fill:#FF7A9A; --t-on-danger:#2A0610;
+  --c-info-bg:#13263A; --c-info-fg:#A9CFFA; --c-info-fill:#5FA4F0;
+  --c-calm-bg:#1F252C; --c-calm-fg:#C7D0DA; --c-calm-fill:#94A0AD;
+  --t-action:#FF8A57; --t-action-hover:#FF9A6B; --t-action-press:#F57A45; --t-on-action:#1A0A03;
+  --t-action-soft:#2A1A12; --t-action-line:#FF8A57; --t-action-ink:#FFA079; --t-action-edge:#FF8A57;
+  --t-link:#FFA079; --t-focus:#FF8A57;
+  --t-scrim:rgb(0 0 0 / .56);
+  --toast-bg:#2C313A; --toast-fg:#F0F2F5; --toast-bd:#3A404A;
+  --mostra-claro:none; --mostra-escuro:block;
+  --g-tinta:rgb(22 25 30 / .78); --g-tinta-densa:rgb(30 34 40 / .88);
+  --g-borda:rgb(255 255 255 / .10); --g-brilho:inset 0 1px 0 rgb(255 255 255 / .07);
+  --g-solido:#1E2228; --g-solido-denso:#23272E;
+  --sh:0 0 0;
+  --e-1n:0 1px 2px rgb(0 0 0 / .40);
+  --e-2n:0 1px 2px rgb(0 0 0 / .35), 0 4px 12px rgb(0 0 0 / .35);
+  --e-3n:0 2px 6px rgb(0 0 0 / .40), 0 12px 28px rgb(0 0 0 / .45);
+  --e-4n:0 4px 12px rgb(0 0 0 / .45), 0 24px 56px rgb(0 0 0 / .55);
+  --e-btn:0 1px 2px rgb(0 0 0 / .40);
+  --e-btn-up:0 2px 4px rgb(0 0 0 / .35), 0 6px 14px rgb(0 0 0 / .35);
+  --e-bg-1:#16191E; --e-bg-2:#191C22; --e-bg-3:#1E2228; --e-bg-4:#23272E;
+}
+/* data-theme="light": nenhum bloco escuro casa, vale o :root do topo */
+
+
+/* ==========================================================================
+   4. BASE
+   ========================================================================== */
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-padding-top:calc(var(--h-topo) + 8px)}
+body{margin:0;background:var(--t-bg);color:var(--t-text);font:400 var(--fs-15)/var(--lh-15) var(--f);
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+h1,h2,h3,h4,p,ul,ol,figure{margin:0}
+ul,ol{padding:0}
+img,video{max-width:100%;height:auto}
+h1{font:600 var(--fs-24)/var(--lh-24) var(--f);letter-spacing:-.015em}
+h2{font:600 var(--fs-20)/var(--lh-20) var(--f);letter-spacing:-.01em}
+h3{font:600 var(--fs-16)/var(--lh-16) var(--f)}
+@media (min-width:761px){h1{font-size:var(--fs-28);line-height:var(--lh-28)}}
+.titulo-grande{font:600 var(--fs-32)/var(--lh-32) var(--f);letter-spacing:-.02em}
+@media (min-width:761px){.titulo-grande{font-size:var(--fs-40);line-height:var(--lh-40)}}
+.texto{font-size:var(--fs-16);line-height:26px;color:var(--t-text-soft);max-width:68ch}   /* descrição da vaga */
+.texto p+p{margin-top:12px}
+.detalhe{font-size:var(--fs-13);line-height:var(--lh-13);color:var(--t-text-muted)}
+.soft{color:var(--t-text-soft)}
+.muted{color:var(--t-text-muted)}
+.num{font-variant-numeric:tabular-nums}                 /* salário, contagem, data, tabela */
+.numero-grande{font:700 var(--fs-32)/var(--lh-32) var(--f);letter-spacing:-.02em;font-variant-numeric:tabular-nums}  /* único uso do 700 */
+a{color:var(--t-link);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.link{display:inline-flex;align-items:center;gap:4px;min-height:var(--h-toque);padding:0 2px;border:0;background:none;
+  color:var(--t-link);font:500 var(--fs-14)/1 var(--f);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;cursor:pointer}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--t-focus);outline-offset:2px}
+a,button,[role="button"],summary,label{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.so-claro{display:var(--mostra-claro)}
+.so-escuro{display:var(--mostra-escuro)}
+.so-toque{display:none}
+@media (hover:none),(pointer:coarse){.so-toque{display:inline-flex}.so-mouse{display:none}}
+
+/* ícones de traço (viewBox 24); traço desenhado nunca abaixo de 1,1 px */
+.ic{display:inline-block;flex:none;width:16px;height:16px;vertical-align:-3px;fill:none;stroke:currentColor;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ic.s14{width:14px;height:14px;stroke-width:2;vertical-align:-2px}
+.ic.s18{width:18px;height:18px;vertical-align:-4px}
+.ic.s20{width:20px;height:20px;vertical-align:-5px}
+.ic.s24{width:24px;height:24px;stroke-width:1.6;vertical-align:-6px}
+
+/* arrumação */
+.pagina{width:100%;max-width:1200px;margin-inline:auto;padding-inline:var(--gl) var(--gr)}
+.pilha{display:flex;flex-direction:column;gap:var(--gap,16px)}
+.fila{display:flex;flex-wrap:wrap;align-items:center;gap:var(--gap,8px)}
+.cartao{background:var(--t-surface);border:1px solid var(--t-border);border-radius:var(--r-16);padding:20px}
+.separador{height:1px;border:0;margin:0;background:var(--t-border)}
+.fundo-painel{background:var(--t-panel)}   /* computador: fundo cinza-claro com cartões brancos */
+
+
+/* ==========================================================================
+   5. MOVIMENTO (só transform e opacity; desligado em "reduzir movimento" e data-fx="off")
+   ========================================================================== */
+@keyframes vsc-entra{from{opacity:.4;transform:translateY(var(--fx-sobe))}to{opacity:1;transform:none}}  /* nasce visível */
+@keyframes vsc-aparece{from{opacity:0}to{opacity:1}}
+@keyframes vsc-some{from{opacity:1}to{opacity:0}}
+@keyframes vsc-folha{from{transform:translateY(100%)}to{transform:none}}
+@keyframes vsc-janela{from{opacity:0;transform:scale(var(--fx-pop))}to{opacity:1;transform:none}}
+@keyframes vsc-toast{from{opacity:0;transform:translateY(var(--fx-sobe))}to{opacity:1;transform:none}}
+@keyframes vsc-salta{from{transform:scale(.82)}to{transform:none}}
+@keyframes vsc-giro{to{transform:rotate(360deg)}}
+
+/* cascata: só as 8 primeiras linhas, a partir de um estado visível, 30 ms entre elas */
+.cascata>*{animation:vsc-entra var(--dur-enter) var(--ease) backwards;animation-delay:calc(var(--i,0) * var(--fx-cascata))}
+.cascata>:nth-child(2){--i:1}.cascata>:nth-child(3){--i:2}.cascata>:nth-child(4){--i:3}
+.cascata>:nth-child(5){--i:4}.cascata>:nth-child(6){--i:5}.cascata>:nth-child(7){--i:6}.cascata>:nth-child(8){--i:7}
+.cascata>:nth-child(n+9){animation:none}
+.saindo{animation:vsc-some var(--dur-exit) var(--ease-in) both!important;pointer-events:none}
+
+/* anel de carregando */
+.giro{display:inline-block;flex:none;width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;
+  animation:vsc-giro 700ms linear infinite}
+
+
+/* ==========================================================================
+   6. COMPONENTES
+   ========================================================================== */
+
+/* ---------- 6.1 Botões ----------
+   .btn = primário (o ÚNICO cheio da tela) · .btn.sec · .btn.fantasma · .btn.perigo
+   tamanhos: .grande (48 px) · padrão (44 no toque, 40 no mouse) · .peq (36/32 com área de 44) · .largo */
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--h-btn);
+  padding:0 18px;border:1px solid var(--t-action-edge);border-radius:var(--r-12);background:var(--t-action);color:var(--t-on-action);
+  font:600 var(--fs-15)/1 var(--f);text-decoration:none;white-space:nowrap;cursor:pointer;user-select:none;-webkit-user-select:none;
+  box-shadow:var(--e-btn);transition:transform var(--dur-press) var(--ease),box-shadow var(--dur-hover) var(--ease)}
+.btn .ic{width:18px;height:18px;vertical-align:0}
+.btn.sec{background:var(--t-surface);color:var(--t-text);border-color:var(--t-border);box-shadow:var(--e-1n)}
+.btn.fantasma{background:transparent;color:var(--t-text-soft);border-color:transparent;box-shadow:none}
+.btn.perigo{background:var(--c-crit-fill);color:var(--t-on-danger);border-color:var(--c-crit-fill)}
+.btn.grande{min-height:var(--h-btn-g);padding:0 22px;font-size:var(--fs-16);border-radius:var(--r-12)}
+.btn.peq{min-height:var(--h-btn-p);padding:0 14px;font-size:var(--fs-14);border-radius:var(--r-10)}
+.btn.peq::before{content:"";position:absolute;inset:-4px 0}          /* área de toque de 44 */
+.btn.largo{width:100%}
+@media (hover:hover) and (pointer:fine){
+  .btn:not(:disabled):not([aria-disabled="true"]):hover,.btn[data-demo="hover"]{background:var(--t-action-hover);border-color:var(--t-action-hover);box-shadow:var(--e-btn-up)}
+  .btn.sec:not(:disabled):not([aria-disabled="true"]):hover,.btn.sec[data-demo="hover"]{background:var(--t-subtle);border-color:var(--t-border-input);box-shadow:var(--e-1n)}
+  .btn.fantasma:not(:disabled):not([aria-disabled="true"]):hover,.btn.fantasma[data-demo="hover"]{background:var(--t-hover);color:var(--t-text);border-color:transparent;box-shadow:none}
+  .btn.perigo:not(:disabled):not([aria-disabled="true"]):hover,.btn.perigo[data-demo="hover"]{background:var(--c-crit-fill);border-color:var(--c-crit-fill);box-shadow:var(--e-btn-up)}
+}
+.btn:not(:disabled):not([aria-disabled="true"]):active,.btn[data-demo="ativo"]{transform:scale(var(--fx-press));background:var(--t-action-press);border-color:var(--t-action-press);box-shadow:var(--e-btn)}
+.btn.sec:not(:disabled):active,.btn.sec[data-demo="ativo"]{background:var(--t-hover);border-color:var(--t-border-input)}
+.btn.fantasma:not(:disabled):active,.btn.fantasma[data-demo="ativo"]{background:var(--t-border);border-color:transparent;box-shadow:none}
+.btn.perigo:not(:disabled):active,.btn.perigo[data-demo="ativo"]{background:var(--c-crit-fill);border-color:var(--c-crit-fill)}
+.btn:disabled,.btn[aria-disabled="true"]{opacity:.45;box-shadow:none;cursor:not-allowed}
+.btn[aria-busy="true"]{cursor:progress}
+
+/* botão de ícone (salvar, fechar, ⋯): 44 no toque, 36 no mouse */
+.btn-icone{position:relative;display:inline-grid;place-items:center;flex:none;width:var(--h-ibtn);height:var(--h-ibtn);padding:0;border:0;
+  border-radius:var(--r-12);background:none;color:var(--t-text-soft);cursor:pointer;transition:transform var(--dur-press) var(--ease)}
+.btn-icone .ic{width:20px;height:20px;vertical-align:0}
+.btn-icone.peq{width:32px;height:32px;border-radius:var(--r-8)}
+.btn-icone.peq .ic{width:18px;height:18px}
+.btn-icone.peq::before{content:"";position:absolute;inset:-6px}
+@media (hover:hover) and (pointer:fine){.btn-icone:hover,.btn-icone[data-demo="hover"]{background:var(--t-hover);color:var(--t-text)}}
+.btn-icone:active{transform:scale(.92);background:var(--t-border)}
+.btn-icone[aria-pressed="true"]{color:var(--t-text)}
+.btn-icone[aria-pressed="true"] .ic{fill:currentColor}
+.salvar[aria-pressed="true"] .ic{animation:vsc-salta var(--dur-enter) var(--ease-spring)}   /* salvar: enche com uma mola curta */
+
+/* contador (número em cima de botão, aba ou ícone): cor de ação, nunca vermelho */
+.contador{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;
+  background:var(--t-action);color:var(--t-on-action);font:600 var(--fs-12)/1 var(--f);font-variant-numeric:tabular-nums}
+
+/* ---------- 6.2 Campos ----------
+   rótulo sempre visível acima; letra de 16 px (o iPhone não dá zoom); erro com ícone e texto */
+.campo{display:flex;flex-direction:column;gap:6px;min-width:0}
+.campo>label,.rotulo{font:500 var(--fs-14)/var(--lh-14) var(--f);color:var(--t-text)}
+.opcional{font-weight:400;color:var(--t-text-muted)}
+.entrada{width:100%;min-width:0;min-height:var(--h-input);padding:0 14px;border:1px solid var(--t-field-line);border-radius:var(--r-12);
+  background:var(--t-subtle);color:var(--t-text);font:400 16px/24px var(--f);appearance:none;-webkit-appearance:none}
+.entrada::placeholder{color:var(--t-text-muted);opacity:1}
+@media (hover:hover) and (pointer:fine){.entrada:not(:disabled):not(:focus):hover{border-color:var(--t-border-input)}}
+.entrada:focus,.entrada[data-demo="foco"]{outline:2px solid var(--t-focus);outline-offset:-1px;border-color:transparent;background:var(--t-surface)}
+.entrada[aria-invalid="true"]{border-color:var(--c-crit-fill);background:var(--t-surface)}
+.entrada[aria-invalid="true"]:not(:focus){outline:1px solid var(--c-crit-fill);outline-offset:-1px}
+.entrada:disabled{opacity:.5;cursor:not-allowed}
+textarea.entrada{min-height:120px;padding:12px 14px;resize:vertical}
+.dica{font-size:var(--fs-13);line-height:var(--lh-13);color:var(--t-text-muted)}
+.erro-campo{display:flex;align-items:flex-start;gap:6px;font:500 var(--fs-13)/var(--lh-13) var(--f);color:var(--c-crit-fg)}
+.erro-campo .ic{width:14px;height:14px;stroke-width:2;margin-top:2px}
+.selecao{position:relative;display:block}
+.selecao .entrada{padding-right:44px;cursor:pointer}
+.selecao>.ic{position:absolute;right:14px;top:50%;margin-top:-9px;width:18px;height:18px;color:var(--t-text-muted);pointer-events:none}
+.opcao{display:inline-flex;align-items:center;gap:10px;min-height:var(--h-toque);font-size:var(--fs-15);cursor:pointer}
+input[type="radio"],input[type="checkbox"]{width:20px;height:20px;margin:0;accent-color:var(--t-action)}
+
+/* ---------- 6.3 Busca grande e busca "o quê + onde" ---------- */
+.busca{position:relative;display:block}
+.busca>.ic{position:absolute;left:16px;top:50%;margin-top:-10px;width:20px;height:20px;color:var(--t-text-muted);pointer-events:none}
+.busca .entrada{min-height:var(--h-busca);padding-left:48px;border-radius:var(--r-16)}
+.busca .entrada::-webkit-search-cancel-button{display:none}
+
+.busca-dupla{display:grid;grid-template-columns:minmax(0,1fr);gap:0;padding:6px;background:var(--t-surface);border:1px solid var(--t-border);border-radius:var(--r-20);box-shadow:var(--e-2n)}
+.bd-campo{position:relative;display:grid;grid-template-columns:20px minmax(0,1fr);column-gap:12px;align-items:center;min-height:60px;
+  padding:8px 14px;border-radius:var(--r-16);cursor:text}
+.bd-campo+.bd-campo::before{content:"";position:absolute;left:14px;right:14px;top:0;height:1px;background:var(--t-border)}
+.bd-campo>.ic{grid-row:1 / span 2;width:20px;height:20px;color:var(--t-text-muted)}
+.bd-rotulo{font:500 var(--fs-12)/var(--lh-12) var(--f);color:var(--t-text-soft)}
+.bd-entrada{width:100%;min-width:0;padding:0;border:0;background:none;color:var(--t-text);font:500 16px/24px var(--f);outline:0;appearance:none;-webkit-appearance:none}
+.bd-entrada::placeholder{color:var(--t-text-muted);opacity:1;font-weight:400}
+.bd-campo:focus-within{background:var(--t-subtle);outline:2px solid var(--t-focus);outline-offset:-2px}
+.bd-campo:focus-within::before,.bd-campo:focus-within+.bd-campo::before{opacity:0}
+.busca-dupla>.btn{margin-top:6px}
+@media (min-width:761px){
+  .busca-dupla{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;align-items:center;border-radius:var(--r-24)}
+  .bd-campo+.bd-campo::before{left:0;right:auto;top:14px;bottom:14px;width:1px;height:auto}
+  .busca-dupla>.btn{margin:0 0 0 6px;min-height:52px;border-radius:var(--r-16)}
+}
+
+/* ---------- 6.4 Chips de filtro (valem na hora) e filtros ativos ---------- */
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0;
+  -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent)}
+.chips::-webkit-scrollbar{display:none}
+.chips.sem-fim{-webkit-mask-image:none;mask-image:none;flex-wrap:wrap;overflow:visible}
+.chip{position:relative;flex:none;display:inline-flex;align-items:center;gap:6px;height:var(--h-chip);padding:0 14px;
+  border:1px solid transparent;border-radius:var(--r-pill);background:var(--t-subtle);color:var(--t-text-soft);
+  font:500 var(--fs-14)/1 var(--f);white-space:nowrap;cursor:pointer;transition:transform var(--dur-press) var(--ease)}
+.chip::before{content:"";position:absolute;inset:-2px 0}                   /* 40 + 4 = 44 de toque */
+.chip .ic{width:16px;height:16px;vertical-align:0}
+.chip .marca{display:none;width:14px;height:14px;stroke-width:2.2;color:var(--t-action-ink)}
+.chip .seta{width:14px;height:14px;stroke-width:2;color:var(--t-text-muted)}
+@media (hover:hover) and (pointer:fine){.chip:hover,.chip[data-demo="hover"]{background:var(--t-hover);color:var(--t-text)}}
+.chip:active{transform:scale(var(--fx-press))}
+.chip[aria-pressed="true"]{background:var(--t-action-soft);border-color:var(--t-action-line);color:var(--t-text);font-weight:600}
+.chip[aria-pressed="true"] .marca{display:block}
+.chip .contador{margin-right:-6px}
+.filtros-ativos{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.filtro-ativo{display:inline-flex;align-items:center;gap:2px;height:32px;padding:0 4px 0 12px;border:1px solid var(--t-border);
+  border-radius:var(--r-pill);background:var(--t-surface);color:var(--t-text);font:500 var(--fs-13)/1 var(--f)}
+.filtro-ativo button{position:relative;display:inline-grid;place-items:center;width:24px;height:24px;border:0;border-radius:50%;
+  background:none;color:var(--t-text-soft);cursor:pointer}
+.filtro-ativo button::before{content:"";position:absolute;inset:-10px}
+.filtro-ativo button .ic{width:14px;height:14px;stroke-width:2;vertical-align:0}
+@media (hover:hover) and (pointer:fine){.filtro-ativo button:hover{background:var(--t-hover);color:var(--t-text)}}
+
+/* ---------- 6.5 Cartão de vaga ----------
+   ordem fixa: logo · título · empresa e bairro · SALÁRIO (destaque) · até 3 fatos · data e "Exemplo"
+   a linha toda abre a vaga (link esticado); o salvar fica por cima */
+.lista-vagas{display:grid;gap:12px;position:relative;z-index:0;list-style:none;margin:0;padding:0}
+.grade-vagas{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));position:relative;z-index:0;list-style:none;margin:0;padding:0}
+.vaga{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) auto;column-gap:12px;align-items:start;
+  padding:16px;background:var(--t-surface);border:1px solid var(--t-border);border-radius:var(--r-16);
+  transition:transform var(--dur-hover) var(--ease)}
+.vaga::after{content:"";position:absolute;inset:-1px;z-index:-1;border-radius:inherit;pointer-events:none;box-shadow:var(--e-2n);
+  opacity:0;transition:opacity var(--dur-hover) var(--ease)}
+.vaga-logo,.logo-empresa{display:grid;place-items:center;flex:none;width:44px;height:44px;overflow:hidden;border-radius:var(--r-12);
+  background:var(--t-subtle);color:var(--t-text-soft);font:600 var(--fs-15)/1 var(--f);letter-spacing:.01em}
+.vaga-logo img,.logo-empresa img{width:100%;height:100%;object-fit:contain;background:#FFFFFF}
+.vaga-corpo{grid-column:2 / 4;grid-row:1;min-width:0}            /* ocupa até a borda; o salvar fica por cima, no canto */
+.vaga:has(>.btn-icone) :is(.vaga-titulo,.vaga-empresa){padding-right:32px}
+.vaga-titulo{font:600 var(--fs-16)/var(--lh-16) var(--f);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.vaga-titulo a{color:var(--t-text);text-decoration:none}
+.vaga-titulo a::after{content:"";position:absolute;inset:0;border-radius:inherit}
+.vaga-titulo a:focus-visible{outline:none}
+.vaga:has(.vaga-titulo a:focus-visible){outline:2px solid var(--t-focus);outline-offset:2px}
+.vaga-empresa{display:flex;align-items:center;gap:4px;margin-top:2px;font-size:var(--fs-14);line-height:var(--lh-14);color:var(--t-text-soft);min-width:0}
+.vaga-empresa>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vaga-empresa .ic{width:14px;height:14px;stroke-width:2;color:var(--c-ok-fill)}   /* escudo = empresa verificada */
+.vaga-salario{margin-top:10px;font-size:var(--fs-14);line-height:var(--lh-14);color:var(--t-text-muted)}
+.vaga-salario b{font:600 var(--fs-17)/var(--lh-17) var(--f);font-variant-numeric:tabular-nums;color:var(--t-text);letter-spacing:-.005em}
+.vaga-fatos{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;list-style:none;padding:0}
+.vaga-data{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;font-size:var(--fs-13);line-height:var(--lh-13);color:var(--t-text-muted);font-variant-numeric:tabular-nums}
+.vaga>.btn-icone{grid-column:3;grid-row:1;justify-self:end;position:relative;z-index:2;margin:-10px -10px 0 0}
+@media (hover:hover) and (pointer:fine){
+  .vaga:hover,.vaga[data-demo="hover"]{transform:translateY(var(--fx-lift));border-color:var(--t-field-line)}
+  .vaga:hover::after,.vaga[data-demo="hover"]::after{opacity:1}
+}
+.vaga:active{transform:scale(.99);transition-duration:var(--dur-press)}
+.vaga:active::after{opacity:0}
+.vaga[aria-current="true"]{background:var(--t-action-soft);border-color:var(--t-action-line)}
+/* lista plana (painel da lista no computador, lado a lado com a vaga) */
+.lista-vagas.plana{gap:0}
+.lista-vagas.plana .vaga{border-width:0 0 1px;border-radius:0;padding:16px var(--gr) 16px var(--gl)}
+.lista-vagas.plana .vaga::after{display:none}
+@media (hover:hover) and (pointer:fine){.lista-vagas.plana .vaga:hover{transform:none;background:var(--t-panel)}}
+.lista-vagas.plana .vaga[aria-current="true"]{background:var(--t-action-soft)}
+.lista-vagas.plana .vaga[aria-current="true"]::before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:3px;border-radius:0 2px 2px 0;background:var(--t-action-line)}
+
+/* fatos da vaga na página da vaga (local, turno, contrato, data) */
+.lista-fatos{display:flex;flex-direction:column;gap:10px;list-style:none;margin:0;padding:0}
+.lista-fatos li{display:flex;align-items:flex-start;gap:10px;font-size:var(--fs-15);line-height:var(--lh-15);color:var(--t-text)}
+.lista-fatos .ic{width:18px;height:18px;margin-top:2px;vertical-align:0;color:var(--t-text-muted)}
+
+/* ---------- 6.6 Etiqueta (fato da vaga: sem cor) ---------- */
+.etiqueta{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 10px;border-radius:var(--r-pill);background:var(--t-subtle);
+  color:var(--t-text-soft);font:500 var(--fs-13)/1 var(--f);white-space:nowrap}
+.etiqueta .ic{width:14px;height:14px;stroke-width:2;vertical-align:0;color:var(--t-text-muted)}
+
+/* "Exemplo": obrigatório em todo dado fictício */
+.exemplo{display:inline-flex;align-items:center;height:20px;padding:0 8px;border:1px solid var(--t-border);border-radius:var(--r-pill);
+  background:var(--t-surface);color:var(--t-text-soft);font:600 var(--fs-12)/1 var(--f);white-space:nowrap}
+
+/* ---------- 6.7 Status: SEMPRE ícone + palavra (+ cor) ---------- */
+.status{--st-bg:var(--t-subtle);--st-fg:var(--t-text-soft);display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px 0 8px;
+  border:1px solid transparent;border-radius:var(--r-pill);background:var(--st-bg);color:var(--st-fg);font:600 var(--fs-13)/1 var(--f);white-space:nowrap}
+.status .ic{width:14px;height:14px;stroke-width:2;vertical-align:0}
+.status.novo{--st-bg:transparent;--st-fg:var(--t-text);border-color:var(--t-border-input)}
+.status.calmo{--st-bg:var(--c-calm-bg);--st-fg:var(--c-calm-fg)}
+.status.ok{--st-bg:var(--c-ok-bg);--st-fg:var(--c-ok-fg)}
+.status.aviso{--st-bg:var(--c-warn-bg);--st-fg:var(--c-warn-fg)}
+.status.erro{--st-bg:var(--c-crit-bg);--st-fg:var(--c-crit-fg)}
+.status.info{--st-bg:var(--c-info-bg);--st-fg:var(--c-info-fg)}
+.status.fim{--st-bg:var(--t-subtle);--st-fg:var(--t-text-soft)}   /* encerrada, não seguiu: cinza, nunca vermelho */
+
+/* ---------- 6.8 Selo da empresa ---------- */
+.selo{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px 0 8px;border-radius:var(--r-pill);
+  font:600 var(--fs-13)/1 var(--f);white-space:nowrap}
+.selo .ic{width:16px;height:16px;vertical-align:0}
+.selo.verificada{background:var(--c-ok-bg);color:var(--c-ok-fg)}
+.selo.verificando{background:var(--c-calm-bg);color:var(--c-calm-fg)}
+.selo-data{font-size:var(--fs-13);line-height:var(--lh-13);color:var(--t-text-muted);font-variant-numeric:tabular-nums}
+
+/* ---------- 6.9 Avatar de iniciais (cinza; foto só se a pessoa pôs) ---------- */
+.avatar{display:inline-grid;place-items:center;flex:none;width:40px;height:40px;overflow:hidden;border-radius:50%;
+  background:var(--t-subtle);color:var(--t-text-soft);font:600 var(--fs-14)/1 var(--f);letter-spacing:.01em}
+.avatar.p{width:32px;height:32px;font-size:var(--fs-12)}
+.avatar.g{width:56px;height:56px;font-size:var(--fs-20)}
+.avatar img{width:100%;height:100%;object-fit:cover}
+
+/* ---------- 6.10 Abas (barra cresce com mola) ---------- */
+.abas{display:flex;gap:4px;border-bottom:1px solid var(--t-border);overflow-x:auto;scrollbar-width:none}
+.abas::-webkit-scrollbar{display:none}
+.aba{position:relative;flex:none;display:inline-flex;align-items:center;gap:6px;height:var(--h-toque);padding:0 12px;border:0;background:none;
+  color:var(--t-text-soft);font:500 var(--fs-15)/1 var(--f);white-space:nowrap;cursor:pointer;text-decoration:none}
+.aba::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:2px;border-radius:2px 2px 0 0;background:var(--t-action-line);
+  transform:scaleX(0);transition:transform var(--dur-enter) var(--ease-spring)}
+@media (hover:hover) and (pointer:fine){.aba:hover{color:var(--t-text)}}
+.aba[aria-selected="true"],.aba[aria-current="page"]{color:var(--t-text);font-weight:600}
+.aba[aria-selected="true"]::after,.aba[aria-current="page"]::after{transform:scaleX(1)}
+.aba .n{font-size:var(--fs-13);font-weight:500;color:var(--t-text-muted);font-variant-numeric:tabular-nums}
+
+/* ---------- 6.11 Segmentado (2 a 4 escolhas que valem na hora; a peça escolhida desliza com mola) ---------- */
+.segmentado{--n:2;--i:0;position:relative;display:inline-grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;padding:3px;
+  border-radius:var(--r-12);background:var(--t-subtle);max-width:100%}
+.segmentado>button{position:relative;z-index:1;min-width:0;min-height:40px;padding:0 14px;border:0;border-radius:9px;background:transparent;
+  color:var(--t-text-soft);font:500 var(--fs-14)/1 var(--f);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+@media (hover:hover) and (pointer:fine){.segmentado>button:hover{color:var(--t-text)}}
+@media (min-width:761px) and (hover:hover) and (pointer:fine){.segmentado>button{min-height:34px}}
+.segmentado>button[aria-pressed="true"]{color:var(--t-text);font-weight:600}
+.segmentado>button::before{content:"";position:absolute;inset:-2px 0}      /* 40 + 4 = 44 de toque */
+@supports selector(:has(*)){
+  .segmentado::before{content:"";position:absolute;z-index:0;top:3px;bottom:3px;left:3px;
+    width:calc((100% - 6px - (var(--n) - 1) * 2px) / var(--n));border:1px solid var(--t-border);border-radius:9px;
+    background:var(--t-raised);box-shadow:var(--e-1n);transform:translateX(calc(var(--i) * (100% + 2px)));
+    transition:transform var(--dur-sheet) var(--ease-spring)}
+  .segmentado:has(>:nth-child(3)){--n:3}
+  .segmentado:has(>:nth-child(4)){--n:4}
+  .segmentado:has(>:nth-child(2)[aria-pressed="true"]){--i:1}
+  .segmentado:has(>:nth-child(3)[aria-pressed="true"]){--i:2}
+  .segmentado:has(>:nth-child(4)[aria-pressed="true"]){--i:3}
+  .segmentado:not(:has(>[aria-pressed="true"]))::before{opacity:0}
+}
+@supports not selector(:has(*)){
+  .segmentado>button[aria-pressed="true"]{background:var(--t-raised);box-shadow:var(--e-1n)}
+}
+
+/* ---------- 6.12 Topo (parado no alto: cor do fundo e sem borda; ao rolar: vidro) ----------
+   o JS põe data-rolou quando a página sai do alto (ver LEIA-ME) */
+.topo{position:sticky;top:0;z-index:var(--z-topo);--t-text-muted:var(--t-text-soft)}
+.topo::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:0;transition:opacity var(--dur-menu) var(--ease);
+  background:var(--g-solido);border-bottom:1px solid var(--t-border)}
+.topo[data-rolou]::before{opacity:1}
+.topo-in{display:flex;align-items:center;gap:8px;min-height:var(--h-topo);padding-inline:var(--gl) calc(var(--gr) - 6px)}
+.topo-in.pagina{padding-inline:var(--gl) var(--gr)}
+.topo .logo{display:flex;align-items:center;flex:none;min-height:var(--h-toque)}
+.topo .logo img{display:var(--mostra-claro);height:22px;width:auto}
+.topo .logo img.so-escuro{display:var(--mostra-escuro)}
+.topo-titulo{flex:1;min-width:0;font:600 var(--fs-17)/var(--lh-17) var(--f);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topo-acoes{display:flex;align-items:center;gap:2px;margin-left:auto}
+.topo-extra{padding:0 var(--gr) 10px var(--gl)}   /* busca ou chips presos dentro do topo (um vidro só) */
+@media (min-width:761px){.topo .logo img{height:26px}}
+
+/* ---------- 6.13 Barra de baixo (celular, até 4 itens; a pílula do item ativo desliza com mola) ---------- */
+.barra-baixo{--n:4;--i:0;position:fixed;z-index:var(--z-barra);left:12px;right:12px;bottom:calc(8px + var(--sb));display:grid;
+  grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;height:var(--h-barra);padding:5px;background:var(--g-solido);
+  border:1px solid var(--t-edge);border-radius:var(--r-24);box-shadow:var(--e-3n);--t-text-muted:var(--t-text-soft)}
+.barra-baixo a{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;
+  border-radius:18px;color:var(--t-text-soft);font:500 var(--fs-11)/var(--lh-11) var(--f);text-decoration:none;
+  transition:transform var(--dur-press) var(--ease)}
+.barra-baixo a .ic{width:22px;height:22px;stroke-width:1.7}
+.barra-baixo a:active{transform:scale(.94)}
+.barra-baixo a[aria-current="page"]{color:var(--t-text);font-weight:600}
+.barra-baixo a:focus-visible{outline-offset:-2px}
+.barra-baixo .contador{position:absolute;top:3px;left:calc(50% + 4px);min-width:18px;height:18px;padding:0 5px;font-size:var(--fs-11)}
+@supports selector(:has(*)){
+  .barra-baixo::before{content:"";position:absolute;z-index:0;top:5px;bottom:5px;left:5px;
+    width:calc((100% - 10px - (var(--n) - 1) * 2px) / var(--n));border-radius:18px;
+    background:color-mix(in srgb,var(--t-text) 8%,transparent);
+    transform:translateX(calc(var(--i) * (100% + 2px)));transition:transform var(--dur-sheet) var(--ease-spring)}
+  .barra-baixo:has(>a:nth-of-type(3):last-of-type){--n:3}
+  .barra-baixo:has(>a:nth-of-type(5)){--n:5}
+  .barra-baixo:has(>a:nth-of-type(2)[aria-current="page"]){--i:1}
+  .barra-baixo:has(>a:nth-of-type(3)[aria-current="page"]){--i:2}
+  .barra-baixo:has(>a:nth-of-type(4)[aria-current="page"]){--i:3}
+  .barra-baixo:has(>a:nth-of-type(5)[aria-current="page"]){--i:4}
+  .barra-baixo:not(:has(>[aria-current="page"]))::before{opacity:0}
+}
+@supports not selector(:has(*)){
+  .barra-baixo a[aria-current="page"]{background:color-mix(in srgb,var(--t-text) 8%,transparent)}
+}
+.tem-barra-baixo{padding-bottom:calc(var(--h-barra) + 24px + var(--sb))}   /* no <body> da página que tem a barra */
+@media (min-width:761px){
+  .barra-baixo:not(.modo-celular *){display:none}
+  .tem-barra-baixo{padding-bottom:0}
+}
+
+/* ---------- 6.14 Barra fixa de candidatar (página da vaga; toma o lugar da barra de baixo) ---------- */
+.barra-candidatar{position:fixed;z-index:var(--z-barra);left:12px;right:12px;bottom:calc(8px + var(--sb));display:flex;align-items:center;gap:12px;
+  padding:7px 7px 7px 16px;background:var(--g-solido);border:1px solid var(--t-edge);border-radius:var(--r-20);box-shadow:var(--e-3n);
+  --t-text-muted:var(--t-text-soft)}
+.barra-candidatar .resumo{flex:1;min-width:0}
+.barra-candidatar .resumo b{display:block;font:600 var(--fs-15)/var(--lh-15) var(--f);font-variant-numeric:tabular-nums;text-wrap:balance}  /* salário nunca é cortado */
+.barra-candidatar .resumo span{display:block;font-size:var(--fs-13);line-height:var(--lh-13);color:var(--t-text-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.barra-candidatar .btn{flex:none;padding-inline:18px;border-radius:var(--r-12)}   /* 20 − 1 − 7 = 12 */
+.tem-barra-candidatar{padding-bottom:calc(80px + var(--sb))}
+@media (min-width:761px){
+  .barra-candidatar:not(.modo-celular *){position:sticky;top:calc(var(--h-topo) + 16px);left:auto;right:auto;bottom:auto;flex-direction:column;
+    align-items:stretch;gap:12px;padding:20px;background:var(--t-surface);border-color:var(--t-border);border-radius:var(--r-16);box-shadow:var(--e-1n);
+    -webkit-backdrop-filter:none;backdrop-filter:none}
+  .tem-barra-candidatar{padding-bottom:0}
+}
+
+/* ---------- 6.15 Folha que sobe (celular) · vira janela no computador ----------
+   use <dialog class="folha"> com showModal(); folha curta (até 1/3 da tela) leva .vidro.denso */
+.folha{position:fixed;z-index:var(--z-folha);inset:auto 8px calc(8px + var(--sb)) 8px;margin:0;padding:0;width:auto;max-width:none;
+  max-height:min(88dvh,760px);display:flex;flex-direction:column;overflow:visible;color:var(--t-text);background:var(--e-bg-4);
+  border:1px solid var(--t-edge);border-radius:var(--r-24);box-shadow:var(--e-4n)}
+dialog.folha:not([open]){display:none}
+.folha::backdrop,.janela::backdrop{background:var(--t-scrim)}
+dialog.folha[open],.folha[data-aberta]{animation:vsc-folha var(--dur-sheet) var(--ease-sheet) both}
+dialog[open]::backdrop{animation:vsc-aparece var(--dur-menu) ease-out both}
+.folha-alca{flex:none;width:36px;height:5px;margin:8px auto 0;border-radius:3px;background:color-mix(in srgb,var(--t-text) 24%,transparent)}  /* decorativa: o × fecha */
+.folha-topo{flex:none;display:flex;align-items:center;gap:8px;min-height:52px;padding:4px 8px 4px 20px;touch-action:none}
+.folha-topo h2{flex:1;min-width:0;font:600 var(--fs-18)/var(--lh-18) var(--f);letter-spacing:0}
+.folha-corpo{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:4px 20px 16px}
+.folha-corpo h3{margin:20px 0 8px;font:600 var(--fs-14)/var(--lh-14) var(--f);color:var(--t-text-soft)}
+.folha-corpo h3:first-child{margin-top:4px}
+.folha-rodape{flex:none;display:flex;gap:8px;padding:12px 16px 16px;border-top:1px solid var(--t-border)}
+.folha-rodape .btn:last-child{flex:1}
+.folha.vidro .folha-rodape{border-top-color:var(--g-borda)}
+@media (min-width:761px){
+  .folha:not(.modo-celular *){inset:0;margin:auto;width:min(520px,calc(100% - 32px));height:fit-content;max-height:min(80dvh,720px);border-radius:var(--r-20)}
+  .folha:not(.modo-celular *) .folha-alca{display:none}
+  dialog.folha[open]:not(.modo-celular *),.folha[data-aberta]:not(.modo-celular *){animation:vsc-janela var(--dur-enter) var(--ease) both}
+}
+
+/* ---------- 6.16 Janela (confirmação curta) ---------- */
+.janela{position:fixed;z-index:var(--z-folha);inset:0;margin:auto;width:min(440px,calc(100% - 32px));height:fit-content;max-height:calc(100dvh - 32px);
+  padding:24px;display:flex;flex-direction:column;gap:8px;overflow:visible;color:var(--t-text);background:var(--e-bg-4);
+  border:1px solid var(--t-edge);border-radius:var(--r-20);box-shadow:var(--e-4n)}
+dialog.janela:not([open]){display:none}
+dialog.janela[open],.janela[data-aberta]{animation:vsc-janela var(--dur-enter) var(--ease) both}
+.janela h2{font:600 var(--fs-18)/var(--lh-18) var(--f);letter-spacing:0}
+.janela p{color:var(--t-text-soft)}
+.janela-acoes{display:flex;flex-wrap:wrap-reverse;justify-content:flex-end;gap:8px;margin-top:16px}
+@media (max-width:480px){.janela-acoes>.btn{flex:1 1 100%}}
+
+/* véu para mostrar folha e janela paradas dentro de uma prévia (o <dialog> usa ::backdrop) */
+.veu{position:absolute;inset:0;z-index:calc(var(--z-folha) - 1);background:var(--t-scrim)}
+
+/* ---------- 6.17 Aviso que some (toast): neutro, com "Desfazer" ---------- */
+.toast{position:fixed;z-index:var(--z-toast);left:0;right:0;bottom:calc(var(--toast-y,16px) + var(--sb));margin-inline:auto;width:max-content;
+  max-width:calc(100% - 32px);display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 6px 6px 14px;background:var(--toast-bg);
+  color:var(--toast-fg);border:1px solid var(--toast-bd);border-radius:var(--r-16);box-shadow:var(--e-3n);font:500 var(--fs-14)/var(--lh-14) var(--f);
+  animation:vsc-toast var(--dur-enter) var(--ease) both}
+.toast>.ic{width:18px;height:18px;vertical-align:0}
+.toast-acao{position:relative;min-height:36px;padding:0 12px;border:0;border-radius:var(--r-10);background:none;color:inherit;font:600 var(--fs-14)/1 var(--f);
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.toast-acao::before{content:"";position:absolute;inset:-4px 0}
+.toast :focus-visible{outline-color:var(--toast-fg)}
+.tem-barra-baixo .toast,.tem-barra-candidatar .toast,.toast.acima-da-barra{--toast-y:calc(var(--h-barra) + 20px)}
+@media (min-width:761px){.toast:not(.modo-celular *){--toast-y:24px}}
+
+/* ---------- 6.18 Vazio ---------- */
+.vazio{display:flex;flex-direction:column;align-items:center;gap:6px;padding:40px 16px 48px;text-align:center}
+.vazio>.ic{width:28px;height:28px;stroke-width:1.5;margin-bottom:6px;color:var(--t-text-muted)}
+.vazio b{font:600 var(--fs-16)/var(--lh-16) var(--f)}
+.vazio p{max-width:40ch;font-size:var(--fs-14);line-height:var(--lh-14);color:var(--t-text-soft)}
+.vazio .btn{margin-top:12px}
+
+/* ---------- 6.19 Esqueleto (aparece só se demorar mais de 300 ms; sem brilho que corre) ---------- */
+.esqueleto{animation:vsc-aparece var(--dur-menu) var(--ease) 300ms backwards}
+.esq{display:block;height:12px;border-radius:6px;background:var(--t-subtle)}
+.esq-vaga{display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:12px;row-gap:10px;padding:16px;min-height:168px;
+  background:var(--t-surface);border:1px solid var(--t-border);border-radius:var(--r-16)}
+.esq-vaga>.esq:first-child{grid-row:1 / span 5;width:44px;height:44px;border-radius:var(--r-12)}
+.esq-vaga>.esq:nth-child(2){height:16px;width:72%}
+.esq-vaga>.esq:nth-child(3){width:54%}
+.esq-vaga>.esq:nth-child(4){height:16px;width:40%;margin-top:6px}
+.esq-vaga>.esq:nth-child(5){height:24px;width:64%;border-radius:var(--r-pill)}
+
+/* ---------- 6.20 Erro na tela (fica junto do que falhou; nunca num aviso que some) ---------- */
+.caixa-erro{display:flex;align-items:flex-start;flex-wrap:wrap;gap:10px 12px;padding:14px 16px;border:1px solid color-mix(in srgb,var(--c-crit-fill) 30%,transparent);
+  border-radius:var(--r-16);background:var(--c-crit-bg);color:var(--t-text)}
+.caixa-erro>.ic{flex:none;width:20px;height:20px;margin-top:1px;color:var(--c-crit-fg)}
+.caixa-erro>div{flex:1 1 200px;min-width:0}
+.caixa-erro b{display:block;font:600 var(--fs-15)/var(--lh-15) var(--f)}
+.caixa-erro p{font-size:var(--fs-14);line-height:var(--lh-14);color:var(--t-text-soft)}
+
+/* ---------- 6.21 Anexar currículo: área de arrastar (computador) ou tocar (celular) ---------- */
+.upload{display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 20px;border:1px dashed var(--t-border-input);
+  border-radius:var(--r-20);background:var(--t-panel);text-align:center;color:var(--t-text-soft);
+  transition:transform var(--dur-hover) var(--ease)}
+.upload>.ic{width:28px;height:28px;stroke-width:1.5;margin-bottom:4px;color:var(--t-text-soft)}
+.upload-titulo{font:600 var(--fs-17)/var(--lh-17) var(--f);color:var(--t-text)}
+.upload-texto{font-size:var(--fs-14);line-height:var(--lh-14)}
+.upload-acoes{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;width:100%;margin-top:8px}
+.upload-dica{font-size:var(--fs-13);line-height:var(--lh-13);color:var(--t-text-muted)}
+.upload[data-arrastando],.upload[data-demo="arrastando"]{background:var(--t-action-soft);border-style:solid;border-color:var(--t-action-line);transform:scale(1.01)}
+.upload label:has(input:focus-visible){outline:2px solid var(--t-focus);outline-offset:2px}
+@media (hover:none),(pointer:coarse){.upload-acoes>*{flex:1 1 100%}}
+
+.arquivos{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0}
+.arquivo{display:flex;align-items:center;gap:12px;padding:12px 8px 12px 12px;border:1px solid var(--t-border);border-radius:var(--r-16);background:var(--t-surface)}
+.arquivo-folha{position:relative;flex:none;width:34px;height:44px;border:1px solid var(--t-border);border-radius:4px 10px 4px 4px;background:#FFFFFF;
+  background-image:linear-gradient(#C9CED6,#C9CED6),linear-gradient(#DDE1E6,#DDE1E6),linear-gradient(#DDE1E6,#DDE1E6),linear-gradient(#DDE1E6,#DDE1E6),linear-gradient(#DDE1E6,#DDE1E6);
+  background-size:14px 3px,22px 2px,22px 2px,18px 2px,22px 2px;background-position:6px 8px,6px 16px,6px 21px,6px 26px,6px 31px;background-repeat:no-repeat;
+  box-shadow:var(--e-1n)}   /* miniatura do papel: o objeto do currículo */
+.arquivo-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.arquivo-nome{font:500 var(--fs-15)/var(--lh-15) var(--f);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arquivo-meta{display:flex;align-items:center;gap:6px;font-size:var(--fs-13);line-height:var(--lh-13);color:var(--t-text-muted);font-variant-numeric:tabular-nums}
+.arquivo-meta .ic{width:14px;height:14px;stroke-width:2;vertical-align:0}
+.arquivo-meta .giro{width:12px;height:12px}
+.arquivo[data-estado="pronto"] .arquivo-meta{color:var(--c-ok-fg)}
+.arquivo[data-estado="erro"]{border-color:color-mix(in srgb,var(--c-crit-fill) 40%,transparent)}
+.arquivo[data-estado="erro"] .arquivo-meta{color:var(--c-crit-fg)}
+.progresso{display:block;height:4px;margin-top:6px;border-radius:2px;background:var(--t-subtle);overflow:hidden}
+.progresso>i{display:block;height:100%;border-radius:inherit;background:var(--t-action-line);transform-origin:left center;
+  transform:scaleX(var(--p,0));transition:transform var(--dur-sheet) var(--ease)}
+
+/* ---------- 6.22 Linha do tempo das etapas (acompanhar a candidatura) ---------- */
+.etapas{display:flex;flex-direction:column;list-style:none;margin:0;padding:0}
+.etapa{position:relative;display:grid;grid-template-columns:28px minmax(0,1fr);column-gap:12px;padding-bottom:20px}
+.etapa:last-child{padding-bottom:0}
+.etapa::before{content:"";position:absolute;left:13px;top:32px;bottom:4px;width:2px;border-radius:1px;background:var(--t-border)}
+.etapa:last-child::before{display:none}
+.etapa-marca{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;border:2px solid var(--t-border-input);background:var(--t-surface);color:var(--t-text-soft)}
+.etapa-marca .ic{width:14px;height:14px;stroke-width:2.4;vertical-align:0}
+.etapa-texto{padding-top:3px;min-width:0}
+.etapa-texto b{display:block;font:600 var(--fs-15)/var(--lh-15) var(--f)}
+.etapa-texto span{display:block;font-size:var(--fs-13);line-height:var(--lh-13);color:var(--t-text-muted);font-variant-numeric:tabular-nums}
+.etapa[data-estado="feito"] .etapa-marca{border-color:var(--c-ok-fill);background:var(--c-ok-fill);color:var(--c-ok-on)}
+.etapa[data-estado="feito"]::before{background:var(--c-ok-fill)}
+.etapa[data-estado="agora"] .etapa-marca{border-color:var(--t-action-line);background:var(--t-action-soft);color:var(--t-action-ink)}
+.etapa[data-estado="depois"] .etapa-texto b{color:var(--t-text-soft);font-weight:500}
+
+/* passos de um formulário ("Passo 2 de 3") */
+.passos{display:flex;flex-direction:column;gap:8px}
+.passos-barras{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px}
+.passos-barras>i{display:block;height:4px;border-radius:2px;background:var(--t-subtle)}
+.passos-barras>i[data-feito]{background:var(--t-action-line)}
+.passos-texto{font:500 var(--fs-13)/var(--lh-13) var(--f);color:var(--t-text-soft);font-variant-numeric:tabular-nums}
+
+/* ---------- 6.23 Quadro da empresa (colunas por etapa; só fatos declarados, nunca nota) ---------- */
+.quadro{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory;overscroll-behavior-x:contain}
+.coluna{flex:0 0 min(300px,86%);display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:var(--r-16);background:var(--t-panel);
+  border:1px solid transparent;scroll-snap-align:start}
+@media (min-width:761px){.quadro{scroll-snap-type:none}.coluna{flex:1 0 220px}}
+.coluna-topo{display:flex;align-items:center;gap:8px;min-height:36px;padding:0 8px}
+.coluna-topo h3{flex:1;font:600 var(--fs-14)/var(--lh-14) var(--f)}
+.coluna-n{font:500 var(--fs-13)/1 var(--f);color:var(--t-text-muted);font-variant-numeric:tabular-nums}
+.coluna-lista{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0;min-height:48px}
+.coluna[data-alvo]{border:1px dashed var(--t-action-line);background:var(--t-action-soft)}
+.cartao-candidato{position:relative;display:flex;flex-direction:column;gap:10px;padding:12px;background:var(--t-surface);border:1px solid var(--t-border);
+  border-radius:var(--r-12);cursor:grab;transition:transform var(--dur-hover) var(--ease)}   /* 16 − 1 − 8 + 1 ≈ 12 */
+.cc-topo{display:flex;align-items:flex-start;gap:10px}
+.cc-nome{flex:1;min-width:0}
+.cc-nome b{display:block;font:600 var(--fs-15)/var(--lh-15) var(--f);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cc-nome small{display:block;font-size:var(--fs-13);line-height:var(--lh-13);color:var(--t-text-muted);font-variant-numeric:tabular-nums}
+.cc-fatos{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0;padding:0}
+.cc-rodape{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--fs-13);line-height:var(--lh-13);color:var(--t-text-soft)}
+.cc-rodape .ic{width:14px;height:14px;stroke-width:2;vertical-align:-2px;margin-right:4px}
+.cartao-candidato>.btn-icone,.cc-topo>.btn-icone{margin:-6px -6px 0 0}
+@media (hover:hover) and (pointer:fine){.cartao-candidato:hover{border-color:var(--t-field-line)}}
+.cartao-candidato:active{cursor:grabbing}
+.cartao-candidato:focus-visible{outline-offset:2px}
+.cartao-candidato[data-arrastando]{transform:scale(1.02);box-shadow:var(--e-4n);cursor:grabbing;border-color:var(--t-field-line)}
+
+/* número do painel da empresa: rótulo, número e com o que compara (sem gráfico enfeite) */
+.indicadores{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))}
+.indicador{display:flex;flex-direction:column;gap:4px;padding:16px 20px;background:var(--t-surface);border:1px solid var(--t-border);border-radius:var(--r-16)}
+.indicador>span{font:500 var(--fs-14)/var(--lh-14) var(--f);color:var(--t-text-soft)}
+.indicador>small{font-size:var(--fs-13);line-height:var(--lh-13);color:var(--t-text-muted);font-variant-numeric:tabular-nums}
+
+/* ---------- 6.24 Tabela simples ---------- */
+.tabela-caixa{overflow-x:auto;border:1px solid var(--t-border);border-radius:var(--r-16);background:var(--t-surface)}
+.tabela{width:100%;border-collapse:separate;border-spacing:0;font-size:var(--fs-14);line-height:var(--lh-14)}
+.tabela th{height:44px;padding:0 16px;text-align:left;vertical-align:middle;background:var(--t-panel);border-bottom:1px solid var(--t-border);
+  font:600 var(--fs-13)/var(--lh-13) var(--f);color:var(--t-text-soft);white-space:nowrap}
+.tabela td{height:56px;padding:8px 16px;vertical-align:middle;border-bottom:1px solid var(--t-border);color:var(--t-text)}
+.tabela tbody tr:last-child td{border-bottom:0}
+.tabela .n{text-align:right;font-variant-numeric:tabular-nums}
+.tabela .data{white-space:nowrap;color:var(--t-text-soft);font-variant-numeric:tabular-nums}
+.tabela .pessoa{display:flex;align-items:center;gap:10px;min-width:180px}
+.tabela .pessoa b{font-weight:600}
+@media (hover:hover) and (pointer:fine){.tabela tbody tr:hover td{background:var(--t-panel)}}
+.tabela tbody tr[aria-selected="true"] td{background:var(--t-action-soft)}
+.ordenar{position:relative;display:inline-flex;align-items:center;gap:4px;min-height:32px;margin:0 -6px;padding:0 6px;border:0;border-radius:var(--r-8);background:none;
+  color:inherit;font:inherit;cursor:pointer}
+.ordenar::before{content:"";position:absolute;inset:-6px 0}
+.ordenar .ic{width:14px;height:14px;stroke-width:2;vertical-align:0;color:var(--t-text-muted);transition:transform var(--dur-hover) var(--ease)}
+th[aria-sort="ascending"] .ordenar .ic{transform:rotate(180deg)}
+th[aria-sort] .ordenar{color:var(--t-text)}
+@media (hover:hover) and (pointer:fine){.ordenar:hover{background:var(--t-hover)}}
+
+/* ---------- 6.25 Faixas (uma por vez no alto da área) ---------- */
+.faixa{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:var(--r-16);background:var(--fx-bg);
+  border:1px solid var(--fx-linha);color:var(--t-text);font-size:var(--fs-14);line-height:var(--lh-14)}
+.faixa>.ic{flex:none;width:18px;height:18px;margin-top:1px;color:var(--fx-fg)}
+.faixa>span,.golpe>span,.caixa-erro>div{flex:1 1 auto;min-width:0}
+.faixa.calmo{--fx-bg:var(--c-calm-bg);--fx-fg:var(--c-calm-fg);--fx-linha:color-mix(in srgb,var(--c-calm-fill) 25%,transparent)}
+.faixa.aviso{--fx-bg:var(--c-warn-bg);--fx-fg:var(--c-warn-fg);--fx-linha:color-mix(in srgb,var(--c-warn-fill) 30%,transparent)}
+.faixa.ok{--fx-bg:var(--c-ok-bg);--fx-fg:var(--c-ok-fg);--fx-linha:color-mix(in srgb,var(--c-ok-fill) 25%,transparent)}
+.faixa.erro{--fx-bg:var(--c-crit-bg);--fx-fg:var(--c-crit-fg);--fx-linha:color-mix(in srgb,var(--c-crit-fill) 30%,transparent)}
+.faixa .link{min-height:0;padding:0;margin-left:auto;font-size:var(--fs-14)}
+
+/* ---------- 6.26 Aviso anti-golpe (frase fixa; discreto, presente em toda vaga e candidatura) ---------- */
+.golpe{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:var(--r-12);background:var(--c-calm-bg);
+  color:var(--t-text-soft);font-size:var(--fs-13);line-height:var(--lh-13)}
+.golpe>.ic{flex:none;width:16px;height:16px;margin-top:1px;color:var(--c-calm-fg)}
+.golpe b{font-weight:600;color:var(--t-text)}
+
+
+/* ==========================================================================
+   7. VIDRO (liquid glass, fosco) · só em camadas que flutuam
+   Onde: barra do topo ao rolar, barra de baixo, barra de candidatar, folha curta, janela.
+   Nunca em cartão, campo, botão, chip, aviso ou formulário; nunca vidro dentro de vidro; até 3 ao mesmo tempo.
+   Desfoque e saturação escritos direto (o Safari erra com var() dentro de backdrop-filter).
+   Sobre o vidro o texto mudo vira o secundário (contraste medido no pior caso).
+   ========================================================================== */
+.vidro{background:var(--g-tinta);border-color:var(--g-borda);border-style:solid;border-width:1px;color:var(--t-text);
+  box-shadow:var(--g-brilho),var(--e-3n);
+  --t-text-muted:var(--t-text-soft);--t-border-input:var(--t-text-soft);--t-focus:var(--t-text);   /* pior caso medido */
+  -webkit-backdrop-filter:blur(14px) saturate(1.5);backdrop-filter:blur(14px) saturate(1.5)}
+.vidro.denso{background:var(--g-tinta-densa);box-shadow:var(--g-brilho),var(--e-4n);
+  -webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5)}
+.topo[data-rolou]{--t-border-input:var(--t-text-soft);--t-focus:var(--t-text)}
+.topo[data-rolou]::before{background:var(--g-tinta);border-bottom-color:var(--g-borda);box-shadow:var(--g-brilho);
+  -webkit-backdrop-filter:blur(14px) saturate(1.5);backdrop-filter:blur(14px) saturate(1.5)}
+@media (max-width:760px){   /* celular: desfoque um pouco menor (mais leve para o aparelho) */
+  .vidro,.topo[data-rolou]::before{-webkit-backdrop-filter:blur(12px) saturate(1.5);backdrop-filter:blur(12px) saturate(1.5)}
+  .vidro.denso{-webkit-backdrop-filter:blur(14px) saturate(1.5);backdrop-filter:blur(14px) saturate(1.5)}
+}
+
+/* volta ao sólido: navegador sem backdrop-filter */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .vidro{background:var(--g-solido);border-color:var(--t-edge)}
+  .vidro.denso{background:var(--g-solido-denso)}
+  .topo[data-rolou]::before{background:var(--g-solido);border-bottom-color:var(--t-border)}
+}
+/* volta ao sólido: efeitos desligados ou vidro desligado pela pessoa */
+:root[data-fx="off"] .vidro,:root[data-vidro="off"] .vidro{background:var(--g-solido);border-color:var(--t-edge);-webkit-backdrop-filter:none;backdrop-filter:none}
+:root[data-fx="off"] .vidro.denso,:root[data-vidro="off"] .vidro.denso{background:var(--g-solido-denso)}
+:root[data-fx="off"] .topo[data-rolou]::before,:root[data-vidro="off"] .topo[data-rolou]::before{background:var(--g-solido);
+  border-bottom-color:var(--t-border);-webkit-backdrop-filter:none;backdrop-filter:none}
+
+
+/* ==========================================================================
+   8. PREFERÊNCIAS DO SISTEMA E DA PESSOA
+   ========================================================================== */
+
+/* reduzir movimento: nada se desloca; troca de cor e borda continuam */
+@media (prefers-reduced-motion:reduce){
+  :root{--fx-press:1;--fx-lift:0px;--fx-sobe:0px;--fx-pop:1}
+  *,*::before,*::after{animation-duration:1ms!important;animation-delay:0s!important;animation-iteration-count:1!important;
+    transition-duration:1ms!important;scroll-behavior:auto!important}
+  .giro{animation:none!important;border-right-color:currentColor;opacity:.5}
+}
+/* efeitos desligados (chave "Efeitos: Reduzidos" -> data-fx="off" no <html>): sem vidro, sem sombra, sem movimento */
+:root[data-fx="off"]{
+  --e-1n:0 0 #0000;--e-2n:0 0 #0000;--e-3n:0 0 #0000;--e-4n:0 0 #0000;--e-btn:0 0 #0000;--e-btn-up:0 0 #0000;--g-brilho:0 0 #0000;
+  --fx-press:1;--fx-lift:0px;--fx-sobe:0px;--fx-pop:1;
+  --dur-press:0ms;--dur-hover:0ms;--dur-menu:0ms;--dur-enter:0ms;--dur-sheet:0ms;--dur-exit:0ms;
+}
+:root[data-fx="off"] *,:root[data-fx="off"] *::before,:root[data-fx="off"] *::after{animation:none!important;transition:none!important}
+:root[data-fx="off"] .giro{border-right-color:currentColor;opacity:.5}
+
+/* menos transparência, mais contraste ou cores forçadas: camadas sólidas */
+@media (prefers-reduced-transparency:reduce),(prefers-contrast:more),(forced-colors:active){
+  .vidro{background:var(--g-solido)!important;border-color:var(--t-edge)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  .vidro.denso{background:var(--g-solido-denso)!important}
+  .topo[data-rolou]::before{background:var(--g-solido)!important;border-bottom-color:var(--t-border)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+}
+@media (prefers-contrast:more){
+  :root{--t-border:var(--t-border-input);--t-field-line:var(--t-border-input);--t-edge:var(--t-border-input);--t-text-muted:var(--t-text-soft)}
+}
+@media (forced-colors:active){
+  .barra-baixo,.barra-candidatar,.folha,.janela,.toast,.vaga,.cartao-candidato,.chip,.etiqueta,.status,.selo{border:1px solid CanvasText}
+  .chip[aria-pressed="true"],.segmentado>button[aria-pressed="true"],.barra-baixo a[aria-current="page"],.vaga[aria-current="true"]{forced-color-adjust:none;background:Highlight;color:HighlightText}
+}
+
+
+/* ==========================================================================
+   9. ESTADOS FORÇADOS (só para a amostra mostrar foco e hover parados)
+   data-demo="hover" | "foco" | "ativo" | "arrastando" · não use em tela de verdade
+   ========================================================================== */
+[data-demo="foco"]:not(.entrada){outline:2px solid var(--t-focus);outline-offset:2px}
+.sprite-oculto{position:absolute;width:0;height:0;overflow:hidden}

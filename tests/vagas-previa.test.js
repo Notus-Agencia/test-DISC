@@ -825,7 +825,7 @@ test('pré-abertura, canal e origem na prévia (20261024120004): as três ligada
   const uru = cidades.find((c) => c.slug === 'uruacu-go');
   assert.deepEqual([niq.preAbertura, niq.aceitaEmpresas, niq.canalWhatsapp], [true, true, null]);
   assert.deepEqual([uru.preAbertura, uru.aceitaEmpresas, uru.canalWhatsapp], [false, true, null], 'Uruaçu sem canal na prévia');
-  // P1: a empresa se cadastra em Niquelândia (lista de espera), a equipe aprova, a vaga passa pela revisão e fica pronta.
+  // P1: a empresa se cadastra em Niquelândia (lista de espera), a equipe aprova e a vaga é publicada na hora (v2: sem revisão antes) e fica pronta.
   await entrar(b, 'empresa@previa.com');
   const emp = (await ok(b.rpc('vagas_empresa_cadastrar', { p_dados: { cnpj: cnpjCom('PVPREAB00001'), razaoSocial: 'Padaria Antecipada (prévia)', cidade: 'niquelandia-go' } }))).empresa;
   await ok(b.conta.sair());
@@ -837,12 +837,7 @@ test('pré-abertura, canal e origem na prévia (20261024120004): as três ligada
     descricao: 'Atendimento no balcão, organização das vitrines e apoio no caixa. Escala 6x1 com folga no domingo.',
     turno: 'comercial', experiencia: 'nao_precisa', escolaridade: 'medio', quantidade: 1, salarioDe: 162100, cidade: 'niquelandia-go' };
   const an = (await ok(b.rpc('vagas_anuncio_salvar', { p_dados: dados }))).anuncio;
-  assert.equal((await ok(b.rpc('vagas_anuncio_publicar', { p_anuncio: an.id }))).emRevisao, true);
-  await ok(b.conta.sair());
-  await entrar(b, 'admin@previa.com');
-  await ok(b.rpc('vagas_op_anuncio_decidir', { p_anuncio: an.id, p_acao: 'publicar', p_motivo: '' }));
-  await ok(b.conta.sair());
-  await entrar(b, 'empresa@previa.com');
+  assert.equal((await ok(b.rpc('vagas_anuncio_publicar', { p_anuncio: an.id }))).emRevisao, false);
   const minha = () => ok(b.rpc('vagas_anuncios_empresa', { p_empresa: emp.id })).then((r) => r.anuncios.find((x) => x.id === an.id));
   const m1 = await minha();
   assert.deepEqual([m1.status, m1.noAr, m1.aguardaAbertura, m1.avisoAbertura], ['publicado', false, true, 'Sua vaga entra no ar no dia em que Niquelândia abrir.']);

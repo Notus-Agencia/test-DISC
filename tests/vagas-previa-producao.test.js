@@ -99,6 +99,7 @@ test('G2: faixa da prévia em toda tela (uma só; a dos testes entra dentro dela
   assert.match(ui, /\n  faixaPrevia\(\);\n\}\)\(/, 'chamada ao carregar o ui.js, em toda página');
   for (const p of fs.readdirSync(path.join(RAIZ, 'vagas')).filter((f) => f.endsWith('.html') && !/^(termos|privacidade)\.html$/.test(f))) {
     const html = ler('vagas/' + p);
+    if (html.indexOf('js/ui.js') < 0) continue;   // telas novas (v2) e redirecionadores não usam o ui.js antigo
     assert.ok(html.indexOf('js/api.js') > 0 && html.indexOf('js/api.js') < html.indexOf('js/ui.js'), p + ': api.js antes do ui.js');
   }
   assert.match(ler('vagas/js/testes-tela.js'), /var geral = doc\.getElementById\('vg-faixa-previa'\);\n\s+if \(geral\) \{[^}]*id: 'vg-faixa-demo'/);

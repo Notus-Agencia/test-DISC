@@ -49,12 +49,11 @@ async function cidadeAtiva(b) {
 test('eu.html e os scripts da área: CSP, ordem dos scripts, nada inline, sem innerHTML/confirm, sem palavra proibida nem cidade fixa', () => {
   assert.deepEqual(TELA.conferirPagina('eu.html'), []);
   for (const s of SCRIPTS) assert.deepEqual(TELA.conferirScript(s), [], s);
+  // Na recriação (v2) eu.html é só um redirecionador para index.html#/curriculo (a área nova é testada em vagas-v2-pessoa*.test.js).
   const html = fs.readFileSync(path.join(RAIZ, 'vagas', 'eu.html'), 'utf8');
   const scripts = [...html.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(scripts.slice(-6), SCRIPTS.slice(0, 1).concat(SCRIPTS.slice(2), ['js/eu.js']), 'telas antes, eu.js por último');
-  for (const base of ['js/ui-area.js', 'js/pecas-pessoa.js', 'js/conversa.js', 'js/textos-conta.js']) assert.ok(scripts.includes(base), base);
-  assert.match(html, /img-src 'self' data: blob: https:\/\/tevpqngqzxcswmticjnr\.supabase\.co/, 'a foto (blob e URL assinada) precisa da CSP (só o projeto)');
-  assert.match(html, /<title>[^<]*\| Vagas sem Caos<\/title>/);
+  assert.deepEqual(scripts, ['js/endereco.js', 'js/v2/pessoa/redirecionar.js']);
+  assert.match(html, /index\.html#\//);
   assert.ok(!/notus|icone\.svg/i.test(html.replace(/comum\/notus\.css/g, '')), 'nada da Notus na tela');
 });
 

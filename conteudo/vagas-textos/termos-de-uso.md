@@ -2,14 +2,14 @@
 
 # Termos de uso · Vagas sem Caos
 
-Versão 1.0 · minuta de 13/10/2026 · uma empresa do grupo Gestão sem Caos [REVISÃO JURÍDICA: confirmar a estrutura societária de "empresa do grupo"]
+Versão 2.0 · minuta de 24/11/2026 · uma empresa do grupo Gestão sem Caos [REVISÃO JURÍDICA: confirmar a estrutura societária de "empresa do grupo"]
 
 ## Resumo em 10 linhas (aparece na tela antes do texto completo)
 
 1. O Vagas sem Caos é um mural de vagas da sua cidade. A Gestão sem Caos mantém o mural. Ela não é agência de emprego.
 2. Concorrer a uma vaga é grátis, sempre. Nunca pague para se candidatar. Se alguém pedir em nosso nome, é golpe.
-3. A empresa publica a vaga. A pessoa diz "Quero" ou "Pular". Quando os dois lados dizem sim, acontece o Combinou e o contato aparece.
-4. Até o Combinou, a empresa vê só um cartão sem nome, sem foto, sem idade e sem nacionalidade.
+3. A empresa publica a vaga e ela vai ao ar na hora, com o selo "Empresa em verificação". A pessoa toca em "Candidatar-me" e a empresa recebe o resumo do currículo. Empresa verificada recebe também nome, arquivo e WhatsApp e pode chamar a pessoa. Empresa em verificação conversa pelo site, e o WhatsApp da pessoa só vai se ela liberar.
+4. Ninguém pede nem mostra foto, idade, sexo, estado civil ou nacionalidade. A ordem de quem se candidata é só por data, sem nota e sem classificar pessoas.
 5. O contrato de trabalho, a entrevista e o pagamento são combinados direto entre a pessoa e a empresa. A plataforma não participa.
 6. A empresa pode pagar por extras (destaque, "urgente hoje", vaga assistida). Sempre paga antes de usar. Nada renova sozinho.
 7. É proibido anunciar com exigência de aparência, idade, sexo, estado civil ou qualquer outra discriminação. A vaga é recusada.
@@ -31,13 +31,13 @@ Versão 1.0 · minuta de 13/10/2026 · uma empresa do grupo Gestão sem Caos [RE
 
 ## 2. Quem pode usar
 
-2.1. **Pessoa que procura trabalho** ("pessoa"): maior de 18 anos, com e-mail próprio. Menores de 18 anos não podem se cadastrar nesta versão, nem como aprendiz.
+2.1. **Pessoa que procura trabalho** ("pessoa"): maior de 18 anos, com e-mail próprio para receber o código de entrada (não há senha). Menores de 18 anos não podem se cadastrar nesta versão, nem como aprendiz.
 
 2.2. **Empresa**: pessoa jurídica com CNPJ ativo, incluindo MEI. A empresa indica uma pessoa responsável, que responde pelo que a empresa faz na plataforma. Pessoa física não pode anunciar nesta versão.
 
 2.3. **Operador local** ("operador"): a Gestão sem Caos ou um parceiro contratado por ela para operar a plataforma em uma cidade. O que o operador pode e não pode fazer está na seção 9.
 
-2.4. Cada pessoa pode ter uma conta só. A conta é pessoal e a senha não pode ser emprestada. Se achar que alguém usou a sua conta, troque a senha e nos avise.
+2.4. Cada pessoa pode ter uma conta só. A conta é pessoal e o código de entrada que chega por e-mail não pode ser emprestado. Se achar que alguém usou a sua conta, saia de todos os aparelhos e nos avise.
 
 ## 3. Concorrer é grátis, sempre
 
@@ -51,15 +51,15 @@ Versão 1.0 · minuta de 13/10/2026 · uma empresa do grupo Gestão sem Caos [RE
 
 ## 4. Como funciona para a pessoa
 
-4.1. A pessoa escolhe até 2 cidades, monta o currículo e, se quiser, faz os testes da função. [REVISÃO PSICOLOGIA] Cada teste é de **conhecimento prático da função** (por exemplo, atendimento, caixa, português), feito online, sem supervisão. O teste mede o que a pessoa sabe hoje do básico da função; não mede inteligência nem personalidade, e não diz nada sobre caráter, potencial ou "perfil". O resultado mostra o que a pessoa acertou naquele teste, naquele dia, com a margem da prova, e nada além disso.
+4.1. A pessoa anexa o currículo (PDF, Word ou foto do papel) ou monta o resumo no próprio site. Os testes de função e o selo ficam fora do ar no lançamento e, quando voltarem, valerão as regras abaixo, sem nota. [REVISÃO PSICOLOGIA] [REVISÃO PSICOLOGIA] Cada teste é de **conhecimento prático da função** (por exemplo, atendimento, caixa, português), feito online, sem supervisão. O teste mede o que a pessoa sabe hoje do básico da função; não mede inteligência nem personalidade, e não diz nada sobre caráter, potencial ou "perfil". O resultado mostra o que a pessoa acertou naquele teste, naquele dia, com a margem da prova, e nada além disso.
 
 4.2. **Selo.** [REVISÃO PSICOLOGIA] Quem faz o teste ganha um selo com o nome do teste, a data, a nota, um código e o aviso "online, sem supervisão". O selo vale 12 meses. O selo não diz se a pessoa "passou" ou não: ele mostra a nota com a margem da prova, e a empresa decide o que fazer com isso, junto com a entrevista e o resto do processo. O selo não confere identidade (a prova online pode ter sido feita com ajuda) e não substitui a entrevista. O teste pode ser refeito de graça depois de 30 dias.
 
-4.3. **Quero / Pular.** A pessoa vê cada vaga e responde "Quero" ou "Pular". "Quero" envia a candidatura: a empresa recebe o cartão cego (seção 6). "Pular" não envia nada.
+4.3. **Candidatar-me.** A pessoa vê a vaga e toca em "Candidatar-me". A candidatura envia à empresa da vaga o resumo do currículo e as respostas às perguntas da vaga; o que mais a empresa recebe depende de ela estar verificada (seção 5). A pessoa também pode "Salvar" a vaga ou escondê-la, sem enviar nada.
 
-4.4. A pessoa pode retirar uma candidatura a qualquer momento, antes do Combinou. Depois do Combinou, ela pode encerrar a conversa e pedir que a empresa não a contate mais.
+4.4. A pessoa pode retirar uma candidatura a qualquer momento ("Retirar candidatura"), o que corta o acesso daquela empresa. Pode também pedir que a empresa não a contate mais.
 
-4.5. **Banco de talentos.** Entrar no banco é separado da candidatura e opcional. A pessoa autoriza, com prazo, que empresas da cidade vejam o seu cartão cego na busca. Ela pode sair quando quiser, na tela "Meus dados".
+4.5. **Currículo visível para empresas da região.** Não existe no lançamento. Quando existir, será opcional, separado da candidatura e revogável a qualquer hora.
 
 4.6. A pessoa se compromete a dar informações verdadeiras sobre a própria experiência, escolaridade e disponibilidade. Dados falsos podem levar à suspensão da conta.
 
@@ -67,13 +67,13 @@ Versão 1.0 · minuta de 13/10/2026 · uma empresa do grupo Gestão sem Caos [RE
 
 ## 5. Como funciona para a empresa
 
-5.1. A empresa cadastra o CNPJ e a pessoa responsável. O operador confere o CNPJ antes de a empresa publicar. As primeiras 3 vagas de cada empresa passam por revisão antes de ir ao ar.
+5.1. A empresa informa o CNPJ e a pessoa responsável. O CNPJ é consultado na hora na base pública da Receita Federal e só empresa com situação ativa publica. A vaga vai ao ar na hora, com o selo "Empresa em verificação"; a equipe confere depois. Enquanto não for verificada (em até 7 dias), a empresa pode ter até 3 vagas no ar, conversa pelo site e a vaga sai do ar com 2 denúncias de contas diferentes. Passados os 7 dias sem verificação, as vagas pausam sozinhas (nada é apagado). [REVISÃO JURÍDICA: responsabilidade da plataforma por vaga publicada antes da verificação]
 
 5.2. **O anúncio** precisa ter: função, modalidade (CLT, temporário, diária, autônomo ou estágio), cidade e zona, turno, e **faixa salarial ou valor da diária**. Anúncio sem valor não é publicado.
 
-5.3. A empresa recebe os cartões por ordem de chegada, sem ordem do melhor para o pior e sem filtro por nota: quem lê e decide é uma pessoa da empresa. No Combinou, a empresa recebe um roteiro de entrevista (20 a 30 minutos, as mesmas perguntas para todo mundo); a plataforma não calcula nota nem ordena. A empresa marca "Quero conversar" ou "Agora não".
+5.3. A empresa vê quem se candidatou por ordem de data, sem ordem do melhor para o pior e sem nota: quem lê e decide é uma pessoa da empresa. Os filtros são só por fatos que a pessoa declarou (bairro, CNH, escolaridade, turno, quanto quer ganhar). Ao marcar uma entrevista, a empresa vê perguntas sugeridas, as mesmas para todo mundo; a plataforma não calcula nota nem ordena. A empresa pode "Não seguir" com quem se candidatou.
 
-5.4. **Combinou.** Quando a empresa marca "Quero conversar" e a pessoa confirma, os dois lados veem nome e contato e a conversa é liberada. Só então a empresa pode ver o currículo completo.
+5.4. **Contato.** Empresa verificada recebe nome, currículo e WhatsApp junto com a candidatura e pode chamar a pessoa no WhatsApp. Empresa em verificação recebe só o primeiro nome e o resumo; o arquivo e o WhatsApp só vão se a pessoa tocar em "Liberar meu WhatsApp" (a empresa tem um limite diário de liberações). Cada abertura de currículo ou contato fica registrada e a pessoa a vê em "Quem viu meu currículo". [REVISÃO JURÍDICA: base legal do envio do contato junto com a candidatura (LGPD, art. 7º, V)]
 
 5.5. A empresa se compromete a usar os dados da pessoa **só para preencher a vaga anunciada** e a apagá-los quando o processo terminar. Guardar, repassar, vender, usar para marketing ou para outra finalidade é proibido (LGPD, art. 6º, I a III).
 
@@ -85,7 +85,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma empresa do grupo Gestão sem Caos [RE
 
 ## 6. Cartão cego e vaga confidencial
 
-6.1. **Cartão cego.** Até o Combinou, a empresa vê só: zona da cidade, experiência (função e tempo), escolaridade, turnos, CNH, pretensão salarial e selos (testes de conhecimento prático da função). **Não vê** nome, foto, idade, gênero, estado civil, nacionalidade, endereço nem contato. A foto é opcional e só aparece depois do Combinou (seção 4.7); os outros campos nem existem na plataforma (seção 8).
+6.1. **Resumo do currículo.** O resumo mostra só fatos declarados pela pessoa: bairro, experiência (função e tempo), escolaridade, cursos, turnos, CNH e quanto quer ganhar (opcional). Os campos de idade, gênero, estado civil, nacionalidade e foto nem existem na plataforma (seção 8). A leitura do arquivo anexado descarta data de nascimento, idade, estado civil, foto, CPF e RG, e nunca avalia a pessoa.
 
 6.2. **Vaga confidencial.** A empresa pode publicar sem mostrar o nome. Regras:
 - só empresa com CNPJ conferido pelo operador;
@@ -103,7 +103,7 @@ Versão 1.0 · minuta de 13/10/2026 · uma empresa do grupo Gestão sem Caos [RE
 
 ## 7. Mensagens pela plataforma
 
-7.1. [REVISÃO JURÍDICA] Antes do Combinou, pessoa e empresa conversam só pela plataforma, sem número de telefone. Quando a pessoa toca em Combinou, a empresa passa a ver o nome, o WhatsApp e o e-mail da pessoa (e a foto, se ela enviou) e a pessoa passa a ver o nome, o WhatsApp e o e-mail da empresa. Depois, a pessoa pode cortar o acesso a qualquer hora, em "Quem viu meu contato": a empresa deixa de ver o contato e a conversa é encerrada.
+7.1. [REVISÃO JURÍDICA] Com empresa em verificação, pessoa e empresa conversam só pela plataforma, sem número de telefone, até a pessoa liberar o WhatsApp. Com empresa verificada, a conversa pode seguir direto pelo WhatsApp. A pessoa pode cortar o acesso a qualquer hora, retirando a candidatura.
 
 7.2. **É bloqueado** na conversa: pedir dinheiro, Pix, transferência, boleto, pagamento de "taxa" ou "material"; pedir foto ou cópia de documento (CPF, RG, CNH, comprovante), senha ou código de confirmação; enviar link encurtado. A mensagem não é entregue e o sistema avisa quem escreveu.
 

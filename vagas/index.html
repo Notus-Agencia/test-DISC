@@ -2,53 +2,103 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://tevpqngqzxcswmticjnr.supabase.co; font-src 'self'; connect-src 'self' https://tevpqngqzxcswmticjnr.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Vagas sem Caos</title>
-  <meta name="description" content="Vagas sem Caos: vagas de emprego de empresas da sua cidade, conferidas uma a uma. Uma empresa do grupo Gestão sem Caos.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://challenges.cloudflare.com; style-src 'self'; font-src 'self'; img-src 'self' data: blob: https://tevpqngqzxcswmticjnr.supabase.co; connect-src 'self' https://tevpqngqzxcswmticjnr.supabase.co https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta name="robots" content="noindex">
-  <meta name="color-scheme" content="light">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="vsc-previa" content="pessoa">
+  <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#13283f">
+  <meta name="description" content="Vagas de emprego da sua cidade, com salário e empresa à vista. Candidatar-se é grátis, sempre. Uma empresa do grupo Gestão sem Caos.">
+  <title>Vagas sem Caos</title>
   <script src="js/endereco.js"></script>
-  <script src="js/beta.js"></script>
-  <link rel="stylesheet" href="assets/vagas-beta.css">
   <link rel="icon" type="image/svg+xml" href="comum/marca/gsc-favicon.svg">
   <link rel="icon" type="image/png" sizes="32x32" href="comum/marca/gsc-favicon-32.png">
   <link rel="apple-touch-icon" href="comum/marca/gsc-apple-touch-icon.png">
   <link rel="preload" href="comum/fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="comum/notus.css">
-  <link rel="stylesheet" href="assets/vagas.css">
+  <link rel="stylesheet" href="assets/v2/sistema.css">
+  <link rel="stylesheet" href="assets/v2/pessoa.css">
+  <script src="js/v2/pessoa/tema.js"></script>
 </head>
-<body class="vg-espera">
+<body>
   <a class="pular" href="#app">Pular para o conteúdo</a>
-  <header class="vg-espera__topo vidro-cabecalho">
-    <div class="vg-espera__envoltorio vg-espera__marca">
-      <img class="logo-gsc" src="comum/marca/vsc-logo.svg" alt="Vagas sem Caos" width="187" height="28">
+  <div id="faixa-previa"></div>
+  <div id="sentinela" class="sentinela" aria-hidden="true"></div>
+  <header class="topo" id="topo">
+    <div class="topo-in pagina">
+      <a class="logo" id="topo-logo" href="#/" aria-label="Vagas sem Caos, início">
+        <img class="so-claro" src="comum/marca/vsc-logo.svg" alt="" width="187" height="28">
+        <img class="so-escuro" src="comum/marca/vsc-logo-negativo.svg" alt="" width="187" height="28">
+      </a>
+      <div class="topo-meio" id="topo-meio"></div>
+      <nav class="topo-nav" id="topo-nav" aria-label="Principal">
+        <a href="#/" data-nav="vagas">Vagas</a>
+        <a href="#/salvas" data-nav="salvas">Salvas</a>
+        <a href="#/candidaturas" data-nav="candidaturas">Candidaturas <span class="contador" data-contador hidden></span></a>
+        <a href="#/eu" data-nav="perfil">Perfil</a>
+      </nav>
+      <div class="topo-acoes" id="topo-acoes"></div>
     </div>
+    <div class="topo-extra pagina" id="topo-extra" hidden></div>
   </header>
-  <main id="app" class="vg-espera__envoltorio vg-espera__principal" tabindex="-1">
-    <p class="sobretitulo">Vagas sem Caos</p>
-    <h1 class="vg-espera__titulo" id="vg-titulo" tabindex="-1">Vagas de emprego daqui, sem caos.</h1>
-    <p class="vg-espera__texto">Empresas daqui, conferidas uma a uma. Candidatar-se é grátis, sempre.</p>
-    <section class="caixa vg-espera__caixa" id="vg-preparando" aria-labelledby="vg-espera-breve">
-      <h2 id="vg-espera-breve" class="caixa__titulo">Estamos preparando o site</h2>
-      <p class="texto-suave">Em breve, as vagas da sua cidade vão aparecer aqui.</p>
-    </section>
-    <section class="caixa vg-espera__caixa" id="vg-cidades" aria-live="polite"></section>
-    <p class="aviso vg-espera__golpe" role="note"><strong>Nunca pague para se candidatar.</strong> Se alguém pedir em nosso nome, é golpe.</p>
-  </main>
-  <footer class="vg-espera__rodape">
-    <div class="vg-espera__envoltorio">
-      <p class="vg-grupo">Uma empresa do grupo <img class="logo-gsc" src="comum/marca/gsc-logo.svg" alt="Gestão sem Caos" width="142" height="20"></p>
-      <p><a href="termos.html">Termos de uso</a> · <a href="privacidade.html">Aviso de privacidade</a></p>
+  <main id="app" tabindex="-1">
+    <div class="pagina estreita">
+      <noscript>
+        <div class="estado-tela">
+          <h1>Vagas sem Caos</h1>
+          <p>Para ver as vagas e se candidatar, este site precisa de JavaScript. Ligue o JavaScript no navegador e atualize a página.</p>
+          <p class="mt12">Nunca pague para se candidatar. Se alguém pedir dinheiro, Pix ou documento em nome do Vagas sem Caos, é golpe.</p>
+          <p class="mt12"><a href="termos.html">Termos de uso</a> · <a href="privacidade.html">Aviso de privacidade</a></p>
+        </div>
+      </noscript>
     </div>
+  </main>
+  <footer class="rodape" id="rodape" hidden>
+    <div class="pagina rodape-grade">
+      <div>
+        <nav class="rodape-links" aria-label="Mais informações">
+          <a href="#/como-funciona">Como funciona</a>
+          <a href="empresas.html">Anunciar vaga grátis</a>
+          <a href="termos.html">Termos de uso</a>
+          <a href="privacidade.html">Aviso de privacidade</a>
+        </nav>
+        <p class="rodape-ajuda" id="rodape-ajuda"></p>
+      </div>
+      <div class="rodape-prefs">
+        <div><span class="rotulo" id="rot-tema-r">Tema</span>
+          <div class="segmentado" role="group" aria-labelledby="rot-tema-r" data-grupo="tema">
+            <button type="button" data-valor="auto">Automático</button><button type="button" data-valor="light">Claro</button><button type="button" data-valor="dark">Escuro</button>
+          </div>
+        </div>
+        <div><span class="rotulo" id="rot-fx-r">Efeitos</span>
+          <div class="segmentado" role="group" aria-labelledby="rot-fx-r" data-grupo="efeitos">
+            <button type="button" data-valor="auto">Automático</button><button type="button" data-valor="on">Completos</button><button type="button" data-valor="off">Reduzidos</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pagina"><p class="endosso"><span>Uma empresa do grupo</span>
+      <img class="so-claro" src="comum/marca/gsc-logo.svg" alt="Gestão sem Caos" width="142" height="20">
+      <img class="so-escuro" src="comum/marca/gsc-logo-negativo.svg" alt="" width="142" height="20"></p></div>
   </footer>
-  <p id="aviso" class="visualmente-oculto" role="status" aria-live="polite"></p>
+  <nav class="barra-baixo vidro" id="barra-baixo" aria-label="Minha área" hidden>
+    <a href="#/" data-nav="vagas"><svg class="ic" aria-hidden="true"><use href="#i-busca"/></svg><span>Vagas</span></a>
+    <a href="#/salvas" data-nav="salvas"><svg class="ic" aria-hidden="true"><use href="#i-coracao"/></svg><span>Salvas</span></a>
+    <a href="#/candidaturas" data-nav="candidaturas"><svg class="ic" aria-hidden="true"><use href="#i-maleta"/></svg><span>Candidaturas</span><span class="contador" data-contador hidden></span></a>
+    <a href="#/eu" data-nav="perfil"><svg class="ic" aria-hidden="true"><use href="#i-usuario"/></svg><span>Perfil</span></a>
+  </nav>
+  <div id="anuncio" class="sr" role="status" aria-live="polite"></div>
   <script src="js/config.js"></script>
-  <script src="js/regras.js"></script>
-  <script src="js/textos.js"></script>
+  <script src="js/v2/contrato.js"></script>
   <script src="js/api.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/inicio.js"></script>
+  <script src="js/v2/api-v2.js"></script>
+  <script src="js/v2/icones.js"></script>
+  <script src="js/v2/pessoa/nucleo.js"></script>
+  <script src="js/v2/pessoa/busca.js"></script>
+  <script src="js/v2/pessoa/pecas.js"></script>
+  <script src="js/v2/pessoa/folhas.js"></script>
+  <script src="js/v2/pessoa/conta.js"></script>
+  <script src="js/v2/pessoa/telas-vagas.js"></script>
+  <script src="js/v2/pessoa/rotas.js"></script>
+  <script src="js/v2/pessoa/partida.js"></script>
 </body>
 </html>

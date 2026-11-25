@@ -34,18 +34,23 @@ test('a chave guardada não começa com vg. (o "Sair" do site não apaga a liber
   assert.doesNotMatch(B.CHAVE, /^vg\./);
 });
 
-test('toda página do site de vagas carrega a porta da beta no <head>, depois de endereco.js', () => {
+test('toda página do site de vagas carrega o redirecionador de endereço no <head>; onde a porta da beta existe, vem depois dele', () => {
   const pasta = path.join(__dirname, '..', 'vagas');
   const paginas = fs.readdirSync(pasta).filter((f) => f.endsWith('.html'));
   assert.ok(paginas.length >= 10);
   for (const p of paginas) {
     const html = fs.readFileSync(path.join(pasta, p), 'utf8');
     const head = html.slice(0, html.indexOf('</head>'));
-    assert.match(head, /<link rel="stylesheet" href="assets\/vagas-beta\.css">/, p);
     const iEndereco = head.indexOf('<script src="js/endereco.js"></script>');
+    assert.ok(iEndereco >= 0, `${p}: endereco.js no <head>`);
+    // Na recriação (v2) a beta fechada saiu das telas novas: CODIGO_SHA256 vazio = aberto ao público. As telas antigas que ainda a carregam mantêm a ordem.
     const iBeta = head.indexOf('<script src="js/beta.js"></script>');
-    assert.ok(iEndereco >= 0 && iBeta > iEndereco, `${p}: beta.js no <head>, depois de endereco.js`);
+    if (iBeta >= 0) {
+      assert.ok(iBeta > iEndereco, `${p}: beta.js depois de endereco.js`);
+      assert.match(head, /<link rel="stylesheet" href="assets\/vagas-beta\.css">/, p);
+    }
   }
+  assert.equal(require('../vagas/js/beta.js').CODIGO_SHA256, '', 'sem código de acesso: site aberto ao público');
 });
 
 test('enquanto a beta mora em disc.gestaosemcaos.com.br/vagas/, o GitHub Pages publica a pasta vagas/', () => {

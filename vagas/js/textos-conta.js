@@ -51,9 +51,13 @@
   "bico_prazo": "A diária fica no ar de 48 horas a 7 dias.",
   "bico_um_toque": "Diária não pede teste: é só tocar em \"Quero\". Se combinar, o contato aparece para os dois.",
   "bico_so_cnpj": "Nesta versão, só empresa ou MEI pode anunciar diária. Contratante pessoa física entra em breve.",
+  "cidade_lista_espera": "O Vagas sem Caos ainda não chegou em {{cidade}}. Deixe seu e-mail e avisamos quando abrir. {{total}} pessoas já estão na lista.",
+  "cidade_lista_espera_ok": "Pronto! Avisamos por e-mail quando {{cidade}} abrir.",
+  "cidade_pausada": "O mural de {{cidade}} está pausado por enquanto. Suas candidaturas e seus selos continuam guardados. Avisamos por e-mail quando voltar.",
   "cidade_entorno": "Vagas de {{cidade}} e cidades vizinhas ({{vizinhas}}).",
   "mural_vazio": "Ainda não há vagas de {{funcao}} em {{cidade}}. Deixe o alerta ligado: avisamos quando aparecer.",
   "mural_vazio_empresa": "Ainda sem candidaturas. As pessoas estão vendo a vaga. Se quiser, compartilhe o link curto no WhatsApp.",
+  "sem_internet": "Sem internet agora. O que você fez ficou salvo neste aparelho e é enviado quando a conexão voltar.",
   "sessao_expirada": "Sua sessão venceu. Entre de novo para continuar. Nada do que você fez se perdeu.",
   "confirme_email": "Confirme seu e-mail para continuar. Mandamos um link para {{email}}. Não chegou? Veja o spam ou peça outro.",
   "conta_pendente_assistida": "Conta iniciada no mutirão. Ela só vale depois que você confirmar pelo link do e-mail.",
@@ -109,7 +113,8 @@
   "empresa_so_recusar_em_analise": "Só dá para recusar uma empresa em análise.",
   "empresa_saiu": "A empresa saiu da plataforma.",
   "empresa_saiu_conversa": "A empresa saiu da plataforma. Esta conversa foi encerrada.",
-  "empresa_suspensa_contato": "Esta empresa está suspensa. Fale com a Gestão sem Caos."
+  "empresa_suspensa_contato": "Esta empresa está suspensa. Fale com a Gestão sem Caos.",
+  "cidade_lista_espera_vazia": "O Vagas sem Caos ainda não chegou em {{cidade}}. Entre na lista e avisamos quando chegar."
  },
  "anuncio": {
   "titulo_erro": "O anúncio precisa de ajuste antes de ir ao ar",
