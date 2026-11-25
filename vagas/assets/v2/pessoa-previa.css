@@ -1,0 +1,21 @@
+/* Vagas sem Caos v2 · peças que só existem na DEMONSTRAÇÃO (faixa, código de exemplo, ajustes). Carregado só no modo prévia. */
+/* faixa da demonstração (1 linha, neutro frio) */
+.faixa-demo{display:flex;align-items:center;justify-content:center;gap:4px 10px;flex-wrap:wrap;min-height:36px;padding:3px max(16px,env(safe-area-inset-right,0px)) 3px max(16px,env(safe-area-inset-left,0px));
+  padding-top:calc(3px + env(safe-area-inset-top,0px));background:var(--c-calm-bg);color:var(--c-calm-fg);font:500 var(--fs-13)/var(--lh-13) var(--f);text-align:center}
+.faixa-demo .ic{width:14px;height:14px;stroke-width:2;vertical-align:-2px;margin-right:4px}
+.faixa-demo button{position:relative;min-height:30px;padding:0 10px;border:1px solid color-mix(in srgb,var(--c-calm-fill) 40%,transparent);border-radius:var(--r-pill);
+  background:transparent;color:var(--c-calm-fg);font:600 var(--fs-13)/1 var(--f);cursor:pointer}
+.faixa-demo button::before{content:"";position:absolute;inset:-7px 0}
+.faixa-demo button{display:inline-flex;align-items:center;gap:6px}
+.faixa-demo button .ic{margin:0}
+@media (max-width:760px){.faixa-demo{flex-wrap:nowrap;justify-content:space-between;text-align:left;font-size:var(--fs-12);line-height:var(--lh-12)}.faixa-demo button{flex:none;width:32px;height:32px;min-height:32px;padding:0;justify-content:center;border-radius:50%}.faixa-demo button::before{inset:-6px}.faixa-rot{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
+@media (hover:hover) and (pointer:fine){.faixa-demo button:hover{background:color-mix(in srgb,var(--c-calm-fill) 14%,transparent)}}
+.codigo-exemplo{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:8px 12px;border-radius:var(--r-12);background:var(--c-calm-bg);color:var(--c-calm-fg);font:500 var(--fs-14)/var(--lh-14) var(--f)}
+.codigo-exemplo b{color:var(--t-text);font-variant-numeric:tabular-nums;letter-spacing:.06em}
+.demo-exemplo{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 8px;margin-top:16px;padding-top:12px;border-top:1px dashed var(--t-border)}
+/* ajustes: decisões do dono */
+.decidir{display:flex;flex-direction:column;gap:14px;margin:0;padding-left:20px}
+.decidir li{font-size:var(--fs-14);line-height:var(--lh-14);color:var(--t-text)}
+.decidir li::marker{color:var(--t-text-muted);font-weight:600}
+.decidir li>b{display:block;margin-bottom:2px}
+.decidir .segmentado>button{font-size:var(--fs-13)}
