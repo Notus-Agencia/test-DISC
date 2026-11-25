@@ -462,13 +462,11 @@ test('lista vazia da cidade: texto bom e botão "Avisar quando tiver vaga em <ci
   await expect(page.locator('#folha-alerta')).toBeVisible();
 });
 
-test('telas antigas redirecionam: cidade.html, vaga.html, entrar.html, eu.html e emprego.html', async ({ page }) => {
+test('telas antigas redirecionam: cidade.html, vaga.html, eu.html e emprego.html', async ({ page }) => {
   await page.goto('/vagas/cidade.html?cidade=uruacu-go&previa=1');
   await page.waitForURL(/index\.html\?cidade=uruacu-go.*#\/vagas/);
   await page.goto('/vagas/vaga.html?c=v01');
   await page.waitForURL(/index\.html#\/vaga\/v01/);
-  await page.goto('/vagas/entrar.html');
-  await page.waitForURL(/index\.html#\/entrar/);
   await page.goto('/vagas/eu.html#curriculo');
   await page.waitForURL(/index\.html#\/curriculo/);
   await page.goto('/vagas/emprego.html');

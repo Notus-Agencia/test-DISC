@@ -12,7 +12,7 @@ function coletar(page) {
   return erros;
 }
 async function entrarComo(page, email, rota) {
-  await page.goto(BASE + 'entrar.html');
+  await page.goto(BASE + 'entrar.html?previa=1');
   await page.evaluate((em) => window.VAGAS_API.entrar(em, 'previa123'), email);
   await page.goto(BASE + 'operador.html#' + (rota || 'fila'));
 }
@@ -108,7 +108,7 @@ test.describe('Operação da praça (prévia)', () => {
 
   test('denúncias: chega só o conteúdo, nunca quem denunciou; improcedente e procedente (tira a vaga do ar)', async ({ page }) => {
     const erros = coletar(page);
-    await page.goto(BASE + 'entrar.html');
+    await page.goto(BASE + 'entrar.html?previa=1');
     const ids = await page.evaluate(async () => {
       const A = window.VAGAS_API;
       const op = await A.entrar('operador@previa.com', 'previa123');
@@ -217,7 +217,7 @@ test.describe('Operação da praça (prévia)', () => {
 
   test('empresa sem pessoa dona: o operador só nomeia quando não há dona (o banco responde); a equipe nomeia alguém da equipe, com motivo', async ({ page }) => {
     const erros = coletar(page);
-    await page.goto(BASE + 'entrar.html');
+    await page.goto(BASE + 'entrar.html?previa=1');
     // Uma empresa com equipe: a da conta de recrutadora da prévia (pelo dado, sem nome fixo).
     const emp = await page.evaluate(async () => {
       const A = window.VAGAS_API;
@@ -366,7 +366,7 @@ test.describe('Operação da praça (prévia)', () => {
   });
 
   test('guarda de conta: sem login vai para o entrar; conta de pessoa não opera; a equipe escolhe entre todas as cidades', async ({ page }) => {
-    await page.goto(BASE + 'operador.html#boletim');
+    await page.goto(BASE + 'operador.html?previa=1#boletim');
     await page.waitForURL(/entrar\.html\?.*voltar=operador\.html/);
     await page.evaluate(() => window.VAGAS_API.entrar('pessoa@previa.com', 'previa123'));
     await page.goto(BASE + 'operador.html');
