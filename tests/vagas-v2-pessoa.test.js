@@ -16,7 +16,8 @@ const CANONICA = "default-src 'self'; script-src 'self' https://cdnjs.cloudflare
 const PASTA_JS = path.join(VAGAS, 'js', 'v2', 'pessoa');
 const ARQUIVOS_JS = fs.readdirSync(PASTA_JS).filter((f) => f.endsWith('.js')).map((f) => 'js/v2/pessoa/' + f).concat(['js/v2/previa/pessoa.js']);
 const HTML = lerArq('index.html');
-const REDIRECIONADORES = ['cidade.html', 'vaga.html', 'entrar.html', 'eu.html', 'emprego.html'];
+// entrar.html (e-mail e senha) NÃO é redirecionador: continua só para a equipe/operador e contas antigas; as telas novas entram por #/entrar.
+const REDIRECIONADORES = ['cidade.html', 'vaga.html', 'eu.html', 'emprego.html'];
 
 function metaCsp(html) { const m = /<meta http-equiv="Content-Security-Policy" content="([^"]*)"/.exec(html); return m ? m[1] : null; }
 
