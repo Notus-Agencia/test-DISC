@@ -14,9 +14,9 @@ const ler = (rel) => fs.readFileSync(path.join(VAGAS, rel), 'utf8');
 test('index.html: marca Vagas sem Caos com endosso da Gestão sem Caos, nada de Notus em tela, frase anti-golpe, só arquivos do próprio site', () => {
   const html = ler('index.html');
   assert.match(html, /<html lang="pt-BR">/);
-  assert.match(html, /<header[^]*src="comum\/marca\/vsc-logo\.svg" alt="Vagas sem Caos"[^]*<\/header>/);
-  assert.match(html, /<footer[^]*Uma empresa do grupo <img class="logo-gsc" src="comum\/marca\/gsc-logo\.svg" alt="Gestão sem Caos" width="142" height="20">[^]*<\/footer>/);
-  assert.match(html, /Nunca pague para se candidatar\.<\/strong> Se alguém pedir em nosso nome, é golpe\./);
+  assert.match(html, /<header[^]*aria-label="Vagas sem Caos, início"[^]*src="comum\/marca\/vsc-logo\.svg"[^]*<\/header>/);
+  assert.match(html, /<footer[^]*Uma empresa do grupo<\/span>\s*<img class="so-claro" src="comum\/marca\/gsc-logo\.svg" alt="Gestão sem Caos" width="142" height="20">[^]*<\/footer>/);
+  assert.match(html, /Nunca pague para se candidatar\. Se alguém pedir dinheiro, Pix ou documento em nome do Vagas sem Caos, é golpe\./);
   const visivel = html.replace(/<link[^>]*>/g, '').replace(/<script[^>]*><\/script>/g, '');
   assert.ok(!/notus/i.test(visivel), 'nenhum "Notus" em texto da página');
   assert.ok(!html.includes('icone.svg'), 'a estrela da Notus não aparece em tela pública');
@@ -32,11 +32,12 @@ test('index.html: CSP fechada, sem script inline, redirecionamento antes de tudo
   assert.ok(m);
   const dir = {};
   m[1].split(';').map((x) => x.trim()).filter(Boolean).forEach((x) => { const p = x.split(/\s+/); dir[p[0]] = p.slice(1); });
-  assert.deepEqual(dir['script-src'], ["'self'"]);
+  // pdf.js e mammoth (leitura do currículo no aparelho) vêm do cdnjs, sob demanda, com SRI; o Turnstile é opcional.
+  assert.deepEqual(dir['script-src'], ["'self'", 'https://cdnjs.cloudflare.com', 'https://challenges.cloudflare.com']);
   assert.deepEqual(dir['object-src'], ["'none'"]);
   // No modo supabase a tela fala com o projeto (fetch) e mostra a foto assinada (img): a meta libera só o projeto exato (o mesmo
   // do _headers), nunca qualquer *.supabase.co (onde a meta é a única CSP: cópia do GitHub Pages e servidor local).
-  assert.deepEqual(dir['connect-src'], ["'self'", 'https://tevpqngqzxcswmticjnr.supabase.co']);
+  assert.deepEqual(dir['connect-src'], ["'self'", 'https://tevpqngqzxcswmticjnr.supabase.co', 'https://cdnjs.cloudflare.com']);
   assert.ok(dir['img-src'].includes('https://tevpqngqzxcswmticjnr.supabase.co') && dir['img-src'].includes('blob:'));
   assert.equal([...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>/g)].length, 0, 'sem <script> inline');
   assert.ok(!/\son[a-z]+=/.test(html), 'sem atributos on*');

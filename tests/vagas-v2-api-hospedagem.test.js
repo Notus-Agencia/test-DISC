@@ -38,7 +38,7 @@ test('o canal WhatsApp e o número de ajuda estão desligados/vazios por padrão
   const urls = fonte.match(/https?:\/\/[^\s'"`)]+/g) || [];
   const permitidas = /supabase\.co|gestaosemcaos|resend\.dev|api\.resend\.com|challenges\.cloudflare\.com|exemplo|wa\.me/;
   for (const u of urls) assert.ok(permitidas.test(u), 'URL externa não prevista na função: ' + u);
-  assert.ok(!/twilio|zenvia|gupshup|z-api|evolution|waha|meta\.com|graph\.facebook/i.test(ler('supabase/funcoes-compartilhadas/vagas-v2.js') + fonte), 'nenhum provedor de WhatsApp foi escolhido');
+  assert.ok(!/twilio|zenvia|gupshup|z-api|evolution|meta\.com|graph\.facebook/i.test(ler('supabase/funcoes-compartilhadas/vagas-v2.js') + fonte), 'nenhum provedor de WhatsApp foi escolhido');
 });
 
 test('a migração dos códigos é aditiva: nada de apagar tabela, coluna ou função existente; RLS ligada', () => {

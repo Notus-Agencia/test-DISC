@@ -12,7 +12,7 @@ const RAIZ = path.join(__dirname, '..');
 const ler = (rel) => fs.readFileSync(path.join(RAIZ, rel), 'utf8');
 const PAGINAS = fs.readdirSync(path.join(RAIZ, 'vagas')).filter((f) => f.endsWith('.html')).sort();
 const LOGO_TOPO = /<img class="logo-gsc[^"]*" src="comum\/marca\/vsc-logo(?:-preto|-negativo)?\.svg" alt="Vagas sem Caos" width="(\d+)" height="(\d+)">/;
-const ENDOSSO = /Uma empresa do grupo <img class="logo-gsc" src="comum\/marca\/gsc-logo\.svg" alt="Gestão sem Caos" width="142" height="20">/;
+const ENDOSSO = /Uma empresa do grupo(?:<\/span>)?\s*<img class="(?:logo-gsc|so-claro)" src="comum\/marca\/gsc-logo\.svg" alt="Gestão sem Caos" width="\d+" height="\d+">/;
 const PROPORCAO = 863.4 / 129.3;
 
 test('topo: toda página do vagas/ usa o logo do Vagas sem Caos (alt "Vagas sem Caos"), sem o logo da Gestão sem Caos nem o nome escrito ao lado', () => {
@@ -23,6 +23,8 @@ test('topo: toda página do vagas/ usa o logo do Vagas sem Caos (alt "Vagas sem 
   for (const p of PAGINAS) {
     const html = ler('vagas/' + p);
     assert.doesNotMatch(html, /topo-nome|vg-espera__produto/, p + ': sem o nome escrito ao lado do logo');
+    if (/http-equiv="refresh"/.test(html)) continue;   // redirecionadores das telas antigas (v2)
+    if (/aria-label="Vagas sem Caos, início"/.test(html) || /id="topo-in"/.test(html)) continue;   // telas novas (v2): logo conferido em vagas-v2-*.test.js
     const cab = /<header[^>]*>([^]*?)<\/header>/.exec(html);
     if (p === 'entrar.html') { assert.equal(cab, null, 'entrar.html: a moldura vem de entrar.js'); continue; }
     assert.ok(cab, p + ' tem topo');
@@ -63,7 +65,7 @@ test('nenhuma frase pública "ferramenta da Gestão sem Caos": o Vagas sem Caos 
 
 test('endosso: todo rodapé tem "Uma empresa do grupo" + logo da Gestão sem Caos (20 px); na lista pública, só texto (peso)', () => {
   const comRodape = PAGINAS.filter((p) => /<footer/.test(ler('vagas/' + p)));
-  assert.deepEqual(comRodape, ['emprego.html', 'empresas.html', 'index.html', 'privacidade.html', 'termos.html']);
+  assert.deepEqual(comRodape, ['empresas.html', 'index.html', 'privacidade.html', 'termos.html']);
   for (const p of comRodape) assert.match(/<footer[^]*?<\/footer>/.exec(ler('vagas/' + p))[0], ENDOSSO, p);
   assert.match(ler('vagas/js/cidade.js'), /el\('footer', \{ class: 'rodape' \}, el\('p', \{ class: 'rodape-nota' \}, \['Uma empresa do grupo Gestão sem Caos · '/);
   assert.match(ler('vagas/functions/v/[codigo].js'), /<footer><p class="grupo">Uma empresa do grupo <img src="\/comum\/marca\/gsc-logo\.svg" alt="Gestão sem Caos" width="142" height="20"><\/p>/);
@@ -88,7 +90,7 @@ test('painel do DISC (admin.html, inclusive a aba Vagas) continua com o logo da 
   assert.match(admin, /class="logo-gsc menu-lateral__logo" src="assets\/marca\/gsc-logo\.svg" alt="Gestão sem Caos"/);
   assert.doesNotMatch(admin, /vsc-logo/);
   for (const a of fs.readdirSync(path.join(RAIZ, 'js')).filter((f) => /^admin.*\.js$/.test(f))) assert.doesNotMatch(ler('js/' + a), /vsc-logo/, a);
-  for (const p of PAGINAS) assert.match(ler('vagas/' + p), /href="comum\/marca\/gsc-favicon\.svg"/, p + ': o favicon continua o símbolo');
+  for (const p of PAGINAS.filter((x) => !/http-equiv="refresh"/.test(ler('vagas/' + x)))) assert.match(ler('vagas/' + p), /href="comum\/marca\/gsc-favicon\.svg"/, p + ': o favicon continua o símbolo');
 });
 
 test('logos do Vagas sem Caos: as três versões com o mesmo desenho (só a cor muda), proporção 6,68:1, otimizadas; PNG do e-mail 903×136', () => {

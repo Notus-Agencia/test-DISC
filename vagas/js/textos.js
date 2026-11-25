@@ -22,10 +22,6 @@
   "teste_antes": "Faça sozinho(a), sem consultar. O teste mede o que você sabe hoje do básico da função; não mede inteligência nem personalidade.",
   "teste_opcional": "O teste é opcional: você pode se candidatar sem ele. Se não for bem, a empresa não fica sabendo: ela só vê o selo, se você ganhar.",
   "teste_reconectando": "Reconectando… sua tentativa está salva.",
-  "cidade_lista_espera": "O Vagas sem Caos ainda não chegou em {{cidade}}. Deixe seu e-mail e avisamos quando abrir. {{total}} pessoas já estão na lista.",
-  "cidade_lista_espera_ok": "Pronto! Avisamos por e-mail quando {{cidade}} abrir.",
-  "cidade_pausada": "O mural de {{cidade}} está pausado por enquanto. Suas candidaturas e seus selos continuam guardados. Avisamos por e-mail quando voltar.",
-  "sem_internet": "Sem internet agora. O que você fez ficou salvo neste aparelho e é enviado quando a conexão voltar.",
   "erro_generico": "Algo deu errado do nosso lado. Tente de novo em instantes. Se continuar, fale com a gente.",
   "conta_suspensa": "Sua conta está suspensa. O motivo está no e-mail que enviamos. Se discordar, responda esse e-mail em até 30 dias: uma pessoa da equipe revisa. Você continua podendo baixar uma cópia dos seus dados ou apagar a conta.",
   "denuncia_ok": "Denúncia recebida. Ela é confidencial: não mostramos a quem foi denunciado quem denunciou. Decidimos em até 24 horas.",
@@ -34,8 +30,7 @@
   "selo_sem_selo_competencias": "Onde você acertou menos: {{competencias}}.",
   "denuncia_titulo": "Denunciar",
   "denuncia_texto": "O que está errado? A denúncia é confidencial: não mostramos a quem foi denunciado quem denunciou.",
-  "teste_encerrar_conta": "Se você encerrar antes do fim, a tentativa conta: este teste só pode ser feito de novo em 30 dias.",
-  "cidade_lista_espera_vazia": "O Vagas sem Caos ainda não chegou em {{cidade}}. Entre na lista e avisamos quando chegar."
+  "teste_encerrar_conta": "Se você encerrar antes do fim, a tentativa conta: este teste só pode ser feito de novo em 30 dias."
  },
  "botoes": {
   "quero": "Quero",

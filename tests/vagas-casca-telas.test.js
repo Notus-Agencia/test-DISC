@@ -73,20 +73,19 @@ test('vaga: código, intenção de "Quero" guardada (só desta vaga e por 7 dias
 test('páginas públicas: CSP, scripts em ordem, nada inline, sem innerHTML, sem palavra proibida nem cidade fixa', () => {
   for (const p of ['index.html', 'cidade.html', 'vaga.html']) assert.deepEqual(TELA.conferirPagina(p), [], p);
   for (const s of ['js/inicio.js', 'js/cidade.js', 'js/cidade-filtros.js', 'js/vaga.js']) assert.deepEqual(TELA.conferirScript(s), [], s);
+  // Na recriação (v2) a lista antiga virou redirecionador para a nova tela (index.html#/vagas); o peso da 1ª visita da nova tela é medido em vagas-v2-pessoa.test.js.
   const lista = fs.readFileSync(path.join(TELA.VAGAS, 'cidade.html'), 'utf8');
   const scripts = [...lista.matchAll(/<script[^>]*src="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(scripts, ['js/endereco.js', 'js/beta.js', 'js/config.js', 'js/regras.js', 'js/textos.js', 'js/api.js', 'js/ui.js', 'js/pecas.js', 'js/cidade.js'],
-    'a lista carrega só o mínimo (a folha de filtros vem sob demanda)');
+  assert.deepEqual(scripts, ['js/endereco.js', 'js/v2/pessoa/redirecionar.js']);
+  assert.match(lista, /index\.html#\/vagas/);
 });
 
-test('peso da lista pública (cidade.html, 1ª visita, gzip): até 100 KB, medido pelo montar-vagas --checar', async () => {
+test('peso da lista pública (cidade.html): hoje é só um redirecionador leve, medido pelo montar-vagas --checar', async () => {
   const M = await import('../scripts/montar-vagas.mjs');
   const p = M.pesoDaLista();
   assert.ok(p, 'cidade.html existe');
-  assert.deepEqual(p.itens.filter((x) => x.falta), []);
   assert.ok(p.total <= p.limite, 'lista com ' + (p.total / 1024).toFixed(1) + ' KB');
-  assert.ok(p.itens.some((x) => x.arquivo === 'comum/fonts/plus-jakarta-sans-latin-wght-normal.woff2'), 'a fonte entra na conta');
-  assert.ok(!p.itens.some((x) => /api-previa|cidade-filtros|ui-area|pecas-pessoa|textos-conta/.test(x.arquivo)), 'só o que a 1ª visita carrega');
+  assert.ok(p.total < 20 * 1024, 'o redirecionador é pequeno');
 });
 
 test('_redirects: /<cidade>/ vai para cidade.html (302), raiz sem cidade fixa', () => {

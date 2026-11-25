@@ -45,7 +45,7 @@ test('empresas.html: CSP canônica na meta, nada inline, scripts na ordem do pas
   assert.equal((html.match(/<h1/g) || []).length, 1, 'um h1 na casca (o das telas vem do JS)');
   assert.match(html, /<link rel="stylesheet" href="assets\/v2\/sistema\.css">\s*<link rel="stylesheet" href="assets\/v2\/empresa\.css">/);
   const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]);
-  assert.equal(scripts[0], 'js/v2/empresa/tema.js', 'script de tema externo no head');
+  assert.deepEqual(scripts.slice(0, 2), ['js/endereco.js', 'js/v2/empresa/tema.js'], 'redirecionador de endereço e script de tema externos no head');
   const ordem = ['js/config.js', 'js/v2/contrato.js', 'js/api.js', 'js/v2/api-v2.js', 'js/v2/icones.js', 'js/v2/empresa/base.js'];
   const pos = ordem.map((s) => scripts.indexOf(s));
   assert.ok(pos.every((p) => p >= 0), 'todos os scripts de base presentes');
@@ -71,7 +71,7 @@ test('empresa.html é só um redirecionador curto: meta refresh, link e noscript
   assert.match(html, /<meta http-equiv="refresh" content="0; url=empresas\.html#\/inicio">/);
   assert.match(html, /<a href="empresas\.html#\/inicio">/);
   assert.match(html, /<noscript>/);
-  assert.equal(/<script/.test(html), false);
+  assert.deepEqual([...html.matchAll(/<script[^>]*>/g)].map((m) => m[0]), ['<script src="js/endereco.js">'], 'só o redirecionador de endereço, nunca script inline');
   assert.equal(/\sstyle=|<style/.test(html), false);
   assert.equal(metaCsp(html), CSP);
   assert.ok(html.length < 1500);

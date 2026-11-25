@@ -343,9 +343,8 @@ test('páginas e scripts da empresa: CSP, ordem dos scripts, nada inline, sem in
   // CSS da frente: só tokens (nenhuma cor escrita à mão).
   const css = ler('vagas/assets/vagas-empresa.css');
   assert.ok(!/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i.test(css.replace(/\/\*[\s\S]*?\*\//g, '')), 'cor fora dos tokens');
-  // As páginas carregam os arquivos da frente na ordem certa (a base antes das telas, o roteador por último).
+  // Na recriação (v2) empresa.html é só um redirecionador para empresas.html#/inicio (a área nova é testada em vagas-v2-empresa.test.js).
   const html = ler('vagas/empresa.html');
-  const ordem = ['js/conversa.js', 'js/empresa-regras.js', 'js/roteiro-entrevista.js', 'js/empresa-base.js', 'js/empresa-vaga.js', 'js/empresa-conversa.js',
-    'js/empresa-referencias.js', 'js/empresa.js'].map((s) => html.indexOf('src="' + s + '"'));
-  assert.ok(ordem.every((i, k) => i > 0 && (k === 0 || i > ordem[k - 1])), 'ordem dos scripts de empresa.html');
+  assert.match(html, /empresas\.html#\/inicio/);
+  assert.ok(!/<script(?![^>]*\ssrc=)/.test(html), 'sem script inline');
 });
