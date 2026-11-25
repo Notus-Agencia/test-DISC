@@ -111,7 +111,9 @@ test('termo proibido: recusa na hora, mostra o trecho como a empresa escreveu, e
   assert.match(m, /^Não dá para publicar assim\. "aparência" e "até 30 anos" são critérios proibidos por lei \(Lei 9\.029\/1995 e CLT art\. 373-A\)\./);
   assert.match(m, /Descreva o que a pessoa vai fazer e o que precisa saber; sexo, idade e aparência não podem ser requisito\. Os requisitos vão nos campos acima\.$/);
   const g = ER.mensagemTermos(ER.termosProibidos('Taxa de inscrição paga no Pix', 'anuncio'));
-  assert.match(g, /^Tire "Taxa", "Pix" e "inscrição paga"\. Vagas não podem pedir dinheiro, Pix nem contato fora da plataforma: a conversa acontece aqui\.$/);
+  // Filtro contextual (v2): "Pix" sozinho passa (é tarefa do caixa); o que barra é cobrar de quem se candidata.
+  assert.match(g, /^Tire "Taxa de inscrição"\. Vagas não podem pedir dinheiro, Pix nem contato fora da plataforma: a conversa acontece aqui\.$/);
+  assert.deepEqual(ER.termosProibidos('Receber em dinheiro, cartão e Pix no caixa', 'anuncio'), []);
   const v = ER.validarVaga(formValido({ descricao: t }), { hoje: '2026-10-13', zonas: ZONAS });
   assert.equal(v.campo, 'descricao');
   assert.equal(v.termo, true);

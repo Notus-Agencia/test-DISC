@@ -157,13 +157,14 @@ returns text language sql immutable set search_path = '' as $$
     when 'contratada' then 'contratada' else 'não seguiu' end);
 $$;
 
--- A empresa pode ver nome completo, arquivo e WhatsApp: verificada, ou a pessoa liberou. (Regra 1A.)
+-- A empresa pode ver nome completo, arquivo e WhatsApp: empresa verificada, ou a pessoa liberou (regra 1A). Candidatura ANTIGA (do
+-- fluxo "Quero"/"Combinou") só abre o contato depois do Combinou, como foi combinado com quem se candidatou.
 create or replace function vagas_interno.v2_empresa_ve_contato(k public.vagas_candidaturas)
 returns boolean language sql stable security definer set search_path = '' as $$
   select k.contato_cortado_em is null
-    and exists (select 1 from public.vagas_empresas e where e.id = k.empresa_id and e.status = 'ativa')
-    or (k.contato_cortado_em is null and k.whatsapp_liberado_em is not null
-        and exists (select 1 from public.vagas_empresas e where e.id = k.empresa_id and e.status <> 'suspensa'));
+    and (k.v2 or k.status in ('combinou', 'contratada'))
+    and exists (select 1 from public.vagas_empresas e where e.id = k.empresa_id
+                 and (e.status = 'ativa' or (k.whatsapp_liberado_em is not null and e.status <> 'suspensa')));
 $$;
 
 create or replace function vagas_interno.v2_historico(p_candidatura uuid, p_visao text default 'empresa')

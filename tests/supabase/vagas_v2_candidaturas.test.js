@@ -285,6 +285,27 @@ test('REGRA 1A: empresa em verificação vê só o primeiro nome e o resumo; arq
   assert.equal(depoisV.nome, 'Otávio Mendes Lima'); assert.equal(depoisV.whatsapp, '5562994443333'); assert.equal(depoisV.nomeCompleto, true);
 });
 
+test('candidatura ANTIGA (fluxo "Quero"/"Combinou"): a empresa só vê o primeiro nome até o Combinou, mesmo sendo verificada; e as RPCs antigas continuam intactas', async () => {
+  pronto();
+  const uid = await H.usuarioAuth(A, 'antiga.quero@v2.teste');
+  ok(await A.servico('vagas_conta_registrar', uid, { tipo: 'pessoa', termosVersao: '2026-10' }));
+  ok(await A.de(uid)('vagas_pessoa_salvar', { cidade: 'fc-go', zona: 'centro', maior18: true, cargos: ['Atendente'], escolaridade: 'medio', turnos: ['manha'],
+    modalidades: ['clt'], nome: 'Luiza Fernanda Antunes', whatsapp: '62 99888-7766' }));
+  const an = (await A.db.query(`select id from public.vagas_anuncios where codigo = $1`, [X.vV.id])).rows[0].id;
+  const q = ok(await A.de(uid)('vagas_quero', an));
+  const k = q.candidatura.id;
+  const antes = ok(await A.v2(X.verif.uid)('candidato', { id: k })).candidato;
+  assert.equal(antes.nome, 'Luiza'); assert.equal(antes.nomeCompleto, false); assert.equal(antes.whatsapp, null); assert.equal(antes.arquivo, null);
+  assert.doesNotMatch(JSON.stringify(antes), /Antunes|5562998887766/);
+  erro(await A.v2(X.verif.uid)('whatsappChamar', { id: k }), 'whatsapp_nao_liberado');
+  erro(await A.servico('vagas_v2_arquivo_link_servidor', X.verif.uid, k));
+  // o caminho antigo continua: conversar e Combinou liberam o contato (a pessoa decide)
+  ok(await A.de(X.verif.uid)('vagas_empresa_decidir', k, 'conversar'));
+  ok(await A.de(uid)('vagas_combinar', k));
+  const depois = ok(await A.v2(X.verif.uid)('candidato', { id: k })).candidato;
+  assert.equal(depois.nome, 'Luiza Fernanda Antunes'); assert.equal(depois.whatsapp, '5562998887766');
+});
+
 test('liberações de WhatsApp: até 20 por dia por empresa em verificação', async () => {
   pronto();
   const emp = await H.empresaEmVerificacao(A, '222333444001');

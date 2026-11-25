@@ -1578,10 +1578,13 @@ test('reverificação (R1, B3 porta lateral, I8): conta assistida/vinculada não
 
 test('filtro de textos: o banco (vagas_interno.conferir_texto) e o JS (VAGAS_REGRAS.conferirTexto) dão o MESMO resultado', async () => {
   exigirBanco();
-  // A mesma lista de padrões, na mesma ordem.
-  const sql = (await db.query(`select tipo, alvo, padrao from vagas_interno.padroes_proibidos() order by ordem`)).rows;
-  assert.deepEqual(sql, REGRAS.PADROES.map((p) => ({ tipo: p.tipo, alvo: p.alvo, padrao: p.padrao })));
-  for (const ctx of ['anuncio', 'empresa', 'mensagem', 'referencia', 'cartao', 'perfil', 'outro']) {
+  // O filtro de textos virou contextual na v2 (20261101120000_vagas_v2_base): aplica as migrações que vêm depois desta antes de comparar.
+  const pasta = path.join(RAIZ, 'supabase', 'migrations');
+  for (const arq of fs.readdirSync(pasta).filter((a) => a.endsWith('.sql') && a.replace(/\.sql$/, '') > ESTA).sort()) await db.query(fs.readFileSync(path.join(pasta, arq), 'utf8'));
+  // A mesma lista de padrões, na mesma ordem (com o nível padrão de cada um).
+  const sql = (await db.query(`select ordem, tipo, nivel, alvo, padrao from vagas_interno.padroes_texto() order by ordem`)).rows;
+  assert.deepEqual(sql, REGRAS.PADROES.map((p) => ({ ordem: p.ordem, tipo: p.tipo, nivel: p.nivel, alvo: p.alvo, padrao: p.padrao })));
+  for (const ctx of ['anuncio', 'empresa', 'mensagem', 'referencia', 'cartao', 'perfil', 'vaga', 'conversa', 'outro']) {
     assert.deepEqual((await db.query(`select vagas_interno.tipos_do_contexto($1) t`, [ctx])).rows[0].t, REGRAS.tiposDoContexto(ctx), ctx);
   }
   const corpus = [
@@ -1597,7 +1600,7 @@ test('filtro de textos: o banco (vagas_interno.conferir_texto) e o JS (VAGAS_REG
     'Atendimento ao público', 'Carregar peso, trabalho em altura (NR-35)', 'Empresa com mais de 20 anos de mercado', 'Gestante não', 'ÀÁÂÃÄÅÇÉÊÍÓÔÕÚÜÑ ok',
     'Telefone: 3224-5566', 'sem fim de semana', ''
   ];
-  const ctxs = ['anuncio', 'mensagem', 'referencia', 'cartao', 'perfil'];
+  const ctxs = ['anuncio', 'mensagem', 'referencia', 'cartao', 'perfil', 'vaga', 'conversa'];
   for (const t of corpus) {
     assert.equal((await db.query(`select vagas_interno.normalizar($1) n`, [t])).rows[0].n, REGRAS.normalizar(t), 'normalizar: ' + t);
     for (const ctx of ctxs) {
