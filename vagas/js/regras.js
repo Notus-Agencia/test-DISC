@@ -286,11 +286,13 @@
     var b = minusculasAscii(t);
     var niv = niveisDoContexto(ctx);
     PADROES.forEach(function (pd) {
-      if (niv[pd.nivel].indexOf(pd.tipo) < 0) return;
+      // O nível vale por contexto: o mesmo tipo pode barrar numa vaga e só alertar numa conversa.
+      var nivel = niv.barra.indexOf(pd.tipo) >= 0 ? 'barra' : niv.forte.indexOf(pd.tipo) >= 0 ? 'forte' : niv.fraco.indexOf(pd.tipo) >= 0 ? 'fraco' : null;
+      if (!nivel) return;
       var m = (pd.alvo === 'bruto' ? b : n).match(pd.re);
       if (!m) return;
       var trecho = m[0].replace(/^[ ()\-.]+|[ ()\-.]+$/g, '').slice(0, 60);
-      var lista = res[pd.nivel];
+      var lista = res[nivel];
       // Trechos que se contêm (o mesmo número visto por dois padrões) entram uma vez só.
       for (var i = 0; i < lista.length; i++) {
         if (lista[i].tipo === pd.tipo && (lista[i].trecho.indexOf(trecho) >= 0 || trecho.indexOf(lista[i].trecho) >= 0)) return;

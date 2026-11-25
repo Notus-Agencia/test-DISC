@@ -477,21 +477,25 @@ declare
   m text;
   v_niv jsonb := vagas_interno.niveis_do_contexto(p_contexto);
   v_res jsonb := '{"barra": [], "forte": [], "fraco": []}'::jsonb;
+  v_nivel text;
 begin
   if coalesce(btrim(p), '') = '' then return v_res; end if;
   n := ' ' || vagas_interno.normalizar(p) || ' ';
   b := lower(p);
   for r in select x.ordem, x.tipo, x.nivel, x.alvo, x.padrao from vagas_interno.padroes_texto() x order by x.ordem loop
-    if not jsonb_exists(v_niv -> r.nivel, r.tipo) then continue; end if;
+    -- O nível vale por contexto: o mesmo tipo pode barrar numa vaga e só alertar numa conversa.
+    v_nivel := case when jsonb_exists(v_niv -> 'barra', r.tipo) then 'barra' when jsonb_exists(v_niv -> 'forte', r.tipo) then 'forte'
+      when jsonb_exists(v_niv -> 'fraco', r.tipo) then 'fraco' else null end;
+    if v_nivel is null then continue; end if;
     m := (regexp_match(case when r.alvo = 'bruto' then b else n end, r.padrao))[1];
     if m is not null then
       m := left(btrim(m, ' ()-.'), 60);
       -- Trechos que se contêm (o mesmo número visto por dois padrões) entram uma vez só.
-      if exists (select 1 from jsonb_array_elements(v_res -> r.nivel) z
+      if exists (select 1 from jsonb_array_elements(v_res -> v_nivel) z
                   where z ->> 'tipo' = r.tipo and (position(m in (z ->> 'trecho')) > 0 or position((z ->> 'trecho') in m) > 0)) then
         continue;
       end if;
-      v_res := jsonb_set(v_res, array[r.nivel], (v_res -> r.nivel) || jsonb_build_array(jsonb_build_object('tipo', r.tipo, 'trecho', m,
+      v_res := jsonb_set(v_res, array[v_nivel], (v_res -> v_nivel) || jsonb_build_array(jsonb_build_object('tipo', r.tipo, 'trecho', m,
         'motivo', vagas_interno.motivo_texto(r.tipo), 'mensagem', vagas_interno.msg_texto(r.tipo, m, p_contexto))));
     end if;
   end loop;
