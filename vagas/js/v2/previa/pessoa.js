@@ -43,6 +43,7 @@
     o.publicadaEm = ha(v.publicadaHa || 1);
     o.expiraEm = v.id === 'v08' ? iso(T0 + 2 * 24 * H - 3 * H) : null;
     o.confidencial = false;
+    o.repete = !!v.repete;
     return o;
   };
   const empresaJson = (e) => {

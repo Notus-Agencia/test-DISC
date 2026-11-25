@@ -3,9 +3,9 @@
  * do aparelho, chamada à API e carregamento de módulos sob demanda). Os outros arquivos de js/v2/pessoa/ penduram suas peças aqui.
  *
  * Regras que valem em todos os arquivos desta pasta:
- *  - só window.VSC_API fala com o banco (nunca fetch direto); window.VSC_DADOS só aparece em previa/ (modo demonstração);
+ *  - só window.VSC_API fala com o banco (nunca fetch direto); dado fictício só existe na pasta previa/ (modo demonstração);
  *  - texto que vem do banco, da URL ou da pessoa entra no HTML SEMPRE por P.esc() (ou textContent);
- *  - nada de atributo style="..." nem <script> inline em HTML montado por JS (CSSOM quando precisar);
+ *  - nada de atributo de estilo inline nem de script inline em HTML montado por JS (CSSOM quando precisar);
  *  - dado pessoal guardado no aparelho usa a chave 'vsc.eu.*' (sai sozinho ao sair da conta).
  */
 (function (root) {
