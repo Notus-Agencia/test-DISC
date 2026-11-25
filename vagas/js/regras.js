@@ -1,5 +1,5 @@
 /*
- * Vagas sem Caos — regras puras (sem rede, sem DOM), as MESMAS do banco (supabase/migrations/20261022120000_vagas.sql).
+ * Vagas sem Caos — regras puras (sem rede, sem DOM), as MESMAS do banco (supabase/migrations/20261022120000_vagas.sql e, no filtro de texto, 20261101120000_vagas_v2_base.sql).
  * Usadas pela prévia (vagas/js/api-previa.js), pelas telas (validação antes de enviar e rótulos) e pelos testes.
  * tests/supabase/vagas.test.js confere que conferirTexto, normalizar, cnpjValido e normalizarWhatsapp dão o MESMO resultado
  * que vagas_interno.conferir_texto / normalizar / cnpj_valido / normalizar_whatsapp.
@@ -7,8 +7,9 @@
  *   Listas fechadas (id + rótulo): MODALIDADES, TURNOS, ESCOLARIDADES, CNH, UNIDADES, PONTOS_FORTES, VINCULOS, MOTIVOS_DENUNCIA (+ _TELA), TEXTO_STATUS,
  *     STATUS_CANDIDATURA, STATUS_ANUNCIO, STATUS_EMPRESA, STATUS_REFERENCIA, STATUS_REFERENCIA_EMPRESA; da vaga ("como produto"):
  *     AREAS (24), TURNOS_VAGA, EXPERIENCIAS_VAGA, ESCOLARIDADES_VAGA, REQUISITOS_VAGA, BENEFICIOS, TESTES_SELO.
- *   Filtro de textos: PADROES, tiposDoContexto(ctx), mensagemTexto(tipo, trecho, ctx), conferirTexto(texto, ctx) -> null | {tipo, trecho, erro}
- *     ctx: 'anuncio' | 'empresa' | 'mensagem' | 'referencia' | 'cartao' | 'perfil'.
+ *   Filtro de textos (contextual, v2): PADROES (com nivel barra|forte|fraco), tiposDoContexto(ctx), niveisDoContexto(ctx), mensagemTexto(tipo, trecho, ctx),
+ *     conferirTexto(texto, ctx) -> null | {tipo, trecho, erro} (o primeiro trecho barrado) e conferirLista(texto, ctx) -> {barra, forte, fraco}.
+ *     ctx: 'anuncio' | 'empresa' | 'mensagem' | 'referencia' | 'cartao' | 'perfil' (antigos) | 'vaga' | 'conversa' (v2).
  *   normalizar(texto) · normalizarCnpj · cnpjValido · formatarCnpj · normalizarWhatsapp · whatsappCelularValido · whatsappEmpresaValido
  *   normalizarEmail(texto) -> '' se inválido · nomeValido(nome) · nomeExibicao(nome) ('Ana Souza' -> 'Ana S.') · iniciais(nome)
  *   lerMes('AAAA-MM') -> {ano, mes} | null · meses(inicio, fim, agora) · hoje(fuso, agora) -> 'AAAA-MM-DD'
@@ -158,59 +159,105 @@
   };
 
   // ---------------------------------------------------------------------------------------------------------------
-  // Filtro de textos (igual a vagas_interno.padroes_proibidos / tipos_do_contexto / msg_texto / conferir_texto)
+  // Filtro de textos CONTEXTUAL (igual a vagas_interno.padroes_texto / niveis_do_contexto / msg_texto / conferir_lista / conferir_texto).
+  // Três níveis: barra (o texto não passa), forte (a vaga entra fora do ar até a revisão rápida) e fraco (entra no ar e vai ao topo de
+  // "Revisar depois"). tests/supabase/vagas_v2.test.js confere que banco e JS dão o MESMO resultado.
   // ---------------------------------------------------------------------------------------------------------------
 
   var PADROES = [
-    [10, 'golpe', 'normal', ' taxas? '],
-    [11, 'golpe', 'normal', ' pix '],
-    [12, 'golpe', 'normal', ' (?:deposite|depositem|depositar|faca um deposito|fazer um deposito|transfira|transferencia bancaria) '],
-    [13, 'golpe', 'normal', ' (?:pague|paguem|pagar (?:a|uma) (?:taxa|inscricao|matricula|mensalidade)|pagamento antecipado|valor da inscricao|inscricao paga|cadastro pago|curso pago|kit pago|investimento inicial) '],
-    [20, 'contato', 'bruto', '[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}'],
-    [21, 'contato', 'bruto', '(?:\\d[\\s().-]*){8,}'],
-    [22, 'contato', 'bruto', '(?:^|[\\s(])@[a-z0-9_.]{3,}'],
-    [30, 'link', 'bruto', '(?:https?://|www\\.)[^\\s]*'],
-    [31, 'link', 'bruto', '[a-z0-9-]+(?:\\.[a-z0-9-]+)*\\.(?:com|net|org|br|ly|me|gl|gd|co|io|to|info|biz|xyz|site|online|app|link|click|top|vip|tk|page|lat|shop|store)(?![a-z0-9])(?:/[^\\s]*)?'],
-    [40, 'documento', 'normal', ' (?:cpf|rg|identidade|selfie|senha|titulo de eleitor|dados bancarios|conta bancaria|cartao de credito|numero do cartao|foto (?:do|da|de) (?:documento|identidade|rosto)|comprovante de (?:residencia|endereco|renda)|codigo de (?:verificacao|seguranca|confirmacao|acesso)|(?:manda|mande|envie|enviar|mandar) (?:seus|seu|os|o|teus|teu) documentos?) '],
-    [50, 'discriminacao', 'normal', ' (?:aparencia|boa apresentacao|bonit[ao]s?|magr[ao]s?) '],
-    [51, 'discriminacao', 'normal', ' (?:idade|faixa etaria) '],
-    [52, 'discriminacao', 'normal', ' ate (?:1[6-9]|[2-6][0-9]) anos '],
-    [53, 'discriminacao', 'normal', ' (?:entre|de) (?:1[6-9]|[2-6][0-9]) (?:a|e) (?:1[6-9]|[2-7][0-9]) anos '],
-    [54, 'discriminacao', 'normal', ' (?:solteir[ao]s?|casad[ao]s?|divorciad[ao]s?|viuv[ao]s?|estado civil) '],
-    [55, 'discriminacao', 'normal', ' (?:filh[ao]s?|gravid[ao]s?|gravidez|gestante) '],
-    [56, 'discriminacao', 'normal', ' (?:sexo|genero|(?:somente|apenas|so) (?:para )?(?:mulher|mulheres|homem|homens|moca|mocas|rapaz|rapazes)) '],
-    [57, 'discriminacao', 'normal', ' (?:religi[a-z]*|evangelic[ao]s?|catolic[ao]s?|cor da pele|raca|etnia) '],
-    [58, 'discriminacao', 'normal', ' (?:nacionalidade|estrangeir[ao]s?|venezuelan[ao]s?|(?:somente|apenas|so) (?:para )?brasileir[ao]s?) '],
-    [59, 'discriminacao', 'normal', ' (?:antecedentes?|nada consta|ficha limpa|ficha criminal|certidao criminal) '],
-    [60, 'discriminacao', 'normal', ' (?:deficien[a-z]*|pcd) '],
-    [61, 'discriminacao', 'normal', ' (?:boa saude|saude perfeita|doenc[a-z]*|hiv) ']
+    [10, 'golpe', 'barra', 'normal', ' (?:pague|paguem) (?:r )?(?:[0-9]+ )?'],
+    [11, 'golpe', 'barra', 'normal', ' (?:pagar|pagamento|pagamentos) (?:de |da |do |pela |pelo |a |uma |um |o |as |os )?(?:taxa|taxas|inscricao|matricula|mensalidade|uniforme|curso|kit|material|exame|exames|treinamento|cadastro|documentacao) '],
+    [12, 'golpe', 'barra', 'normal', ' taxas? (?:de |da |do |para |pra )?(?:inscricao|cadastro|matricula|adesao|participacao|selecao|treinamento|uniforme|material|documentacao|contratacao|admissao|liberacao|confirmacao|reserva|vaga|ativacao|emissao|kit|curso|exame|comecar|iniciar|participar|candidatura|entrevista) '],
+    [13, 'golpe', 'barra', 'normal', ' (?:deposite|depositem|depositar|faca um deposito|fazer um deposito|deposito (?:inicial|antecipado|de garantia)|transfira|transferencia bancaria) '],
+    [14, 'golpe', 'barra', 'normal', ' (?:pagamento antecipado|valor da inscricao|inscricao paga|cadastro pago|investimento inicial|investimento minimo|mediante pagamento|custo do (?:uniforme|curso|kit|treinamento|material|exame)) '],
+    [15, 'golpe', 'barra', 'normal', ' (?:curso|kit) (?:pago|pagos|paga|pagas) '],
+    [16, 'golpe', 'barra', 'normal', ' (?:faca|fazer|faz|enviar|envie|mande|mandar|manda|mandem|enviem|realize|realizar) (?:um |o |seu |sua )?(?:pix|deposito) '],
+    [17, 'golpe', 'barra', 'normal', ' pix (?:para|pra) (?:garantir|reservar|confirmar|liberar|comecar|iniciar|ativar|cadastro|inscricao|vaga|taxa) '],
+    [20, 'contato', 'barra', 'bruto', '[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}'],
+    [21, 'contato', 'barra', 'bruto', '(?:\\+?55[\\s.-]*)?\\(?[0-9]{2}\\)?[\\s.-]*9?[\\s.-]?[0-9]{4}[\\s.-]?[0-9]{4}'],
+    [22, 'contato', 'barra', 'bruto', '(?:^|[\\s(])@[a-z0-9_.]{3,}'],
+    [23, 'contato', 'barra', 'bruto', '(?:^|[\\s(])9[0-9]{4}[\\s.-]?[0-9]{4}(?![0-9])'],
+    [24, 'contato', 'barra', 'bruto', '(?:telefone|fone|celular|whatsapp|whats|zap|ligue|ligar)[^0-9a-z]{0,15}[0-9][0-9 .()-]{6,}'],
+    [30, 'link', 'barra', 'bruto', '(?:https?://|www\\.)[^\\s]*'],
+    [31, 'link', 'barra', 'bruto', '[a-z0-9-]+(?:\\.[a-z0-9-]+)*\\.(?:com|net|org|br|ly|me|gl|gd|co|io|to|info|biz|xyz|site|online|app|link|click|top|vip|tk|page|lat|shop|store)(?![a-z0-9])(?:/[^\\s]*)?'],
+    [40, 'documento', 'barra', 'normal', ' (?:cpf|rg|identidade|titulo de eleitor|comprovante de (?:residencia|endereco|renda)|(?:manda|mande|envie|enviar|mandar) (?:seus|seu|os|o|teus|teu) documentos?|foto (?:do|da|de) (?:documento|identidade)|certidao de nascimento) '],
+    [41, 'sensivel', 'barra', 'normal', ' (?:selfie|senha|dados bancarios|conta bancaria|cartao de credito|numero do cartao|foto (?:do|da) rosto|codigo de (?:verificacao|seguranca|confirmacao|acesso)) '],
+    [50, 'discriminacao', 'barra', 'normal', ' (?:aparencia|boa apresentacao|bonit[ao]s?|magr[ao]s?) '],
+    [51, 'discriminacao', 'barra', 'normal', ' (?:idade|faixa etaria) '],
+    [52, 'discriminacao', 'barra', 'normal', ' ate (?:1[6-9]|[2-6][0-9]) anos '],
+    [53, 'discriminacao', 'barra', 'normal', ' (?:entre|de) (?:1[6-9]|[2-6][0-9]) (?:a|e) (?:1[6-9]|[2-7][0-9]) anos '],
+    [54, 'discriminacao', 'barra', 'normal', ' (?:solteir[ao]s?|casad[ao]s?|divorciad[ao]s?|viuv[ao]s?|estado civil) '],
+    [55, 'discriminacao', 'barra', 'normal', ' (?:filh[ao]s?|gravid[ao]s?|gravidez|gestante) '],
+    [56, 'discriminacao', 'barra', 'normal', ' (?:sexo|genero|(?:somente|apenas|so|exclusivo|exclusiva|exclusivamente) (?:para )?(?:mulher|mulheres|homem|homens|moca|mocas|rapaz|rapazes)) '],
+    [57, 'discriminacao', 'barra', 'normal', ' (?:religi[a-z]*|evangelic[ao]s?|catolic[ao]s?|cor da pele|raca|etnia) '],
+    [58, 'discriminacao', 'barra', 'normal', ' (?:nacionalidade|estrangeir[ao]s?|venezuelan[ao]s?|(?:somente|apenas|so) (?:para )?brasileir[ao]s?) '],
+    [59, 'discriminacao', 'barra', 'normal', ' (?:antecedentes? (?!profission|de trabalho|de vendas|de experiencia)|nada consta|ficha limpa|ficha criminal|certidao criminal) '],
+    [60, 'discriminacao', 'barra', 'normal', ' (?:sem|exceto|nao aceitamos|nao aceita|nao contratamos|nao contrata|proibido) (?:pessoas? com )?(?:deficien[a-z]*|pcd) '],
+    [61, 'discriminacao', 'barra', 'normal', ' (?:boa saude|saude perfeita|doenc[a-z]*|hiv) '],
+    [62, 'discriminacao', 'barra', 'normal', ' (?:vagas?|oportunidade|contratamos|procuramos|precisa se de|precisamos de|buscamos|selecionamos|admitimos|contrata se) (?:para |de )?(?:mulher|mulheres|homem|homens|moca|mocas|rapaz|rapazes|senhoras?|garotas?|garotos?) '],
+    [70, 'golpe_forte', 'forte', 'normal', ' taxas? (?!de entrega|por entrega|por corrida|de servico|de comissao|de conversao|de sucesso|de juros|de retorno|de ocupacao|de atendimento|de pedido|de venda|de vendas|e gorjeta|e gorjetas|de gorjeta)'],
+    [71, 'golpe_forte', 'forte', 'normal', ' (?:adesao|investimento|caucao|kit inicial|material proprio|pacote inicial|reserva de vaga) '],
+    [72, 'golpe_forte', 'forte', 'normal', ' (?:cobramos|cobranca|cobrado|cobrar) '],
+    [73, 'sinal', 'fraco', 'normal', ' (?:ganhe|ganhos?|ganhar) (?:ate|de ate|mais de) '],
+    [74, 'sinal', 'fraco', 'normal', ' (?:renda extra|trabalhe em casa|trabalhe de casa|enriquecer|ficar rico|liberdade financeira) '],
+    [75, 'sinal', 'fraco', 'normal', ' (?:ganhos|lucros?) (?:ilimitados?|garantidos?|altos?) '],
+    [76, 'sinal', 'fraco', 'normal', ' ganhe (?:r )?[0-9]+ ']
   ].map(function (p) {
     // \s do Postgres (locale C) = espaços ASCII; no JS o \s também pega espaços Unicode: troca pelos mesmos 6.
-    return { ordem: p[0], tipo: p[1], alvo: p[2], padrao: p[3], re: new RegExp(p[3].replace(/\\s/g, ' \\t\\n\\r\\f\\v')) };
+    return { ordem: p[0], tipo: p[1], nivel: p[2], alvo: p[3], padrao: p[4], re: new RegExp(p[4].replace(/\\s/g, ' \\t\\n\\r\\f\\v')) };
   });
 
   var CONTEXTOS = {
-    anuncio: ['golpe', 'contato', 'link', 'discriminacao'],
-    empresa: ['golpe', 'contato', 'link', 'discriminacao'],
-    mensagem: ['golpe', 'contato', 'link', 'documento', 'discriminacao'],
-    referencia: ['golpe', 'contato', 'link', 'discriminacao'],
-    cartao: ['contato', 'link'],
-    perfil: ['link']
+    anuncio: { barra: ['golpe', 'contato', 'link', 'discriminacao'], forte: [], fraco: [] },
+    empresa: { barra: ['golpe', 'contato', 'link', 'discriminacao'], forte: [], fraco: [] },
+    mensagem: { barra: ['golpe', 'contato', 'link', 'documento', 'sensivel', 'discriminacao'], forte: [], fraco: [] },
+    referencia: { barra: ['golpe', 'contato', 'link', 'discriminacao'], forte: [], fraco: [] },
+    cartao: { barra: ['contato', 'link'], forte: [], fraco: [] },
+    perfil: { barra: ['link'], forte: [], fraco: [] },
+    vaga: { barra: ['golpe', 'contato', 'link', 'documento', 'sensivel', 'discriminacao'], forte: ['golpe_forte'], fraco: ['sinal'] },
+    conversa: { barra: ['golpe', 'contato', 'link', 'sensivel', 'discriminacao'], forte: [], fraco: ['documento', 'golpe_forte'] }
   };
-  function tiposDoContexto(ctx) { return Object.prototype.hasOwnProperty.call(CONTEXTOS, ctx) ? CONTEXTOS[ctx].slice() : []; }
+  function niveisDoContexto(ctx) {
+    var c = Object.prototype.hasOwnProperty.call(CONTEXTOS, ctx) ? CONTEXTOS[ctx] : { barra: [], forte: [], fraco: [] };
+    return { barra: c.barra.slice(), forte: c.forte.slice(), fraco: c.fraco.slice() };
+  }
+  function tiposDoContexto(ctx) { return niveisDoContexto(ctx).barra; }
+
+  function motivoTexto(tipo) {
+    return { golpe: 'cobranca', golpe_forte: 'cobranca', contato: 'contato', link: 'link', documento: 'documento', sensivel: 'dado_sensivel', discriminacao: 'igualdade' }[tipo] || 'sinal';
+  }
 
   function mensagemTexto(tipo, trecho, ctx) {
+    if (ctx === 'vaga') {
+      if (tipo === 'golpe') return 'Vagas não podem cobrar nada de quem se candidata. Tire "' + trecho + '" e escreva no lugar o que a empresa oferece (por exemplo: "uniforme fornecido pela empresa").';
+      if (tipo === 'contato') return 'Não precisa pôr o número: as pessoas chamam você pelo botão da vaga. Tire "' + trecho + '".';
+      if (tipo === 'link') return 'Não precisa pôr link: as pessoas chamam você pelo botão da vaga. Tire "' + trecho + '".';
+      if (tipo === 'documento') return 'Não peça documento no anúncio: ele só é combinado depois da contratação, nunca por mensagem. Tire "' + trecho + '".';
+      if (tipo === 'sensivel') return 'Não peça senha, selfie, código nem dados de banco: isso não se pede a quem procura vaga. Tire "' + trecho + '".';
+      if (tipo === 'golpe_forte') return 'O trecho "' + trecho + '" pede uma conferência rápida da equipe antes de a vaga ir ao ar.';
+      if (tipo === 'sinal') return 'O trecho "' + trecho + '" costuma chamar a atenção da equipe. Se puder, escreva o valor fixo e o que a pessoa faz no dia a dia.';
+      return 'A lei não deixa escolher por sexo, idade, estado civil, aparência, religião ou saúde no anúncio. Tire "' + trecho + '" e escreva só o que a pessoa vai fazer no trabalho.';
+    }
+    if (ctx === 'conversa') {
+      if (tipo === 'golpe') return 'Ninguém paga para se candidatar. Tire "' + trecho + '" e combine só a entrevista e o trabalho.';
+      if (tipo === 'contato') return 'Telefone e e-mail não vão por mensagem. Use os botões da conversa para passar o WhatsApp. Tire "' + trecho + '".';
+      if (tipo === 'link') return 'Não dá para mandar link por aqui. Tire "' + trecho + '".';
+      if (tipo === 'sensivel') return 'Não peça nem mande senha, selfie, código ou dados de banco por aqui. Tire "' + trecho + '".';
+      if (tipo === 'documento') return 'Atenção: ninguém pode pedir documento para você se candidatar.';
+      if (tipo === 'golpe_forte') return 'Atenção: ninguém pode cobrar nem pedir pagamento para você se candidatar.';
+      return 'Aqui não se pergunta nem se conta idade, aparência, estado civil, filhos, religião, cor, nacionalidade, saúde ou antecedentes.';
+    }
     if (ctx === 'mensagem') {
       if (tipo === 'golpe') return 'Mensagem bloqueada: ninguém paga para concorrer a uma vaga. Pedido de taxa, Pix ou depósito é golpe; se alguém pedir, denuncie.';
       if (tipo === 'contato') return 'Mensagem bloqueada: telefone, e-mail e redes sociais só depois do Combinou, que libera o contato com segurança.';
       if (tipo === 'link') return 'Mensagem bloqueada: não dá para mandar links por aqui.';
-      if (tipo === 'documento') return 'Mensagem bloqueada: não peça nem mande documento, senha, código ou dados de banco por aqui. Se alguém pedir, denuncie.';
+      if (tipo === 'documento' || tipo === 'sensivel') return 'Mensagem bloqueada: não peça nem mande documento, senha, código ou dados de banco por aqui. Se alguém pedir, denuncie.';
       return 'Mensagem bloqueada: aqui não se pergunta nem se conta idade, aparência, estado civil, filhos, religião, cor, nacionalidade, saúde ou antecedentes (Lei 9.029/1995).';
     }
     if (tipo === 'golpe') return 'Tire o trecho "' + trecho + '": ninguém paga para concorrer a uma vaga, então taxa, Pix e depósito não podem aparecer.';
     if (tipo === 'contato') return 'Tire o telefone, e-mail ou perfil de rede social ("' + trecho + '"): o contato acontece pela plataforma, depois do Combinou.';
     if (tipo === 'link') return 'Tire o link "' + trecho + '": o contato acontece pela plataforma.';
-    if (tipo === 'documento') return 'Tire o pedido de documento ("' + trecho + '").';
+    if (tipo === 'documento' || tipo === 'sensivel') return 'Tire o pedido de documento ("' + trecho + '").';
     if (ctx === 'referencia') {
       return 'Tire o trecho "' + trecho + '": a referência não pode falar de aparência, idade, sexo, estado civil, filhos, religião, cor, nacionalidade, deficiência, saúde ou antecedentes (Lei 9.029/1995).';
     }
@@ -230,22 +277,33 @@
     return minusculasAscii(s).replace(/[^a-z0-9]+/g, ' ').replace(/^ +| +$/g, '');
   }
 
-  function conferirTexto(p, ctx) {
+  // Todas as ocorrências por nível: {barra:[{tipo, trecho, motivo, mensagem}], forte:[...], fraco:[...]}.
+  function conferirLista(p, ctx) {
+    var res = { barra: [], forte: [], fraco: [] };
     var t = String(p == null ? '' : p);
-    if (!t.replace(/^ +| +$/g, '')) return null;
+    if (!t.replace(/^ +| +$/g, '')) return res;
     var n = ' ' + normalizar(t) + ' ';
     var b = minusculasAscii(t);
-    var tipos = tiposDoContexto(ctx);
-    for (var i = 0; i < PADROES.length; i++) {
-      var pd = PADROES[i];
-      if (tipos.indexOf(pd.tipo) < 0) continue;
+    var niv = niveisDoContexto(ctx);
+    PADROES.forEach(function (pd) {
+      if (niv[pd.nivel].indexOf(pd.tipo) < 0) return;
       var m = (pd.alvo === 'bruto' ? b : n).match(pd.re);
-      if (m) {
-        var trecho = m[0].replace(/^[ ()\-.]+|[ ()\-.]+$/g, '').slice(0, 60);
-        return { tipo: pd.tipo, trecho: trecho, erro: mensagemTexto(pd.tipo, trecho, ctx) };
+      if (!m) return;
+      var trecho = m[0].replace(/^[ ()\-.]+|[ ()\-.]+$/g, '').slice(0, 60);
+      var lista = res[pd.nivel];
+      // Trechos que se contêm (o mesmo número visto por dois padrões) entram uma vez só.
+      for (var i = 0; i < lista.length; i++) {
+        if (lista[i].tipo === pd.tipo && (lista[i].trecho.indexOf(trecho) >= 0 || trecho.indexOf(lista[i].trecho) >= 0)) return;
       }
-    }
-    return null;
+      lista.push({ tipo: pd.tipo, trecho: trecho, motivo: motivoTexto(pd.tipo), mensagem: mensagemTexto(pd.tipo, trecho, ctx) });
+    });
+    return res;
+  }
+
+  // O primeiro trecho barrado: null | {tipo, trecho, erro}.
+  function conferirTexto(p, ctx) {
+    var l = conferirLista(p, ctx).barra;
+    return l.length ? { tipo: l[0].tipo, trecho: l[0].trecho, erro: l[0].mensagem } : null;
   }
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -650,7 +708,8 @@
     STATUS_REFERENCIA_EMPRESA: STATUS_REFERENCIA_EMPRESA, MSG: MSG, PAPEIS_EMPRESA: PAPEIS_EMPRESA,
     STATUS_CONVITE_EQUIPE: STATUS_CONVITE_EQUIPE, PORTES: PORTES, CORES_INDICADOR: CORES_INDICADOR, INDICADORES: INDICADORES, GATILHOS: GATILHOS,
     lerListaEspera: lerListaEspera, corIndicador: corIndicador,
-    PADROES: PADROES, tiposDoContexto: tiposDoContexto, mensagemTexto: mensagemTexto, conferirTexto: conferirTexto, normalizar: normalizar,
+    PADROES: PADROES, tiposDoContexto: tiposDoContexto, niveisDoContexto: niveisDoContexto, motivoTexto: motivoTexto, mensagemTexto: mensagemTexto,
+    conferirTexto: conferirTexto, conferirLista: conferirLista, normalizar: normalizar,
     normalizarCnpj: normalizarCnpj, cnpjValido: cnpjValido, formatarCnpj: formatarCnpj, normalizarWhatsapp: normalizarWhatsapp,
     whatsappCelularValido: whatsappCelularValido, whatsappEmpresaValido: whatsappEmpresaValido, normalizarEmail: normalizarEmail,
     nomeValido: nomeValido, nomeExibicao: nomeExibicao, iniciais: iniciais, limparTexto: limparTexto, limparMultilinha: limparMultilinha,

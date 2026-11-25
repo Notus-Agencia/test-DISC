@@ -29,7 +29,9 @@
   // ----- formas reutilizadas -----
   var VAGA = { id: 's', titulo: 's', empresaId: 's', setorId: 's', tipo: 's', turno: 's', horario: 's',
     salario: 'o', beneficios: 'a', requisitos: 'a', diferenciais: 'a', descricao: 's', atividades: 'a', perguntas: 'a',
-    vagasQtd: 'n', semExperiencia: 'b', pcd: 'b', urgente: 'b', status: 's', cidade: 's', bairro: 's', publicadaEm: 's', expiraEm: 's?', repete: 'b' };
+    vagasQtd: 'n', semExperiencia: 'b', pcd: 'b', urgente: 'b', status: 's', cidade: 's', bairro: 's', publicadaEm: 's', expiraEm: 's?', repete: 'b',
+    diaria: 'o?', confidencial: 'b?' };
+  // diaria (só em vaga Diária): {data:'AAAA-MM-DD', das:'HH:MM', as:'HH:MM'}; na escrita aceita também das/as como hora inteira (8, 17). confidencial: só empresa verificada.
   // salario: {min:n, max:n?, periodo:'mes'|'dia'|'hora', aCombinar:false, texto:s, obs:s?}   (aCombinar é sempre false)
   var EMPRESA = { id: 's', nome: 's', setor: 's', cidade: 's', bairro: 's', descricao: 's', iniciais: 's', verificada: 'b', verificadaEm: 's?' };
   var CANDIDATURA_PESSOA = { id: 's', vagaId: 's', etapa: 's', criadaEm: 's', marcos: 'o', entrevista: 'o?', encerradaPor: 's?',
@@ -51,7 +53,7 @@
       res: { praca: 'o', cidades: 'a', setores: 'a', vagas: 'a', empresas: 'a', geradoEm: 's' } },        // vagas: [VAGA]; empresas: [EMPRESA]; até 500 vagas abertas
     vaga: { rpc: 'vagas_v2_vaga', login: false, req: { id: 's' }, res: { vaga: 'o', empresa: 'o' } },
     textoChecar: { rpc: 'vagas_v2_texto_checar', login: false, req: { texto: 's', contexto: 's?' },     // contexto 'vaga' (padrão) | 'conversa'
-      res: { passa: 'b', barra: 'a', fraco: 'a' } },                                                       // barra/fraco: [{trecho, motivo, mensagem}]
+      res: { passa: 'b', barra: 'a', fraco: 'a', forte: 'a?' } },                                              // barra/fraco/forte: [{trecho, motivo, mensagem}] (forte: a vaga ficaria segurada)
     cnpjConsultar: { edge: 'cnpj', login: false, req: { cnpj: 's' },
       res: { cnpj: 's', tipo: 's', ativa: 'b', situacao: 's', razaoSocial: 's', nomeFantasia: 's', cidade: 's', uf: 's', bairro: 's', abertura: 's?', mei: 'b', setor: 's' } },
     codigoPedir: { edge: 'codigo_pedir', login: false, req: { destino: 's', canal: 's?' },                 // canal 'email' (único ligado) | 'whatsapp' (desligado por config)
