@@ -16,7 +16,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
   select vagas_interno.v2_empresa_json(e, true) || jsonb_build_object(
     'papel', p_papel, 'cnpj', e.cnpj, 'cnpjFormatado', vagas_interno.formatar_cnpj(e.cnpj), 'razaoSocial', e.razao_social,
     'nomeFantasia', e.nome_fantasia, 'whatsapp', e.whatsapp, 'email', e.email, 'responsavel', e.responsavel, 'lojas', e.lojas,
-    'prazoAte', case when vagas_interno.v2_estado_empresa(e) in ('em_verificacao', 'vencida') then vagas_interno.v2_iso(e.verificacao_prazo_em) else null end,
+    'prazoAte', case when vagas_interno.v2_estado_empresa(e) in ('em_verificacao', 'vencida') then vagas_interno.v2_iso(vagas_interno.v2_prazo_empresa(e)) else null end,
     'motivoAjuste', nullif(coalesce(nullif(e.verificacao_motivo, ''), e.status_motivo), ''));
 $$;
 
@@ -990,7 +990,7 @@ begin
       jsonb_build_object('id', 'responsavel', 'titulo', 'Responsável e WhatsApp da empresa', 'feito', e.responsavel <> '' and e.whatsapp <> ''),
       jsonb_build_object('id', 'documento', 'titulo', 'Documento da empresa (quando a equipe pedir)', 'feito', jsonb_array_length(v_docs) > 0 or e.verificacao_pedida_em is null),
       jsonb_build_object('id', 'equipe', 'titulo', 'Conferência da equipe do Vagas sem Caos', 'feito', v_estado = 'verificada')),
-    'prazoAte', case when v_estado in ('em_verificacao', 'vencida') then vagas_interno.v2_iso(e.verificacao_prazo_em) else null end,
+    'prazoAte', case when v_estado in ('em_verificacao', 'vencida') then vagas_interno.v2_iso(vagas_interno.v2_prazo_empresa(e)) else null end,
     'motivoAjuste', nullif(coalesce(nullif(e.verificacao_motivo, ''), e.status_motivo), ''),
     'verificadaEm', vagas_interno.v2_iso(e.cnpj_conferido_em), 'documentos', v_docs)));
 end;

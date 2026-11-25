@@ -21,7 +21,7 @@ returns jsonb language sql stable security definer set search_path = '' as $$
     'empresa', jsonb_build_object('id', e.id, 'nome', e.nome_fantasia, 'cnpj', e.cnpj, 'cnpjFormatado', vagas_interno.formatar_cnpj(e.cnpj),
       'razaoSocial', e.razao_social, 'cidade', c.slug, 'bairro', e.bairro, 'whatsapp', e.whatsapp, 'email', e.email, 'responsavel', e.responsavel,
       'estado', vagas_interno.v2_estado_empresa(e), 'verificada', e.status = 'ativa', 'criadaEm', vagas_interno.v2_iso(e.criado_em),
-      'prazoAte', vagas_interno.v2_iso(e.verificacao_prazo_em), 'motivoAjuste', nullif(coalesce(nullif(e.verificacao_motivo, ''), e.status_motivo), ''),
+      'prazoAte', vagas_interno.v2_iso(vagas_interno.v2_prazo_empresa(e)), 'motivoAjuste', nullif(coalesce(nullif(e.verificacao_motivo, ''), e.status_motivo), ''),
       'consultaCnpj', coalesce(e.consulta_cnpj, '{}'::jsonb), 'documentos', vagas_interno.v2_documentos_json(e.id),
       'vagasNoAr', vagas_interno.v2_vagas_no_ar_empresa(e.id)),
     'sinais', a.sinais,

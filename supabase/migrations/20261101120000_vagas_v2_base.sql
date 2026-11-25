@@ -558,13 +558,19 @@ $$;
 
 -- Estado da empresa para a tela: verificada | em_verificacao | precisa_ajuste | vencida | suspensa.
 -- "Vencida" é calculado na leitura (o prazo passou sem a conferência): nenhum agendador é preciso e nada é apagado.
+-- Prazo para verificar: 7 dias (as empresas antigas, sem prazo gravado, contam 7 dias do cadastro).
+create or replace function vagas_interno.v2_prazo_empresa(e public.vagas_empresas)
+returns timestamptz language sql immutable set search_path = '' as $$
+  select coalesce(e.verificacao_prazo_em, e.criado_em + interval '7 days');
+$$;
+
 create or replace function vagas_interno.v2_estado_empresa(e public.vagas_empresas)
 returns text language sql stable set search_path = '' as $$
   select case
     when e.status = 'suspensa' then 'suspensa'
     when e.status = 'ativa' then 'verificada'
     when e.verificacao_estado = 'precisa_ajuste' or (e.verificacao_estado is null and e.status_motivo <> '') then 'precisa_ajuste'
-    when e.verificacao_prazo_em is not null and e.verificacao_prazo_em <= now() then 'vencida'
+    when vagas_interno.v2_prazo_empresa(e) <= now() then 'vencida'
     else 'em_verificacao' end;
 $$;
 

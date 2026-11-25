@@ -99,6 +99,56 @@ test('migração aditiva: não apaga nem muda dado existente (nova aplicação c
   assert.equal(base.vagas.some((x) => x.id === an.codigo && x.titulo === 'Atendente antigo'), true);
 });
 
+test('PRIMEIRA aplicação sobre um banco com dados antigos: toda linha que existia continua igual (nenhuma tabela perde nem muda dado)', async () => {
+  pronto();
+  const B = await H.iniciar('antes', { ate: H.V2[0] });
+  try {
+    // dados "de produção" criados só pelo caminho antigo
+    const admin = await H.usuarioAuth(B, 'dono.antigo@v2.teste');
+    await B.db.query(`insert into public.admins (user_id, nome) values ($1, 'Dono')`, [admin]);
+    ok(await B.de(admin)('vagas_adm_cidade_salvar', { slug: 'ant-go', nome: 'Antiga', uf: 'GO', status: 'ativa', porte: 'pequena' }));
+    ok(await B.de(admin)('vagas_adm_zona_salvar', { cidade: 'ant-go', slug: 'centro', nome: 'Centro', bairros: ['Centro'] }));
+    const reg = async (email, tipo) => { const u = await H.usuarioAuth(B, email); ok(await B.servico('vagas_conta_registrar', u, { tipo, termosVersao: '2026-10' })); return u; };
+    const dono = await reg('dona.antiga@v2.teste', 'empresa');
+    const emp = ok(await B.de(dono)('vagas_empresa_cadastrar', { cnpj: cnpjCom('999888777001'), razaoSocial: 'Antiga Comércio Ltda', cidade: 'ant-go', zona: 'centro' })).empresa;
+    ok(await B.de(admin)('vagas_op_empresa_decidir', emp.id, 'aprovar', 'ok'));
+    const an = ok(await B.de(dono)('vagas_anuncio_salvar', { empresaId: emp.id, area: 'atendimento', funcao: 'Atendente antigo', modalidade: 'clt',
+      descricao: 'Atendimento no balcão e organização de prateleiras para o dia a dia da loja de bairro.', turno: 'comercial', experiencia: 'nao_precisa',
+      escolaridade: 'medio', quantidade: 1, salarioDe: 162100, cidade: 'ant-go', zona: 'centro' })).anuncio;
+    ok(await B.de(dono)('vagas_anuncio_publicar', an.id));
+    if ((await B.db.query(`select status from public.vagas_anuncios where id = $1`, [an.id])).rows[0].status === 'em_revisao') ok(await B.de(admin)('vagas_op_anuncio_decidir', an.id, 'publicar', ''));
+    const pes = await reg('pessoa.antiga2@v2.teste', 'pessoa');
+    ok(await B.de(pes)('vagas_pessoa_salvar', { cidade: 'ant-go', zona: 'centro', maior18: true, cargos: ['Atendente'], escolaridade: 'medio', turnos: ['manha'],
+      modalidades: ['clt'], nome: 'Pessoa Antiga Silva', whatsapp: '62 99123-4567', experiencias: [{ funcao: 'Caixa', empregador: 'Mercado', inicio: '2022-01' }] }));
+    const q = ok(await B.de(pes)('vagas_quero', an.id));
+    ok(await B.de(dono)('vagas_empresa_decidir', q.candidatura.id, 'conversar'));
+    ok(await B.de(dono)('vagas_mensagem_enviar', q.candidatura.id, 'Oi, tudo bem?', null));
+    ok(await B.de(pes)('vagas_combinar', q.candidatura.id));
+    await B.db.query(`insert into public.vagas_lista_espera (cidade_id, email, perfil) select id, 'fila@lista.teste', 'pessoa' from public.vagas_cidades where slug = 'ant-go'`);
+    const tabelas = (await B.db.query(`select table_name from information_schema.tables where table_schema = 'public' and table_name like 'vagas\\_%' and table_type = 'BASE TABLE' order by 1`)).rows.map((x) => x.table_name);
+    const fotos = {};
+    for (const t of tabelas) {
+      const cols = (await B.db.query(`select column_name from information_schema.columns where table_schema = 'public' and table_name = $1 order by ordinal_position`, [t])).rows.map((x) => x.column_name);
+      fotos[t] = { cols, rows: (await B.db.query(`select ${cols.map((c) => '"' + c + '"').join(', ')} from public.${t}`)).rows.map((r) => JSON.stringify(r)) };
+    }
+    assert.ok(fotos.vagas_anuncios.rows.length >= 1 && fotos.vagas_candidaturas.rows.length === 1 && fotos.vagas_mensagens.rows.length >= 1);
+    for (const n of H.V2) await B.db.query(H.ler(n));
+    for (const t of tabelas) {
+      const depois = new Set((await B.db.query(`select ${fotos[t].cols.map((c) => '"' + c + '"').join(', ')} from public.${t}`)).rows.map((r) => JSON.stringify(r)));
+      for (const r of fotos[t].rows) assert.ok(depois.has(r), t + ': linha antiga mudou ou sumiu: ' + r.slice(0, 160));
+      if (t !== 'vagas_areas') assert.equal(depois.size, fotos[t].rows.length, t + ': ganhou linha que não devia');
+    }
+    // e o que existia já aparece na v2
+    const base = ok(await B.v2anon('base', { cidade: 'ant-go' }));
+    assert.deepEqual(CONTRATO.validar('base', base), []);
+    assert.equal(base.vagas.some((x) => x.id === an.codigo), true);
+    const eu = ok(await B.v2(pes)('eu'));
+    assert.equal(eu.conta.nome, 'Pessoa Antiga Silva'); assert.equal(eu.curriculo.dados.experiencias[0].cargo, 'Caixa');
+    assert.deepEqual(CONTRATO.validar('candidaturas', ok(await B.v2(pes)('candidaturas'))), []);
+    assert.equal(ok(await B.v2(pes)('candidaturas')).lista[0].etapa, 'em conversa');
+  } finally { await B.encerrar(); }
+});
+
 // ---------------------------------------------------------------------------------------------------------------------------------
 // Filtro de texto contextual
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -343,6 +393,21 @@ test('as 3 travas saíram: vaga de empresa em análise vai ao ar; a cidade em pr
   assert.equal(ok(await A.v2anon('base', { cidade: 'out-mt' })).vagas.some((x) => x.id === pb.vaga.id), true);
 });
 
+test('empresa cadastrada pelo caminho antigo (sem prazo gravado) conta 7 dias do cadastro', async () => {
+  pronto();
+  const uid = await H.conta(A, 'empresa');
+  const emp = ok(await A.de(uid)('vagas_empresa_cadastrar', { cnpj: cnpjCom('310410510001'), razaoSocial: 'Antiga Sem Prazo Ltda', cidade: 'fc-go', zona: 'centro' })).empresa;
+  const v = A.v2(uid);
+  const ver = ok(await v('verificacao', { empresaId: emp.id }));
+  assert.equal(ver.estado, 'em_verificacao');
+  assert.ok(Math.abs(new Date(ver.prazoAte) - Date.now() - 7 * 86400000) < 120000);
+  await A.db.query(`set session_replication_role = replica`);
+  await A.db.query(`update public.vagas_empresas set criado_em = now() - interval '8 days' where id = $1`, [emp.id]);
+  await A.db.query(`set session_replication_role = origin`);
+  assert.equal(ok(await v('verificacao', { empresaId: emp.id })).estado, 'vencida');
+  assert.equal(ok(await v('vagaPublicar', { empresaId: emp.id, vaga: COM() })).estado, 'rascunho');
+});
+
 test('limites da empresa em verificação: 3 no ar, 3 novas por dia, confidencial só verificada; verificada: 30/dia e sem limite de vagas no ar', async () => {
   pronto();
   const emp = await H.empresaEmVerificacao(A, '400500600001');
@@ -577,4 +642,15 @@ test('vagas_v2: as respostas conferem com o contrato e nenhuma palavra proibida 
   const msgs = (await A.db.query(`select vagas_interno.msg_texto(t.tipo, 'x', c.ctx) m from (values ('golpe'), ('contato'), ('link'), ('documento'), ('sensivel'), ('golpe_forte'),
     ('sinal'), ('discriminacao')) t(tipo), (values ('vaga'), ('conversa')) c(ctx)`)).rows.map((x) => x.m).join('\n');
   assert.doesNotMatch(msgs, re);
+});
+
+test('nenhum texto dos arquivos das migrações v2 (erros, mensagens, rótulos) usa palavra proibida; nada de segredo, preço nem nome de pessoa', () => {
+  const re = new RegExp('(^|[^a-zà-ú])(' + CONTRATO.PROIBIDAS.join('|') + ')([^a-zà-ú]|$)', 'i');
+  for (const n of H.V2) {
+    const sem = H.ler(n).replace(/^\s*--.*$/gm, '');
+    const literais = sem.match(/'(?:[^']|'')*'/g) || [];
+    // nomes de migração (lista do versao_banco) e identificadores não são texto de tela
+    for (const l of literais.filter((x) => !/^'\d{14}_[a-z0-9_]+'$/.test(x) && !/^'(vagas_interno|disc_interno|public|auth|storage)\./.test(x))) assert.doesNotMatch(l, re, n + ': ' + l.slice(0, 120));
+    assert.doesNotMatch(sem, /sk_live|secret|senha_|password|R\$ ?\d{2,} ?(\/|por) ?m[eê]s|api[_-]?key/i, n);
+  }
 });
