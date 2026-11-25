@@ -39,7 +39,11 @@
       if (idx >= 0) input.setAttribute('aria-activedescendant', lista.id + '-' + idx); else input.removeAttribute('aria-activedescendant');
     });
     lista.addEventListener('pointerdown', function (e) { var li = e.target.closest('li'); if (!li) return; e.preventDefault(); escolher(parseInt(li.getAttribute('data-i'), 10)); });
-    document.addEventListener('pointerdown', function (e) { if (e.target !== input && !lista.contains(e.target)) { lista.hidden = true; input.setAttribute('aria-expanded', 'false'); } });
+    function fora(e) {
+      if (!document.body.contains(input)) { document.removeEventListener('pointerdown', fora); return; }   /* a tela mudou: solta o ouvinte */
+      if (e.target !== input && !lista.contains(e.target)) { lista.hidden = true; input.setAttribute('aria-expanded', 'false'); }
+    }
+    document.addEventListener('pointerdown', fora);
   };
 
   /* ---------- cartão de vaga (como as pessoas veem) ---------- */
