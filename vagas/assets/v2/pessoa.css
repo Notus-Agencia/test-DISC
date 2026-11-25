@@ -551,7 +551,6 @@ body.tela-conversa{padding-bottom:calc(16px + var(--sb))}
 @media (min-width:761px){.topo .logo img{height:26px}}
 .endosso img{height:20px}
 main:focus{outline:none}
-main:focus-visible{outline:2px solid var(--t-focus);outline-offset:-2px}
 .mt4{margin-top:4px}.mt6{margin-top:6px}.mt8{margin-top:8px}.mt10{margin-top:10px}.mt12{margin-top:12px}.mt14{margin-top:14px}.mt16{margin-top:16px}.mt20{margin-top:20px}.mt24{margin-top:24px}
 .mb8{margin-bottom:8px}.mb12{margin-bottom:12px}
 .g2{--gap:2px}.g12{--gap:12px}.g14{--gap:14px}.g16{--gap:16px}

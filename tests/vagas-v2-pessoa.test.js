@@ -129,7 +129,7 @@ test('a frase anti-golpe vem do contrato, palavra por palavra, e aparece nos 5 l
 });
 
 test('18+: nenhuma vaga ou texto de jovem aprendiz como oferta; a tela avisa que é só para 18 anos ou mais', () => {
-  const f = lerArq('js/v2/pessoa/candidatar.js') + lerArq('js/v2/pessoa/telas-vagas.js');
+  const f = lerArq('js/v2/pessoa/candidatar.js') + lerArq('js/v2/pessoa/formularios.js') + lerArq('js/v2/pessoa/telas-vagas.js');
   assert.match(f, /Precisa ter 18 anos ou mais/);
   assert.match(f, /Tenho 18 anos ou mais/);
   assert.ok(!/Jovem aprendiz['"`]/.test(lerArq('js/v2/pessoa/nucleo.js')));

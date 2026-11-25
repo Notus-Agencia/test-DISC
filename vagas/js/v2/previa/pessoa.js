@@ -82,13 +82,19 @@
     }
     return c;
   }
+  // mantém a hora marcada na base (9h continua 9h), só leva o DIA para perto de hoje
+  function horaDoDia(isoDia, original) {
+    const m = /T(\d\d):(\d\d)/.exec(original), d = new Date(isoDia);
+    if (m) d.setHours(+m[1], +m[2], 0, 0);
+    return d.toISOString();
+  }
   // candidatura semeada: os marcos são espaçados entre o envio e agora (a prévia não tem relógio de empresa de verdade)
   function candDaBase(b) {
     const ordem = ['nova', 'vista', 'em conversa', 'entrevista marcada', 'contratada'], alvo = b.etapa === 'não seguiu' ? 2 : ordem.indexOf(b.etapa);
     const criada = T0 - b.haHoras * H, passo = Math.max(H, Math.min(5 * H, (T0 - H - criada) / (alvo + 1))), m = { enviada: iso(criada) }, nomes = ['vista', 'conversa', 'marcada'];
     for (let i = 0; i < Math.min(alvo, 3); i++) m[nomes[i]] = iso(Math.min(criada + passo * (i + 1), T0 - (alvo - i) * 0.5 * H));
     if (b.etapa === 'não seguiu') m.fim = iso(Math.min(T0 - H, (m.vista ? Date.parse(m.vista) : criada) + 6 * H));
-    return { id: b.id, vagaId: b.vagaId, etapa: b.etapa, criadaEm: iso(criada), marcos: m, entrevista: b.entrevista ? { quando: abs(Date.parse(b.entrevista.quando)), onde: b.entrevista.onde, confirmada: null, pediuOutro: false } : null,
+    return { id: b.id, vagaId: b.vagaId, etapa: b.etapa, criadaEm: iso(criada), marcos: m, entrevista: b.entrevista ? { quando: horaDoDia(abs(Date.parse(b.entrevista.quando)), b.entrevista.quando), onde: b.entrevista.onde, confirmada: null, pediuOutro: false } : null,
       encerradaPor: b.encerradaPor || null, forma: b.forma, respostas: b.respostas.map((r) => ({ pergunta: r.pergunta, resposta: r.resposta })), mensagem: b.mensagem || null, naoLidas: b.etapa === 'em conversa' ? 1 : 0, semeada: true };
   }
   const candJson = (k, c) => {
