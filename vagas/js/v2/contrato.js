@@ -81,6 +81,11 @@
     quemViu: { rpc: 'vagas_v2_quem_viu', login: true, req: {}, res: { lista: 'a' } },                        // [{empresa, vaga, em, o:'currículo'|'contato'|'arquivo'}]
     denunciar: { rpc: 'vagas_v2_denunciar', login: true, req: { vagaId: 's?', mensagemId: 's?', candidaturaId: 's?', motivo: 's', detalhe: 's?' }, res: { derrubou: 'b' } },
 
+    // ---------------- envio de arquivo (o adaptador sobe para o Storage com a sessão da pessoa e depois chama a RPC de registro) ----------------
+    //   curriculoEnviar({arquivo: File}) -> {ok, arquivo:{nome,tamanhoKb,tipo,enviadoEm}}   bucket privado 'vagas-curriculos', caminho '<user_id>/<uuid>.<ext>', ≤ 10 MB, pdf/doc/docx/jpg/png/heic
+    //   verificacaoDocumentoEnviar({empresaId, arquivo: File}) -> {ok, documentos}           bucket privado 'vagas-verificacao', caminho '<empresa_id>/<uuid>.<ext>', ≤ 10 MB, pdf/jpg/png
+    // (no contrato como UPLOADS; não têm rpc próprio: usam curriculoGuardar / verificacaoDocumento depois do envio)
+
     // ---------------- empresa (login) ----------------
     empresaCriar: { edge: 'empresa_criar', login: true,                                                      // consulta o CNPJ no servidor e cria a empresa em verificação; quem chama vira dono
       req: { cnpj: 's', nomeFantasia: 's?', cidade: 's', bairro: 's?', setor: 's?', responsavel: 's', whatsapp: 's', email: 's?' },
@@ -96,7 +101,7 @@
     candidatos: { rpc: 'vagas_v2_candidatos', login: true, req: { empresaId: 's', vagaId: 's?', etapa: 's?', filtros: 'o?' },
       res: { lista: 'a', totais: 'o' } },                                                                     // lista: [CANDIDATO_EMPRESA] ordenada por data (mais nova primeiro); filtros por FATO: bairro, cnh, escolaridade, turno, pretensaoAte, comArquivo
     candidato: { rpc: 'vagas_v2_candidato', login: true, req: { id: 's' }, res: { candidato: 'o', mensagens: 'a' } },
-    arquivoLink: { rpc: 'vagas_v2_arquivo_link', login: true, req: { id: 's' }, res: { url: 's', expiraEm: 's' } },   // só empresa verificada ou com liberação; registra "quem viu"
+    arquivoLink: { edge: 'arquivo_link', login: true, req: { id: 's' }, res: { url: 's', expiraEm: 's' } },   // só empresa verificada ou com liberação; a função de servidor chama vagas_v2_arquivo_link_servidor (registra "quem viu") e assina o link de 5 min
     candidatoMover: { rpc: 'vagas_v2_candidato_mover', login: true, req: { id: 's', etapa: 's', desfazer: 'b?' }, res: { candidato: 'o' } },   // etapa de ETAPAS; 'não seguiu' aceita desfazer (volta à etapa anterior)
     whatsappChamar: { rpc: 'vagas_v2_whatsapp_chamar', login: true, req: { id: 's' }, res: { whatsapp: 's', link: 's' } },   // só verificada ou liberado; registra acesso; marca "em conversa"
     entrevistaMarcar: { rpc: 'vagas_v2_entrevista_marcar', login: true, req: { id: 's', quando: 's', onde: 's', recado: 's?' }, res: { candidato: 'o' } },
@@ -104,12 +109,18 @@
     equipe: { rpc: 'vagas_v2_equipe', login: true, req: { empresaId: 's' }, res: { equipe: 'a' } },
     verificacao: { rpc: 'vagas_v2_verificacao', login: true, req: { empresaId: 's' }, res: { estado: 's', passos: 'a', prazoAte: 's?', motivoAjuste: 's?', verificadaEm: 's?', documentos: 'a' } },
     verificacaoDocumento: { rpc: 'vagas_v2_verificacao_documento', login: true, req: { empresaId: 's', caminho: 's', nome: 's', tipo: 's' }, res: { documentos: 'a' } },
+    verificacaoDocumentoLink: { edge: 'documento_link', login: true, req: { id: 's' }, res: { url: 's', expiraEm: 's' } },   // dono da empresa ou equipe da cidade; chama vagas_v2_documento_link_servidor
     verificacaoReenviar: { rpc: 'vagas_v2_verificacao_reenviar', login: true, req: { empresaId: 's', dados: 'o?' }, res: { estado: 's' } },   // "Corrigir e pedir nova conferência"
 
     // ---------------- equipe da cidade (operador; nunca vê pessoa, currículo nem contato) ----------------
     opRevisarDepois: { rpc: 'vagas_v2_op_revisar_depois', login: true, req: { cidade: 's?', filtro: 's?' }, res: { lista: 'a', totais: 'o' } },   // [{vaga, empresa:{...+consultaCnpj}, sinais:[{tipo:'forte'|'fraco', texto}], denuncias, criadaEm}]
     opRevisarDecidir: { rpc: 'vagas_v2_op_revisar_decidir', login: true, req: { id: 's', acao: 's', recado: 's?' }, res: {} },   // 'verificar_empresa'|'pedir_documento'|'tirar_do_ar'|'suspender_empresa'|'liberar'(segurada vai ao ar)|'recusar_empresa'
     opAvisarCandidatos: { rpc: 'vagas_v2_op_avisar_candidatos', login: true, req: { vagaId: 's', mensagem: 's' }, res: { avisados: 'n' } }
+  };
+
+  var UPLOADS = {
+    curriculoEnviar: { bucket: 'vagas-curriculos', depois: 'curriculoGuardar', max: 10485760, tipos: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png', 'image/heic', 'image/heif'] },
+    verificacaoDocumentoEnviar: { bucket: 'vagas-verificacao', depois: 'verificacaoDocumento', max: 10485760, tipos: ['application/pdf', 'image/jpeg', 'image/png'] }
   };
 
   function tipoOk(t, v) {
@@ -152,7 +163,7 @@
   var FRASE_GOLPE = 'Nunca pague para se candidatar. Se alguém pedir dinheiro, Pix ou documento em nome do Vagas sem Caos, é golpe.';
 
   var API = { ETAPAS: ETAPAS, TIPOS: TIPOS, TURNOS: TURNOS, STATUS_VAGA: STATUS_VAGA, ESTADO_EMPRESA: ESTADO_EMPRESA, MOTIVOS_DENUNCIA: MOTIVOS_DENUNCIA,
-    LIMITES: LIMITES, METODOS: METODOS, FORMAS: { vaga: VAGA, empresa: EMPRESA, candidaturaPessoa: CANDIDATURA_PESSOA, candidatoEmpresa: CANDIDATO_EMPRESA },
+    LIMITES: LIMITES, METODOS: METODOS, UPLOADS: UPLOADS, FORMAS: { vaga: VAGA, empresa: EMPRESA, candidaturaPessoa: CANDIDATURA_PESSOA, candidatoEmpresa: CANDIDATO_EMPRESA },
     validar: validar, validarForma: validarForma, PROIBIDAS: PROIBIDAS, FRASE_GOLPE: FRASE_GOLPE };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   else root.VSC_CONTRATO = API;
