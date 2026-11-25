@@ -11,6 +11,7 @@
  *   SITE_URL            Endereço do site (links de e-mail e de compartilhar).
  *   TURNSTILE_SITE_KEY  Chave pública do "não sou robô" (Cloudflare Turnstile). Vazio = desligado.
  *   VERSAO_TERMOS       Versão dos termos de uso e do aviso de privacidade aceita no cadastro (texto final em conteudo/vagas-textos/).
+ *   v2: WHATSAPP_AJUDA, EMAIL_AJUDA, CANAL_WHATSAPP, PREVIA_LATENCIA, PREVIA_VALIDAR e ajuda(): docs/projeto/status/vagas-v2-servidor.md.
  */
 (function (root) {
   var CONFIG = {
@@ -19,8 +20,21 @@
     SUPABASE_ANON_KEY: 'sb_publishable_8B735nOKFWn-CC8dYpr1sg_RQs5y_W-',
     SITE_URL: 'https://vagas.gestaosemcaos.com.br',
     TURNSTILE_SITE_KEY: '',
-    VERSAO_TERMOS: '2026-10-13'
+    VERSAO_TERMOS: '2026-11-24',
+    WHATSAPP_AJUDA: '',
+    EMAIL_AJUDA: '',
+    CANAL_WHATSAPP: false,
+    PREVIA_LATENCIA: 120,
+    PREVIA_VALIDAR: false
   };
+  function ajuda(texto) {
+    var t = texto ? encodeURIComponent(texto) : '', d = String(CONFIG.WHATSAPP_AJUDA).replace(/\D/g, ''), e = String(CONFIG.EMAIL_AJUDA);
+    if (d.length < 12) d = '55' + d;
+    if (/^55[1-9][1-9][0-9]{8,9}$/.test(d)) return { tipo: 'whatsapp', href: 'https://wa.me/' + d + (t ? '?text=' + t : '') };
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return { tipo: 'contingencia', texto: 'Fale com a gente pelo e-mail ' + e + '.', href: 'mailto:' + e + (t ? '?subject=' + t : '') };
+    return { tipo: 'contingencia', texto: 'O atendimento por WhatsApp ainda não está disponível. Volte em breve.', href: '' };
+  }
+  CONFIG.ajuda = CONFIG.ajudaLink = ajuda;
   try {
     var loc = root.location;
     var ss = root.sessionStorage;

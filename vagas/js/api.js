@@ -476,6 +476,9 @@
     comFotoNoContato(api);
     api.RECURSOS = recursos();
     api.modo = 'supabase';
+    // Peças internas para o adaptador da v2 (vagas/js/v2/api-v2.js): mesma sessão, mesma renovação e mesmos erros.
+    api._nucleo = { rpc: rpc, funcao: funcao, pedir: pedir, token: token, cabecalhos: cabecalhos, sessaoGuardada: sessaoGuardada, guardarSessao: guardarSessao,
+      erroDe: erroDe, chave: chave, url: url, armazenamento: arm };
     return api;
   }
 
@@ -568,6 +571,7 @@
     op = op || {};
     var api = op.modo === 'previa' ? criarPrevia(op) : criarSupabase(op);
     api.aoResponder = aoResponder;
+    if (api._nucleo) api._nucleo.aoResponder = aoResponder;
     api.limparAparelho = function () { return limparAparelho(op.armazenamento); };
     var sair = api.sair;   // sair limpa sempre, mesmo sem sessão
     api.sair = function () { limparAparelho(op.armazenamento); return sair.apply(api, arguments); };
