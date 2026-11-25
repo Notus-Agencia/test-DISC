@@ -42,6 +42,19 @@
 //       a tela usa este caminho quando tem o "não sou robô" (TURNSTILE_SITE_KEY no site). Com TURNSTILE_SECRET, o captcha é
 //       conferido aqui e o banco grava com o limite maior por origem (mutirão, escola, Wi-Fi da praça); sem o segredo, vale o
 //       limite comum. Mesmas respostas da RPC pública vagas_lista_espera_entrar (20261024120004).
+// v2 (24/11/2026, docs/projeto/status/vagas-v2-servidor.md): entrada SEM senha por código de 6 dígitos e ações do site novo.
+//   codigo_pedir {destino, canal:'email'|'whatsapp', captcha?} (sem login) -> {ok, canal, destinoMascarado, reenviarEmSeg, expiraEmSeg}
+//       Gera 6 dígitos, guarda só o HASH (HMAC com sal por linha; vagas_conta_codigo_novo) e manda por e-mail (Resend). Vale 10 min,
+//       5 tentativas, reenvio só depois de 30 s. 'whatsapp' só com VAGAS_CANAL_WHATSAPP=ligado + provedor (hoje: não ligado).
+//   codigo_confirmar {destino, codigo, nome?, tipo?, termosVersao?} (sem login) -> {ok, sessao:{access_token, refresh_token, expires_at,
+//       user:{id,email}}, novaConta, tipo}. Confere o hash em tempo constante, acha ou cria a conta do Auth (e-mail provado pelo código),
+//       chama vagas_v2_conta_garantir_servidor e devolve uma sessão real (magic link trocado dentro da Function; o token do link nunca sai).
+//   cnpj {cnpj} (sem login) -> {ok, cnpj, tipo:'mei'|'empresa', ativa, situacao, razaoSocial, nomeFantasia, cidade, uf, bairro, abertura, mei, setor}
+//       ou {ok:false, codigo:'cpf'|'cnpj_invalido'|'cnpj_nao_encontrado'|'consulta_indisponivel', erro}. Nunca aprova sem consulta.
+//   empresa_criar {cnpj, nomeFantasia?, cidade, bairro?, setor?, responsavel, whatsapp, email?} (JWT) -> {ok, empresa}: refaz a consulta
+//       do CNPJ no servidor, recusa CNPJ fora de ATIVA e chama vagas_v2_empresa_criar_servidor.
+//   arquivo_link {id} / documento_link {id} (JWT) -> {ok, url, expiraEm}: o banco decide e registra (vagas_v2_arquivo_link_servidor,
+//       vagas_v2_documento_link_servidor); aqui só se assina o caminho por 5 minutos (buckets vagas-curriculos e vagas-verificacao).
 // Link do e-mail: <VAGAS_SITE_URL>/entrar.html?token_hash=<hash>&type=invite|recovery (gerado com auth.admin.generateLink,
 // no domínio do site; o antivírus que "abre" o link antes da pessoa não o gasta, porque a tela só confere no clique). No convite
 // de equipe o link leva também &convite=<token> (ou só ?convite=<token> para quem já tem conta de empresa).
@@ -53,9 +66,16 @@
 import { erro, MSG_ERRO_INTERNO } from './regras.js';
 import { criarResend } from './asaas.js';
 import { htmlMarca, LOGO_EMAIL } from './email.js';
+import {
+  VAGAS_CODIGO_REENVIO_SEG, VAGAS_CODIGO_VALE_SEG, VAGAS_MSG_CODIGO_FORMATO, VAGAS_MSG_CODIGO_ERRADO, VAGAS_MSG_CODIGO_ESGOTADO,
+  VAGAS_MSG_WHATSAPP_DESLIGADO, VAGAS_MSG_ENVIO_FALHOU, VAGAS_MSG_OUTRO_SISTEMA, gerarCodigoVagas, gerarSalVagas, hashCodigoVagas,
+  conferirCodigoVagas, codigoDigitadoVagas, whatsappDigitosVagas, mascararWhatsappVagas, montarEmailCodigoVagas, consultarCnpjVagas,
+  motivoCnpjInativoVagas
+} from './vagas-v2.js';
 
-export const NOMES_ENV_VAGAS_CONTA = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'VAGAS_SITE_URL', 'VAGAS_EMAIL_REMETENTE',
-  'EMAIL_REMETENTE', 'TURNSTILE_SECRET', 'SITE_URL'];
+export const NOMES_ENV_VAGAS_CONTA = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_ANON_KEY', 'RESEND_API_KEY', 'VAGAS_SITE_URL',
+  'VAGAS_EMAIL_REMETENTE', 'EMAIL_REMETENTE', 'TURNSTILE_SECRET', 'SITE_URL', 'VAGAS_CANAL_WHATSAPP', 'VAGAS_WHATSAPP_PROVEDOR_URL',
+  'VAGAS_WHATSAPP_PROVEDOR_TOKEN', 'VAGAS_WHATSAPP_PROVEDOR_REMETENTE'];
 export const VAGAS_SITE_PADRAO = 'https://vagas.gestaosemcaos.com.br';
 export const VAGAS_PAINEL_DISC_PADRAO = 'https://disc.gestaosemcaos.com.br';
 export const VAGAS_MSG_ENVIADO = 'Se este e-mail puder ser usado, você vai receber um link em instantes. Confira também a caixa de spam.';
@@ -72,6 +92,9 @@ export const VAGAS_AVISO_INTERVALO_MS = 600;   // ~2 envios por segundo (limite 
 export const VAGAS_MSG_CIDADE_FECHADA_AVISO = 'A cidade ainda não está aberta. Abra a cidade antes de avisar a lista de espera.';
 export const VAGAS_BUCKET_FOTOS = 'vagas-fotos';
 export const VAGAS_FOTO_SEGUNDOS = 300;
+export const VAGAS_BUCKET_CURRICULOS = 'vagas-curriculos';
+export const VAGAS_BUCKET_VERIFICACAO = 'vagas-verificacao';
+export const VAGAS_LINK_SEGUNDOS = 300;
 const VAGAS_LIMITE_CORPO = 4000;
 // Logo do topo dos e-mails do Vagas: PNG como o da moldura (o Gmail não mostra SVG), 903×136, mostrado a 188 px (scripts/marca-vagas-email.mjs).
 export const VAGAS_LOGO_EMAIL = 'https://disc.gestaosemcaos.com.br/assets/marca/vsc-logo-email.png';
@@ -205,10 +228,14 @@ function senhaAleatoriaVagas(base) {
   return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('') + 'Aa1!';
 }
 
+function resendVagas(base) {
+  return criarResend({ apiKey: base.env.RESEND_API_KEY, remetente: base.env.VAGAS_EMAIL_REMETENTE || base.env.EMAIL_REMETENTE ||
+    'Vagas sem Caos <onboarding@resend.dev>', fetch: base.fetch });
+}
+
 async function enviarEmailVagas(base, para, tipo, dados) {
   const m = montarEmailVagas(tipo, dados);
-  await criarResend({ apiKey: base.env.RESEND_API_KEY, remetente: base.env.VAGAS_EMAIL_REMETENTE || base.env.EMAIL_REMETENTE ||
-    'Vagas sem Caos <onboarding@resend.dev>', fetch: base.fetch }).enviar({ para, assunto: m.assunto, html: m.html, texto: m.texto });
+  await resendVagas(base).enviar({ para, assunto: m.assunto, html: m.html, texto: m.texto });
 }
 
 // Link de confirmação/convite: 'invite' (cria a senha no clique); se o Auth recusar para a conta pendente, 'magiclink'.
@@ -520,6 +547,171 @@ export async function acaoVagasFoto(base, corpo, origem, quem) {
   return { ok: true, url, expiraEm: new Date(Date.now() + VAGAS_FOTO_SEGUNDOS * 1000).toISOString() };
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// v2: entrada por código, CNPJ, empresa e links de arquivo (peças puras em ./vagas-v2.js)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Erro vindo do banco: só a mensagem, o código e as marcas conhecidas; nenhum outro campo chega ao navegador. */
+function repasseErroVagas(r) {
+  if (!r || typeof r.erro !== 'string') return erro(MSG_ERRO_INTERNO);
+  const marcas = {};
+  ['sessaoExpirada', 'confirmar', 'suspensa', 'bloqueado', 'aguardar', 'semConta', 'naoEncontrada', 'bloqueada', 'existe'].forEach((k) => { if (r[k]) marcas[k] = true; });
+  if (typeof r.codigo === 'string' && /^[a-z_]{1,40}$/.test(r.codigo)) marcas.codigo = r.codigo;
+  if (typeof r.reenviarEmSeg === 'number') marcas.reenviarEmSeg = r.reenviarEmSeg;
+  return erro(r.erro, marcas);
+}
+
+export function canalWhatsappLigadoVagas(env) {
+  return String((env && env.VAGAS_CANAL_WHATSAPP) || '').trim().toLowerCase() === 'ligado';
+}
+
+/** Envio do código por WhatsApp, atrás da chave VAGAS_CANAL_WHATSAPP=ligado. Hoje só lê as variáveis do provedor
+ *  (VAGAS_WHATSAPP_PROVEDOR_URL, _TOKEN, _REMETENTE) e devolve "não configurado": o provedor ainda não foi escolhido e a ligação
+ *  com ele entra aqui, sem mudar o resto. {enviado:false, naoConfigurado:true, provedorLido} */
+export async function enviarCodigoWhatsappVagas(base, destino, codigo) {
+  const env = (base && base.env) || {};
+  const provedorLido = canalWhatsappLigadoVagas(env) && !!String(env.VAGAS_WHATSAPP_PROVEDOR_URL || '').trim() &&
+    !!String(env.VAGAS_WHATSAPP_PROVEDOR_TOKEN || '').trim();
+  return { enviado: false, naoConfigurado: true, provedorLido: provedorLido && !!destino && !!codigo };
+}
+
+async function enviarEmailCodigoVagas(base, para, codigo) {
+  const m = montarEmailCodigoVagas({ codigo, logo: VAGAS_LOGO_EMAIL });
+  await resendVagas(base).enviar({ para, assunto: m.assunto, html: m.html, texto: m.texto });
+}
+
+export async function acaoVagasCodigoPedir(base, corpo, origem) {
+  if (corpo.canal !== undefined && corpo.canal !== null && corpo.canal !== '' && corpo.canal !== 'email' && corpo.canal !== 'whatsapp') return erro('Canal inválido.');
+  const canal = corpo.canal === 'whatsapp' ? 'whatsapp' : 'email';
+  if (canal === 'whatsapp' && !canalWhatsappLigadoVagas(base.env)) return erro(VAGAS_MSG_WHATSAPP_DESLIGADO, { codigo: 'canal_desligado' });
+  const destino = canal === 'email' ? emailVagas(corpo.destino) : whatsappDigitosVagas(corpo.destino);
+  if (!destino) return erro(canal === 'email' ? VAGAS_MSG_EMAIL_INVALIDO : 'WhatsApp inválido. Digite o DDD e o número.');
+  if (canal === 'email' && !vagasEmailConfigurado(base)) return erro(VAGAS_MSG_EMAIL_NAO_CONFIGURADO, { naoConfigurado: true });
+  if (!(await conferirCaptchaVagas(base, corpo.captcha, origem.cf))) return erro(VAGAS_MSG_CAPTCHA, { captcha: true });
+  const codigo = (base.sortearCodigo || gerarCodigoVagas)();
+  const sal = (base.sortearSal || gerarSalVagas)();
+  const hash = await hashCodigoVagas(codigo, destino, sal, base.env.SUPABASE_SERVICE_ROLE_KEY);
+  const n = await base.db.codigoNovo(canal, destino, sal, hash, origem.cf, origem.xff);
+  if (!n || n.ok !== true) return repasseErroVagas(n);
+  try {
+    if (canal === 'email') await enviarEmailCodigoVagas(base, destino, codigo);
+    else if (!(await enviarCodigoWhatsappVagas(base, destino, codigo)).enviado) throw new Error('WhatsApp: provedor não configurado');
+  } catch (err) {
+    try { console.error('codigo_pedir: ' + (err && err.message ? err.message : 'envio falhou')); } catch (e) { /* sem console */ }
+    try { await base.db.codigoCancelar(n.id); } catch (e) { /* o código vence sozinho em 10 minutos */ }
+    return canal === 'whatsapp' ? erro(VAGAS_MSG_WHATSAPP_DESLIGADO, { codigo: 'canal_desligado' }) : erro(VAGAS_MSG_ENVIO_FALHOU, { codigo: 'envio_falhou' });
+  }
+  return { ok: true, canal, destinoMascarado: canal === 'email' ? mascararEmailVagas(destino) : mascararWhatsappVagas(destino),
+    reenviarEmSeg: typeof n.reenviarEmSeg === 'number' ? n.reenviarEmSeg : VAGAS_CODIGO_REENVIO_SEG,
+    expiraEmSeg: typeof n.expiraEmSeg === 'number' ? n.expiraEmSeg : VAGAS_CODIGO_VALE_SEG };
+}
+
+export async function acaoVagasCodigoConfirmar(base, corpo, origem) {
+  const destino = emailVagas(corpo.destino);
+  if (!destino) return whatsappDigitosVagas(corpo.destino) ? erro(VAGAS_MSG_WHATSAPP_DESLIGADO, { codigo: 'canal_desligado' }) : erro(VAGAS_MSG_EMAIL_INVALIDO);
+  const codigo = codigoDigitadoVagas(corpo.codigo);
+  if (!codigo) return erro(VAGAS_MSG_CODIGO_FORMATO, { codigo: 'codigo_formato' });
+  const versao = String(corpo.termosVersao || '').trim();
+  if (!/^[A-Za-z0-9._-]{1,40}$/.test(versao)) return erro(VAGAS_MSG_TERMOS);
+  const tipo = corpo.tipo === 'empresa' ? 'empresa' : 'pessoa';
+  const nome = String(corpo.nome || '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+  const t = await base.db.codigoTentar(destino, origem.cf, origem.xff);
+  if (!t || t.ok !== true) return repasseErroVagas(t);
+  if (!(await conferirCodigoVagas(codigo, destino, t.sal, base.env.SUPABASE_SERVICE_ROLE_KEY, t.hash))) {
+    return Number(t.restantes) > 0 ? erro(VAGAS_MSG_CODIGO_ERRADO, { codigo: 'codigo_errado', restantes: Number(t.restantes) })
+      : erro(VAGAS_MSG_CODIGO_ESGOTADO, { codigo: 'tentativas' });
+  }
+  const usado = await base.db.codigoUsar(t.id);
+  if (!usado || usado.ok !== true) return repasseErroVagas(usado);
+  // O código provou que a pessoa lê este e-mail: só agora se acha ou se cria a conta.
+  const c = await base.db.consultar(destino);
+  let userId;
+  let novaConta = false;
+  let tipoConta = tipo;
+  if (!c.existe) {
+    const u = await base.auth.criarUsuario({ email: destino, senha: senhaAleatoriaVagas(base), app: { produto: 'vagas', tipo }, usuario: nome ? { nome } : {} });
+    userId = u.id;
+    novaConta = true;
+  } else {
+    if (c.admin || (c.produto !== 'vagas' && !c.conta)) return erro(VAGAS_MSG_OUTRO_SISTEMA, { codigo: 'conta_de_outro_sistema' });
+    userId = c.userId;
+    if (c.conta && c.conta.tipo) tipoConta = c.conta.tipo;
+  }
+  try {
+    if (!c.existe || !c.confirmada) await base.auth.confirmarEmail(userId);
+    if (tipoConta !== 'operador') {
+      const g = await base.db.contaGarantir(userId, { tipo: tipoConta, nome, termosVersao: versao });
+      if (!g || g.ok !== true) {
+        if (novaConta) { try { await base.auth.excluirUsuario(userId); } catch (e) { /* sem conta pela metade */ } }
+        return repasseErroVagas(g);
+      }
+    }
+  } catch (err) {
+    if (novaConta) { try { await base.auth.excluirUsuario(userId); } catch (e) { /* sem conta pela metade */ } }
+    throw err;
+  }
+  const sessao = await base.auth.sessaoDoLink(await base.auth.gerarLink('magiclink', destino));
+  return { ok: true, sessao, novaConta, tipo: tipoConta };
+}
+
+/** Consulta pública do CNPJ (a forma cnpjConsultar do contrato). Limite por origem. */
+export async function acaoVagasCnpj(base, corpo, origem) {
+  const lim = await base.db.limiteV2('cnpj', origem.cf, origem.xff, '', null);
+  if (!lim || lim.ok !== true) return repasseErroVagas(lim);
+  const r = await consultarCnpjVagas(base.fetch, corpo.cnpj, { cache: base.cnpjCache });
+  if (!r.ok) return erro(r.erro, { codigo: r.codigo });
+  return Object.assign({ ok: true }, r.consulta);
+}
+
+const VAGAS_TEXTO = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+
+/** Cria a empresa em verificação: o CNPJ é consultado de novo AQUI (o navegador não é confiável) e só entra se estiver ATIVA. */
+export async function acaoVagasEmpresaCriar(base, corpo, origem, quem) {
+  if (!quem) return erro('Sessão expirada. Entre de novo.', { sessaoExpirada: true });
+  const responsavel = VAGAS_TEXTO(corpo.responsavel, 120);
+  if (!responsavel) return erro('Diga o nome de quem responde pela empresa.');
+  const cidade = VAGAS_TEXTO(corpo.cidade, 80);
+  if (!cidade) return erro('Escolha a cidade da empresa.');
+  const whatsapp = whatsappDigitosVagas(corpo.whatsapp);
+  if (!whatsapp) return erro('WhatsApp inválido. Digite o DDD e o número.');
+  const email = corpo.email ? emailVagas(corpo.email) : '';
+  if (corpo.email && !email) return erro(VAGAS_MSG_EMAIL_INVALIDO);
+  const lim = await base.db.limiteV2('empresa_criar', origem.cf, origem.xff, '', quem.id);
+  if (!lim || lim.ok !== true) return repasseErroVagas(lim);
+  const r = await consultarCnpjVagas(base.fetch, corpo.cnpj, { cache: base.cnpjCache, fresco: true });
+  if (!r.ok) return erro(r.erro, { codigo: r.codigo });
+  const c = r.consulta;
+  if (!c.ativa) return erro(motivoCnpjInativoVagas(c.situacao), { codigo: 'cnpj_inativo', situacao: c.situacao });
+  const criada = await base.db.empresaCriar(quem.id, {
+    cnpj: c.cnpj, nomeFantasia: VAGAS_TEXTO(corpo.nomeFantasia, 120) || c.nomeFantasia, cidade, bairro: VAGAS_TEXTO(corpo.bairro, 80) || c.bairro,
+    setor: VAGAS_TEXTO(corpo.setor, 80), responsavel, whatsapp, email,
+    consulta: { situacao: c.situacao, razaoSocial: c.razaoSocial, nomeFantasia: c.nomeFantasia, cidade: c.cidade, uf: c.uf, abertura: c.abertura, mei: c.mei } });
+  if (!criada || criada.ok !== true || !criada.empresa) return repasseErroVagas(criada);
+  return { ok: true, empresa: criada.empresa };
+}
+
+async function linkDeArquivoVagas(base, corpo, origem, quem, acao, bucket, pedir) {
+  if (!quem) return erro('Sessão expirada. Entre de novo.', { sessaoExpirada: true });
+  const id = String(corpo.id || '').trim();
+  if (!UUID_VAGAS.test(id)) return erro('Arquivo não encontrado.', { naoEncontrada: true });
+  const lim = await base.db.limiteV2(acao, origem.cf, origem.xff, '', quem.id);
+  if (!lim || lim.ok !== true) return repasseErroVagas(lim);
+  const r = await pedir(quem.id, id);
+  if (!r || r.ok !== true || typeof r.caminho !== 'string' || !r.caminho) return repasseErroVagas(r);
+  const url = await base.storage.assinar(bucket, r.caminho, VAGAS_LINK_SEGUNDOS);
+  return { ok: true, url, expiraEm: new Date(Date.now() + VAGAS_LINK_SEGUNDOS * 1000).toISOString() };
+}
+
+/** Currículo anexado: o banco decide (empresa verificada ou liberação da pessoa) e registra "quem viu"; aqui só se assina. */
+export function acaoVagasArquivoLink(base, corpo, origem, quem) {
+  return linkDeArquivoVagas(base, corpo, origem, quem, 'arquivo_link', VAGAS_BUCKET_CURRICULOS, (uid, id) => base.db.arquivoLink(uid, id));
+}
+
+/** Documento de verificação da empresa: dono da empresa ou equipe da cidade (o banco confere). */
+export function acaoVagasDocumentoLink(base, corpo, origem, quem) {
+  return linkDeArquivoVagas(base, corpo, origem, quem, 'documento_link', VAGAS_BUCKET_VERIFICACAO, (uid, id) => base.db.documentoLink(uid, id));
+}
+
 /** Banco (service role) e Auth (admin) reais, a partir do supabase-js. */
 export function criarBaseVagasConta(createClient, getEnv, extras) {
   const env = lerEnvVagasConta(getEnv);
@@ -531,9 +723,10 @@ export function criarBaseVagasConta(createClient, getEnv, extras) {
     if (error) throw new Error('falha no banco de dados (' + String(error.message || error.code || 'erro').substring(0, 160) + ')');
     return typeof data === 'string' ? JSON.parse(data) : data;
   }
+  const buscar = (extras && extras.fetch) || ((u, o) => fetch(u, o));
   return Object.assign({
     env,
-    fetch: (u, o) => fetch(u, o),
+    fetch: buscar,
     db: {
       limite: (acao, cf, xff, email, ator) => rpc('vagas_conta_limite', { p_acao: acao, p_cf: cf || '', p_xff: xff || '', p_email: email || '', p_ator: ator || null }),
       consultar: (email) => rpc('vagas_conta_consultar', { p_email: email }),
@@ -547,7 +740,17 @@ export function criarBaseVagasConta(createClient, getEnv, extras) {
       avisoMarcar: (userId, cidade, enviados, falhas, invalidos) => rpc('vagas_conta_aviso_marcar', { p_user: userId, p_cidade: cidade,
         p_enviados: enviados || [], p_falhas: falhas || [], p_invalidos: invalidos || [] }),
       listaEspera: (dados, cf, xff, humano) => rpc('vagas_conta_lista_espera', { p_dados: dados || {}, p_cf: cf || '', p_xff: xff || '',
-        p_humano: !!humano })
+        p_humano: !!humano }),
+      codigoNovo: (canal, destino, sal, hash, cf, xff) => rpc('vagas_conta_codigo_novo', { p_canal: canal, p_destino: destino, p_sal: sal, p_hash: hash,
+        p_cf: cf || '', p_xff: xff || '' }),
+      codigoTentar: (destino, cf, xff) => rpc('vagas_conta_codigo_tentar', { p_destino: destino, p_cf: cf || '', p_xff: xff || '' }),
+      codigoUsar: (id) => rpc('vagas_conta_codigo_usar', { p_id: id }),
+      codigoCancelar: (id) => rpc('vagas_conta_codigo_cancelar', { p_id: id }),
+      limiteV2: (acao, cf, xff, chave, ator) => rpc('vagas_conta_limite_v2', { p_acao: acao, p_cf: cf || '', p_xff: xff || '', p_chave: chave || '', p_ator: ator || null }),
+      contaGarantir: (userId, dados) => rpc('vagas_v2_conta_garantir_servidor', { p_uid: userId, p_dados: dados }),
+      empresaCriar: (userId, dados) => rpc('vagas_v2_empresa_criar_servidor', { p_uid: userId, p_dados: dados }),
+      arquivoLink: (userId, candidatura) => rpc('vagas_v2_arquivo_link_servidor', { p_uid: userId, p_candidatura: candidatura }),
+      documentoLink: (userId, documento) => rpc('vagas_v2_documento_link_servidor', { p_uid: userId, p_documento: documento })
     },
     storage: {
       async assinar(bucket, caminho, segundos) {
@@ -577,6 +780,22 @@ export function criarBaseVagasConta(createClient, getEnv, extras) {
         const { data, error } = await sb.auth.getUser(jwt);
         if (error || !data || !data.user) return null;
         return { id: data.user.id, email: data.user.email || '' };
+      },
+      async confirmarEmail(id) {
+        const { error } = await sb.auth.admin.updateUserById(id, { email_confirm: true });
+        if (error) throw new Error('Auth: ' + String(error.message || 'falha ao confirmar').substring(0, 160));
+      },
+      // Troca o link de uso único (gerado aqui, nunca enviado a ninguém) por uma sessão real, como o navegador faria no clique.
+      async sessaoDoLink(tokenHash) {
+        const r = await buscar(String(env.SUPABASE_URL).replace(/\/+$/, '') + '/auth/v1/verify', { method: 'POST',
+          headers: { apikey: env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'magiclink', token_hash: tokenHash }) });
+        let j = null;
+        try { j = await r.json(); } catch (err) { j = null; }
+        if (!r.ok || !j || !j.access_token || !j.refresh_token) throw new Error('Auth: a sessão não abriu (HTTP ' + r.status + ')');
+        return { access_token: j.access_token, refresh_token: j.refresh_token,
+          expires_at: Number(j.expires_at) || Math.floor(Date.now() / 1000) + (Number(j.expires_in) || 3600),
+          user: { id: (j.user && j.user.id) || '', email: (j.user && j.user.email) || '' } };
       },
       async atualizarApp(id, app) {
         const { error } = await sb.auth.admin.updateUserById(id, { app_metadata: app });
@@ -643,6 +862,12 @@ export async function atenderVagasConta(req, base) {
     else if (corpo.acao === 'convite_equipe') r = await acaoVagasConviteEquipe(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'avisar_lista_espera') r = await acaoVagasAvisarListaEspera(base, corpo, origem, await quemChamaVagas(base, req));
     else if (corpo.acao === 'lista_espera') r = await acaoVagasListaEspera(base, corpo, origem);
+    else if (corpo.acao === 'codigo_pedir') r = await acaoVagasCodigoPedir(base, corpo, origem);
+    else if (corpo.acao === 'codigo_confirmar') r = await acaoVagasCodigoConfirmar(base, corpo, origem);
+    else if (corpo.acao === 'cnpj') r = await acaoVagasCnpj(base, corpo, origem);
+    else if (corpo.acao === 'empresa_criar') r = await acaoVagasEmpresaCriar(base, corpo, origem, await quemChamaVagas(base, req));
+    else if (corpo.acao === 'arquivo_link') r = await acaoVagasArquivoLink(base, corpo, origem, await quemChamaVagas(base, req));
+    else if (corpo.acao === 'documento_link') r = await acaoVagasDocumentoLink(base, corpo, origem, await quemChamaVagas(base, req));
     else r = erro('Ação desconhecida.');
     return vagasResponder(r, 200, cors);
   } catch (err) {

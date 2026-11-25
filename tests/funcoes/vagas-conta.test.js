@@ -523,8 +523,9 @@ test('peças: e-mails com a marca, máscara, link, CORS, ambiente e o adaptador 
   assert.equal(cors('https://disc.gestaosemcaos.com.br', { SITE_URL: 'https://painel.exemplo.com' }), undefined);
   assert.equal(cors('https://golpe.exemplo.com'), undefined);
   assert.equal(cors('http://localhost:4315'), 'http://localhost:4315');
-  assert.deepEqual(Object.keys(lerEnvVagasConta(() => ' v ')).sort(), ['EMAIL_REMETENTE', 'RESEND_API_KEY', 'SITE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL',
-    'TURNSTILE_SECRET', 'VAGAS_EMAIL_REMETENTE', 'VAGAS_SITE_URL']);
+  assert.deepEqual(Object.keys(lerEnvVagasConta(() => ' v ')).sort(), ['EMAIL_REMETENTE', 'RESEND_API_KEY', 'SITE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_URL',
+    'TURNSTILE_SECRET', 'VAGAS_CANAL_WHATSAPP', 'VAGAS_EMAIL_REMETENTE', 'VAGAS_SITE_URL', 'VAGAS_WHATSAPP_PROVEDOR_REMETENTE',
+    'VAGAS_WHATSAPP_PROVEDOR_TOKEN', 'VAGAS_WHATSAPP_PROVEDOR_URL']);
   // Adaptador real com um supabase-js falso: chama as RPCs certas e o admin do Auth com os parâmetros certos.
   const chamadas = [];
   const sbFalso = {
