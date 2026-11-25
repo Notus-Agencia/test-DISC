@@ -79,7 +79,7 @@ Base fora do ar, resposta estranha ou CNPJ diferente do pedido: `consulta_indisp
 `empresa_criar` refaz a consulta sem cache e recusa quem não está ATIVA (`cnpj_inativo`, com o motivo: baixado, suspenso, inapto, nulo).
 A consulta pública devolve a razão social de qualquer CNPJ (dado público da Receita), com limite de 60 por hora por origem.
 
-**Canal WhatsApp**: DESLIGADO. `canal:'whatsapp'` responde "O código por WhatsApp ainda não está ligado. Use o e-mail." A estrutura
+**Canal WhatsApp**: DESLIGADO por decisão do dono (25/11/2026): o código de entrada sai SÓ por e-mail. O WhatsApp será ligado depois pelo Marcelo, pela API do WAHA (pendência dele; nenhum endereço, chave ou número foi inventado). O ponto de encaixe é `enviarCodigoWhatsappVagas`, isolado em `supabase/funcoes-compartilhadas/vagas-conta.js`. `canal:'whatsapp'` responde "O código por WhatsApp ainda não está ligado. Use o e-mail." A estrutura
 existe (`enviarCodigoWhatsappVagas`), mas hoje só lê as variáveis e devolve "não configurado": nenhum provedor foi escolhido nem
 inventado. Para ligar um dia: escolher o provedor, escrever o envio dentro dessa função, cadastrar as variáveis, ligar
 `VAGAS_CANAL_WHATSAPP=ligado` no servidor E `CANAL_WHATSAPP: true` em `vagas/js/config.js`, e só então a tela mostrar o botão.

@@ -1268,9 +1268,10 @@ function canalWhatsappLigadoVagas(env) {
   return String((env && env.VAGAS_CANAL_WHATSAPP) || '').trim().toLowerCase() === 'ligado';
 }
 
-/** Envio do código por WhatsApp, atrás da chave VAGAS_CANAL_WHATSAPP=ligado. Hoje só lê as variáveis do provedor
- *  (VAGAS_WHATSAPP_PROVEDOR_URL, _TOKEN, _REMETENTE) e devolve "não configurado": o provedor ainda não foi escolhido e a ligação
- *  com ele entra aqui, sem mudar o resto. {enviado:false, naoConfigurado:true, provedorLido} */
+/** Envio do código por WhatsApp, atrás da chave VAGAS_CANAL_WHATSAPP=ligado. DECISÃO DO DONO (25/11/2026): hoje o código sai SÓ por
+ *  e-mail; o WhatsApp será ligado depois pelo Marcelo, pela API do WAHA. Este é o ÚNICO ponto de encaixe: o envio ao WAHA entra
+ *  aqui dentro (endereço, chave e sessão vêm das variáveis VAGAS_WHATSAPP_PROVEDOR_URL, _TOKEN e _REMETENTE, cadastradas por
+ *  ele). Hoje só lê as variáveis e devolve "não configurado". {enviado:false, naoConfigurado:true, provedorLido} */
 async function enviarCodigoWhatsappVagas(base, destino, codigo) {
   const env = (base && base.env) || {};
   const provedorLido = canalWhatsappLigadoVagas(env) && !!String(env.VAGAS_WHATSAPP_PROVEDOR_URL || '').trim() &&
