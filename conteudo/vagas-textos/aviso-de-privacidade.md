@@ -7,11 +7,11 @@ Versão 1.0 · minuta de 13/10/2026 · uma empresa do grupo Gestão sem Caos [RE
 ## Resumo em 10 linhas (aparece na tela antes do texto completo)
 
 1. Quem cuida dos seus dados é a Gestão sem Caos. O operador da sua cidade trabalha por instrução dela e não vê o seu currículo.
-2. Pedimos só o que a vaga precisa: nome, e-mail, WhatsApp, cidade e zona, experiência, escolaridade, turnos, CNH, pretensão e os seus testes.
-3. Não pedimos, não guardamos e não existe campo para: idade, gênero, estado civil, filhos, gravidez, cor, religião, nacionalidade, saúde ou antecedentes. Foto é opcional e só aparece depois do Combinou.
-4. Até o Combinou, a empresa vê só um cartão sem nome e sem contato. [REVISÃO JURÍDICA] Quando você toca em Combinou, a empresa passa a ver o seu nome, WhatsApp e e-mail (e a foto, se você enviou) e você passa a ver os da empresa. Você pode cortar o acesso depois.
+2. Pedimos só o que a vaga precisa: nome, e-mail, WhatsApp, cidade e bairro e, se você quiser, o currículo (arquivo ou resumo): experiência, escolaridade, cursos, turnos, CNH e quanto quer ganhar.
+3. Não pedimos, não guardamos e não existe campo para: idade, gênero, estado civil, filhos, gravidez, cor, religião, nacionalidade, saúde ou antecedentes. O site não pede foto. Se o seu arquivo tiver foto, só a empresa da candidatura o vê. A leitura do arquivo descarta data de nascimento, idade, estado civil, foto, CPF e RG.
+4. [REVISÃO JURÍDICA] Ao se candidatar, a empresa da vaga recebe o resumo do seu currículo. Se ela é uma empresa verificada, recebe também o seu nome, o arquivo e o WhatsApp, e pode chamar você. Se está em verificação, vê só o primeiro nome e o resumo; o arquivo e o WhatsApp só vão se você tocar em "Liberar meu WhatsApp". Você pode cortar o acesso depois, retirando a candidatura.
 5. Candidatar-se usa a base legal de "procedimento preliminar de contrato" (LGPD, art. 7º, V). Não é preciso consentir de novo a cada vaga.
-6. Entrar no banco de talentos é opcional, separado e com prazo. Você pode sair quando quiser.
+6. "Currículo visível para empresas da região" não existe no lançamento. Quando existir, será opcional, separado e com prazo.
 7. Você vê quem abriu o seu contato, exporta os seus dados e apaga a conta na tela "Meus dados", sem pedir a ninguém.
 8. Conta parada por 24 meses é apagada. Avisamos 30 dias antes por e-mail.
 9. Não vendemos dados. Usamos só prestadores para hospedar, enviar e-mail, proteger o site e receber pagamento, sob contrato.
@@ -32,12 +32,12 @@ As **empresas** que recebem a sua candidatura passam a ser controladoras dos dad
 ## 2. Quais dados coletamos (lista exata)
 
 ### 2.1. Se você é a pessoa que procura trabalho
-- **Conta:** nome, e-mail, senha (guardada de forma embaralhada, ninguém lê) e a declaração "tenho 18 anos ou mais".
+- **Conta:** nome, e-mail, WhatsApp e a declaração "tenho 18 anos ou mais". Não há senha: você entra com um código de 6 números que enviamos por e-mail (guardamos só uma marca embaralhada do código, que vale 10 minutos).
 - **Contato:** número de WhatsApp (informado por você; nesta versão não é confirmado por código).
 - **Onde:** até 2 cidades e a zona onde você mora ou pode trabalhar. Não pedimos endereço.
 - **Currículo:** funções e áreas de interesse, escolaridade, experiências (função, empresa, mês/ano de início e fim), turnos em que pode trabalhar, CNH (sim/não e categoria), pretensão salarial.
 - **Testes e selos:** respostas, nota, data, código do selo e a tentativa (início, fim, se houve queda de conexão).
-- **Uso:** vagas que você marcou "Quero" ou "Pular", candidaturas e o status de cada uma, conversas pela plataforma, o aceite dos termos (versão e data), a autorização do banco de talentos (data e prazo) e o registro de quem abriu o seu contato.
+- **Uso:** vagas que você salvou ou escondeu, candidaturas e o status de cada uma, conversas pela plataforma, o aceite dos termos (versão e data), a autorização do banco de talentos (data e prazo) e o registro de quem abriu o seu contato.
 - **Foto (opcional):** [REVISÃO JURÍDICA] se você quiser, uma foto do rosto, enviada com um aceite separado. Ela só aparece para a empresa com quem você combinou de conversar, depois do Combinou, para aquela vaga; nunca no cartão cego, na busca das empresas nem no perfil público. Sem foto, nada muda na sua candidatura. Uma foto permite inferir cor, religião ou saúde (dado sensível por inferência): por isso é opcional, só depois do Combinou e com aceite próprio. Você remove a foto quando quiser, em "Meus dados", e o arquivo é apagado na hora; apagar a conta também apaga a foto. A foto deve ser só o rosto da própria pessoa (sem outras pessoas, documento ou texto). Nesta primeira versão ninguém a confere antes e a operação local não a vê: se uma empresa denunciar uma foto indevida depois do Combinou, a equipe da Gestão sem Caos a apaga e avisa você.
 - **Referências profissionais:** [REVISÃO JURÍDICA] o que uma empresa com CNPJ conferido declarou sobre você (período, função, vínculo, pontos fortes, texto curto), o nome da empresa e a sua decisão (aceitar, recusar, ocultar, excluir), com data. É informação de terceiro sobre você: só aparece depois que você aceita.
 - **Perfil público** (opcional, desligado por padrão): primeiro nome, funções, selos e as referências que você aceitou.
@@ -73,10 +73,10 @@ O WhatsApp não é confirmado por código: confira o número. Se alguém deixar 
 
 | Para quê | Dados | Base legal (LGPD) |
 |---|---|---|
-| Criar e manter a sua conta, entrar, recuperar senha | conta, contato, técnico | execução de contrato (art. 7º, V) |
-| Montar o seu cartão e enviar a sua candidatura à empresa que você escolheu | currículo, selos, cidade e zona | procedimento preliminar de contrato a pedido do titular (art. 7º, V) |
-| [REVISÃO JURÍDICA] Liberar o seu nome e contato à empresa quando você toca em Combinou (e o nome, o WhatsApp e o e-mail dela para você) | nome, WhatsApp, e-mail, currículo completo (a foto, se você enviou, tem a linha própria abaixo) | execução de contrato / procedimento preliminar (art. 7º, V), com a sua confirmação na tela |
-| Deixar o seu cartão visível na busca das empresas (banco de talentos) | cartão cego | **consentimento específico, com prazo** (art. 7º, I e art. 8º) |
+| Criar e manter a sua conta e entrar com o código enviado por e-mail | conta, contato, técnico | execução de contrato (art. 7º, V) |
+| Montar o seu currículo e enviar a sua candidatura à empresa que você escolheu | currículo (arquivo e resumo), cidade e bairro | procedimento preliminar de contrato a pedido do titular (art. 7º, V) |
+| [REVISÃO JURÍDICA] Enviar o seu nome, o arquivo e o WhatsApp à empresa verificada junto com a candidatura, ou quando você toca em "Liberar meu WhatsApp" (empresa em verificação) | nome, WhatsApp, e-mail, currículo completo (a foto, se você enviou, tem a linha própria abaixo) | execução de contrato / procedimento preliminar (art. 7º, V), com a sua candidatura ou a sua liberação na tela |
+| Deixar o seu currículo visível na busca das empresas (só quando existir) | resumo do currículo | **consentimento específico, com prazo** (art. 7º, I e art. 8º) |
 | Aplicar testes e emitir selo | respostas, nota, data | execução de contrato (art. 7º, V) |
 | Bloquear pedidos de dinheiro e documento, apurar denúncias, evitar fraude e golpe | conversas, técnico, registros | legítimo interesse (art. 7º, IX) e exercício regular de direitos (art. 7º, VI), com a proteção da pessoa como prioridade |
 | Guardar aceites, registros de acesso e notas fiscais | aceites, técnico, compras | obrigação legal (art. 7º, II): Marco Civil, art. 15; legislação fiscal |
@@ -93,12 +93,12 @@ Não usamos os seus dados para decisão automatizada que afete você: não há o
 
 | Quem | Vê | Não vê |
 |---|---|---|
-| Empresa, antes do Combinou | cartão cego: zona, experiência, escolaridade, turnos, CNH, pretensão, selos (nota com margem) e "Referência de empresa verificada: sim" | nome, foto, contato, e-mail, currículo completo, nome da empresa que deu referência, pontos fortes e texto da referência, qualquer dado que não existe (seção 2.4) |
-| Empresa, depois do Combinou | [REVISÃO JURÍDICA] nome, WhatsApp, e-mail, currículo completo, a foto (se você enviou; linha abaixo), as referências que você aceitou (com o nome da empresa) e a conversa. Em troca, você vê o nome, o WhatsApp e o e-mail da empresa. Se você cortar o acesso, ela deixa de ver o seu contato | o que você escreveu para outras empresas; as suas outras candidaturas |
+| Empresa em verificação | primeiro nome e resumo: bairro, experiência, escolaridade, turnos, CNH e quanto quer ganhar; arquivo e WhatsApp só se você liberar | nome, foto, contato, e-mail, currículo completo, nome da empresa que deu referência, pontos fortes e texto da referência, qualquer dado que não existe (seção 2.4) |
+| Empresa verificada | [REVISÃO JURÍDICA] nome, WhatsApp, arquivo do currículo, resumo e a conversa. Cada abertura fica registrada em "Quem viu meu currículo". Se você retirar a candidatura, ela deixa de ver o seu contato | o que você escreveu para outras empresas; as suas outras candidaturas |
 | Empresa, depois do Combinou, se você enviou foto | a sua foto, enquanto a conversa daquela vaga estiver aberta | a foto em qualquer outra tela (cartão cego, busca, perfil público) |
 | Empresa que deixou uma referência | o que ela mesma escreveu | se você aceitou, recusou, ocultou ou excluiu (ela não é avisada); o resto da sua conta |
 | Quem tem o link do seu perfil público (só se você ligar) | primeiro nome, funções, selos e as referências que você aceitou | contato, zona, pretensão, candidaturas |
-| Empresa, na busca do banco de talentos | só o cartão cego de quem autorizou, dentro do prazo | nome e contato (só após Combinou) |
+| Empresa, na busca de currículos (ainda não existe) | só o resumo de quem autorizar, dentro do prazo | nome e contato |
 | Operador local | empresas, anúncios, denúncias e os números da cidade | currículo, nome ligado a candidatura, contato, conversas |
 | Gestão sem Caos (equipe) | o necessário para operar, dar suporte e apurar denúncia, com acesso restrito e registrado | nada além disso |
 | Outras pessoas e o público | vagas publicadas e os números gerais da cidade | qualquer dado seu |
@@ -180,3 +180,10 @@ Se este aviso mudar, a nova versão fica nesta página com a data. Mudança rele
 ## 12. Contato
 
 Encarregado(a) de dados: [nome a preencher] · [e-mail a preencher] · Gestão sem Caos, [REVISÃO JURÍDICA: cidade da sede da Gestão sem Caos].
+
+## Currículo anexado (v2) [REVISÃO JURÍDICA: prazos e fornecedor]
+
+- O arquivo (PDF, Word, JPG, PNG ou HEIC, até 10 MB) fica em armazenamento privado. Ninguém da equipe da cidade o vê. A empresa só o abre pelas candidaturas dela, com link que vence em minutos, e cada abertura fica registrada.
+- A leitura do arquivo para sugerir os campos acontece no seu aparelho, sem enviar o texto a terceiros. Foto ou papel fotografado só é guardado; você confere 3 perguntas.
+- O arquivo fica enquanto a sua conta existir. A candidatura e o acesso da empresa duram até 12 meses depois do fim da vaga. Se você trocar o arquivo, o antigo é apagado em 30 dias. "Apagar meu currículo" tira o arquivo do site e das candidaturas abertas; a cópia que a empresa já baixou é responsabilidade dela.
+- Conta sem uso: aviso aos 18 meses e exclusão aos 24.
