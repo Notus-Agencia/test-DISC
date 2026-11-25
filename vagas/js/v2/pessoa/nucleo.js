@@ -108,7 +108,7 @@
   /* ---------- módulos sob demanda ---------- */
   const carregados = {};
   // módulos que precisam de outros antes de rodar
-  const DEPS = { entrar: ['codigo'], candidatar: ['codigo', 'texto-curriculo', 'arquivos', 'fila'], filtros: ['codigo'], eu: ['texto-curriculo', 'arquivos', 'filtros'], arquivos: [] };
+  const DEPS = { entrar: ['codigo'], candidatar: ['formularios', 'codigo', 'texto-curriculo', 'arquivos', 'fila'], filtros: ['formularios', 'codigo'], eu: ['formularios', 'texto-curriculo', 'arquivos', 'filtros'] };
   P.modulo = function (nome) {
     if (!carregados[nome]) {
       carregados[nome] = Promise.all((DEPS[nome] || []).map((d) => P.modulo(d))).then(() => new Promise((ok, falha) => {

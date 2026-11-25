@@ -55,14 +55,17 @@
         `<h2 id="${o.id}-t">${o.titulo}</h2><button class="btn-icone" type="button" data-fechar aria-label="Fechar">${ic('x')}</button></div>` +
         `<div class="folha-corpo">${o.corpo || ''}</div><div class="folha-rodape"${o.rodape ? '' : ' hidden'}>${o.rodape || ''}</div>`;
     }
-    const quem = doc.activeElement;
+    const quem = doc.activeElement, quemSel = quem && quem.getAttribute && quem.getAttribute('data-acao')
+      ? '[data-acao="' + quem.getAttribute('data-acao') + '"]' + (quem.getAttribute('data-id') ? '[data-id="' + quem.getAttribute('data-id') + '"]' : '') : '';
     dl.addEventListener('cancel', (e) => { e.preventDefault(); P.fechar(dl); });
     dl._hash = root.location.hash;
     dl.addEventListener('close', () => {
       dl.remove();
       if (o.aoFechar) o.aoFechar();
       if (dl._pushed && !dl._semVolta && !dl._porPop && root.history.state && root.history.state.folha === dl.id) { VOLTANDO++; try { root.history.back(); } catch (e) { VOLTANDO--; } }
-      if (quem && doc.contains(quem) && quem.focus) { try { quem.focus({ preventScroll: true }); } catch (e) { /* sem foco */ } }
+      // devolve o foco a quem abriu a folha; se a tela foi redesenhada nesse meio tempo, procura o botão equivalente
+      const alvo = quem && doc.contains(quem) ? quem : quemSel ? doc.querySelector(quemSel) : null;
+      if (alvo && alvo.focus) { try { alvo.focus({ preventScroll: true }); } catch (e) { /* sem foco */ } }
     });
     doc.body.appendChild(dl);
     ligarArraste(dl);

@@ -101,6 +101,7 @@
       E.filtros = F;
     }
     if (P.MOD_TELA[r.v]) await P.modulo(P.MOD_TELA[r.v]);
+    if (r.abrir) await P.modulo('candidatar');
     if (r.v === 'vaga' && !D.VAGA[r.id]) await P.api('vaga', { id: r.id }).then((x) => P.incluir(x.vaga, x.empresa), () => null);
     if (r.v === 'salvas') await P.garantirVagas(E.salvas);
     if (E.conta && !E.candsCarregadas && ['candidaturas', 'candidatura', 'inicio', 'vaga', 'busca'].indexOf(r.v) >= 0) await P.carregarCands().catch(() => null);
@@ -129,7 +130,7 @@
       const y = P.rolagem[chaveRota(r)];
       root.scrollTo(0, (r.v === 'busca' || r.v === 'inicio') && y ? y : 0);
       const app = $('#app');
-      if (app && !(r.v === 'busca' && doc.activeElement && doc.activeElement.closest && doc.activeElement.closest('#topo'))) { try { app.focus({ preventScroll: true }); } catch (e) { /* sem foco */ } }
+      if (ATUAL && app && !(r.v === 'busca' && doc.activeElement && doc.activeElement.closest && doc.activeElement.closest('#topo'))) { try { app.focus({ preventScroll: true }); } catch (e) { /* sem foco */ } }
       P.anunciar(tituloDa(r));
     }
     ATUAL = r;
@@ -201,6 +202,8 @@
   const aoClicar = function (e) {
     const t = e.target;
     if (t.tagName === 'DIALOG') { const r = t.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) P.fechar(t); return; }
+    const pular = t.closest('.pular');
+    if (pular) { e.preventDefault(); const app = $('#app'); if (app) { app.focus(); app.scrollIntoView(); } return; }   // "Pular para o conteúdo" sem mexer na rota
     if (!t.closest('.busca-dupla,.busca-topo')) fecharSugestoes();
     const f = t.closest('[data-fechar]');
     if (f) { P.fechar(f.closest('dialog')); return; }
@@ -331,7 +334,11 @@
       const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
       if (f) P.modulo('arquivos').then(() => P.escolheuArquivo(f, z.getAttribute('data-upload')));
     });
-    root.addEventListener('hashchange', () => { P.navegou++; P.render(); });
+    root.addEventListener('hashchange', () => {
+      const h = root.location.hash;
+      if (h && h.indexOf('#/') !== 0) return;       // âncora comum (#app): não é rota
+      P.navegou++; P.render();
+    });
     let larg = root.innerWidth, timer;
     root.addEventListener('resize', () => {
       clearTimeout(timer);

@@ -24,7 +24,7 @@
   P.vagasDaEmpresa = (eid) => P.D.ABERTAS.filter((v) => v.empresaId === eid);
 
   /* ---------- candidaturas da pessoa (as do banco + as que esperam a internet) ---------- */
-  P.minhas = () => P.est.cands.concat(P.filaComoCands ? P.filaComoCands() : []);
+  P.minhas = () => P.est.cands.concat(P.filaComoCands ? P.filaComoCands() : []).sort((a, b) => P.ts(b.criadaEm) - P.ts(a.criadaEm));
   P.candPorVaga = (vid) => P.minhas().filter((c) => c.vagaId === vid && !(c.etapa === 'não seguiu' && c.encerradaPor === 'pessoa'))[0] || null;
   P.candPorId = (id) => P.minhas().filter((c) => c.id === id)[0] || null;
   P.encerrada = (c) => c.etapa === 'não seguiu' || c.etapa === 'contratada';
