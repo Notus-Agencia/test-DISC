@@ -55,6 +55,8 @@ test('empresas.html: CSP canônica na meta, nada inline, scripts na ordem do pas
   assert.equal(scripts.some((s) => /previa\//.test(s) || /regras\.js$/.test(s)), false);
   ['assets/v2/sistema.css', 'assets/v2/empresa.css'].forEach((c) => assert.ok(fs.existsSync(path.join(RAIZ, c))));
   assert.match(html, /<footer[\s\S]*Uma empresa do grupo[\s\S]*gsc-logo/);
+  // nenhum rastro de demonstração na página real: a faixa é criada por JavaScript só no modo prévia
+  assert.equal(/Demonstra[cç][aã]o|fict[íi]ci|Controles da pr[ée]via|Exemplo/i.test(textoVisivel(html)), false);
 });
 
 test('empresas.html e os módulos: a frase anti-golpe é a do contrato, palavra por palavra', () => {

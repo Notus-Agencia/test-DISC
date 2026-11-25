@@ -115,7 +115,7 @@
       x.conversa.push({ id: 'm2' + x.id, de: 'ela', txt: 'Podemos sim. Fico livre depois das 14h.', ts: iso(Math.min(agora() - HORA, t + 8 * HORA)) }); x.naoLidas = 1;
     }
     if (etapa === 'entrevista marcada' && c.entrevista) {
-      var q = Date.parse(c.entrevista.quando) - BASE + agora();
+      var q = Math.round((Date.parse(c.entrevista.quando) - BASE + agora()) / HORA) * HORA;
       x.entrevista = { quando: iso(q), onde: c.entrevista.onde, confirmada: c.id === 'c11' ? true : null, pediuOutro: false };
       x.historico.push({ etapa: 'entrevista marcada', em: iso(t + 10 * HORA), por: 'empresa' });
     }

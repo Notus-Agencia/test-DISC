@@ -121,7 +121,7 @@
     if (g === 'encerrada') return b('mais-30', 'play', 'Deixar mais 30 dias no ar') + b('duplicar', 'copiar', 'Duplicar');
     if (g === 'rascunho') return b('publicar-rascunho', 'play', 'Publicar') + b('editar', 'lapis', 'Editar') + b('duplicar', 'copiar', 'Duplicar');
     if (g === 'revisao') return b('editar', 'lapis', 'Editar') + b('duplicar', 'copiar', 'Duplicar');
-    return b('editar', 'lapis', 'Editar') + b('duplicar', 'copiar', 'Duplicar') + (g === 'pausada' ? b('pausar', 'play', 'Voltar ao ar') : b('pausar', 'pausa', 'Pausar')) + b('mais-30', 'play', 'Mais 30 dias') + b('encerrar', 'arquivo', 'Encerrar');
+    return b('editar', 'lapis', 'Editar') + b('duplicar', 'copiar', 'Duplicar') + (g === 'pausada' ? b('pausar', 'play', 'Voltar ao ar') : b('pausar', 'pausa', 'Pausar')) + b('mais-30', 'play', 'Deixar mais 30 dias no ar') + b('encerrar', 'arquivo', 'Encerrar');
   }
   function cartaoVagaPainel(v) {
     var onde = [E.variasLojas() && E.lojaDe(v) ? E.lojaDe(v).nome : v.bairro, E.cidadeNome(v.cidade)].filter(Boolean).join(', ');

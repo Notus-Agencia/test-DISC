@@ -381,6 +381,7 @@
     $('#rodape').hidden = !!res.semRodape;
     if (!res.manterRolagem && !mesma) window.scrollTo(0, 0);
     if (tela === 'candidatos') E.UI.listaVaga = r.q.vaga || '';
+    if (!mesma && !primeira) { var h1 = $('#app h1'); if (h1) { h1.setAttribute('tabindex', '-1'); h1.focus({ preventScroll: true }); } }   /* quem usa leitor de tela ouve o título da nova tela */
     document.title = (res.titulo ? res.titulo + ' | ' : '') + 'Vagas sem Caos';
     if (res.depois) res.depois();
   }

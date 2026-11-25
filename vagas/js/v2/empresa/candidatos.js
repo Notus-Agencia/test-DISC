@@ -89,7 +89,7 @@
     if (UI.queryAplicada !== chaveQ) {
       UI.queryAplicada = chaveQ;
       if (UI.listaVaga !== arg) { UI.filtros = {}; UI.sel = {}; }
-      if (r.q.etapa) { UI.filtros.etapa = r.q.etapa; UI.visao = 'lista'; }
+      if (r.q.etapa) { UI.filtros.etapa = E.COL_DA_ETAPA[r.q.etapa] || r.q.etapa; UI.visao = 'lista'; }   /* aceita a etapa do banco ou a coluna da tela */
     }
     UI.listaVaga = arg;
     if (!UI.visao) UI.visao = E.ehCelular() ? 'lista' : 'quadro';
