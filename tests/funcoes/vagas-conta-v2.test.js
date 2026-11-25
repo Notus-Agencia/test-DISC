@@ -283,7 +283,8 @@ test('codigo_pedir: se o e-mail não sai, o código é apagado e a resposta é u
   } finally { console.error = antes; }
 });
 
-test('codigo_pedir: o canal WhatsApp está desligado por padrão (e continua não configurado mesmo com a chave ligada)', async () => {
+test('codigo_pedir: o canal WhatsApp está desligado por padrão (e continua não configurado mesmo com a chave ligada)', async (t) => {
+  t.mock.method(console, 'error', () => {});
   const w = preparar();
   const r = await chamar(w.base, PEDIR('62999990000', { canal: 'whatsapp' }));
   assert.deepEqual(r.json, { ok: false, erro: 'O código por WhatsApp ainda não está ligado. Use o e-mail.', codigo: 'canal_desligado' });

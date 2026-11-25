@@ -18,9 +18,9 @@
 /selo/:codigo   /selo.html?codigo=:codigo    302
 /:cidade/  /cidade.html?cidade=:cidade  302
 
-# Links curtos da vaga (/v/K7M2QX) são servidos pela Pages Function vagas/functions/v/[codigo].js.
-# Regra de _redirects NÃO vale para rota atendida por Function (documentado pelo Cloudflare), então não há
-# regra aqui. Se um dia a Function for desligada, descomente a linha abaixo apontando para a tela da vaga:
-# /v/:codigo  /boa-vista-rr/?vaga=:codigo  302
+# Links curtos da vaga (/v/K7M2QX) são servidos pela Pages Function vagas/functions/v/[codigo].js (prévia do WhatsApp e
+# redirecionamento para a tela da vaga, /#/vaga/<código>). Regra de _redirects NÃO vale para rota atendida por Function
+# (documentado pelo Cloudflare), então não há regra aqui. Se um dia a Function for desligada (é o caso da VPS: nginx, sem
+# Functions), use a regra equivalente no servidor: /v/:codigo  /#/vaga/:codigo  302 (docs/projeto/status/vagas-v2-servidor.md).
 
 # Nada de "www": o site é só vagas.gestaosemcaos.com.br (não há CNAME para www.vagas).

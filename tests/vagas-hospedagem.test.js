@@ -143,8 +143,10 @@ test('montarPaginaVaga: Open Graph completo, sem JavaScript, texto escapado', ()
   assert.ok(html.includes('<meta property="og:site_name" content="Vagas sem Caos">'));
   assert.ok(html.includes('<h1>Atendente de loja &lt;turno da tarde&gt;</h1>'));
   assert.ok(!html.includes('<turno da tarde>'), 'nada de HTML cru vindo do anúncio');
-  assert.ok(html.includes('href="/vaga.html?vaga=K7M2QX"'), 'botão leva direto para a tela da vaga com o código');
-  assert.ok(html.includes('Quero esta vaga'));
+  assert.ok(html.includes('href="/#/vaga/K7M2QX"'), 'botão leva direto para a tela da vaga do site novo, com o código');
+  assert.ok(html.includes('<meta http-equiv="refresh" content="0;url=/#/vaga/K7M2QX">'), 'quem abre o link segue na hora para a tela da vaga');
+  assert.ok(html.includes('Candidatar-me') && !html.includes('Quero esta vaga'));
+  assert.ok(html.includes('Nunca pague para se candidatar. Se alguém pedir dinheiro, Pix ou documento em nome do Vagas sem Caos, é golpe.'), 'frase anti-golpe fixa');
   assert.ok(html.includes('12/11/2026'), 'data de validade no formato brasileiro');
   assert.ok(html.includes('Gestão sem Caos') && !/notus/i.test(html), 'marca certa');
   const semUrls = html.replace(/https?:\/\/\S+/g, '');
@@ -156,7 +158,7 @@ test('montarPaginaVaga: vaga encerrada ganha noindex e botão "Ver outras vagas"
   assert.ok(html.includes('<meta name="robots" content="noindex">'));
   assert.ok(html.includes('Vaga encerrada'));
   assert.ok(html.includes('Ver outras vagas'));
-  assert.ok(!html.includes('Quero esta vaga'));
+  assert.ok(!html.includes('Candidatar-me') && !html.includes('http-equiv="refresh"'), 'vaga encerrada não redireciona');
 });
 
 test('montarPaginaErro: 404 e 503 simples, com noindex e sem script', () => {
@@ -199,22 +201,32 @@ test('reais: centavos -> texto em reais', () => {
   assert.equal(mod.reais('x'), '');
 });
 
-test('_headers: CSP sem script de fora (exceto Turnstile), Supabase liberado, cache longo em /comum e /assets', () => {
+// Política canônica da v2 (a mesma meta das telas e do nginx da VPS): docs/projeto/status/vagas-v2-servidor.md.
+const CSP_CANONICA = "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://challenges.cloudflare.com; style-src 'self'; font-src 'self'; " +
+  "img-src 'self' data: blob: https://tevpqngqzxcswmticjnr.supabase.co; connect-src 'self' https://tevpqngqzxcswmticjnr.supabase.co https://cdnjs.cloudflare.com; " +
+  "worker-src 'self' blob: https://cdnjs.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'";
+
+test('_headers: CSP canônica da v2 (pdf.js/mammoth do cdnjs, Turnstile, só o projeto Supabase), cache longo em /comum e /assets', () => {
   const txt = fs.readFileSync(path.join(RAIZ, '_headers'), 'utf8');
   const blocos = txt.split(/\n(?=\S)/).map((b) => b.trim()).filter(Boolean);
   const geral = blocos.find((b) => b.startsWith('/*\n'));
   assert.ok(geral, 'bloco /* presente');
   const csp = /Content-Security-Policy: (.+)/.exec(geral)[1];
+  assert.equal(csp, CSP_CANONICA + "; frame-ancestors 'none'", 'a política do _headers é a canônica mais frame-ancestors (que só vale em cabeçalho)');
   const dir = {};
   csp.split(';').map((x) => x.trim()).filter(Boolean).forEach((x) => { const p = x.split(/\s+/); dir[p[0]] = p.slice(1); });
-  assert.deepEqual(dir['script-src'], ["'self'", 'https://challenges.cloudflare.com']);
+  assert.deepEqual(dir['script-src'], ["'self'", 'https://cdnjs.cloudflare.com', 'https://challenges.cloudflare.com']);
+  assert.deepEqual(dir['worker-src'], ["'self'", 'blob:', 'https://cdnjs.cloudflare.com']);
   assert.ok(dir['connect-src'].includes('https://tevpqngqzxcswmticjnr.supabase.co'));
+  assert.ok(dir['connect-src'].includes('https://cdnjs.cloudflare.com'), 'pdf.js baixa o worker pelo cdnjs');
   assert.ok(!dir['connect-src'].includes('https://*.supabase.co'), 'só o projeto, não qualquer *.supabase.co');
+  assert.ok(!dir['connect-src'].some((v) => /brasilapi|api\./.test(v)), 'o navegador não chama API de terceiros (o CNPJ é consultado no servidor)');
   assert.ok(dir['img-src'].includes('https://tevpqngqzxcswmticjnr.supabase.co'), 'foto da pessoa (URL assinada do Storage, só depois do Combinou)');
   assert.ok(!dir['img-src'].includes('https://*.supabase.co'));
+  assert.deepEqual(dir['style-src'], ["'self'"], 'sem estilo embutido');
   assert.deepEqual(dir['frame-ancestors'], ["'none'"]);
   assert.deepEqual(dir['object-src'], ["'none'"]);
-  assert.ok(!dir['script-src'].includes("'unsafe-inline'") && !dir['script-src'].includes("'unsafe-eval'"));
+  assert.ok(!/unsafe-inline|unsafe-eval/.test(csp));
   for (const h of ['Strict-Transport-Security', 'X-Content-Type-Options: nosniff', 'Referrer-Policy', 'Permissions-Policy']) assert.ok(geral.includes(h), h);
   for (const caminho of ['/comum/*', '/assets/*']) {
     const b = blocos.find((x) => x.startsWith(caminho + '\n'));

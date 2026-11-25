@@ -2,7 +2,9 @@
 //
 // Monta a página INTEIRA no servidor (abre sem JavaScript) com as tags Open Graph que o WhatsApp lê para a
 // prévia: título da vaga, empresa (ou "Empresa confidencial · verificada"), cidade/zona, modalidade e faixa
-// salarial ou valor da diária. Nunca entra dado de pessoa.
+// salarial ou valor da diária. Nunca entra dado de pessoa. Quem abre o link (não o robô do WhatsApp) segue na hora para a
+// tela da vaga do site novo, /#/vaga/<código> (meta refresh + botão "Candidatar-me"). Na VPS (nginx, sem Functions) a
+// regra equivalente é um redirecionamento 302 de /v/<código> para /#/vaga/<código> (docs/projeto/status/vagas-v2-servidor.md).
 //
 // Dados: RPC pública do Supabase (anon) `RPC_ANUNCIO` (p_codigo text) -> {ok:true, anuncio:{...}} | {ok:false, erro}.
 // Chave anon: variável `SUPABASE_ANON_KEY` do projeto no Cloudflare Pages (Settings > Variables and Secrets) ou,
@@ -22,6 +24,10 @@ export const SUPABASE_URL = 'https://tevpqngqzxcswmticjnr.supabase.co';
 export const NOME_SITE = 'Vagas sem Caos';
 export const IMAGEM_OG = '/comum/marca/vsc-logo-email.png';     // PNG (o WhatsApp não mostra SVG)
 export const CACHE_SEGUNDOS = 120;                               // prévia pode atrasar até 2 min depois de editar
+export const FRASE_GOLPE = 'Nunca pague para se candidatar. Se alguém pedir dinheiro, Pix ou documento em nome do Vagas sem Caos, é golpe.';
+
+/** Rota da vaga no site novo (a pessoa lê o código). */
+export function rotaDaVaga(codigo) { return '/#/vaga/' + encodeURIComponent(codigo); }
 const PRAZO_RPC_MS = 6000;
 
 const MODALIDADES = { clt: 'CLT', temporario: 'Temporário', diaria: 'Diária', freelancer: 'Freelancer', estagio: 'Estágio' };
@@ -152,7 +158,7 @@ function dataCurta(iso) {
 }
 
 const CSS = `
-:root{--laranja:#f34405;--azul:#13283f;--tinta:#13283f;--suave:#6b7586;--fundo:#f2f2f2;--papel:#fff;--linha:#e2e6ec}
+:root{--laranja:#c2410c;--azul:#13283f;--tinta:#13283f;--suave:#6b7586;--fundo:#f2f2f2;--papel:#fff;--linha:#e2e6ec}
 *{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--fundo);color:var(--tinta);font:16px/1.5 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
 header{background:var(--azul);padding:14px 16px}header img{display:block;height:28px;width:auto}
@@ -165,7 +171,7 @@ h1{font-size:1.5rem;line-height:1.2;margin:6px 0 4px;text-wrap:balance}
 dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0 0 16px;font-size:.95rem}dt{color:var(--suave);font-weight:600}dd{margin:0}
 .valor{font-size:1.15rem;font-weight:800;color:var(--azul)}
 .texto{white-space:pre-line;margin:0 0 16px}
-.botao{display:block;text-align:center;background:var(--laranja);color:#141414;font-weight:800;text-decoration:none;padding:14px 20px;border-radius:999px;font-size:1.05rem}
+.botao{display:block;text-align:center;background:var(--laranja);color:#fff;font-weight:800;text-decoration:none;padding:14px 20px;border-radius:999px;font-size:1.05rem}
 .botao:focus-visible{outline:3px solid var(--azul);outline-offset:3px}
 .aviso{margin:16px 0 0;font-size:.85rem;color:var(--suave)}
 footer{max-width:640px;margin:0 auto;padding:8px 16px 32px;font-size:.8rem;color:var(--suave)}footer a{color:inherit}
@@ -191,7 +197,7 @@ function cabecalhoHtml(tituloJanela, descricao, urlPagina, origem, extraMeta) {
     '<header><a href="/"><img src="/comum/marca/vsc-logo-negativo.svg" alt="Vagas sem Caos" width="187" height="28"></a></header>\n';
 }
 
-const RODAPE = '<footer><p class="grupo">Uma empresa do grupo <img src="/comum/marca/gsc-logo.svg" alt="Gestão sem Caos" width="142" height="20"></p>Nunca pague para se candidatar: a plataforma não cobra da pessoa e nenhuma empresa pode pedir dinheiro, Pix ou documento pelo chat. <a href="/termos.html">Termos</a> · <a href="/privacidade.html">Privacidade</a></footer>\n</body>\n</html>\n';
+const RODAPE = '<footer><p class="grupo">Uma empresa do grupo <img src="/comum/marca/gsc-logo.svg" alt="Gestão sem Caos" width="142" height="20"></p>' + FRASE_GOLPE + ' <a href="/termos.html">Termos</a> · <a href="/privacidade.html">Privacidade</a></footer>\n</body>\n</html>\n';
 
 /** Página da vaga (HTML completo, sem JavaScript). `origem` = https://vagas.gestaosemcaos.com.br (sem barra). */
 export function montarPaginaVaga(anuncio, origem) {
@@ -212,10 +218,11 @@ export function montarPaginaVaga(anuncio, origem) {
   if (a.quantidade > 1) linhas.push(['Vagas', String(a.quantidade)]);
   if (dataCurta(a.validoAte)) linhas.push(['Vaga aberta até', dataCurta(a.validoAte)]);
   const destino = a.cidadeSlug ? '/' + a.cidadeSlug + '/' : '/';
-  // Direto para a tela da vaga: o 302 de /<cidade>/ para cidade.html não garante que a query do código chegue até lá.
-  const linkApp = a.codigo ? '/vaga.html?vaga=' + encodeURIComponent(a.codigo) : destino;
+  // Direto para a tela da vaga do site novo (rota por hash: nenhuma regra de servidor entre o clique e a tela).
+  const linkApp = a.codigo ? rotaDaVaga(a.codigo) : destino;
   const expirada = a.status && !['publicado', 'ativo', 'ativa', 'aberta'].includes(a.status);
-  const expiradaMeta = expirada ? '<meta name="robots" content="noindex">\n' : '';
+  const expiradaMeta = expirada ? '<meta name="robots" content="noindex">\n'
+    : (a.codigo ? '<meta http-equiv="refresh" content="0;url=' + esc(linkApp) + '">\n' : '');
   return cabecalhoHtml(tituloJanela, descricao, urlPagina, base, expiradaMeta) +
     '<main>\n<article class="cartao">\n' +
     '<span class="rotulo">' + esc(expirada ? 'Vaga encerrada' : 'Vaga') + (a.codigo ? ' · ' + esc(a.codigo) : '') + '</span>\n' +
@@ -226,7 +233,7 @@ export function montarPaginaVaga(anuncio, origem) {
     (a.requisitos ? '<h2 style="font-size:1rem;margin:0 0 6px">O que a empresa pede</h2>\n<p class="texto">' + esc(a.requisitos) + '</p>\n' : '') +
     (expirada
       ? '<a class="botao" href="' + esc(destino) + '">Ver outras vagas</a>\n'
-      : '<a class="botao" href="' + esc(linkApp) + '">Quero esta vaga</a>\n<p class="aviso">Para se candidatar você cria uma conta grátis com o seu e-mail. A empresa só vê seu nome e contato depois que vocês dois combinarem.</p>\n') +
+      : '<a class="botao" href="' + esc(linkApp) + '">Candidatar-me</a>\n<p class="aviso">Para se candidatar, você entra com o seu e-mail: sem senha, só um código que chega na sua caixa de entrada.</p>\n') +
     '</article>\n</main>\n' + RODAPE;
 }
 
