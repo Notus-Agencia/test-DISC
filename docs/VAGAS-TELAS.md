@@ -1,5 +1,20 @@
 # Vagas sem Caos — especificação das telas (UX)
 
+> **v2 (24/11/2026) — leia primeiro.** As telas da pessoa e da empresa foram recriadas a partir das 3 prévias aprovadas
+> (`docs/projeto/status/vagas-v2.md`). O que vale hoje:
+>
+> | Quem | Arquivo | Rotas (por hash) |
+> |---|---|---|
+> | Pessoa | `vagas/index.html` (+ `vagas/js/v2/pessoa/*`, `assets/v2/pessoa.css`) | `#/`, `#/vagas?q=`, `#/vaga/<id>`, `#/candidatar/<id>`, `#/entrar`, `#/candidaturas`, `#/candidatura/<id>`, `#/salvas`, `#/alertas`, `#/curriculo`, `#/eu`, `#/como-funciona` |
+> | Empresa | `vagas/empresas.html` (+ `vagas/js/v2/empresa/*`, `assets/v2/empresa.css`) | `#/anunciar`, `#/vaga/nova`, `#/publicada/<id>`, `#/inicio`, `#/vagas`, `#/vagas/varias`, `#/candidatos`, `#/candidato/<id>`, `#/empresa`, `#/verificacao`, `#/entrar` |
+> | Equipe da cidade / operador | `vagas/operador.html` (sem mudança de tela; a fila "Revisar depois" já existe no banco, a tela fica para depois) | — |
+>
+> `cidade.html`, `vaga.html`, `entrar.html`, `eu.html`, `emprego.html` e `empresa.html` viraram redirecionadores curtos (os links antigos
+> continuam abrindo). Fora do ar nas telas, SEM apagar dados: Quero/Pular, Combinou como etapa, cartão cego, testes e selo
+> (`testes.html`, `selo.html`), referências, banco de talentos, compras. Cor de ação: laranja queimado `#C2410C` (erro: carmim com ícone e palavra).
+> Visual: `vagas/assets/v2/sistema.css`. As seções abaixo descrevem o desenho ANTERIOR (onda 2) e ficam como histórico da operação e do operador.
+
+
 Fonte da verdade para quem vai codificar as telas da onda 2. Base: `scratchpad/vagas/proposta.md` (aprovada), `produto.md`,
 `marca.md`, a mesa de equipe (`EQUIPE.md`: contrato de RPCs da fundação, padrão obrigatório da psicologia, acréscimo da
 referência profissional) e `docs/IDENTIDADE-VISUAL.md`. Mockups estáticos (HTML + PNG, dados fictícios; a cidade é sempre dado, nunca texto fixo) em

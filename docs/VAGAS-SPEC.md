@@ -1401,3 +1401,12 @@ tabelas; só saem da navegação. Dado existente não muda ao aplicar as migraç
 `recusar_empresa` e `liberar` (a segurada vai ao ar; vaga que já está no ar só sai da fila). Tudo grava em `vagas_moderacao` (só
 inclusão). `vagas_v2_op_avisar_candidatos` só funciona com a vaga fora do ar: grava um aviso por pessoa em `vagas_avisos_pessoa` (a
 equipe recebe só a contagem; quem envia por e-mail ou WhatsApp é a função de servidor, lendo a fila).
+
+## 15. v2 — telas, adaptador e entrada por código (24/11/2026)
+
+- **Contrato único**: `vagas/js/v2/contrato.js` (métodos `VSC_API.*`, RPCs `vagas_v2_*` com um argumento `p_dados jsonb`, formas das respostas, `validar()`).
+- **Adaptador**: `vagas/js/v2/api-v2.js` (`window.VSC_API`): modo `supabase` (RPC, Edge Function `vagas-conta`, Storage) ou `previa` (só `?previa=1` fora do domínio oficial; arquivos de `vagas/js/v2/previa/` carregados sob demanda).
+- **Entrar sem senha**: código de 6 números por E-MAIL (Resend); canal WhatsApp desligado por configuração (`CANAL_WHATSAPP`, `VAGAS_CANAL_WHATSAPP`), ponto de encaixe para o WAHA em `enviarCodigoWhatsappVagas`. Detalhes: `docs/projeto/status/vagas-v2-servidor.md`.
+- **Telas**: ver `docs/VAGAS-TELAS.md` (quadro v2). Pessoa e empresa são SPAs por hash; páginas antigas redirecionam.
+- **Ordem para publicar, pendências do dono e o que ficou para depois**: `docs/projeto/status/vagas-v2.md`.
+
